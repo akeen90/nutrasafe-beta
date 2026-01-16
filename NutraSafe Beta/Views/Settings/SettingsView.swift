@@ -107,6 +107,8 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
@@ -120,6 +122,8 @@ struct SettingsView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
+        .tabGradientBackground(.settings)
         .preferredColorScheme(appearanceMode.colorScheme)
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
@@ -614,7 +618,6 @@ struct NutritionGoalsSection: View {
     @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
 
     private func loadNutritionGoals() async {
-        let start = Date()
         do {
             async let settingsTask = firebaseManager.getUserSettings()
             async let macroTask = firebaseManager.getMacroGoals()
@@ -633,10 +636,7 @@ struct NutritionGoalsSection: View {
                 macroGoals = loadedMacroGoals
                 selectedDietType = loadedDiet
                 isLoading = false
-                #if DEBUG
-                print("✅ Loaded goals: \(caloricGoal) cal, \(exerciseGoal) exercise, \(stepGoal) steps, diet: \(loadedDiet?.displayName ?? "Custom")")
-                #endif
-            }
+                            }
         } catch {
             await MainActor.run {
                 errorMessage = "Failed to load nutrition goals: \(error.localizedDescription)"
@@ -644,21 +644,14 @@ struct NutritionGoalsSection: View {
                 isLoading = false
             }
         }
-        #if DEBUG
-        let elapsed = Date().timeIntervalSince(start)
-        print("⏱️ Nutrition goals loaded in \(String(format: "%.2f", elapsed))s")
-        #endif
-    }
+        }
 
     private func saveCaloricGoal(_ goal: Int) {
         Task {
             do {
                 cachedCaloricGoal = goal
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
-                #if DEBUG
-                print("✅ Caloric goal updated to \(goal)")
-                #endif
-
+                
                 // Notify diary view to update immediately
                 await MainActor.run {
                     NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
@@ -679,10 +672,7 @@ struct NutritionGoalsSection: View {
             do {
                 cachedExerciseGoal = goal
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, exerciseGoal: goal)
-                #if DEBUG
-                print("✅ Exercise goal updated to \(goal)")
-                #endif
-
+                
                 // Notify diary view to update immediately
                 await MainActor.run {
                     NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
@@ -703,10 +693,7 @@ struct NutritionGoalsSection: View {
             do {
                 cachedStepGoal = goal
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, stepGoal: goal)
-                #if DEBUG
-                print("✅ Step goal updated to \(goal)")
-                #endif
-
+                
                 // Notify diary view to update immediately
                 await MainActor.run {
                     NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
@@ -726,11 +713,6 @@ struct NutritionGoalsSection: View {
         Task {
             do {
                 try await firebaseManager.saveMacroGoals(macroGoals, dietType: diet)
-                #if DEBUG
-                let dietName = diet?.displayName ?? "Custom"
-                print("✅ Macro goals updated (\(dietName)): \(macroGoals.map { "\($0.macroType.displayName): \(String(describing: $0.percentage))%" })")
-                #endif
-
                 // Notify diary view to update immediately
                 await MainActor.run {
                     NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
@@ -1016,7 +998,6 @@ struct ProgressGoalsSection: View {
 
     private func loadProgressData() async {
         let manager = firebaseManager
-        let start = Date()
         do {
             async let settingsTask = manager.getUserSettings()
             async let entriesTask = manager.getWeightHistory()
@@ -1037,21 +1018,14 @@ struct ProgressGoalsSection: View {
                 isLoading = false
             }
         }
-        #if DEBUG
-        let elapsed = Date().timeIntervalSince(start)
-        print("⏱️ Progress data loaded in \(String(format: "%.2f", elapsed))s")
-        #endif
-    }
+        }
 
     private func saveHeight() {
         let manager = firebaseManager
         Task {
             do {
                 try await manager.saveUserSettings(height: height, goalWeight: nil, caloricGoal: nil)
-                #if DEBUG
-                print("✅ Height saved: \(height ?? 0) cm")
-                #endif
-            } catch {
+                            } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save height: \(error.localizedDescription)"
                     showingError = true
@@ -1065,10 +1039,7 @@ struct ProgressGoalsSection: View {
         Task {
             do {
                 try await manager.saveUserSettings(height: nil, goalWeight: goalWeight, caloricGoal: nil)
-                #if DEBUG
-                print("✅ Goal weight saved: \(goalWeight ?? 0) kg")
-                #endif
-            } catch {
+                            } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save goal weight: \(error.localizedDescription)"
                     showingError = true
@@ -1090,10 +1061,7 @@ struct ProgressGoalsSection: View {
             do {
                 // Save to Firebase
                 try await manager.saveWeightEntry(newEntry)
-                #if DEBUG
-                print("✅ Current weight saved to Firebase: \(weight) kg")
-                #endif
-
+                
                 // Write to Apple Health
                 try? await HealthKitManager.shared.writeBodyWeight(weightKg: weight, date: newEntry.date)
 
@@ -1188,6 +1156,8 @@ struct HeightEditorView: View {
                     Button("190 cm") { tempHeight = "190" }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Height")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1203,6 +1173,7 @@ struct HeightEditorView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func saveHeight() {
@@ -1301,6 +1272,8 @@ struct CurrentWeightEditorView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Current Weight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1327,6 +1300,7 @@ struct CurrentWeightEditorView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func saveWeight() {
@@ -1490,6 +1464,8 @@ struct GoalWeightEditorView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Goal Weight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1520,6 +1496,7 @@ struct GoalWeightEditorView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func saveWeight() {
@@ -1955,6 +1932,8 @@ struct ThemeSelectorView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Theme")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1967,6 +1946,7 @@ struct ThemeSelectorView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .preferredColorScheme(selectedTheme.colorScheme)
     }
 }
@@ -2039,6 +2019,8 @@ struct UnitsSelectorView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Units")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2051,6 +2033,7 @@ struct UnitsSelectorView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -2248,6 +2231,8 @@ struct DataPrivacyView: View {
                     .buttonStyle(PlainButtonStyle())
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Data & Privacy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2258,6 +2243,7 @@ struct DataPrivacyView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .alert("Export Data", isPresented: $showingExportData) {
             Button("Cancel", role: .cancel) { }
             Button("Export") {
@@ -2345,9 +2331,12 @@ struct DataPrivacyView: View {
                     Spacer()
                 }
                 .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.adaptiveBackground.ignoresSafeArea())
                 .navigationTitle("Confirm Deletion")
                 .navigationBarTitleDisplayMode(.inline)
             }
+            .navigationViewStyle(.stack)
         }
     }
 
@@ -2446,33 +2435,21 @@ struct DataPrivacyView: View {
                     await MainActor.run {
                         freshUser.delete { err in
                             if let err = err {
-                                #if DEBUG
-                                print("[Account Deletion] Error deleting user: \(err.localizedDescription)")
-                                #endif
-                                errorMessage = "Account deletion failed: \(err.localizedDescription)"
+                                                                errorMessage = "Account deletion failed: \(err.localizedDescription)"
                                 showingError = true
                                 isDeleting = false
                             } else {
-                                #if DEBUG
-                                print("[Account Deletion] User account successfully deleted from Firebase Auth")
-                                #endif
-                                // Account successfully deleted - now sign out and reset onboarding
+                                                                // Account successfully deleted - now sign out and reset onboarding
                                 do {
                                     try Auth.auth().signOut()
-                                    #if DEBUG
-                                    print("[Account Deletion] Signed out successfully")
-                                    #endif
-                                    // Reset onboarding so they see it again if they create a new account
+                                                                        // Reset onboarding so they see it again if they create a new account
                                     OnboardingManager.shared.resetOnboarding()
                                     // Clear any local data
                                     UserDefaults.standard.removeObject(forKey: "preselectedDestination")
                                     UserDefaults.standard.removeObject(forKey: "preselectedMealType")
                                     UserDefaults.standard.removeObject(forKey: "preselectedDate")
                                 } catch {
-                                    #if DEBUG
-                                    print("[Account Deletion] Error signing out: \(error.localizedDescription)")
-                                    #endif
-                                }
+                                                                    }
 
                                 successMessage = "Your account has been permanently deleted."
                                 showingSuccess = true
@@ -2666,7 +2643,8 @@ struct MacroManagementView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
             }
-            .background(Color(.systemGroupedBackground))
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Diet Management")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2700,6 +2678,7 @@ struct MacroManagementView: View {
                 .environmentObject(firebaseManager)
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     // MARK: - Calorie Goal Section
@@ -3485,7 +3464,8 @@ struct BMRCalculatorSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
             }
-            .background(Color(.systemGroupedBackground))
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("BMR Calculator")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3506,6 +3486,7 @@ struct BMRCalculatorSheet: View {
                 loadLatestWeight()
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func loadLatestWeight() {
@@ -3644,7 +3625,7 @@ struct DietSelectionCard: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 20))
                             .foregroundColor(diet.accentColor)
-                            .background(Circle().fill(Color(.systemBackground)).padding(-2))
+                            .background(Circle().fill(Color.adaptiveCard).padding(-2))
                             .offset(x: -8, y: 8)
                     }
                 },
@@ -3780,6 +3761,8 @@ struct HealthDisclaimerView: View {
                         .frame(height: 40)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Disclaimer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3790,6 +3773,7 @@ struct HealthDisclaimerView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -3813,7 +3797,7 @@ struct DisclaimerSection: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -3869,6 +3853,8 @@ struct AllergenManagementView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Allergen Management")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3889,6 +3875,7 @@ struct AllergenManagementView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .onAppear {
             Task {
                 await loadAllergens()
@@ -4041,6 +4028,8 @@ struct FoodReactionsHistoryView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Reaction History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4051,6 +4040,7 @@ struct FoodReactionsHistoryView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .onAppear {
             Task {
                 await loadReactions()
@@ -4197,6 +4187,8 @@ struct SafetyAlertsConfigView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Safety Alerts")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4209,6 +4201,7 @@ struct SafetyAlertsConfigView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -4264,6 +4257,8 @@ struct MicronutrientDisplayView: View {
                     .disabled(!showMicronutrients)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Micronutrient Display")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4276,6 +4271,7 @@ struct MicronutrientDisplayView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -4367,22 +4363,13 @@ struct NotificationSettingsView: View {
                                 do {
                                     let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
                                     await UseByNotificationManager.shared.refreshAllNotifications(for: items)
-                                    #if DEBUG
-                                    print("✅ Rescheduled notifications for \(items.count) use-by items")
-                                    #endif
-                                } catch {
-                                    #if DEBUG
-                                    print("❌ Error refreshing use-by notifications: \(error)")
-                                    #endif
-                                }
+                                                                    } catch {
+                                                                    }
                             }
                         } else {
                             // Cancel all notifications when disabled
                             UseByNotificationManager.shared.cancelAllNotifications()
-                            #if DEBUG
-                            print("🔕 Cancelled all use-by notifications")
-                            #endif
-                        }
+                                                    }
                     }
 
                 }
@@ -4523,6 +4510,8 @@ struct NotificationSettingsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4539,6 +4528,7 @@ struct NotificationSettingsView: View {
                 await checkNotificationPermission()
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     // MARK: - Computed Properties
@@ -4622,10 +4612,7 @@ struct NotificationSettingsView: View {
         fastingSettings.save()
         FastingNotificationManager.shared.settings = fastingSettings
 
-        #if DEBUG
-        print("✅ Saved fasting notification settings")
-        #endif
-    }
+            }
 }
 import SwiftUI
 import HealthKit
@@ -4785,6 +4772,8 @@ struct AppleHealthSettingsView: View {
                 Spacer()
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.adaptiveBackground.ignoresSafeArea())
         .navigationTitle("Apple Health")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -4824,10 +4813,7 @@ struct AppleHealthSettingsView: View {
         // Check if HealthKit is available
         guard HKHealthStore.isHealthDataAvailable() else {
             isConnected = false
-            #if DEBUG
-            print("🏥 HealthKit not available")
-            #endif
-            return
+                        return
         }
 
         let healthStore = HKHealthStore()
@@ -4840,12 +4826,7 @@ struct AppleHealthSettingsView: View {
         // 2. User has enabled rings (they went through authorization process)
         let newConnectionStatus = (authStatus == .sharingAuthorized) || healthKitRingsEnabled
 
-        #if DEBUG
-        print("🏥 HealthKit Status - Auth: \(authStatus.rawValue), RingsEnabled: \(healthKitRingsEnabled)")
-        print("🏥 Calculating: authStatus == .sharingAuthorized? \(authStatus == .sharingAuthorized)")
-        print("🏥 Setting isConnected to: \(newConnectionStatus)")
-        #endif
-
+        
         isConnected = newConnectionStatus
     }
 
@@ -5010,6 +4991,7 @@ struct SourcesAndCitationsView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -5074,7 +5056,7 @@ struct CitationCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
                 .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
         )
         .padding(.horizontal)
@@ -5172,7 +5154,7 @@ struct EmailMarketingConsentView: View {
                         }
                         .tint(.blue)
                         .padding(20)
-                        .background(Color(.systemBackground))
+                        .background(Color.adaptiveCard)
                         .cornerRadius(12)
                         .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
 
@@ -5207,6 +5189,8 @@ struct EmailMarketingConsentView: View {
                 Spacer()
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.adaptiveBackground.ignoresSafeArea())
         .navigationTitle("Email Preferences")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Success", isPresented: $showingSuccess) {

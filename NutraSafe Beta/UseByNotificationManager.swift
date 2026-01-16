@@ -57,10 +57,7 @@ class UseByNotificationManager {
     func scheduleNotifications(for item: UseByInventoryItem) async {
         // Check if user has enabled use-by notifications in settings
         guard useByNotificationsEnabled else {
-            #if DEBUG
-            print("⏸️ Use-by notifications disabled in settings - not scheduling for \(item.name)")
-            #endif
-            return
+                        return
         }
 
         let useByDate = item.expiryDate
@@ -68,10 +65,7 @@ class UseByNotificationManager {
 
         // Ensure we have permission
         guard await requestNotificationPermissions() else {
-            #if DEBUG
-            print("❌ Notification permission not granted")
-            #endif
-            return
+                        return
         }
 
         let calendar = Calendar.current
@@ -149,17 +143,11 @@ class UseByNotificationManager {
 
         do {
             try await UNUserNotificationCenter.current().add(request)
-            #if DEBUG
-            print("✅ Use-by notification scheduled: '\(identifier)' for \(targetDate)")
-            #endif
-
+            
             // Verify it was added
             await printPendingNotifications()
         } catch {
-            #if DEBUG
-            print("❌ Error scheduling use-by notification '\(identifier)': \(error.localizedDescription)")
-            #endif
-        }
+                    }
     }
 
     // MARK: - Cancel Notifications
@@ -203,13 +191,7 @@ class UseByNotificationManager {
     /// Print all pending notifications (for debugging)
     func printPendingNotifications() async {
         let requests = await UNUserNotificationCenter.current().pendingNotificationRequests()
-        #if DEBUG
-        print("📋 Pending Notifications: \(requests.count)")
-        #endif
-        for request in requests {
-            #if DEBUG
-            print("  - \(request.identifier): \(request.content.title)")
-            #endif
-        }
+                for request in requests {
+                    }
     }
 }

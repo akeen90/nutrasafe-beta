@@ -118,10 +118,7 @@ actor WeekDataCache {
         }
         accessOrder.append(weekKey)
 
-        #if DEBUG
-        print("📦 [WeekCache] Cached week data for \(weekKey): \(coverageRows.count) nutrients, \(rhythmDays.count) days")
-        #endif
-    }
+            }
 
     /// Invalidate (remove) cache for a specific week
     /// Called when any day in the week changes
@@ -131,10 +128,7 @@ actor WeekDataCache {
             if let index = accessOrder.firstIndex(of: weekKey) {
                 accessOrder.remove(at: index)
             }
-            #if DEBUG
-            print("🗑️ [WeekCache] Invalidated cache for week \(weekKey)")
-            #endif
-        }
+                    }
     }
 
     /// Invalidate cache for a date (finds and invalidates the week containing that date)
@@ -153,10 +147,7 @@ actor WeekDataCache {
         accessOrder.removeAll()
         hits = 0
         misses = 0
-        #if DEBUG
-        print("🗑️ [WeekCache] Cleared \(previousSize) cached weeks")
-        #endif
-    }
+            }
 
     /// Get current cache size
     func size() -> Int {
@@ -184,10 +175,7 @@ actor WeekDataCache {
         // Remove least recently used entry
         let oldestKey = accessOrder.removeFirst()
         weekCache.removeValue(forKey: oldestKey)
-        #if DEBUG
-        print("♻️ [WeekCache] Evicted oldest week: \(oldestKey)")
-        #endif
-    }
+            }
 
     private func formatWeekKey(_ weekStart: Date) -> String {
         // PERFORMANCE: Use cached static formatter

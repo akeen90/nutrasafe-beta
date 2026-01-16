@@ -146,21 +146,14 @@ class ErrorHandler: ObservableObject {
         currentError = nutraSafeError
         showError = true
 
-        #if DEBUG
-        print("❌ [\(context)] Error: \(error.localizedDescription)")
-        print("   User message: \(nutraSafeError.userFriendlyMessage)")
-        #endif
-    }
+            }
 
     /// Present a custom NutraSafe error
     func handle(_ error: NutraSafeError, context: String = "") {
         currentError = error
         showError = true
 
-        #if DEBUG
-        print("❌ [\(context)] \(error.userFriendlyMessage)")
-        #endif
-    }
+            }
 
     /// Clear the current error
     func clearError() {

@@ -19,7 +19,7 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             // Clean adaptive background
-            Color(.systemBackground)
+            Color.adaptiveBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -321,21 +321,11 @@ struct LeanPermissionsPage: View {
     }
 
     private func requestNotifications() {
-        #if DEBUG
-        print("🔔 Requesting notification permissions...")
-        #endif
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             DispatchQueue.main.async {
                 notificationsRequested = true
                 notificationsGranted = granted
-                #if DEBUG
-                if let error = error {
-                    print("🔔 Notification permission error: \(error.localizedDescription)")
-                } else {
-                    print("🔔 Notification permission result: \(granted ? "granted" : "denied")")
                 }
-                #endif
-            }
         }
     }
 
@@ -740,14 +730,13 @@ struct OnboardingBackground: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        Color(.systemBackground)
+        Color.adaptiveBackground
     }
 }
 
 // MARK: - Preview
 #Preview {
     OnboardingView { consent in
-        print("Onboarding complete, email consent: \(consent)")
     }
     .environmentObject(HealthKitManager.shared)
 }

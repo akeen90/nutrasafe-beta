@@ -41,18 +41,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
                 let notificationSessionId = userInfo["sessionId"] as? String ?? ""
                 if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
-                    #if DEBUG
-                    print("🚫 Suppressing fasting notification - fast is no longer active")
-                    print("   - Active session: \(activeFastSessionId)")
-                    print("   - Notification session: \(notificationSessionId)")
-                    #endif
-                    completionHandler([])
+                                        completionHandler([])
                     return
                 }
-                #if DEBUG
-                print("✅ Showing fasting notification - session matches: \(notificationSessionId)")
-                #endif
-            }
+                            }
         }
 
         // Show banner even when app is in foreground
@@ -93,15 +85,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             let scheduledStartTime = getNumber("scheduledStartTime")
             let scheduledEndTime = getNumber("scheduledEndTime")
 
-            #if DEBUG
-            print("📱 Fasting notification tapped:")
-            print("   - Type: \(fastingType)")
-            print("   - Plan: \(planName) (\(durationHours)h)")
-            if let startTime = scheduledStartTime {
-                print("   - Scheduled start: \(Date(timeIntervalSince1970: startTime))")
-            }
-            #endif
-
             // Navigate to Fasting tab first
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .navigateToFasting, object: nil)
@@ -127,10 +110,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         // Check if this is a use-by notification
         if let type = userInfo["type"] as? String, type == "useBy" {
-            #if DEBUG
-            print("📱 User tapped use-by notification - navigating to Use By tab")
-            #endif
-
+            
             // Set the tab to navigate to
             AppDelegate.selectedTabFromNotification = .useBy
 
@@ -245,22 +225,13 @@ struct MainAppView: View {
 
         // Only request if not yet determined (don't bother user if already denied/granted)
         guard settings.authorizationStatus == .notDetermined else {
-            #if DEBUG
-            print("📱 Notification permission already determined: \(settings.authorizationStatus.rawValue)")
-            #endif
-            return
+                        return
         }
 
         do {
             let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
-            #if DEBUG
-            print("📱 Notification permission requested - granted: \(granted)")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ Error requesting notification permission: \(error)")
-            #endif
-        }
+                    } catch {
+                    }
     }
 
     /// Clear app icon badge when app becomes active
@@ -273,14 +244,8 @@ struct MainAppView: View {
         // Reset badge count to 0
         do {
             try await center.setBadgeCount(0)
-            #if DEBUG
-            print("🔔 App badge cleared")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ Error clearing badge: \(error)")
-            #endif
-        }
+                    } catch {
+                    }
     }
 
     /// Check and refresh notification queue if needed
@@ -289,14 +254,8 @@ struct MainAppView: View {
         if needsRefresh {
             do {
                 try await FastingNotificationManager.shared.refreshNotificationsForActivePlans()
-                #if DEBUG
-                print("✅ Notification queue refreshed on foreground")
-                #endif
-            } catch {
-                #if DEBUG
-                print("❌ Failed to refresh notifications: \(error)")
-                #endif
-            }
+                            } catch {
+                            }
         }
     }
 
@@ -314,14 +273,8 @@ struct MainAppView: View {
             UserDefaults.standard.set(caloric, forKey: "cachedCaloricGoal")
             UserDefaults.standard.set(exercise, forKey: "cachedExerciseGoal")
             UserDefaults.standard.set(steps, forKey: "cachedStepGoal")
-            #if DEBUG
-            print("🔥 Settings cache prewarmed")
-            #endif
-        } catch {
-            #if DEBUG
-            print("⚠️ Failed to prewarm settings cache: \(error)")
-            #endif
-        }
+                    } catch {
+                    }
     }
 }
 

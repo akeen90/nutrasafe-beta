@@ -142,6 +142,7 @@ struct DiaryMealCard: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
@@ -162,27 +163,6 @@ struct DiaryMealCard: View {
         }
     }
 
-    // Get meal-specific icon
-    private func getMealIcon() -> String {
-        switch mealType.lowercased() {
-        case "breakfast":
-            return "sun.and.horizon"
-        case "lunch":
-            return "fork.knife"
-        case "dinner":
-            return "moon.stars"
-        case "snacks":
-            return "birthday.cake"
-        default:
-            return "fork.knife"
-        }
-    }
-    
-    private func deleteFood(at offsets: IndexSet) {
-        withAnimation(.easeOut(duration: 0.3)) {
-            foods.remove(atOffsets: offsets)
-        }
-    }
 }
 
 // MARK: - Diary Food Row
@@ -233,12 +213,7 @@ struct DiaryFoodRow: View {
                             .font(.system(size: 11, weight: .regular))
                             .foregroundColor(.secondary)
                             .onAppear {
-                                #if DEBUG
-                                print("📋 Diary displaying: \(food.name)")
-                                print("   - servingDescription: '\(food.servingDescription)'")
-                                print("   - isPerUnit: \(String(describing: food.isPerUnit))")
-                                #endif
-                            }
+                                                            }
 
                         if food.quantity > 1 {
                             Text("× \(String(format: "%.0f", food.quantity))")
@@ -299,55 +274,6 @@ struct DiaryFoodRow: View {
                 diaryQuantity: food.quantity,
                 fastingViewModel: fastingViewModelWrapper.viewModel
             )
-        }
-    }
-    
-    private func processedScoreColor(_ score: String) -> Color {
-        switch score.uppercased() {
-        case "A+", "A", "A-":
-            return Color.green
-        case "B+", "B", "B-":
-            return Color.blue
-        case "C+", "C", "C-":
-            return Color.orange
-        case "D+", "D", "D-":
-            return Color.red.opacity(0.8)
-        case "F":
-            return Color.red
-        default:
-            return Color.gray
-        }
-    }
-    
-    private func sugarLevelColor(_ level: String) -> Color {
-        switch level.lowercased() {
-        case "low":
-            return Color.green
-        case "medium", "med":
-            return Color.orange
-        case "high":
-            return Color.red
-        default:
-            return Color.gray
-        }
-    }
-
-    private func containsCommonAllergens(_ ingredients: [String]) -> Bool {
-        let commonAllergens = [
-            "milk", "dairy", "lactose", "casein", "whey",
-            "egg", "eggs", "albumin",
-            "peanut", "peanuts", "groundnut",
-            "tree nut", "almond", "walnut", "cashew", "pistachio", "pecan",
-            "soy", "soya", "soybean",
-            "wheat", "gluten", "barley", "rye", "oats",
-            "fish", "salmon", "tuna", "cod", "sardine",
-            "shellfish", "shrimp", "crab", "lobster", "clam", "oyster",
-            "sesame", "sesame seed"
-        ]
-
-        let allIngredients = ingredients.joined(separator: " ").lowercased()
-        return commonAllergens.contains { allergen in
-            allIngredients.contains(allergen)
         }
     }
 }

@@ -725,25 +725,16 @@ struct ManualFoodDetailEntryView: View {
                             if servingSizeGrams > 0 && servingSizeGrams <= 500 {
                                 servingSize = String(format: "%.0f", servingSizeGrams)
                                 servingUnit = "g"
-                                #if DEBUG
-                                print("✅ MANUAL ADD - Using AI serving size: \(servingSizeGrams)g")
-                                #endif
-                            } else {
+                                                            } else {
                                 // Unreasonable serving size, default to 100g
                                 servingSize = "100"
                                 servingUnit = "g"
-                                #if DEBUG
-                                print("⚠️ MANUAL ADD - AI serving size (\(servingSizeGrams)g) seems unreasonable, defaulting to 100g")
-                                #endif
-                            }
+                                                            }
                         } else {
                             // No serving size from AI, default to 100g (matches nutrition per 100g)
                             servingSize = "100"
                             servingUnit = "g"
-                            #if DEBUG
-                            print("ℹ️ MANUAL ADD - No serving size from AI, defaulting to 100g")
-                            #endif
-                        }
+                                                    }
                         // Apply ingredients
                         if let ingredients = foundIngredients?.ingredients_text {
                             ingredientsText = ingredients
@@ -779,25 +770,16 @@ struct ManualFoodDetailEntryView: View {
                             if servingSizeGrams > 0 && servingSizeGrams <= 500 {
                                 servingSize = String(format: "%.0f", servingSizeGrams)
                                 servingUnit = "g"
-                                #if DEBUG
-                                print("✅ MANUAL ADD (onEdit) - Using AI serving size: \(servingSizeGrams)g")
-                                #endif
-                            } else {
+                                                            } else {
                                 // Unreasonable serving size, default to 100g
                                 servingSize = "100"
                                 servingUnit = "g"
-                                #if DEBUG
-                                print("⚠️ MANUAL ADD (onEdit) - AI serving size (\(servingSizeGrams)g) seems unreasonable, defaulting to 100g")
-                                #endif
-                            }
+                                                            }
                         } else {
                             // No serving size from AI, default to 100g (matches nutrition per 100g)
                             servingSize = "100"
                             servingUnit = "g"
-                            #if DEBUG
-                            print("ℹ️ MANUAL ADD (onEdit) - No serving size from AI, defaulting to 100g")
-                            #endif
-                        }
+                                                    }
                         // Apply ingredients and nutrition for editing
                         if let ingredients = foundIngredients?.ingredients_text {
                             ingredientsText = ingredients
@@ -869,10 +851,7 @@ struct ManualFoodDetailEntryView: View {
                     return
                 }
 
-                #if DEBUG
-                print("📝 Ingredient OCR raw text: \(extractedText.prefix(300))...")
-                #endif
-
+                
                 // Step 2: Send to AI for intelligent parsing
                 let ingredientsData = try await parseIngredientsWithAI(
                     ocrText: extractedText,
@@ -886,26 +865,14 @@ struct ManualFoodDetailEntryView: View {
                     if !ingredientsData.ingredientsText.isEmpty {
                         ingredientsText = ingredientsData.ingredientsText
 
-                        #if DEBUG
-                        print("✅ AI Ingredients Extraction Complete:")
-                        print("   Ingredients: \(ingredientsData.ingredients.count) items")
-                        print("   Allergens: \(ingredientsData.allergens)")
-                        print("   Confidence: \(ingredientsData.confidence)")
-                        if let warnings = ingredientsData.warnings {
-                            print("   Warnings: \(warnings)")
-                        }
-                        #endif
-                    } else {
+                        } else {
                         // Fallback to local cleaning if AI returns empty
                         ingredientsText = cleanIngredientText(extractedText)
                     }
                 }
             } catch {
                 // AI failed - fallback to local regex-based cleaning
-                #if DEBUG
-                print("⚠️ AI ingredient parsing failed, using local fallback: \(error.localizedDescription)")
-                #endif
-
+                
                 do {
                     let extractedText = try await extractTextFromImage(image)
                     await MainActor.run {
@@ -1220,10 +1187,7 @@ struct ManualFoodDetailEntryView: View {
                     return
                 }
 
-                #if DEBUG
-                print("📝 OCR extracted text: \(extractedText.prefix(300))...")
-                #endif
-
+                
                 // Step 2: Send to AI for intelligent parsing
                 let nutritionData = try await parseNutritionWithAI(ocrText: extractedText)
 
@@ -1269,31 +1233,14 @@ struct ManualFoodDetailEntryView: View {
                         showingError = true
                     } else if nutritionData.confidence < 0.7 {
                         // Low confidence - show a warning but still use the values
-                        #if DEBUG
-                        print("⚠️ Low confidence nutrition extraction: \(nutritionData.confidence)")
-                        if let warnings = nutritionData.warnings {
-                            print("   Warnings: \(warnings)")
                         }
-                        #endif
-                    }
 
-                    #if DEBUG
-                    print("✅ AI Nutrition Extraction Complete:")
-                    print("   Calories: \(nutritionData.calories ?? 0)")
-                    print("   Protein: \(nutritionData.protein ?? 0)g")
-                    print("   Carbs: \(nutritionData.carbohydrates ?? 0)g")
-                    print("   Fat: \(nutritionData.fat ?? 0)g")
-                    print("   Confidence: \(nutritionData.confidence)")
-                    #endif
-                }
+                                    }
             } catch {
                 await MainActor.run {
                     isProcessingNutritionOCR = false
                     // Fall back to local parsing if AI fails
-                    #if DEBUG
-                    print("⚠️ AI parsing failed, trying local fallback: \(error.localizedDescription)")
-                    #endif
-                    errorMessage = "Failed to process nutrition label. Please enter values manually or try another photo."
+                                        errorMessage = "Failed to process nutrition label. Please enter values manually or try another photo."
                     showingError = true
                 }
             }
@@ -1399,17 +1346,7 @@ struct ManualFoodDetailEntryView: View {
                     barcode: barcode.isEmpty ? nil : barcode
                 )
 
-                #if DEBUG
-                print("  - ingredients_found: \(response.ingredients_found)")
-                #endif
-                print("  - ingredients_text: \(response.ingredients_text?.prefix(50) ?? "nil")")
-                print("  - nutrition: \(response.nutrition_per_100g != nil ? "YES" : "NO")")
-                print("  - serving_size_g: \(response.serving_size_g != nil ? "\(response.serving_size_g!)g" : "NIL")")
-                print("  - size_description: \(response.size_description ?? "NIL")")
-                print("  - product_name: \(response.product_name ?? "nil")")
-                print("  - brand: \(response.brand ?? "nil")")
-                print("  - source_url: \(response.source_url ?? "nil")")
-
+                
                 await MainActor.run {
                     isSearchingIngredients = false
 
@@ -1456,16 +1393,7 @@ struct ManualFoodDetailEntryView: View {
                     brand: nil
                 )
 
-                #if DEBUG
-                print("🔍 AI Search Result:")
-                #endif
-                #if DEBUG
-                print("  - ingredients_found: \(response.ingredients_found)")
-                #endif
-                #if DEBUG
-                print("  - variants count: \(response.variants.count)")
-                #endif
-
+                                                
                 await MainActor.run {
                     isSearchingIngredients = false
 
@@ -1649,16 +1577,10 @@ struct ManualFoodDetailEntryView: View {
                     sourceURL: foundIngredients?.source_url,
                     aiProductName: foundIngredients?.product_name
                 )
-                #if DEBUG
-                print("✅ AI-enhanced food saved to aiManuallyAdded collection: \(foodId)")
-                #endif
-            } else {
+                            } else {
                 // Save to userAdded collection (manual entry with profanity check)
                 foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
-                #if DEBUG
-                print("✅ Manual food saved to userAdded collection: \(foodId)")
-                #endif
-            }
+                            }
 
             // Now add to user's diary with capitalized values
             // Create appropriate serving description based on mode
@@ -1672,21 +1594,7 @@ struct ManualFoodDetailEntryView: View {
                 servingDesc = "\(servingSizeValue)\(servingUnit) serving"
             }
 
-            #if DEBUG
-            #if DEBUG
-            print("💾 Creating DiaryFoodItem for manual entry:")
-            #endif
-            #if DEBUG
-            print("  - isPerUnit: \(isPerUnit)")
-            #endif
-            #if DEBUG
-            print("  - servingDesc: '\(servingDesc)'")
-            #endif
-            #if DEBUG
-            print("  - foodName: \(capitalizedFoodName)")
-            #endif
-            #endif
-
+            
             let diaryEntry = DiaryFoodItem(
                 id: UUID(),
                 name: capitalizedFoodName,
@@ -1715,10 +1623,7 @@ struct ManualFoodDetailEntryView: View {
             let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
             let hasAccess = subscriptionManager.hasAccess
             try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date(), hasProAccess: hasAccess)
-            #if DEBUG
-            print("✅ Food added to user's diary (\(selectedMealTime))")
-            #endif
-
+            
             // Dismiss the sheet after successful save
             await MainActor.run {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -1739,10 +1644,7 @@ struct ManualFoodDetailEntryView: View {
             await MainActor.run {
                 errorMessage = error.localizedDescription
                 showingError = true
-                #if DEBUG
-                print("❌ Error saving manual food: \(error.localizedDescription)")
-                #endif
-            }
+                            }
             throw error
         }
     }

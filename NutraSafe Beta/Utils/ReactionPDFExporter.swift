@@ -91,10 +91,7 @@ class ReactionPDFExporter {
             try data.write(to: tempURL)
             return tempURL
         } catch {
-            #if DEBUG
-            print("Error saving PDF: \(error)")
-            #endif
-            return nil
+                        return nil
         }
     }
 
@@ -178,10 +175,7 @@ class ReactionPDFExporter {
             try data.write(to: tempURL)
             return tempURL
         } catch {
-            #if DEBUG
-            print("Error saving PDF: \(error)")
-            #endif
-            return nil
+                        return nil
         }
     }
 
@@ -230,10 +224,7 @@ class ReactionPDFExporter {
             try data.write(to: tempURL)
             return tempURL
         } catch {
-            #if DEBUG
-            print("Error saving PDF: \(error)")
-            #endif
-            return nil
+                        return nil
         }
     }
 
@@ -299,10 +290,7 @@ class ReactionPDFExporter {
             try data.write(to: tempURL)
             return tempURL
         } catch {
-            #if DEBUG
-            print("Error saving PDF: \(error)")
-            #endif
-            return nil
+                        return nil
         }
     }
 

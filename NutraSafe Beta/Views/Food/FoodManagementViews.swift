@@ -632,7 +632,7 @@ struct MoveFoodBottomSheet: View {
                         .padding(.top, 8)
                     }
                     .padding(.all, 24)
-                    .background(Color(.systemBackground))
+                    .background(Color.adaptiveCard)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(Color(.systemGray5), lineWidth: 1)
@@ -862,7 +862,7 @@ struct DateRollerPicker: View {
     
     private var selectionIndicatorView: some View {
         RoundedRectangle(cornerRadius: 8)
-            .fill(Color(.systemBackground))
+            .fill(Color.adaptiveCard)
             .frame(height: itemHeight)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
@@ -1058,7 +1058,7 @@ struct CopyFoodBottomSheet: View {
                         .padding(.top, 8)
                     }
                     .padding(.all, 24)
-                    .background(Color(.systemBackground))
+                    .background(Color.adaptiveCard)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(Color(.systemGray5), lineWidth: 1)

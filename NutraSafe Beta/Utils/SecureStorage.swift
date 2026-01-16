@@ -294,15 +294,9 @@ extension SecureStorage {
                     // Remove from UserDefaults after successful migration
                     userDefaults.removeObject(forKey: oldKey)
 
-                    #if DEBUG
-                    print("✅ Migrated '\(oldKey)' to secure storage")
-                    #endif
-
+                    
                 } catch {
-                    #if DEBUG
-                    print("⚠️ Failed to migrate '\(oldKey)': \(error)")
-                    #endif
-                }
+                                    }
             }
         }
 

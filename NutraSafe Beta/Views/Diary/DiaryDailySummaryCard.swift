@@ -774,10 +774,8 @@ struct DiaryDailySummaryCard: View {
 
                 // Update macro goals from Firebase
                 macroGoals = loadedMacroGoals
-                print("✅ Loaded nutrition goals: \(cachedCaloricGoal) cal, \(cachedStepGoal) steps, \(cachedExerciseGoal) cal burned")
             }
         } catch {
-            print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")
             // Keep cached values if loading fails
         }
     }

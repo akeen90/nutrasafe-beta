@@ -617,7 +617,7 @@ struct LogReactionSheet: View {
                                 .foregroundColor(.white)
                         }
                         .padding(32)
-                        .background(Color(.systemBackground))
+                        .background(Color.adaptiveCard)
                         .cornerRadius(16)
                         .shadow(radius: 20)
                     }
@@ -1991,10 +1991,7 @@ struct FoodHistoryDetailView: View {
                 foodEntry = meals.first { $0.id == firstMealId }
             }
         } catch {
-            #if DEBUG
-            print("Error loading food entry: \(error)")
-            #endif
-        }
+                    }
     }
 }
 
@@ -2292,10 +2289,7 @@ struct RecentMealsListView: View {
             categorizeIngredients(allIngredientsList)
 
         } catch {
-            #if DEBUG
-            print("Error loading recent meals: \(error)")
-            #endif
-        }
+                    }
     }
 
     private func categorizeIngredients(_ ingredients: [String]) {
@@ -2423,7 +2417,7 @@ struct DayMealsSection: View {
             .padding(.leading, 8)
         }
         .padding(12)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .cornerRadius(10)
         .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }

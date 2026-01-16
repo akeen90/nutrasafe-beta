@@ -233,7 +233,6 @@ extension FoodEntry {
             return true
         } catch {
             if ValidationConfig.debugLogging {
-                print("⚠️ Validation failed for food entry '\(foodName)': \(error.localizedDescription)")
             }
             return false
         }

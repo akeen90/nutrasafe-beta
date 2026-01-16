@@ -54,6 +54,8 @@ struct AllergenManagementView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Allergen Management")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -74,6 +76,7 @@ struct AllergenManagementView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .onAppear {
             Task {
                 await loadAllergens()
@@ -225,6 +228,8 @@ struct FoodReactionsHistoryView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Reaction History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -235,6 +240,7 @@ struct FoodReactionsHistoryView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .onAppear {
             Task {
                 await loadReactions()
@@ -363,6 +369,8 @@ struct ReactionDetailView: View {
                     Text(reaction.timestamp, style: .time)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Reaction Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -373,6 +381,7 @@ struct ReactionDetailView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private var severityColor: Color {
@@ -456,6 +465,8 @@ struct SafetyAlertsConfigView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Safety Alerts")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -476,6 +487,7 @@ struct SafetyAlertsConfigView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .onAppear {
             Task {
                 await loadSettings()
@@ -596,6 +608,8 @@ struct MicronutrientDisplayView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Micronutrient Display")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -616,6 +630,7 @@ struct MicronutrientDisplayView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .onAppear {
             Task {
                 await loadSettings()

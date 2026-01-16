@@ -48,7 +48,7 @@ struct FastingActionSheet: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .cornerRadius(20, corners: [.topLeft, .topRight])
         .shadow(radius: 10)
     }

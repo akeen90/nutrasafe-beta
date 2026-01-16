@@ -152,15 +152,11 @@ struct FastingPlanCreationView: View {
             customDurationHours = plan.durationHours
         }
 
-        print("📋 Loaded existing plan settings: \(plan.name)")
     }
     
     private func createPlan() {
-        print("🎯 CREATE PLAN CALLED")
         let durationHours = selectedDuration == .custom ? customDurationHours : selectedDuration.hours
         let sortedDays = allDays.filter { selectedDays.contains($0) }
-        print("   Duration: \(durationHours) hours")
-        print("   Days: \(sortedDays)")
 
         // Auto-generate name based on duration
         let finalName: String
@@ -177,11 +173,8 @@ struct FastingPlanCreationView: View {
         } else {
             finalName = "\(durationHours)-Hour Fast"
         }
-        print("   Generated name: '\(finalName)'")
 
-        print("   Creating plan with name: '\(finalName)'")
         Task {
-            print("   📤 Calling viewModel.createFastingPlan...")
             await viewModel.createFastingPlan(
                 name: finalName,
                 durationHours: durationHours,
@@ -191,7 +184,6 @@ struct FastingPlanCreationView: View {
                 reminderEnabled: reminderEnabled,
                 reminderMinutesBeforeEnd: reminderMinutes
             )
-            print("   ✅ createFastingPlan completed, dismissing view")
             dismiss()
         }
     }

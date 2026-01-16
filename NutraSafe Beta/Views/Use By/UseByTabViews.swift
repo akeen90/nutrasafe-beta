@@ -398,10 +398,6 @@ struct AddFoundFoodToUseBySheet: View {
         VStack(spacing: 0) {
             // Custom header
             HStack {
-                // Lifecycle tracing attached to a visible node
-                EmptyView()
-                    .onAppear { print("[UseBy] AddFoundFoodToUseBySheet onAppear for \(food.id) \(food.name)") }
-                    .onDisappear { print("[UseBy] AddFoundFoodToUseBySheet onDisappear for \(food.id) \(food.name)") }
                 Button("Cancel") { dismiss() }
                     .font(.system(size: 17))
                     .foregroundColor(.blue)
@@ -601,10 +597,7 @@ struct AddFoundFoodToUseBySheet: View {
         // No longer upload immediately - just store locally
         // Upload will happen when saving the item
         await MainActor.run { isUploadingPhoto = false }
-        #if DEBUG
-        print("📸 Image captured, will cache when saving...")
-        #endif
-    }
+            }
 
     private func save() async {
         guard !isSaving else { return }
@@ -629,32 +622,18 @@ struct AddFoundFoodToUseBySheet: View {
             if let image = image {
                 do {
                     try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                    #if DEBUG
-                    print("✅ Image cached locally for item: \(itemId)")
-                    #endif
                 } catch {
-                    #if DEBUG
-                    print("⚠️ Failed to cache image locally: \(error)")
-                    #endif
+                    // Image caching failed - continue without local cache
                 }
 
                 // Upload to Firebase in background for backup/sync
                 do {
                     let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                    #if DEBUG
-                    print("☁️ Image uploaded to Firebase: \(url)")
-                    #endif
                     firebaseURL = url
                 } catch {
-                    #if DEBUG
-                    print("⚠️ Firebase upload failed (using local cache): \(error)")
-                    #endif
+                    // Upload failed - item will be saved without image URL
                 }
             }
-
-            #if DEBUG
-            print("📸 Saving useBy item in background (ID: \(itemId))")
-            #endif
 
             let item = UseByInventoryItem(
                 id: itemId,
@@ -671,14 +650,7 @@ struct AddFoundFoodToUseBySheet: View {
                 await MainActor.run {
                     NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
                 }
-                #if DEBUG
-                print("[UseBy] Background save succeeded for item: \(itemId)")
-                #endif
             } catch {
-                #if DEBUG
-                let ns = error as NSError
-                print("Failed to save useBy item in background: \(ns)")
-                #endif
                 // Silent failure - item may need to be re-added
                 // Could implement retry logic or local queue here
             }
@@ -2519,10 +2491,7 @@ struct UseByBarcodeScanSheet: View {
 
         Task {
             let barcodeVariations = normalizeBarcode(barcode)
-            #if DEBUG
-            print("🔍 [UseBy] Searching barcode variations: \(barcodeVariations)")
-            #endif
-
+            
             // Fast path: Algolia lookup (validate nutrition data)
             for variation in barcodeVariations {
                 do {
@@ -2533,15 +2502,9 @@ struct UseByBarcodeScanSheet: View {
                                 self.scannedFood = hit
                                 self.isSearching = false
                             }
-                            #if DEBUG
-                            print("✅ [UseBy] Found in Algolia: \(hit.name)")
-                            #endif
-                            return
+                                                        return
                         } else {
-                            #if DEBUG
-                            print("⚠️ [UseBy] Algolia product has invalid nutrition data, trying Cloud Function...")
-                            #endif
-                            // Continue to Cloud Function fallback
+                                                        // Continue to Cloud Function fallback
                             break
                         }
                     }
@@ -2550,10 +2513,7 @@ struct UseByBarcodeScanSheet: View {
                 }
             }
 
-            #if DEBUG
-            print("⚠️ [UseBy] Not in Algolia, trying Cloud Function...")
-            #endif
-
+            
             // Fallback: Cloud Function (validate external data)
             do {
                 if let remote = try await searchProductByBarcodeRemote(barcode) {
@@ -2564,10 +2524,7 @@ struct UseByBarcodeScanSheet: View {
                             self.isSearching = false
                         }
                     } else {
-                        #if DEBUG
-                        print("⚠️ [UseBy] Rejecting product - invalid nutrition data")
-                        #endif
-                        await MainActor.run {
+                                                await MainActor.run {
                             self.isSearching = false
                             self.errorMessage = "This product has incomplete nutrition data."
                             self.pendingContribution = PendingFoodContribution(placeholderId: "", barcode: barcode)
@@ -2686,7 +2643,6 @@ struct AddUseByItemSheet: View {
                                 icon: "magnifyingglass",
                                 isSelected: selectedOption == .search
                             ) {
-                                print("🔵 [UseBy] Search option tapped")
                                 selectedOption = .search
                             }
                             UseByOptionSelectorButton(
@@ -2694,7 +2650,6 @@ struct AddUseByItemSheet: View {
                                 icon: "square.and.pencil",
                                 isSelected: selectedOption == .manual
                             ) {
-                                print("🔵 [UseBy] Manual option tapped")
                                 selectedOption = .manual
                             }
                         }
@@ -2731,7 +2686,6 @@ struct AddUseByItemSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        print("🔴 [UseBy] Close button tapped")
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         dismiss()
                     }) {
@@ -2742,14 +2696,7 @@ struct AddUseByItemSheet: View {
                 }
             }
         }
-        .onAppear {
-            print("🟢 [UseBy] AddUseByItemSheet APPEARED")
-        }
-        .onDisappear {
-            print("🔴 [UseBy] AddUseByItemSheet DISAPPEARED")
-        }
         .onChange(of: selectedOption) { _, newOption in
-            print("🔄 [UseBy] Selected option changed to: \(newOption)")
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
@@ -2823,13 +2770,8 @@ struct UseByInlineSearchView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(results, id: \.id) { food in
                         Button {
-                            print("🔵 [UseBy Search] Food item tapped: \(food.name)")
-                            print("🔵 [UseBy Search] Current selectedFood before assignment: \(selectedFood?.name ?? "nil")")
-                            print("🔵 [UseBy Search] Current showingFoodDetail before assignment: \(showingFoodDetail)")
                             selectedFood = food
                             showingFoodDetail = true
-                            print("🔵 [UseBy Search] selectedFood after assignment: \(selectedFood?.name ?? "nil")")
-                            print("🔵 [UseBy Search] showingFoodDetail after assignment: \(showingFoodDetail)")
                         } label: {
                             HStack(alignment: .center, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -2862,15 +2804,6 @@ struct UseByInlineSearchView: View {
         .fullScreenCover(isPresented: $showingFoodDetail) {
             if let food = selectedFood {
                 UseByFoodDetailSheet(food: food, onComplete: onComplete)
-                    .onAppear {
-                        print("🟢 [UseBy Search] UseByFoodDetailSheet appeared for: \(food.name)")
-                    }
-            }
-        }
-        .onChange(of: showingFoodDetail) { _, newValue in
-            print("🔄 [UseBy Search] showingFoodDetail changed to: \(newValue)")
-            if newValue {
-                print("🔄 [UseBy Search] selectedFood when showing sheet: \(selectedFood?.name ?? "nil")")
             }
         }
     }
@@ -2889,10 +2822,7 @@ struct UseByInlineSearchView: View {
                 // Request was cancelled due to a new keystroke; ignore
                 return
             }
-            #if DEBUG
-            print("UseBy inline search error: \(error)")
-            #endif
-            self.isSearching = false
+                        self.isSearching = false
         }
     }
 }
@@ -3027,10 +2957,7 @@ Text(food.name)
                 self.isSearching = false
             }
         } catch {
-            #if DEBUG
-            print("UseBy search error: \(error)")
-            #endif
-            await MainActor.run { self.isSearching = false }
+                        await MainActor.run { self.isSearching = false }
         }
     }
 }
@@ -3409,7 +3336,6 @@ struct UseByFoodDetailSheet: View {
                     onComplete?()
                 }
             } catch {
-                print("Error saving Use By item: \(error)")
                 await MainActor.run {
                     isSaving = false
                 }
@@ -3976,59 +3902,37 @@ struct UseByItemDetailView: View {
             if let cachedImage = await ImageCacheManager.shared.loadUseByImageAsync(for: item.id) {
                 await MainActor.run {
                     capturedImage = cachedImage
-                    #if DEBUG
-                    print("⚡️ Loaded image from local cache for item: \(item.id)")
-                    #endif
-                }
+                                    }
                 return
             }
         }
 
         // Fallback to Firebase URL if not in local cache
         guard let url = URL(string: urlString) else { return }
-        #if DEBUG
-        print("📸 Loading existing photo from Firebase: \(urlString)")
-
-        #endif
-        do {
+                do {
             let (data, _) = try await URLSession.shared.data(from: url)
             if let image = UIImage(data: data) {
                 await MainActor.run {
                     capturedImage = image
-                    #if DEBUG
-                    print("📸 Photo loaded from Firebase successfully")
-                    #endif
-                }
+                                    }
 
                 // Cache it locally for next time
                 if let item = item {
                     do {
                         try await ImageCacheManager.shared.saveUseByImageAsync(image, for: item.id)
-                        #if DEBUG
-                        print("💾 Cached downloaded image locally for item: \(item.id)")
-                        #endif
-                    } catch {
-                        #if DEBUG
-                        print("⚠️ Failed to cache downloaded image: \(error)")
-                        #endif
-                    }
+                                            } catch {
+                                            }
                 }
             }
         } catch {
-            #if DEBUG
-            print("❌ Failed to load existing photo: \(error)")
-            #endif
-        }
+                    }
     }
 
     private func uploadPhoto(_ image: UIImage) async {
         // No longer upload immediately - just store the image
         // Upload will happen when saving
         isUploadingPhoto = false
-        #if DEBUG
-        print("📸 Image captured, will cache when saving...")
-        #endif
-    }
+            }
 
     private func updateExpiryDate() {
         // Only update from selector in add mode - in edit mode, preserve the existing date
@@ -4048,16 +3952,7 @@ struct UseByItemDetailView: View {
 
         if isAddMode {
             // Add mode: Create new item
-            #if DEBUG
-            print("UseByItemDetailView: Creating new item")
-            print("UseByItemDetailView: Name: \(editedName)")
-            print("UseByItemDetailView: Brand: \(editedBrand)")
-            print("UseByItemDetailView: Quantity: \(editedQuantity)")
-            print("UseByItemDetailView: Expiry: \(editedExpiryDate)")
-
-            // Generate ID for new item
-            #endif
-            let itemId = UUID().uuidString
+                        let itemId = UUID().uuidString
 
             // Handle image caching and upload
             var firebaseURL: String? = uploadedImageURL
@@ -4065,27 +3960,15 @@ struct UseByItemDetailView: View {
                 // Save to local cache
                 do {
                     try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                    #if DEBUG
-                    print("✅ Image cached locally for new item: \(itemId)")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("⚠️ Failed to cache image locally: \(error)")
-                    #endif
-                }
+                                    } catch {
+                                    }
 
                 // Upload to Firebase for backup/sync
                 do {
                     let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                    #if DEBUG
-                    print("☁️ Image uploaded to Firebase: \(url)")
-                    #endif
-                    firebaseURL = url
+                                        firebaseURL = url
                 } catch {
-                    #if DEBUG
-                    print("⚠️ Firebase upload failed (using local cache): \(error)")
-                    #endif
-                }
+                                    }
             }
 
             let newItem = UseByInventoryItem(
@@ -4103,17 +3986,8 @@ struct UseByItemDetailView: View {
 
             do {
                 try await FirebaseManager.shared.addUseByItem(newItem)
-                #if DEBUG
-                print("UseByItemDetailView: Item added successfully!")
-
-                // Schedule notifications for new item
-                #endif
-                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
-                #if DEBUG
-                print("UseByItemDetailView: Notifications scheduled")
-
-                #endif
-                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+                                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
+                                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
 
                 await MainActor.run {
                     isSaving = false
@@ -4126,11 +4000,7 @@ struct UseByItemDetailView: View {
                     onComplete?()
                 }
             } catch {
-                #if DEBUG
-                print("❌ UseByItemDetailView: Failed to add useBy item")
-                print("❌ Error: \(error)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     isSaving = false
                 }
             }
@@ -4138,15 +4008,7 @@ struct UseByItemDetailView: View {
             // Edit mode: Update existing item
             guard let item = item else { return }
 
-            #if DEBUG
-            print("UseByItemDetailView: Starting save")
-            print("UseByItemDetailView: Item ID: \(item.id)")
-            print("UseByItemDetailView: Edited quantity: \(editedQuantity)")
-            print("UseByItemDetailView: Edited expiry: \(editedExpiryDate)")
-
-            // Handle image caching and upload
-            #endif
-            var firebaseURL: String? = uploadedImageURL ?? item.imageURL
+                        var firebaseURL: String? = uploadedImageURL ?? item.imageURL
             if let image = capturedImage {
                 // Check if this is a new image (not previously cached)
                 let hasExistingCache = ImageCacheManager.shared.hasUseByImage(for: item.id)
@@ -4156,28 +4018,16 @@ struct UseByItemDetailView: View {
                     // Save to local cache
                     do {
                         try await ImageCacheManager.shared.saveUseByImageAsync(image, for: item.id)
-                        #if DEBUG
-                        print("✅ Image cached locally for item: \(item.id)")
-                        #endif
-                    } catch {
-                        #if DEBUG
-                        print("⚠️ Failed to cache image locally: \(error)")
-                        #endif
-                    }
+                                            } catch {
+                                            }
 
                     // Upload to Firebase for backup/sync
                     if uploadedImageURL == nil {
                         do {
                             let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                            #if DEBUG
-                            print("☁️ Image uploaded to Firebase: \(url)")
-                            #endif
-                            firebaseURL = url
+                                                        firebaseURL = url
                         } catch {
-                            #if DEBUG
-                            print("⚠️ Firebase upload failed (using local cache): \(error)")
-                            #endif
-                        }
+                                                    }
                     }
                 }
             }
@@ -4198,22 +4048,10 @@ struct UseByItemDetailView: View {
 
             // Save to Firebase
             do {
-                #if DEBUG
-                print("UseByItemDetailView: Calling updateUseByItem")
-                #endif
-                try await FirebaseManager.shared.updateUseByItem(updatedItem)
-                #if DEBUG
-                print("UseByItemDetailView: Update successful!")
-
-                // Reschedule notifications with updated expiry date
-                #endif
-                UseByNotificationManager.shared.cancelNotifications(for: item.id)
+                                try await FirebaseManager.shared.updateUseByItem(updatedItem)
+                                UseByNotificationManager.shared.cancelNotifications(for: item.id)
                 await UseByNotificationManager.shared.scheduleNotifications(for: updatedItem)
-                #if DEBUG
-                print("UseByItemDetailView: Notifications rescheduled")
-
-                #endif
-                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+                                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
 
                 await MainActor.run {
                     isSaving = false
@@ -4225,19 +4063,8 @@ struct UseByItemDetailView: View {
                     dismiss()
                 }
             } catch {
-                #if DEBUG
-                print("❌ UseByItemDetailView: Failed to update useBy item")
-                print("❌ Error type: \(type(of: error))")
-                print("❌ Error description: \(error)")
-                print("❌ Error localized: \(error.localizedDescription)")
-                #endif
-                if let nsError = error as NSError? {
-                    #if DEBUG
-                    print("❌ Error domain: \(nsError.domain)")
-                    print("❌ Error code: \(nsError.code)")
-                    print("❌ Error userInfo: \(nsError.userInfo)")
-                    #endif
-                }
+                                if let nsError = error as NSError? {
+                                    }
                 await MainActor.run {
                     isSaving = false
                 }
@@ -4251,11 +4078,7 @@ struct UseByItemDetailView: View {
 
         // Delete from local cache
         ImageCacheManager.shared.deleteUseByImage(for: item.id)
-        #if DEBUG
-        print("🗑️ Deleted image from local cache for item: \(item.id)")
-
-        #endif
-        let updatedItem = UseByInventoryItem(
+                let updatedItem = UseByInventoryItem(
             id: item.id,
             name: item.name,
             brand: item.brand,
@@ -4271,14 +4094,8 @@ struct UseByItemDetailView: View {
         do {
             try await FirebaseManager.shared.updateUseByItem(updatedItem)
             NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-            #if DEBUG
-            print("✅ Photo deleted successfully from Firebase")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ Failed to delete photo from Firebase: \(error)")
-            #endif
-        }
+                    } catch {
+                    }
     }
 }
 
@@ -4695,7 +4512,7 @@ struct CleanUseByRow: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(.systemBackground))
+                    .fill(Color.adaptiveCard)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
@@ -5009,10 +4826,7 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
 
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
-        #if DEBUG
-        print("📸 PHPicker created with config: selectionLimit=0 (shows Add button)")
-        #endif
-        return picker
+                return picker
     }
 
     func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
@@ -5029,50 +4843,27 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            #if DEBUG
-            print("📸 PHPicker didFinishPicking called with \(results.count) results")
-
-            // User cancelled if no results
-            #endif
-            if results.isEmpty {
-                #if DEBUG
-                print("📸 User cancelled, calling onImageSelected(nil)")
-                #endif
-                parent.onImageSelected(nil)
+                        if results.isEmpty {
+                                parent.onImageSelected(nil)
                 return
             }
 
             // Only take the first photo even though we allow multiple selection
             guard let provider = results.first?.itemProvider else {
-                #if DEBUG
-                print("📸 No item provider, calling onImageSelected(nil)")
-                #endif
-                parent.onImageSelected(nil)
+                                parent.onImageSelected(nil)
                 return
             }
 
             if provider.canLoadObject(ofClass: UIImage.self) {
-                #if DEBUG
-                print("📸 Loading UIImage from provider...")
-                #endif
-                provider.loadObject(ofClass: UIImage.self) { image, error in
+                                provider.loadObject(ofClass: UIImage.self) { image, error in
                     if let error = error {
-                        #if DEBUG
-                        print("❌ Error loading image: \(error)")
-                        #endif
-                    }
+                                            }
                     DispatchQueue.main.async {
-                        #if DEBUG
-                        print("📸 Image loaded, calling onImageSelected")
-                        #endif
-                        self.parent.onImageSelected(image as? UIImage)
+                                                self.parent.onImageSelected(image as? UIImage)
                     }
                 }
             } else {
-                #if DEBUG
-                print("❌ Provider cannot load UIImage")
-                #endif
-                parent.onImageSelected(nil)
+                                parent.onImageSelected(nil)
             }
         }
     }
@@ -5134,10 +4925,7 @@ struct CachedUseByImage: View {
         if let cachedImage = await ImageCacheManager.shared.loadUseByImageAsync(for: itemId) {
             loadedImage = cachedImage
             isLoading = false
-            #if DEBUG
-            print("⚡️ Loaded UseBy thumbnail from cache: \(itemId)")
-            #endif
-            return
+                        return
         }
 
         // 2. Load from Firebase URL if not cached
@@ -5154,20 +4942,11 @@ struct CachedUseByImage: View {
                 // Cache for next time
                 do {
                     try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                    #if DEBUG
-                    print("💾 Cached downloaded UseBy thumbnail: \(itemId)")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("⚠️ Failed to cache thumbnail: \(error)")
-                    #endif
-                }
+                                    } catch {
+                                    }
             }
         } catch {
-            #if DEBUG
-            print("❌ Failed to load image from URL: \(error)")
-            #endif
-        }
+                    }
 
         isLoading = false
     }
@@ -5176,6 +4955,7 @@ struct CachedUseByImage: View {
 // MARK: - Modern Visual Components for Empty State
 
 struct ModernGradientBackground: View {
+    @Environment(\.colorScheme) var colorScheme
     @State private var animate = false
 
     var body: some View {
@@ -5183,7 +4963,7 @@ struct ModernGradientBackground: View {
             // Base gradient background
             LinearGradient(
                 colors: [
-                    Color(.systemBackground),
+                    colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground),
                     Color.blue.opacity(0.03),
                     Color.purple.opacity(0.02)
                 ],

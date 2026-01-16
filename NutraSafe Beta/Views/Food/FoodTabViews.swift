@@ -92,13 +92,7 @@ struct FoodTabView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
-            #if DEBUG
-            print("🚀 [LOG&FAST] FoodTabView received navigateToFasting notification")
-            print("🚀 [LOG&FAST] Current selectedFoodSubTab: \(selectedFoodSubTab)")
-            print("🚀 [LOG&FAST] Switching to .fasting sub-tab")
-            print("🚀 [LOG&FAST] fastingViewModelWrapper.viewModel present: \(fastingViewModelWrapper.viewModel != nil)")
-            #endif
-            selectedFoodSubTab = .fasting
+                        selectedFoodSubTab = .fasting
         }
         .featureTip(isPresented: $showingHealthTip, tipKey: .healthOverview)
         .featureTip(isPresented: $showingFastingTip, tipKey: .healthFasting)
@@ -318,14 +312,14 @@ struct FoodReactionsView: View {
                                     .foregroundColor(.orange)
                             }
                             .padding(10)
-                            .background(Color(.systemBackground))
+                            .background(Color.adaptiveCard)
                             .cornerRadius(8)
                         }
                     }
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.systemBackground))
+                            .fill(Color.adaptiveCard)
                     )
                 }
                 .padding(.horizontal, 16)
@@ -1329,7 +1323,7 @@ struct SimplifiedAllergenGroup: View {
     private func symptomIcon(for symptom: String) -> String {
         let lower = symptom.lowercased()
         if lower.contains("stomach") || lower.contains("nausea") || lower.contains("cramp") || lower.contains("bloat") {
-            return "stomach.fill"
+            return "bolt.heart.fill"
         } else if lower.contains("headache") || lower.contains("migraine") {
             return "brain.head.profile"
         } else if lower.contains("skin") || lower.contains("rash") || lower.contains("hive") || lower.contains("itch") {
@@ -1702,7 +1696,7 @@ struct RecipeCollectionItem: View {
             }
         }
         .padding(12)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .cornerRadius(8)
     }
 }
@@ -1884,10 +1878,7 @@ class ReactionManager: ObservableObject {
         do {
             try await firebaseManager.saveReaction(reaction)
         } catch {
-            #if DEBUG
-            print("Failed to save reaction: \(error)")
-            #endif
-            await MainActor.run {
+                        await MainActor.run {
                 errorMessage = "Failed to save reaction: \(error.localizedDescription)"
                 showingError = true
                 // Remove from local array since save failed
@@ -1907,15 +1898,9 @@ class ReactionManager: ObservableObject {
                 await MainActor.run {
                     self.reactions = fetchedReactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
                     self.isLoading = false
-                    #if DEBUG
-                    print("✅ ReactionManager: UI updated - reactions.count = \(self.reactions.count)")
-                    #endif
-                }
+                                    }
             } catch {
-                #if DEBUG
-                print("❌ Failed to load reactions: \(error)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     self.reactions = []
                     self.isLoading = false
                 }
@@ -1935,10 +1920,7 @@ class ReactionManager: ObservableObject {
                 self.isLoading = false
             }
         } catch {
-            #if DEBUG
-            print("Failed to refresh reactions: \(error)")
-            #endif
-            await MainActor.run {
+                        await MainActor.run {
                 self.isLoading = false
             }
         }
@@ -1970,10 +1952,7 @@ class ReactionManager: ObservableObject {
         do {
             try await firebaseManager.deleteReaction(reactionId: reaction.id)
         } catch {
-            #if DEBUG
-            print("Failed to delete reaction: \(error)")
-            #endif
-            // Re-add if deletion failed
+                        // Re-add if deletion failed
             withAnimation {
                 reactions.insert(reaction, at: 0)
                 reactions.sort { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
@@ -1990,10 +1969,7 @@ class ReactionManager: ObservableObject {
         errorMessage = nil
         showingError = false
         lastLoadedUserId = nil
-        #if DEBUG
-        print("🧹 Cleared ReactionManager data")
-        #endif
-    }
+            }
 }
 
 // MARK: - Log Reaction View
@@ -2069,24 +2045,10 @@ struct LogReactionView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .onChange(of: selectedFood) { _, newFood in
-                        #if DEBUG
-                        print("🔄 [Reaction] Food changed: \(newFood?.name ?? "nil")")
-                        print("🔄 [Reaction] Ingredients count: \(newFood?.ingredients?.count ?? 0)")
-                        if let ings = newFood?.ingredients {
-                            print("🔄 [Reaction] First 3 ingredients: \(ings.prefix(3).joined(separator: ", "))")
-                        }
-                        #endif
-
                         if let food = newFood, let ingredients = food.ingredients, !ingredients.isEmpty {
-                            #if DEBUG
-                            print("✅ [Reaction] Auto-loading \(ingredients.count) ingredients")
-                            #endif
-                            autoLoadIngredientsFromFood(ingredients)
+                                                        autoLoadIngredientsFromFood(ingredients)
                         } else {
-                            #if DEBUG
-                            print("⚠️ [Reaction] No ingredients to load")
-                            #endif
-                        }
+                                                    }
                     }
                 }
 
@@ -2282,10 +2244,7 @@ struct LogReactionView: View {
     private func autoLoadIngredientsFromFood(_ ingredients: [String]) {
         // Prevent concurrent calls
         guard !isLoadingIngredients else {
-            #if DEBUG
-            print("⚠️ [Reaction] Already loading ingredients, skipping")
-            #endif
-            return
+                        return
         }
 
         isLoadingIngredients = true
@@ -2295,20 +2254,14 @@ struct LogReactionView: View {
         for ingredient in ingredients {
             // If an ingredient is very long (>200 chars), it's likely a comma-separated list
             if ingredient.count > 200 {
-                #if DEBUG
-                print("📝 [Reaction] Splitting long ingredient string (\(ingredient.count) chars)")
-                #endif
-                // Split by commas and clean up
+                                // Split by commas and clean up
                 expandedIngredients.append(contentsOf: ingredient.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
             } else {
                 expandedIngredients.append(ingredient)
             }
         }
 
-        #if DEBUG
-        print("📝 [Reaction] Expanded \(ingredients.count) items to \(expandedIngredients.count) individual ingredients")
-        #endif
-
+        
         // Apply client-side standardization ONLY (skip AI to prevent layout issues)
         let standardized = standardizeIngredients(expandedIngredients)
 
@@ -2316,10 +2269,7 @@ struct LogReactionView: View {
         suspectedIngredients = standardized
         isLoadingIngredients = false
 
-        #if DEBUG
-        print("✅ [Reaction] Loaded \(standardized.count) ingredients")
-        #endif
-    }
+            }
 
     private func standardizeIngredients(_ ingredients: [String]) -> [String] {
         var processed: [String] = []
@@ -2809,10 +2759,7 @@ struct FoodReactionSearchView: View {
                     self.isLoadingDiary = false
                 }
             } catch {
-                #if DEBUG
-                print("Error loading diary entries: \(error)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     self.isLoadingDiary = false
                 }
             }
@@ -3062,7 +3009,7 @@ struct DiaryEntryRowForReaction: View {
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 16)
-            .background(Color(.systemBackground))
+            .background(Color.adaptiveCard)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -3092,14 +3039,7 @@ struct FoodSearchResultRowForReaction: View {
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                         .onAppear {
-                            #if DEBUG
-                            if let ing = food.ingredients, !ing.isEmpty {
-                                print("✅ [UI] '\(food.name)' showing \(ing.count) ingredients")
-                            } else {
-                                print("❌ [UI] '\(food.name)' has no ingredients to display")
                             }
-                            #endif
-                        }
 
                     if let brand = food.brand {
                         Text(brand)
@@ -3569,10 +3509,7 @@ struct MultipleFoodReactionsPDFExportSheet: View {
                         self.errorMessage = "No reactions found to export."
                         self.isGenerating = false
                     }
-                    #if DEBUG
-                    print("❌ FoodTabViews: reactions.first unexpectedly nil after isEmpty check")
-                    #endif
-                    return
+                                        return
                 }
                 let reactionDate = mostRecentReaction.timestamp.dateValue()
 
@@ -3632,7 +3569,13 @@ class FastingViewModelWrapper: ObservableObject {
         setupForwarding()
     }
 
+    deinit {
+        cancellable?.cancel()
+        cancellable = nil
+    }
+
     private func setupForwarding() {
+        cancellable?.cancel()
         cancellable = viewModel?.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }

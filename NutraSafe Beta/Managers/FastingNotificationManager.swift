@@ -198,9 +198,7 @@ class FastingNotificationManager {
 
         notificationCenter.add(request) { error in
             if let error = error {
-                print("❌ Failed to schedule snooze notification: \(error)")
             } else {
-                print("✅ Scheduled snooze notification for \(minutes) minutes")
             }
         }
     }
@@ -219,9 +217,7 @@ class FastingNotificationManager {
 
         notificationCenter.add(request) { error in
             if let error = error {
-                print("❌ Failed to schedule extend notification: \(error)")
             } else {
-                print("✅ Scheduled extend notification for \(minutes) minutes")
             }
         }
     }
@@ -248,10 +244,7 @@ class FastingNotificationManager {
             }
         }
 
-        #if DEBUG
-        print("📅 Scheduled notifications for \(scheduledDates.count) days for plan: \(plan.name)")
-        #endif
-    }
+            }
 
     /// Schedule notifications for an immediate fast (when starting from now)
     func scheduleImmediateFastNotifications(for plan: FastingPlan, startingAt startDate: Date) async throws {
@@ -295,10 +288,7 @@ class FastingNotificationManager {
             }
         }
 
-        #if DEBUG
-        print("📅 Scheduled immediate fast notifications for plan: \(plan.name)")
-        #endif
-    }
+            }
 
     /// Schedule a notification for fast start
     private func scheduleStartNotification(for plan: FastingPlan, on date: Date) async throws {
@@ -419,18 +409,12 @@ class FastingNotificationManager {
 
         notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
 
-        #if DEBUG
-        print("🗑️ Cancelled \(identifiersToRemove.count) notifications for plan: \(planId)")
-        #endif
-    }
+            }
 
     /// Cancel notifications for a specific session
     func cancelSessionNotifications(session: FastingSession) async {
         guard let planId = session.planId else {
-            #if DEBUG
-            print("⚠️ Cannot cancel notifications for session without planId")
-            #endif
-            return
+                        return
         }
 
         let startTimestamp = session.startTime.timeIntervalSince1970
@@ -444,10 +428,7 @@ class FastingNotificationManager {
 
         notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
 
-        #if DEBUG
-        print("🗑️ Cancelled notifications for session starting at \(session.startTime)")
-        #endif
-    }
+            }
 
     /// Cancel all fasting notifications
     func cancelAllFastingNotifications() async {
@@ -464,10 +445,7 @@ class FastingNotificationManager {
 
         notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
 
-        #if DEBUG
-        print("🗑️ Cancelled all \(identifiersToRemove.count) fasting notifications")
-        #endif
-    }
+            }
 
     /// Clean up orphaned notifications (notifications for sessions that no longer exist)
     /// This is useful for cleaning up notifications from sessions deleted before the fix was implemented
@@ -509,14 +487,8 @@ class FastingNotificationManager {
         if !orphanedIdentifiers.isEmpty {
             notificationCenter.removePendingNotificationRequests(withIdentifiers: orphanedIdentifiers)
 
-            #if DEBUG
-            print("🧹 Cleaned up \(orphanedIdentifiers.count) orphaned notifications")
-            #endif
-        } else {
-            #if DEBUG
-            print("✅ No orphaned notifications found")
-            #endif
-        }
+                    } else {
+                    }
     }
 
     // MARK: - Helper Methods
@@ -583,17 +555,7 @@ class FastingNotificationManager {
             return false
         }
 
-        #if DEBUG
-        print("📋 Pending fasting notifications: \(fastingNotifications.count)")
-        for (index, request) in fastingNotifications.enumerated() {
-            print("   \(index + 1). \(request.content.title) - \(request.identifier)")
-            if let trigger = request.trigger as? UNCalendarNotificationTrigger,
-               let nextTriggerDate = trigger.nextTriggerDate() {
-                print("      Scheduled for: \(nextTriggerDate)")
-            }
         }
-        #endif
-    }
 
     // MARK: - Background Refresh Support
 
@@ -623,10 +585,7 @@ class FastingNotificationManager {
 
         let daysRemaining = Calendar.current.dateComponents([.day], from: Date(), to: latest).day ?? 0
 
-        #if DEBUG
-        print("📊 Notification queue check: \(daysRemaining) days remaining")
-        #endif
-
+        
         return daysRemaining < 7
     }
 
@@ -663,26 +622,17 @@ class FastingNotificationManager {
         let plans = try await firebaseManager.getFastingPlans()
         let activePlans = plans.filter { $0.active && $0.regimeActive }
 
-        #if DEBUG
-        print("🔄 Refreshing notifications for \(activePlans.count) active plan(s)")
-        #endif
-
+        
         for plan in activePlans {
             guard let planId = plan.id else { continue }
 
             let daysRemaining = await daysRemainingInQueue(for: planId)
 
             if daysRemaining < 7 {
-                #if DEBUG
-                print("📅 Refreshing notifications for plan: \(plan.name) - \(daysRemaining) days remaining")
-                #endif
-
+                
                 try await schedulePlanNotifications(for: plan)
             } else {
-                #if DEBUG
-                print("✅ Plan \(plan.name) has sufficient notifications (\(daysRemaining) days)")
-                #endif
-            }
+                            }
         }
     }
 }

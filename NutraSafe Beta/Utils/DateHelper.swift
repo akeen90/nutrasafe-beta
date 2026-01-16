@@ -410,10 +410,6 @@ enum DateHelper {
         let localFormatter = localDateFormatter(format: "yyyy-MM-dd HH:mm:ss")
         let utcFormatter = utcDateFormatter(format: "yyyy-MM-dd HH:mm:ss")
 
-        print("🕐 \(label):")
-        print("   Local: \(localFormatter.string(from: date)) (\(calendar.timeZone.identifier))")
-        print("   UTC:   \(utcFormatter.string(from: date))")
-        print("   Timestamp: \(date.timeIntervalSince1970)")
     }
     #endif
 }

@@ -133,10 +133,7 @@ class HealthKitManager: ObservableObject {
                 self.showError = false
             }
         } catch {
-            #if DEBUG
-            print("HealthKit authorization failed: \(error)")
-            #endif
-
+            
             await MainActor.run {
                 self.errorMessage = "Unable to access HealthKit. Please enable access in Settings > Health > Data Access & Devices > NutraSafe"
                 self.showError = true
@@ -204,10 +201,7 @@ class HealthKitManager: ObservableObject {
                 // Estimate calories for resistance training and other workouts without recorded calories
                 let estimatedCalories = estimateCaloriesForWorkout(workout)
                 totalCalories += estimatedCalories
-                #if DEBUG
-                print("Estimated \(estimatedCalories) calories for \(workout.workoutActivityType.name) workout")
-                #endif
-            }
+                            }
         }
         
         return totalCalories
@@ -285,10 +279,7 @@ class HealthKitManager: ObservableObject {
                 self.showError = false
             }
         } catch {
-            #if DEBUG
-            print("Failed to fetch exercise energy: \(error)")
-            #endif
-
+            
             // Don't show error for "no data" case - set to 0
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
@@ -361,10 +352,7 @@ class HealthKitManager: ObservableObject {
                 self.showError = false
             }
         } catch {
-            #if DEBUG
-            print("Failed to fetch step count: \(error)")
-            #endif
-
+            
             // Don't show error for "no data" case - set to 0
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
@@ -395,10 +383,7 @@ class HealthKitManager: ObservableObject {
                 self.showError = false
             }
         } catch {
-            #if DEBUG
-            print("Failed to fetch active energy: \(error)")
-            #endif
-
+            
             // Don't show error for "no data" case - set to 0
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
@@ -498,10 +483,7 @@ class HealthKitManager: ObservableObject {
                 self.showError = false
             }
         } catch {
-            #if DEBUG
-            print("Failed to fetch user weight: \(error)")
-            #endif
-
+            
             // Don't show error for "no data" case - use default
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
@@ -518,10 +500,7 @@ class HealthKitManager: ObservableObject {
     
     func writeDietaryEnergyConsumed(calories: Double, date: Date = Date()) async throws {
         guard isAuthorized else {
-            #if DEBUG
-            print("HealthKit not authorized for writing dietary energy")
-            #endif
-            throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
+                        throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
         }
 
         let energyType = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
@@ -536,23 +515,14 @@ class HealthKitManager: ObservableObject {
 
         do {
             try await healthStore.save(sample)
-            #if DEBUG
-            print("Successfully wrote \(calories) kcal to Apple Health")
-            #endif
-        } catch {
-            #if DEBUG
-            print("Failed to write to HealthKit: \(error)")
-            #endif
-            throw error
+                    } catch {
+                        throw error
         }
     }
 
     func writeBodyWeight(weightKg: Double, date: Date = Date()) async throws {
         guard isAuthorized else {
-            #if DEBUG
-            print("HealthKit not authorized for writing body weight")
-            #endif
-            throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
+                        throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
         }
 
         let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
@@ -567,14 +537,8 @@ class HealthKitManager: ObservableObject {
 
         do {
             try await healthStore.save(sample)
-            #if DEBUG
-            print("✅ Successfully wrote \(weightKg) kg to Apple Health")
-            #endif
-        } catch {
-            #if DEBUG
-            print("Failed to write weight to HealthKit: \(error)")
-            #endif
-            throw error
+                    } catch {
+                        throw error
         }
     }
 }

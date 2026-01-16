@@ -679,20 +679,14 @@ class AdditiveWatchService {
     
     private func loadAdditiveDatabase() {
         guard let url = Bundle.main.url(forResource: "ingredients_consolidated", withExtension: "json") else {
-            #if DEBUG
-            print("❌ Could not find ingredients_consolidated.json")
-            #endif
-            return
+                        return
         }
 
         do {
             let data = try Data(contentsOf: url)
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let ingredients = json["ingredients"] as? [[String: Any]] else {
-                #if DEBUG
-                print("❌ Could not parse ingredients_consolidated.json")
-                #endif
-                return
+                                return
             }
 
             // Convert consolidated ingredients to AdditiveInfo format
@@ -763,29 +757,12 @@ class AdditiveWatchService {
             additiveDatabase = tempDatabase
             isLoaded = true
 
-            #if DEBUG
-            print("✅✅✅ CONSOLIDATED INGREDIENTS DATABASE LOADED: \(additiveDatabase.count) additive entries ✅✅✅")
-
-            // Count additives with sources
-            #endif
-            let withSources = additiveDatabase.filter { !$0.sources.isEmpty }.count
+                        let withSources = additiveDatabase.filter { !$0.sources.isEmpty }.count
             let totalSources = additiveDatabase.reduce(0) { $0 + $1.sources.count }
-            #if DEBUG
-            print("📚 Additives with sources: \(withSources)")
-            print("📖 Total source citations: \(totalSources)")
-
-            // Print first few additives for verification
-            #endif
-            for (i, additive) in additiveDatabase.prefix(3).enumerated() {
-                #if DEBUG
-                print("  \(i+1). \(additive.eNumber) - \(additive.name) (\(additive.sources.count) sources)")
-                #endif
-            }
+                        for (i, additive) in additiveDatabase.prefix(3).enumerated() {
+                            }
         } catch {
-            #if DEBUG
-            print("❌❌❌ ERROR LOADING CONSOLIDATED INGREDIENTS DATABASE: \(error) ❌❌❌")
-            #endif
-        }
+                    }
     }
     
     // Local helpers for fallback matching
@@ -817,13 +794,7 @@ class AdditiveWatchService {
         let primaryDetected = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
         var finalDetected = primaryDetected
 
-        #if DEBUG
-        print("✅ [AdditiveWatchService] Primary analysis complete!")
-        print("✅ [AdditiveWatchService] Total additives detected: \(primaryDetected.count)")
-
-        // CSV scan: always merge boundary-aware matches to capture synonyms present only in CSV
-        #endif
-        if isLoaded {
+                if isLoaded {
             var csvMatches: [AdditiveInfo] = []
             var seenCodes = Set<String>(finalDetected.map { $0.eNumber })
             for additive in additiveDatabase {
@@ -854,35 +825,16 @@ class AdditiveWatchService {
                 if matched && !seenCodes.contains(additive.eNumber) {
                     csvMatches.append(additive)
                     seenCodes.insert(additive.eNumber)
-
-                    #if DEBUG
-                    // Log suspicious matches for debugging
-                    if name.contains("malt") || name.contains("invert") || name.contains("hydrolys") {
-                        print("🚨 [CSV FALSE POSITIVE?] Matched '\(additive.name)' via \(matchedPattern)")
-                        print("   Normalized text: '\(normalized.prefix(200))'")
-                    }
-                    #endif
                 }
             }
             if !csvMatches.isEmpty {
-                #if DEBUG
-                print("🔁 [AdditiveWatchService] Merged CSV matches: \(csvMatches.count)")
-                for match in csvMatches {
-                    print("   📌 Added: \(match.name)")
-                }
-                #endif
                 finalDetected.append(contentsOf: csvMatches)
             }
         }
 
         // Extract child warnings
         let childWarnings = finalDetected.filter { $0.hasChildWarning }
-        #if DEBUG
-        print("✅ [AdditiveWatchService] Child warnings: \(childWarnings.count)")
-
-        // Build result (ultraProcessedIngredients removed - all ingredients now in detectedAdditives)
-        #endif
-        let result = AdditiveDetectionResult(
+                let result = AdditiveDetectionResult(
             detectedAdditives: finalDetected,
             childWarnings: childWarnings,
             hasChildConcernAdditives: !childWarnings.isEmpty,
@@ -894,19 +846,10 @@ class AdditiveWatchService {
 
         // Log detected additives for debugging
         if !finalDetected.isEmpty {
-            #if DEBUG
-            print("✅ [AdditiveWatchService] Detected additives:")
-            #endif
-            for additive in finalDetected {
-                #if DEBUG
-                print("   - \(additive.eNumber): \(additive.name)")
-                #endif
-            }
+                        for additive in finalDetected {
+                            }
         } else {
-            #if DEBUG
-            print("⚠️ [AdditiveWatchService] NO ADDITIVES DETECTED IN SERVICE!")
-            #endif
-        }
+                    }
 
         DispatchQueue.main.async {
             completion(result)
@@ -922,20 +865,14 @@ class AdditiveWatchService {
 
     private lazy var ultraProcessedDatabase: [String: UltraProcessedIngredientData] = {
         guard let url = Bundle.main.url(forResource: "ingredients_consolidated", withExtension: "json") else {
-            #if DEBUG
-            print("⚠️ Could not find ingredients_consolidated.json")
-            #endif
-            return [:]
+                        return [:]
         }
 
         do {
             let data = try Data(contentsOf: url)
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let ingredients = json["ingredients"] as? [[String: Any]] else {
-                #if DEBUG
-                print("❌ Could not parse ingredients_consolidated.json")
-                #endif
-                return [:]
+                                return [:]
             }
 
             var database: [String: UltraProcessedIngredientData] = [:]
@@ -979,15 +916,9 @@ class AdditiveWatchService {
                 }
             }
 
-            #if DEBUG
-            print("✅ Loaded consolidated ingredients database: \(database.count) entries")
-            #endif
-            return database
+                        return database
         } catch {
-            #if DEBUG
-            print("❌ Error loading consolidated ingredients: \(error)")
-            #endif
-            return [:]
+                        return [:]
         }
     }()
 
@@ -1146,34 +1077,19 @@ class AdditiveWatchService {
 
         // Require minimum 16 columns for all required fields (indices 0-15)
         guard components.count >= 16 else {
-            #if DEBUG
-            print("❌ [CSV Parser] Invalid CSV row: has \(components.count) components, need at least 16. Line: \(line.prefix(100))")
-            #endif
-            return nil
+                        return nil
         }
 
         // Safety: Verify we can safely access all required indices
         guard components.indices.contains(15) else {
-            #if DEBUG
-            print("❌ [CSV Parser] Array bounds check failed for required fields")
-            #endif
-            return nil
+                        return nil
         }
 
         // Debug logging for E451 specifically
         if components[0] == "E451" {
-            #if DEBUG
-            print("🔍 [CSV Parser] E451 has \(components.count) components")
-            #endif
-            if components.count > 19 {
-                #if DEBUG
-                print("🔍 [CSV Parser] Component 19 (sources field): \(components[19].prefix(200))")
-                #endif
-            } else {
-                #if DEBUG
-                print("❌ [CSV Parser] E451 doesn't have component 19! Only \(components.count) components")
-                #endif
-            }
+                        if components.count > 19 {
+                            } else {
+                            }
         }
 
         let rawSynonyms = components.count > 16 ? components[16].split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) } : []
@@ -1183,14 +1099,8 @@ class AdditiveWatchService {
         let sources = components.count > 19 ? parseSources(components[19]) : []
 
         if sources.isEmpty && components.count > 19 {
-            #if DEBUG
-            print("⚠️ [AdditiveDB] No sources found for \(components[0]) - \(components[1])")
-            #endif
-        } else if !sources.isEmpty && components[0] == "E451" {
-            #if DEBUG
-            print("✅ [CSV Parser] E451 parsed \(sources.count) sources successfully!")
-            #endif
-        }
+                    } else if !sources.isEmpty && components[0] == "E451" {
+                    }
 
         return AdditiveInfo(
             eNumbers: [components[0]],
@@ -1221,27 +1131,16 @@ class AdditiveWatchService {
         // Remove surrounding quotes and unescape if needed
         var cleanedJSON = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        #if DEBUG
-        print("🔍 [AdditiveDB] Parsing sources from: \(jsonString.prefix(100))")
-
-        #endif
-        if cleanedJSON.hasPrefix("\"") && cleanedJSON.hasSuffix("\"") {
+                if cleanedJSON.hasPrefix("\"") && cleanedJSON.hasSuffix("\"") {
             cleanedJSON = String(cleanedJSON.dropFirst().dropLast())
         }
 
         // Replace escaped quotes
         cleanedJSON = cleanedJSON.replacingOccurrences(of: "\"\"", with: "\"")
 
-        #if DEBUG
-        print("🔍 [AdditiveDB] Cleaned JSON: \(cleanedJSON.prefix(100))")
-
-        #endif
-        guard !cleanedJSON.isEmpty,
+                guard !cleanedJSON.isEmpty,
               let jsonData = cleanedJSON.data(using: .utf8) else {
-            #if DEBUG
-            print("⚠️ [AdditiveDB] Empty or invalid JSON string")
-            #endif
-            return []
+                        return []
         }
 
         do {
@@ -1252,20 +1151,11 @@ class AdditiveWatchService {
                     let covers = dict["covers"]  // Optional covers field
                     return AdditiveSource(title: title, url: url, covers: covers)
                 }
-                #if DEBUG
-                print("✅ [AdditiveDB] Parsed \(sources.count) sources successfully")
-                #endif
-                return sources
+                                return sources
             } else {
-                #if DEBUG
-                print("⚠️ [AdditiveDB] JSON is not an array of dictionaries")
-                #endif
-            }
+                            }
         } catch {
-            #if DEBUG
-            print("❌ [AdditiveDB] JSON parsing error: \(error.localizedDescription)")
-            #endif
-        }
+                    }
 
         return []
     }
@@ -1277,10 +1167,7 @@ class AdditiveWatchService {
             if lower.starts(with: "e") || lower.starts(with: "ins") { return true }
             if lower.contains(" ") { return true }
             if blacklist.contains(lower) {
-                #if DEBUG
-                print("🧹 Filtered out generic synonym '\(synonym)' for \(eNumber)")
-                #endif
-                return false
+                                return false
             }
             return true
         }

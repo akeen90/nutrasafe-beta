@@ -2514,7 +2514,7 @@ struct WeekDetailView: View {
                             }
                         }
                         .padding(16)
-                        .background(Color(.systemBackground))
+                        .background(Color.adaptiveCard)
                         .cornerRadius(16)
                         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
                         .overlay(
@@ -2985,7 +2985,7 @@ struct FastingTimelineView: View {
                     }
                 }
                 .padding(16)
-                .background(Color(.systemBackground))
+                .background(Color.adaptiveCard)
                 .cornerRadius(12)
                 .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
             }

@@ -248,8 +248,10 @@ class AdditiveTrackerViewModel: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.invalidateCache()
-            self?.loadData()
+            Task { @MainActor in
+                self?.invalidateCache()
+                self?.loadData()
+            }
         }
     }
 
@@ -303,18 +305,6 @@ class AdditiveTrackerViewModel: ObservableObject {
         do {
             // Use fromDictionary-based fetch for proper additives decoding
             let entries = try await firebaseManager.getFoodEntriesWithAdditivesForPeriod(days: period.days)
-
-            #if DEBUG
-            print("🧪 AdditiveTracker: Fetched \(entries.count) entries for \(period.days) days")
-            var entriesWithAdditives = 0
-            for entry in entries {
-                if let additives = entry.additives, !additives.isEmpty {
-                    entriesWithAdditives += 1
-                    print("   - \(entry.foodName): \(additives.count) additives")
-                }
-            }
-            print("🧪 AdditiveTracker: \(entriesWithAdditives) entries have additives")
-            #endif
 
             guard !Task.isCancelled else { return }
 
@@ -392,10 +382,7 @@ class AdditiveTrackerViewModel: ObservableObject {
 
         } catch {
             guard !Task.isCancelled else { return }
-            #if DEBUG
-            print("❌ AdditiveTracker: Failed to load entries: \(error)")
-            #endif
-            self.isLoading = false
+                        self.isLoading = false
         }
     }
 

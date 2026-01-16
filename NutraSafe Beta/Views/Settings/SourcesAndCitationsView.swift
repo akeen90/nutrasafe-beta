@@ -78,6 +78,8 @@ struct SourcesAndCitationsView: View {
                     .padding(.bottom, 24)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -87,6 +89,7 @@ struct SourcesAndCitationsView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -141,7 +144,7 @@ struct CitationCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
                 .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
         )
         .padding(.horizontal)

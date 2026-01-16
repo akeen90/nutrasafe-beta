@@ -252,9 +252,14 @@ func expandSearchQuery(_ query: String) -> [String] {
 final class AlgoliaSearchManager {
     static let shared = AlgoliaSearchManager()
 
-    // Algolia credentials - search-only key is safe for client-side use
-    private let appId = "WK0TIF84M2"
-    private let searchKey = "577cc4ee3fed660318917bbb54abfb2e"
+    // Algolia credentials loaded from Info.plist (configured via build settings)
+    // Search-only API keys are designed by Algolia for client-side use and can only perform searches
+    private let appId: String
+    private let searchKey: String
+
+    // Default credentials for development (override via ALGOLIA_APP_ID and ALGOLIA_SEARCH_KEY build settings)
+    private static let defaultAppId = "WK0TIF84M2"
+    private static let defaultSearchKey = "577cc4ee3fed660318917bbb54abfb2e"
 
     // Base URL for Algolia API
     private var baseURL: String { "https://\(appId)-dsn.algolia.net/1/indexes" }
@@ -279,6 +284,25 @@ final class AlgoliaSearchManager {
     private let session: URLSession
 
     private init() {
+        // Load Algolia credentials from Info.plist (allows configuration via build settings)
+        // Falls back to defaults for development if not configured
+        let infoPlist = Bundle.main.infoDictionary
+        let plistAppId = infoPlist?["AlgoliaAppId"] as? String
+        let plistSearchKey = infoPlist?["AlgoliaSearchKey"] as? String
+
+        // Use Info.plist values if they're valid (not empty or placeholder variables)
+        if let id = plistAppId, !id.isEmpty, !id.hasPrefix("$(") {
+            self.appId = id
+        } else {
+            self.appId = Self.defaultAppId
+        }
+
+        if let key = plistSearchKey, !key.isEmpty, !key.hasPrefix("$(") {
+            self.searchKey = key
+        } else {
+            self.searchKey = Self.defaultSearchKey
+        }
+
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 10 // 10 second timeout
         config.timeoutIntervalForResource = 30
@@ -335,36 +359,19 @@ final class AlgoliaSearchManager {
                 // Check if cached results have ingredients - if not, invalidate cache
                 // (handles migration from old cache entries without ingredients)
                 let hasIngredients = cached.results.first?.ingredients?.isEmpty == false
-                #if DEBUG
-                print("⚡️ Algolia Cache HIT for '\(query)' (\(Int(age))s old) - hasIngredients: \(hasIngredients)")
-                #endif
-                if hasIngredients {
+                                if hasIngredients {
                     return cached.results
                 } else {
                     // Cache is stale (missing ingredients) - force refresh
-                    #if DEBUG
-                    print("   ⚠️ Cache missing ingredients - fetching fresh data")
-                    #endif
-                    searchCache.removeObject(forKey: cacheKey)
+                                        searchCache.removeObject(forKey: cacheKey)
                 }
             } else {
                 searchCache.removeObject(forKey: cacheKey)
             }
         }
 
-        #if DEBUG
-        let startTime = Date()
-        print("🔍 Algolia Direct REST: Searching '\(query)'...")
-        #endif
-
         // Expand query with brand synonyms (e.g., "coke" -> also search "coca-cola")
         let expandedQueries = expandSearchQuery(trimmedQuery)
-
-        #if DEBUG
-        if expandedQueries.count > 1 {
-            print("🔀 Brand synonym expansion: \(expandedQueries)")
-        }
-        #endif
 
         // Add word order variants for 2-word queries
         var allSearchQueries: [String] = []
@@ -372,12 +379,7 @@ final class AlgoliaSearchManager {
             if shouldUseFlexibleWordOrder(query) {
                 let variants = generateWordOrderVariants(query)
                 allSearchQueries.append(contentsOf: variants)
-                #if DEBUG
-                if variants.count > 1 {
-                    print("🔄 Word order variants for '\(query)': \(variants)")
-                }
-                #endif
-            } else {
+                } else {
                 allSearchQueries.append(query)
             }
         }
@@ -393,10 +395,7 @@ final class AlgoliaSearchManager {
                     do {
                         return try await self.searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage)
                     } catch {
-                        #if DEBUG
-                        print("⚠️ Search failed for query '\(searchQuery)': \(error)")
-                        #endif
-                        return []
+                                                return []
                     }
                 }
             }
@@ -411,11 +410,6 @@ final class AlgoliaSearchManager {
 
         // Re-rank combined results
         let rankedResults = rankResultsForSynonymSearch(allResults, originalQuery: trimmedQuery, hitsPerPage: hitsPerPage)
-
-        #if DEBUG
-        let elapsed = Date().timeIntervalSince(startTime) * 1000
-        print("⚡️ Algolia Direct REST: Found \(rankedResults.count) results in \(Int(elapsed))ms")
-        #endif
 
         // Cache results
         searchCache.setObject(
@@ -580,10 +574,7 @@ final class AlgoliaSearchManager {
                         )
                         return (priority, hits)
                     } catch {
-                        #if DEBUG
-                        print("⚠️ Algolia: Failed to search \(indexName): \(error.localizedDescription)")
-                        #endif
-                        return (priority, [])
+                                                return (priority, [])
                     }
                 }
             }
@@ -599,12 +590,6 @@ final class AlgoliaSearchManager {
 
         // Smart re-ranking: prioritize relevance over source
         let rankedResults = rankResults(allResults, query: query)
-
-        #if DEBUG
-        if let first = rankedResults.first {
-            print("🎯 Top result for '\(query)': \(first.name) (score-based ranking)")
-        }
-        #endif
 
         // Return limited results
         return Array(rankedResults.prefix(hitsPerPage))
@@ -774,30 +759,10 @@ final class AlgoliaSearchManager {
 
     /// Parse Algolia JSON response into FoodSearchResult objects
     private func parseResponse(_ data: Data, source: String) throws -> [FoodSearchResult] {
-        #if DEBUG
-        // VERY AGGRESSIVE: Print raw JSON string for first few hundred chars
-        let rawJsonPreview = String(data: data, encoding: .utf8)?.prefix(500) ?? "DECODE FAILED"
-        print("📜 RAW JSON from \(source): \(rawJsonPreview)...")
-        #endif
-
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let hits = json["hits"] as? [[String: Any]] else {
             throw AlgoliaError.parseError
         }
-
-        #if DEBUG
-        // AGGRESSIVE DEBUG: Print raw first hit to see what we're working with
-        if let firstHit = hits.first, let firstName = firstHit["name"] as? String {
-            print("🔬 PARSED HIT for '\(firstName)':")
-            print("   Keys: \(firstHit.keys.sorted())")
-            if let ing = firstHit["ingredients"] {
-                print("   ✅ ingredients exists: type=\(type(of: ing))")
-                print("      value preview: \(String(describing: ing).prefix(100))...")
-            } else {
-                print("   ❌ ingredients key NOT FOUND in parsed hit")
-            }
-        }
-        #endif
 
         return hits.compactMap { hit -> FoodSearchResult? in
             guard let objectID = hit["objectID"] as? String,
@@ -832,16 +797,6 @@ final class AlgoliaSearchManager {
             let fiber = getNumber(hit, "fiber", "fibre") ?? 0
             let sugar = getNumber(hit, "sugar", "sugars") ?? 0
             let sodium = getNumber(hit, "sodium", "salt").map { $0 > 10 ? $0 : $0 * 1000 } ?? 0 // Convert g to mg if needed
-
-            #if DEBUG
-            print("🍎 NUTRITION for '\(name)': cal=\(calories), prot=\(protein), carb=\(carbs), fat=\(fat)")
-            // Debug: Show raw values from hit
-            if let rawCal = hit["calories"] {
-                print("   Raw calories: \(rawCal) (type: \(type(of: rawCal)))")
-            } else {
-                print("   ⚠️ No 'calories' key in hit")
-            }
-            #endif
 
             // Extract optional fields with fallback names
             let brand = (hit["brandName"] as? String) ?? (hit["brand"] as? String)
@@ -885,23 +840,14 @@ final class AlgoliaSearchManager {
                 else {
                     let desc = String(describing: rawValue)
                     if !desc.isEmpty && desc != "nil" && desc != "<null>" {
-                        #if DEBUG
-                        print("⚠️ ingredients fallback: converting \(type(of: rawValue)) via description")
-                        #endif
-                        ingredients = desc.components(separatedBy: ",")
+                                                ingredients = desc.components(separatedBy: ",")
                             .map { $0.trimmingCharacters(in: .whitespaces) }
                             .filter { !$0.isEmpty }
                     }
                 }
 
-                #if DEBUG
-                print("🔍 ingredients for '\(name)': type=\(type(of: rawValue)), parsed=\(ingredients?.count ?? 0)")
-                #endif
-            } else {
-                #if DEBUG
-                print("⚠️ No 'ingredients' key found for '\(name)'")
-                #endif
-            }
+                            } else {
+                            }
 
             // Extract micronutrient profile if available
             var micronutrientProfile: MicronutrientProfile? = nil
@@ -1074,47 +1020,27 @@ final class AlgoliaSearchManager {
         // Find exact barcode match (text query may return multiple results)
         let exactMatch = results.first { $0.barcode == barcode }
 
-        #if DEBUG
-        if exactMatch != nil {
-            print("✅ Found exact barcode match in \(indexName)")
-        } else if !results.isEmpty {
-            print("⚠️ Found \(results.count) results but no exact barcode match for \(barcode)")
-        }
-        #endif
-
         return exactMatch
     }
 
     /// Clear the search cache
     func clearCache() {
         searchCache.removeAllObjects()
-        #if DEBUG
-        print("🗑️ Algolia cache cleared")
-        #endif
-    }
+            }
 
     /// Pre-warm cache with popular searches
     func prewarmCache() async {
         let popularSearches = ["chicken", "milk", "bread", "cheese", "apple", "banana", "rice", "egg"]
 
-        #if DEBUG
-        print("🔥 Pre-warming Algolia cache...")
-        #endif
-
+        
         for search in popularSearches {
             do {
                 _ = try await self.search(query: search)
             } catch {
-                #if DEBUG
-                print("⚠️ Failed to prewarm '\(search)': \(error)")
-                #endif
-            }
+                            }
         }
 
-        #if DEBUG
-        print("✅ Algolia cache pre-warming complete")
-        #endif
-    }
+            }
 }
 
 // MARK: - Cache Entry

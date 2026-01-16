@@ -119,6 +119,8 @@ struct TabGradientBackground: View {
         case progress   // Teal-green (weight/fitness)
         case health     // Purple-pink (reactions/fasting)
         case useBy      // Orange-amber (expiry tracking)
+        case settings   // Settings pages
+        case insights   // Insights tab
 
         var lightGradientColors: (primary: Color, secondary: Color) {
             // All tabs use the same blue-purple gradient as Diary for consistency

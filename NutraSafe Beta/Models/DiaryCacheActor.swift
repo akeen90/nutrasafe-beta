@@ -92,10 +92,7 @@ actor DiaryCacheActor {
         // Update access time - O(1) operation
         lastAccessTime[dateKey] = Date()
 
-        #if DEBUG
-        print("📦 [DiaryCache] Cached data for \(dateKey): \(data.totalItems) items")
-        #endif
-    }
+            }
 
     /// Invalidate (remove) cache for a specific date
     /// Called when diary data changes for that date
@@ -103,10 +100,7 @@ actor DiaryCacheActor {
         let dateKey = formatDateKey(date)
         if dayCache.removeValue(forKey: dateKey) != nil {
             lastAccessTime.removeValue(forKey: dateKey)
-            #if DEBUG
-            print("🗑️ [DiaryCache] Invalidated cache for \(dateKey)")
-            #endif
-        }
+                    }
     }
 
     /// Invalidate cache for a date range
@@ -121,10 +115,7 @@ actor DiaryCacheActor {
             }
         }
         if invalidatedCount > 0 {
-            #if DEBUG
-            print("🗑️ [DiaryCache] Invalidated \(invalidatedCount) days in range")
-            #endif
-        }
+                    }
     }
 
     /// Clear all cached diary data
@@ -134,10 +125,7 @@ actor DiaryCacheActor {
         lastAccessTime.removeAll()
         hits = 0
         misses = 0
-        #if DEBUG
-        print("🗑️ [DiaryCache] Cleared \(previousSize) cached days")
-        #endif
-    }
+            }
 
     /// Get current cache size
     func size() -> Int {
@@ -166,10 +154,7 @@ actor DiaryCacheActor {
         if let oldestKey = lastAccessTime.min(by: { $0.value < $1.value })?.key {
             dayCache.removeValue(forKey: oldestKey)
             lastAccessTime.removeValue(forKey: oldestKey)
-            #if DEBUG
-            print("♻️ [DiaryCache] Evicted oldest entry: \(oldestKey)")
-            #endif
-        }
+                    }
     }
 
     // PERFORMANCE: Static DateFormatter to avoid recreation on every call

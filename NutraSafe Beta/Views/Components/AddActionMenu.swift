@@ -65,7 +65,7 @@ struct AddActionMenu: View {
                     }
                     .background(
                         RoundedRectangle(cornerRadius: 24)
-                            .fill(Color(.systemBackground))
+                            .fill(Color.adaptiveCard)
                             .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: -8)
                             .ignoresSafeArea(edges: .bottom)
                     )
@@ -308,7 +308,7 @@ struct ActionGridButton: View {
             .frame(height: 88)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
+                    .fill(Color.adaptiveCard)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
@@ -408,7 +408,7 @@ struct SquareMenuButtonCustomIcon: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 100)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color(.systemBackground)))
+            .background(RoundedRectangle(cornerRadius: 14).fill(Color.adaptiveCard))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(.systemGray4), lineWidth: 0.5))
         }
         .buttonStyle(GridButtonPressStyle())

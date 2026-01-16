@@ -148,6 +148,8 @@ struct AppleHealthSettingsView: View {
                 Spacer()
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.adaptiveBackground.ignoresSafeArea())
         .navigationTitle("Apple Health")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

@@ -114,7 +114,7 @@ struct FeatureTipOverlay: View {
             .padding(24)
             .background(
                 RoundedRectangle(cornerRadius: 28)
-                    .fill(Color(.systemBackground))
+                    .fill(Color.adaptiveCard)
                     .shadow(color: .black.opacity(0.25), radius: 30, y: 15)
             )
             .padding(.horizontal, 28)
@@ -189,7 +189,6 @@ extension View {
                 "See daily calories, macros & nutrients"
             ]
         ) {
-            print("Dismissed")
         }
     }
 }

@@ -64,6 +64,8 @@ struct DiaryTabView: View {
     // MARK: - Feature Tips
     @State private var showingDiaryTip = false
     @State private var showingNutrientsTip = false
+    @State private var showingInsightsTip = false
+    @State private var showingAdditivesTip = false
     @ObservedObject private var featureTipsManager = FeatureTipsManager.shared
 
     // MARK: - Diary Limit
@@ -388,7 +390,7 @@ struct DiaryTabView: View {
         // This gives us 0 empty cells if day 1 is Sunday, 6 if day 1 is Saturday
         let weekdayOfFirst = calendar.component(.weekday, from: monthStart)
         let firstWeekdayOffset = weekdayOfFirst - 1  // 0-indexed for Sunday-first display
-        let daysInMonth = calendar.range(of: .day, in: .month, for: displayedMonth)!.count
+        let daysInMonth = calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
 
         // Build all items for the grid
         let totalCells = firstWeekdayOffset + daysInMonth
@@ -402,8 +404,9 @@ struct DiaryTabView: View {
                 } else {
                     // Actual day cell
                     let day = index - firstWeekdayOffset + 1
-                    let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart)!
-                    calendarDayCell(date: date, day: day)
+                    if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
+                        calendarDayCell(date: date, day: day)
+                    }
                 }
             }
         }
@@ -495,10 +498,7 @@ struct DiaryTabView: View {
                 await MainActor.run {
                     isLoadingCalendarEntries = false
                 }
-                #if DEBUG
-                print("Error loading dates with entries: \(error)")
-                #endif
-            }
+                            }
         }
     }
 
@@ -621,6 +621,8 @@ struct DiaryTabView: View {
             .background(Color.adaptiveBackground)
             .featureTip(isPresented: $showingDiaryTip, tipKey: .diaryOverview)
             .featureTip(isPresented: $showingNutrientsTip, tipKey: .nutrientsOverview)
+            .featureTip(isPresented: $showingInsightsTip, tipKey: .insightsOverview)
+            .featureTip(isPresented: $showingAdditivesTip, tipKey: .additivesTracker)
     }
 
     // MARK: - Content with Lifecycle Modifiers
@@ -654,6 +656,9 @@ struct DiaryTabView: View {
             }
             .onChange(of: diarySubTab) { _, newTab in
                 handleDiarySubTabChange(newTab)
+            }
+            .onChange(of: insightsSubTab) { _, newSubTab in
+                handleInsightsSubTabChange(newSubTab)
             }
             // PERFORMANCE: Consolidated - these 3 triggers now use debounced reload
             .onChange(of: refreshTrigger) {
@@ -781,8 +786,36 @@ struct DiaryTabView: View {
 
     private func handleDiarySubTabChange(_ newTab: DiarySubTab) {
         // SOFT PAYWALL: Allow navigation to nutrients tab (premium features are blurred within)
-        // Show feature tip on first visit to nutrients sub-tab
-        if newTab == .insights && !FeatureTipsManager.shared.hasSeenTip(.nutrientsOverview) {
+        // Show feature tips on first visit to insights tab
+        if newTab == .insights {
+            // First show the Insights overview tip, then additives or nutrients tips based on sub-tab
+            if !FeatureTipsManager.shared.hasSeenTip(.insightsOverview) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingInsightsTip = true
+                }
+            } else if insightsSubTab == .additives && !FeatureTipsManager.shared.hasSeenTip(.additivesTracker) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingAdditivesTip = true
+                }
+            } else if insightsSubTab == .nutrients && !FeatureTipsManager.shared.hasSeenTip(.nutrientsOverview) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingNutrientsTip = true
+                }
+            }
+        }
+    }
+
+    private func handleInsightsSubTabChange(_ newSubTab: InsightsSubTab) {
+        // Only show tips if we're on the insights tab and haven't seen the overview yet
+        guard diarySubTab == .insights else { return }
+        guard FeatureTipsManager.shared.hasSeenTip(.insightsOverview) else { return }
+
+        // Show tip for the specific sub-tab if not seen
+        if newSubTab == .additives && !FeatureTipsManager.shared.hasSeenTip(.additivesTracker) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showingAdditivesTip = true
+            }
+        } else if newSubTab == .nutrients && !FeatureTipsManager.shared.hasSeenTip(.nutrientsOverview) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 showingNutrientsTip = true
             }
@@ -799,15 +832,9 @@ struct DiaryTabView: View {
                 // Clear selection once user enters edit flow
                 selectedFoodItems.removeAll()
             } else {
-                #if DEBUG
-                print("❌ Could not find food with ID: \(foodId)")
-                #endif
-            }
+                            }
         } else {
-            #if DEBUG
-            print("❌ No food ID in selectedFoodItems")
-            #endif
-        }
+                    }
 
         editTrigger = false
     }
@@ -1065,10 +1092,7 @@ struct DiaryTabView: View {
                     await MainActor.run { showingDiaryLimitError = true }
                     break
                 } catch {
-                    #if DEBUG
-                    print("Error moving food: \(error)")
-                    #endif
-                }
+                                    }
             }
         }
     }
@@ -1090,10 +1114,7 @@ struct DiaryTabView: View {
                     await MainActor.run { showingDiaryLimitError = true }
                     break
                 } catch {
-                    #if DEBUG
-                    print("Error copying food: \(error)")
-                    #endif
-                }
+                                    }
             }
         }
     }
@@ -1148,10 +1169,7 @@ struct DiaryTabView: View {
                     isLoadingData = false
                 }
             } catch {
-                #if DEBUG
-                print("❌ Failed to load food data: \(error)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     isLoadingData = false
                 }
             }
@@ -1250,10 +1268,7 @@ struct DiaryTabView: View {
             )
 
         } catch {
-            #if DEBUG
-            print("❌ Failed to fetch weekly summary: \(error)")
-            #endif
-            return nil
+                        return nil
         }
     }
 
@@ -1361,10 +1376,7 @@ struct CategoricalNutrientTrackingView: View {
             let components = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: weekStart)
             weekOffset = components.weekOfYear ?? 0
 
-            #if DEBUG
-            print("📍 Initial week: \(weekStart), offset: \(weekOffset)")
-            #endif
-            requestDataLoad(for: weekStart, reason: "initial-load")
+                        requestDataLoad(for: weekStart, reason: "initial-load")
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) {
             // Only reload if we've already done initial load
@@ -2068,12 +2080,7 @@ struct CategoricalNutrientTrackingView: View {
             selectedWeekStart = weekStart
             // DON'T modify parent selectedDate - let user control calendar independently
 
-            #if DEBUG
-            print("🔄 requestDataLoad - reason: \(reason), weekStart: \(weekStart)")
-
-            // Load data for that week
-            #endif
-            await vm.loadWeekData(for: weekStart)
+                        await vm.loadWeekData(for: weekStart)
         }
     }
 
@@ -2161,10 +2168,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in
                 await self?.clearCache()
-                #if DEBUG
-                print("🗑️ CategoricalNutrientViewModel: Cleared caches due to app version change")
-                #endif
-            }
+                            }
         }
     }
 
@@ -2195,10 +2199,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
     func invalidateCache(for date: Date) async {
         await diaryCache.invalidate(date: date)
         await weekCache.invalidate(containingDate: date)
-        #if DEBUG
-        print("🗑️ Invalidated cache for date: \(date)")
-        #endif
-    }
+            }
 
     // MARK: - Cache Conversion Helpers
 
@@ -2285,19 +2286,13 @@ final class CategoricalNutrientViewModel: ObservableObject {
         let weekday = calendar.component(.weekday, from: weekStartDate)
         let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
         guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: weekStartDate) else {
-            #if DEBUG
-            print("❌ Failed to calculate Monday")
-            #endif
-            return
+                        return
         }
         let mondayStart = calendar.startOfDay(for: monday)
 
         // Prevent duplicate loads for the same week (only if already loading THIS week)
         if let currentDate = currentLoadingDate, calendar.isDate(currentDate, equalTo: mondayStart, toGranularity: .day) {
-            #if DEBUG
-            print("⚠️ Already loading data for this week, skipping duplicate request")
-            #endif
-            return
+                        return
         }
 
         // Cancel any existing load task and wait for it to complete
@@ -2313,10 +2308,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
         // Verify manager exists before proceeding
         guard diaryManager != nil else {
-            #if DEBUG
-            print("❌ DiaryManager not set")
-            #endif
-            self.rhythmDays = []
+                        self.rhythmDays = []
             self.nutrientCoverageRows = []
             return
         }
@@ -2324,12 +2316,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         isLoading = true
         currentLoadingDate = mondayStart
 
-        #if DEBUG
-        print("🔄 CategoricalNutrientViewModel: Starting loadWeekData for \(mondayStart)...")
-
-        // Create properly cancellable task (NOT detached)
-        #endif
-        loadTask = Task { @MainActor in
+                loadTask = Task { @MainActor in
             defer {
                 self.isLoading = false
                 self.currentLoadingDate = nil
@@ -2337,19 +2324,11 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
             // CACHE CHECK: Try week cache first
             if let cachedWeekData = await self.weekCache.getData(for: mondayStart) {
-                #if DEBUG
-                print("✅ [WeekCache] HIT - Using cached week data")
-                #endif
-                self.rhythmDays = self.convertFromCache(rhythmDays: cachedWeekData.rhythmDays)
+                                self.rhythmDays = self.convertFromCache(rhythmDays: cachedWeekData.rhythmDays)
                 self.nutrientCoverageRows = self.convertFromCache(coverageRows: cachedWeekData.coverageRows)
                 return
             }
-            #if DEBUG
-            print("⚠️ [WeekCache] MISS - Fetching fresh data")
-
-            // Perform heavy processing on background thread but maintain cancellation context
-            #endif
-            let result: (days: [RhythmDay], rows: [CoverageRow])? = await Task {
+                        let result: (days: [RhythmDay], rows: [CoverageRow])? = await Task {
                 // Generate 7 days starting from Monday
                 let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: mondayStart) }
 
@@ -2358,10 +2337,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
                 // Check for task cancellation
                 if Task.isCancelled {
-                    #if DEBUG
-                    print("⚠️ Task cancelled during data fetch")
-                    #endif
-                    return nil
+                                        return nil
                 }
 
                 // Calculate week end date (Sunday 23:59:59)
@@ -2372,25 +2348,12 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
                 // BATCH QUERY: Single Firebase call for entire week
                 do {
-                    #if DEBUG
-                    print("🚀 [BatchQuery] Fetching week \(mondayStart) to \(weekEndWithTime) in single query")
-                    #endif
-                    allEntries = try await FirebaseManager.shared.getFoodEntriesInRange(from: mondayStart, to: weekEndWithTime)
-                    #if DEBUG
-                    print("✅ [BatchQuery] Fetched \(allEntries.count) entries in 1 Firebase call (vs 7 calls before)")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("⚠️ Error fetching week data: \(error)")
-                    #endif
-                    allEntries = []
+                                        allEntries = try await FirebaseManager.shared.getFoodEntriesInRange(from: mondayStart, to: weekEndWithTime)
+                                    } catch {
+                                        allEntries = []
                 }
 
-                #if DEBUG
-                print("📥 Total entries fetched: \(allEntries.count) for week starting \(mondayStart)")
-
-                #endif
-                let entries = allEntries
+                                let entries = allEntries
                 let grouped = Dictionary(grouping: entries, by: { calendar.startOfDay(for: $0.date) })
 
                 // Get all food IDs that need profiles
@@ -2414,10 +2377,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
                 // Check for cancellation before expensive nutrient processing
                 if Task.isCancelled {
-                    #if DEBUG
-                    print("⚠️ Task cancelled before nutrient processing")
-                    #endif
-                    return nil
+                                        return nil
                 }
 
                 // Build coverage rows
@@ -2454,31 +2414,20 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 // Save new profiles to cache
                 if !newProfiles.isEmpty {
                     await self.profileCache.setProfiles(newProfiles)
-                    #if DEBUG
-                    print("💾 Cached \(newProfiles.count) new profiles (total cache size: \(await self.profileCache.size()))")
-                    #endif
-                }
+                                    }
 
                 return (days, rows)
             }.value
 
             // Update UI on main thread (we're already on MainActor due to @MainActor annotation)
             if Task.isCancelled {
-                #if DEBUG
-                print("⚠️ Task cancelled before UI update")
-                #endif
-                return
+                                return
             }
 
             if let result = result {
                 self.rhythmDays = result.days
                 self.nutrientCoverageRows = result.rows
-                #if DEBUG
-                print("✅ Loaded \(result.days.count) rhythm days and \(result.rows.count) nutrient rows")
-
-                // CACHE STORE: Save processed week data to cache for future loads
-                #endif
-                await self.weekCache.setData(
+                                await self.weekCache.setData(
                     rhythmDays: self.convertToCache(rhythmDays: result.days),
                     coverageRows: self.convertToCache(coverageRows: result.rows),
                     for: mondayStart
@@ -2709,10 +2658,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 best = max(best, level)
 
                 if isVitC {
-                    #if DEBUG
-                    print("   🔍 \(entry.foodName): amt=\(String(format: "%.1f", amt))mg, level=\(level)")
-                    #endif
-                }
+                                    }
             } else {
                 // Fallback: use keyword detection
                 let food = DiaryFoodItem.fromFoodEntry(entry)
@@ -2720,10 +2666,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 best = max(best, present ? .trace : .none)
 
                 if isVitC {
-                    #if DEBUG
-                    print("   ⚠️ \(entry.foodName): NO AMOUNT in profile (profileKey=\(profileKey))")
-                    #endif
-                }
+                                    }
             }
         }
 
@@ -2763,10 +2706,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
         if let percent = profile.getDailyValuePercentage(for: dvKey, amount: amount) {
             if isVitC {
-                #if DEBUG
-                print("      📊 classify: amount=\(String(format: "%.1f", amount))mg, percent=\(String(format: "%.1f", percent))%")
-                #endif
-            }
+                            }
 
             // Require at least 10% DV to count as a meaningful contribution
             // This prevents trace amounts from inflating nutrient counts
@@ -2777,10 +2717,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         }
 
         if isVitC {
-            #if DEBUG
-            print("      ❌ classify: NO DAILY VALUE found for dvKey=\(dvKey)")
-            #endif
-        }
+                    }
 
         // Can't determine percentage - don't count as a source
         return .none
@@ -3551,7 +3488,7 @@ struct NutrientDetailModal: View {
             }
         }
         .presentationDragIndicator(.visible)
-        .presentationBackground(Color(.systemBackground))
+        .presentationBackground(Color.adaptiveBackground)
     }
 
     // MARK: - Helper Views

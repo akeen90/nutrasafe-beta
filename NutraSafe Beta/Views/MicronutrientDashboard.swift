@@ -154,10 +154,7 @@ struct MicronutrientDashboard: View {
 
             hasLoadedData = true
             isLoading = false
-            #if DEBUG
-            print("✅ MicronutrientDashboard: UI ready with fresh data")
-            #endif
-        }
+                    }
     }
 
     // MARK: - Header Section
@@ -283,7 +280,7 @@ struct MicronutrientDashboard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -418,7 +415,7 @@ struct MicronutrientDashboard: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -604,7 +601,7 @@ struct MicronutrientDashboard: View {
                 .padding(.vertical, 50)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemBackground))
+                        .fill(Color.adaptiveCard)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -654,7 +651,7 @@ struct MicronutrientDashboard: View {
                 .padding(.vertical, 40)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemBackground))
+                        .fill(Color.adaptiveCard)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -714,7 +711,7 @@ struct MicronutrientDashboard: View {
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemBackground))
+                        .fill(Color.adaptiveCard)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -769,14 +766,8 @@ struct MicronutrientDashboard: View {
             // PERFORMANCE FIX: Save once after processing all foods instead of per-food
             await trackingManager.saveAllScores()
 
-            #if DEBUG
-            print("✅ MicronutrientDashboard: Finished processing today's foods")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ Error loading today's food entries: \(error)")
-            #endif
-        }
+                    } catch {
+                    }
     }
 
     private func formatDate(_ date: Date) -> String {
@@ -810,10 +801,7 @@ struct MicronutrientDashboard: View {
                 self.rhythmDays = days
             }
         } catch {
-            #if DEBUG
-            print("❌ Failed to load rhythm data: \(error)")
-            #endif
-        }
+                    }
     }
 
     private func calculateDominantLevel(for entries: [FoodEntry]) -> SourceLevel {
@@ -1117,7 +1105,7 @@ struct MicronutrientRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
     }
 
     // Helper to parse JSON array strings
@@ -1237,7 +1225,7 @@ struct NutrientInfoSheet: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -1283,7 +1271,7 @@ struct NutrientInfoSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
         )
     }
 
@@ -1346,7 +1334,7 @@ struct NutrientInfoSheet: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
                 .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
         )
     }
@@ -1381,7 +1369,7 @@ struct NutrientInfoSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
         )
     }
 }

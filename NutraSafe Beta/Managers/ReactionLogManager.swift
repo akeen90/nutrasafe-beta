@@ -36,10 +36,7 @@ class ReactionLogManager: ObservableObject {
         do {
             reactionLogs = try await FirebaseManager.shared.getReactionLogs(userId: userId)
         } catch {
-            #if DEBUG
-            print("Error loading reaction logs: \(error.localizedDescription)")
-            #endif
-
+            
             // Provide user-friendly error message
             if let urlError = error as? URLError {
                 if urlError.code == .notConnectedToInternet {
@@ -225,10 +222,7 @@ class ReactionLogManager: ObservableObject {
 
                 foodData[foodName] = data
             } else {
-                #if DEBUG
-                print("⚠️ ReactionLogManager: Unexpected nil foodData for \(foodName)")
-                #endif
-            }
+                            }
         }
 
         // Get cross-reaction frequencies for foods
@@ -330,10 +324,7 @@ class ReactionLogManager: ObservableObject {
 
                     ingredientData[normalizedIngredient] = data
                 } else {
-                    #if DEBUG
-                    print("⚠️ ReactionLogManager: Unexpected nil ingredientData for \(normalizedIngredient)")
-                    #endif
-                }
+                                    }
             }
         }
 
@@ -429,10 +420,7 @@ class ReactionLogManager: ObservableObject {
 
                     associations[normalizedName] = data
                 } else {
-                    #if DEBUG
-                    print("⚠️ ReactionLogManager: Unexpected nil associations for \(normalizedName)")
-                    #endif
-                }
+                                    }
             }
         }
 
@@ -504,10 +492,7 @@ class ReactionLogManager: ObservableObject {
             errorMessage = nil
             showError = false
         } catch {
-            #if DEBUG
-            print("Error deleting reaction log: \(error.localizedDescription)")
-            #endif
-
+            
             errorMessage = "Failed to delete reaction log. Please try again."
             showError = true
             throw error

@@ -40,10 +40,7 @@ final class CacheManager {
         let buildChanged = lastBuild != currentBuild
 
         if versionChanged || buildChanged {
-            #if DEBUG
-            print("🔄 App updated: \(lastVersion ?? "new") -> \(currentVersion) (build: \(lastBuild ?? "new") -> \(currentBuild))")
-            #endif
-
+            
             // Clear all caches
             clearAllCaches()
 
@@ -54,14 +51,8 @@ final class CacheManager {
             // Notify observers (view models can listen for this to clear in-memory caches)
             NotificationCenter.default.post(name: .appVersionDidChange, object: nil)
 
-            #if DEBUG
-            print("✅ Caches cleared for app update")
-            #endif
-        } else {
-            #if DEBUG
-            print("📱 App version unchanged: \(currentVersion) (build: \(currentBuild))")
-            #endif
-        }
+                    } else {
+                    }
     }
 
     /// Clear all caches - called automatically on version change
@@ -76,19 +67,13 @@ final class CacheManager {
     func forceClearAllCaches() {
         clearAllCaches()
         NotificationCenter.default.post(name: .appVersionDidChange, object: nil)
-        #if DEBUG
-        print("🗑️ Force cleared all caches")
-        #endif
-    }
+            }
 
     // MARK: - Private Cache Clearing Methods
 
     private func clearURLCache() {
         URLCache.shared.removeAllCachedResponses()
-        #if DEBUG
-        print("  - Cleared URL cache")
-        #endif
-    }
+            }
 
     private func clearFileSystemCaches() {
         let fileManager = FileManager.default
@@ -100,14 +85,8 @@ final class CacheManager {
                 for fileURL in cacheContents {
                     try? fileManager.removeItem(at: fileURL)
                 }
-                #if DEBUG
-                print("  - Cleared \(cacheContents.count) items from Caches directory")
-                #endif
-            } catch {
-                #if DEBUG
-                print("  - Error clearing Caches: \(error.localizedDescription)")
-                #endif
-            }
+                            } catch {
+                            }
         }
 
         // Clear tmp directory
@@ -117,24 +96,15 @@ final class CacheManager {
             for fileURL in tmpContents {
                 try? fileManager.removeItem(at: fileURL)
             }
-            #if DEBUG
-            print("  - Cleared \(tmpContents.count) items from tmp directory")
-            #endif
-        } catch {
-            #if DEBUG
-            print("  - Error clearing tmp: \(error.localizedDescription)")
-            #endif
-        }
+                    } catch {
+                    }
     }
 
     private func clearImageCaches() {
         // Clear NSCache-based image caches (if defined)
         // Note: GradeCache not currently implemented - can be added later
 
-        #if DEBUG
-        print("  - Cleared image caches")
-        #endif
-    }
+            }
 
     private func clearUserDefaultsCaches() {
         // Clear specific cached data keys (not user preferences)
@@ -150,8 +120,5 @@ final class CacheManager {
             UserDefaults.standard.removeObject(forKey: key)
         }
 
-        #if DEBUG
-        print("  - Cleared UserDefaults cache keys")
-        #endif
-    }
+            }
 }

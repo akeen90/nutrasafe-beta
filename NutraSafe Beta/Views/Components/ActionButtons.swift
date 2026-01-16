@@ -66,7 +66,7 @@ struct PersistentBottomMenu: View {
             .padding(.top, 12)
             .padding(.bottom, 34) // Account for safe area
         }
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .overlay(
             Rectangle()
                 .fill(Color(.systemGray4))

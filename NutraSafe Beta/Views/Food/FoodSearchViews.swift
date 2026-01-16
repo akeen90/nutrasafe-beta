@@ -242,7 +242,7 @@ struct FoodSearchResultRowEnhanced: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -352,14 +352,8 @@ struct FoodSearchResultRowEnhanced: View {
                     }
                 }
 
-                #if DEBUG
-                print("✅ Quick-added \(food.name) to \(mealType)")
-                #endif
-            } catch {
-                #if DEBUG
-                print("❌ Quick-add failed: \(error)")
-                #endif
-            }
+                            } catch {
+                            }
         }
     }
 }
@@ -725,19 +719,13 @@ struct AddFoodSearchView: View {
         let normalizedQuery = query.replacingOccurrences(of: "'", with: "")
                                    .replacingOccurrences(of: "'", with: "") // Also handle curly apostrophe
 
-        #if DEBUG
-        print("🔎 AddFoodSearchView: Starting search for '\(query)' → normalized: '\(normalizedQuery)' (length: \(normalizedQuery.count))")
-        #endif
-
+        
         isSearching = true
 
         // Instant search - no debounce for immediate feedback
         searchTask = Task {
             if Task.isCancelled {
-                #if DEBUG
-                print("⚠️ AddFoodSearchView: Search cancelled for '\(normalizedQuery)'")
-                #endif
-                return
+                                return
             }
 
             // Try search (Firebase searchFoods already includes Algolia via backend)
@@ -746,30 +734,14 @@ struct AddFoodSearchView: View {
             do {
                 results = try await FirebaseManager.shared.searchFoods(query: normalizedQuery)
 
-                #if DEBUG
-                print("✅ Search complete: Found \(results.count) results")
-                if let first = results.first {
-                    print("   🔍 First result: '\(first.name)'")
-                    print("   🔍 ingredients: \(first.ingredients?.count ?? -1) items")
-                    if let preview = first.ingredients?.prefix(3) {
-                        print("   🔍 Preview: \(Array(preview))")
-                    }
-                }
-                #endif
-            } catch {
-                #if DEBUG
-                print("❌ Search failed: \(error)")
-                #endif
-            }
+                } catch {
+                            }
 
             if Task.isCancelled { return }
 
             // Show results immediately for instant feedback
             await MainActor.run {
-                #if DEBUG
-                print("⚡️ Showing \(results.count) results immediately (instant feedback)")
-                #endif
-                self.searchResults = results
+                                self.searchResults = results
                 self.isSearching = false
             }
 
@@ -830,17 +802,11 @@ struct AddFoodSearchView: View {
                     if hasChanges, !Task.isCancelled {
                         let finalResults = enrichedResults // Capture for Swift 6 concurrency
                         await MainActor.run {
-                            #if DEBUG
-                            print("✅ Updated results with pending verification data")
-                            #endif
-                            self.searchResults = finalResults
+                                                        self.searchResults = finalResults
                         }
                     }
                 } catch {
-                    #if DEBUG
-                    print("⚠️ Background pending verification check failed (non-critical): \(error)")
-                    #endif
-                    // Silently fail - results already showing
+                                        // Silently fail - results already showing
                 }
             }
         }
@@ -863,10 +829,7 @@ struct AddFoodSearchView: View {
                     favoriteFoods = favorites
                 }
             } catch {
-                #if DEBUG
-                print("Failed to load favorites: \(error)")
-                #endif
-            }
+                            }
         }
     }
     
@@ -1335,7 +1298,7 @@ struct FoodDetailView: View {
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color.adaptiveCard)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)

@@ -88,7 +88,7 @@ struct FastingStartConfirmationSheet: View {
                 .padding(.bottom, 40)
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .onAppear {
             selectedTime = context.scheduledTime
         }
@@ -348,7 +348,7 @@ struct FastingEndConfirmationSheet: View {
                 .padding(.bottom, 40)
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .onAppear {
             selectedTime = Date()
         }

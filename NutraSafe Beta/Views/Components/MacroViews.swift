@@ -95,10 +95,7 @@ struct MacroProgressView: View {
                 }
             }
         } catch {
-            #if DEBUG
-            print("❌ Error loading caloric goal: \(error.localizedDescription)")
-            #endif
-        }
+                    }
     }
 }
 

@@ -41,10 +41,7 @@ class MigrationManager {
         let hasAcceptedDisclaimer = UserDefaults.standard.bool(forKey: "hasAcceptedDisclaimer")
 
         if hasCompletedOldOnboarding && hasAcceptedDisclaimer {
-            #if DEBUG
-            print("📦 Migration V1: User completed old onboarding - marking basic tips as seen")
-            #endif
-
+            
             // Mark basic overview tips as seen - they learned this from old onboarding
             FeatureTipsManager.shared.markTipsAsSeen([
                 .diaryOverview,
@@ -60,10 +57,7 @@ class MigrationManager {
             // Keep premium tips (.healthPatterns, .progressWeight) as unseen
             // This encourages exploration of premium features
         } else {
-            #if DEBUG
-            print("📦 Migration V1: New user or incomplete onboarding - will see new flow")
-            #endif
-            // New users will see the new 3-page onboarding and all feature tips
+                        // New users will see the new 3-page onboarding and all feature tips
         }
     }
 }

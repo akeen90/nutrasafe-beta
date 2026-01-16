@@ -62,5 +62,9 @@
 	<array>
 		<string>com.nutrasafe.refresh-notifications</string>
 	</array>
+	<key>AlgoliaAppId</key>
+	<string>$(ALGOLIA_APP_ID)</string>
+	<key>AlgoliaSearchKey</key>
+	<string>$(ALGOLIA_SEARCH_KEY)</string>
 </dict>
 </plist>

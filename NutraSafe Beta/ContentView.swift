@@ -96,18 +96,12 @@ class IngredientSubmissionService: ObservableObject {
                                                 ingredientsImage: UIImage?, nutritionImage: UIImage?,
                                                 barcodeImage: UIImage?, pendingId: String) async throws {
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
-            #if DEBUG
-            print("No user ID available for submission")
-            #endif
-            return
+                        return
         }
 
         let urlString = "\(functionsBaseURL)/submitFoodVerification"
         guard let url = URL(string: urlString) else {
-            #if DEBUG
-            print("❌ Invalid URL for food verification: \(urlString)")
-            #endif
-            throw NSError(domain: "ContentView", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid submission URL"])
+                        throw NSError(domain: "ContentView", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid submission URL"])
         }
         
         var request = URLRequest(url: url)
@@ -146,10 +140,7 @@ class IngredientSubmissionService: ObservableObject {
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
-            #if DEBUG
-            print("Backend processing failed, but local pending verification was saved")
-            #endif
-            return
+                        return
         }
     }
 }
@@ -164,23 +155,14 @@ class FatSecretService: ObservableObject {
     private init() {}
     
     func searchFoods(query: String) async throws -> [FoodSearchResult] {
-        #if DEBUG
-        print("🔎 FatSecretService.searchFoods called with query: '\(query)'")
-        #endif
-        let results = try await performFatSecretSearch(query: query)
-        #if DEBUG
-        print("🔎 FatSecretService.searchFoods returning \(results.count) results")
-        #endif
-        return results
+                let results = try await performFatSecretSearch(query: query)
+                return results
     }
     
     private func performFatSecretSearch(query: String) async throws -> [FoodSearchResult] {
         let urlString = "\(functionsBaseURL)/searchFoods"
         guard let url = URL(string: urlString) else {
-            #if DEBUG
-            print("❌ Invalid URL for food search: \(urlString)")
-            #endif
-            throw NSError(domain: "FatSecretService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid search URL"])
+                        throw NSError(domain: "FatSecretService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid search URL"])
         }
         
         var request = URLRequest(url: url)
@@ -309,56 +291,11 @@ class FatSecretService: ObservableObject {
         let searchResponse: FirebaseFoodSearchResponse
         do {
             searchResponse = try JSONDecoder().decode(FirebaseFoodSearchResponse.self, from: data)
-            #if DEBUG
-            print("✅ Successfully decoded \(searchResponse.foods.count) foods")
-            #endif
         } catch {
-            #if DEBUG
-            print("❌ JSON decoding error: \(error)")
-            #endif
-            if let decodingError = error as? DecodingError {
-                switch decodingError {
-                case .keyNotFound(let key, let context):
-                    #if DEBUG
-                    print("Key not found: \(key), context: \(context)")
-                    #endif
-                case .typeMismatch(let type, let context):
-                    #if DEBUG
-                    print("Type mismatch: \(type), context: \(context)")
-                    #endif
-                case .valueNotFound(let type, let context):
-                    #if DEBUG
-                    print("Value not found: \(type), context: \(context)")
-                    #endif
-                case .dataCorrupted(let context):
-                    #if DEBUG
-                    print("Data corrupted: \(context)")
-                    #endif
-                @unknown default:
-                    #if DEBUG
-                    print("Unknown decoding error")
-                    #endif
-                }
-            }
             throw error
         }
-        
+
         return searchResponse.foods.map { food in
-            // Debug logging for ingredients
-            if let rawIngredients = food.ingredients {
-                #if DEBUG
-                print("🧪 Raw ingredients for \(food.name): '\(rawIngredients)'")
-                #endif
-                let splitIngredients = rawIngredients.components(separatedBy: ", ")
-                #if DEBUG
-                print("🧪 Split into \(splitIngredients.count) parts: \(splitIngredients)")
-                #endif
-            } else {
-                #if DEBUG
-                print("🧪 No ingredients for \(food.name)")
-                #endif
-            }
-            
             // Convert Firebase additives to NutritionAdditiveInfo format
             let convertedAdditives = food.additives?.map { firebaseAdditive in
                 // Calculate health score based on warnings (simplified scoring)
@@ -403,10 +340,7 @@ class FatSecretService: ObservableObject {
     func getFoodDetails(foodId: String) async throws -> FoodSearchResult? {
         let urlString = "\(functionsBaseURL)/getFoodDetails"
         guard let url = URL(string: urlString) else {
-            #if DEBUG
-            print("❌ Invalid URL for food details: \(urlString)")
-            #endif
-            throw NSError(domain: "FatSecretService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid details URL"])
+                        throw NSError(domain: "FatSecretService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid details URL"])
         }
         
         var request = URLRequest(url: url)
@@ -732,14 +666,8 @@ struct ContentView: View {
                 Task {
                     do {
                         try await firebaseManager.updateEmailMarketingConsent(hasConsented: emailMarketingConsent)
-                        #if DEBUG
-                        print("✅ Email marketing consent saved to Firestore: \(emailMarketingConsent)")
-                        #endif
-                    } catch {
-                        #if DEBUG
-                        print("❌ Failed to save email consent: \(error)")
-                        #endif
-                        // Save to UserDefaults as fallback
+                                            } catch {
+                                                // Save to UserDefaults as fallback
                         UserDefaults.standard.set(emailMarketingConsent, forKey: "emailMarketingConsent")
                         if emailMarketingConsent {
                             UserDefaults.standard.set(Date(), forKey: "emailMarketingConsentDate")
@@ -832,17 +760,11 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
-            #if DEBUG
-            print("[Nav] Received navigateToUseBy")
-            #endif
-            isNavigatingFromNotification = true
+                        isNavigatingFromNotification = true
             selectedTab = .useBy
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
-            #if DEBUG
-            print("[Nav] Received navigateToFasting -> switching to Food tab")
-            #endif
-            isNavigatingFromNotification = true
+                        isNavigatingFromNotification = true
             selectedTab = .food
         }
         .onReceive(NotificationCenter.default.publisher(for: .restartOnboarding)) { _ in
@@ -866,10 +788,7 @@ struct ContentView: View {
             // Reset the notification flag after navigation is handled
             if isNavigatingFromNotification {
                 isNavigatingFromNotification = false
-                #if DEBUG
-                print("[Nav] Reset notification flag after navigation")
-                #endif
-            }
+                            }
         }
         .onAppear {
             // PERFORMANCE OPTIMIZATION: Parallel preloading for instant app responsiveness
@@ -878,10 +797,7 @@ struct ContentView: View {
             Task(priority: .userInitiated) {
                 let today = Date()
                 _ = diaryDataManager.getFoodData(for: today)
-                #if DEBUG
-                print("✅ Diary data loaded - app responsive in <300ms")
-                #endif
-            }
+                            }
 
             // PRIORITY 2: Background preload other tabs IN PARALLEL (non-blocking)
             Task(priority: .utility) {
@@ -894,10 +810,7 @@ struct ContentView: View {
                         }
                     }
                 } catch {
-                    #if DEBUG
-                    print("⚠️ Error loading user height: \(error.localizedDescription)")
-                    #endif
-                }
+                                    }
 
                 // All requests run in parallel using async let
                 async let weightsTask = FirebaseManager.shared.getWeightHistory()
@@ -921,14 +834,8 @@ struct ContentView: View {
                         }
                         FirebaseManager.shared.preloadWeightData(history: weights, height: settings.height, goalWeight: settings.goalWeight)
                     }
-                    #if DEBUG
-                    print("✅ Background preload complete - all tabs ready (weights: \(weights.count), useBy: \(useByItems.count), reactions: \(reactions.count))")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("⚠️ Some preload tasks failed: \(error)")
-                    #endif
-                }
+                                    } catch {
+                                    }
             }
 
             // Initialize shared FastingViewModel for diary-fasting integration
@@ -1464,10 +1371,7 @@ struct WeightTrackingView: View {
                                         isLatest: index == 0
                                     )
                                     .onTapGesture {
-                                        #if DEBUG
-                                        print("📍 Tapped entry: \(entry.date)")
-                                        #endif
-                                        editingEntry = entry
+                                                                                editingEntry = entry
                                     }
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
@@ -1831,10 +1735,7 @@ struct WeightTrackingView: View {
                     if !silent { isLoadingData = false }
                 }
             } catch {
-                #if DEBUG
-                print("Error loading weight data from Firebase: \(error)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     hasCheckedHeight = true
                     if !silent { isLoadingData = false }
                 }
@@ -1856,14 +1757,8 @@ struct WeightTrackingView: View {
                     }
                     entryToDelete = nil
                 }
-                #if DEBUG
-                print("✅ Weight entry deleted successfully")
-                #endif
-            } catch {
-                #if DEBUG
-                print("❌ Error deleting weight entry: \(error)")
-                #endif
-                await MainActor.run {
+                            } catch {
+                                await MainActor.run {
                     entryToDelete = nil
                 }
             }
@@ -2719,10 +2614,7 @@ struct ProgressWeightEntryDetailView: View {
                                 isLoadingPhoto = false
                             }
                         } catch {
-                            #if DEBUG
-                            print("❌ Error loading photo: \(error.localizedDescription)")
-                            #endif
-                            await MainActor.run {
+                                                        await MainActor.run {
                                 isLoadingPhoto = false
                             }
                         }
@@ -3379,14 +3271,8 @@ struct AddWeightView: View {
 
                                     // Delete button
                                     Button(action: {
-                                        #if DEBUG
-                                        print("   Current photo count: \(selectedPhotos.count)")
-                                        #endif
-                                        selectedPhotos.removeAll { $0.id == identifiableImage.id }
-                                        #if DEBUG
-                                        print("   After deletion count: \(selectedPhotos.count)")
-                                        #endif
-                                    }) {
+                                                                                selectedPhotos.removeAll { $0.id == identifiableImage.id }
+                                                                            }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.system(size: 24))
                                             .foregroundColor(.white)
@@ -3403,10 +3289,7 @@ struct AddWeightView: View {
                     // Show add photo buttons if less than 3 photos
                     if selectedPhotos.count < 3 {
                         Button(action: {
-                            #if DEBUG
-                            print("📷 Take Photo button tapped")
-                            #endif
-                            activePickerType = .camera
+                                                        activePickerType = .camera
                         }) {
                             HStack {
                                 Image(systemName: "camera.fill")
@@ -3513,44 +3396,27 @@ struct AddWeightView: View {
                     ImagePicker(selectedImage: nil, sourceType: .camera) { image in
                         activePickerType = nil // Dismiss picker
                         if let image = image, selectedPhotos.count < 3 {
-                            #if DEBUG
-                            print("✅ AddWeightView: Photo from camera, adding to array (current count: \(selectedPhotos.count))")
-                            #endif
-                            selectedPhotos.append(IdentifiableImage(image: image, url: nil))
+                                                        selectedPhotos.append(IdentifiableImage(image: image, url: nil))
                         }
                     }
                 }
             }
             .fullScreenCover(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-                    #if DEBUG
-                    print("   Current photo count before adding: \(selectedPhotos.count)")
-
-                    // Add photos up to the limit of 3
-                    #endif
-                    let availableSlots = 3 - selectedPhotos.count
+                                        let availableSlots = 3 - selectedPhotos.count
                     let photosToAdd = min(images.count, availableSlots)
 
                     for i in 0..<photosToAdd {
                         selectedPhotos.append(IdentifiableImage(image: images[i], url: nil))
-                        #if DEBUG
-                        print("   ✅ Added photo \(i + 1)/\(photosToAdd), new count: \(selectedPhotos.count)")
-                        #endif
-                    }
+                                            }
 
                     if images.count > photosToAdd {
-                        #if DEBUG
-                        print("   ⚠️ Ignored \(images.count - photosToAdd) photos (limit reached)")
-                        #endif
-                    }
+                                            }
                 }
             }
             .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
                 Button("Take Photo") {
-                    #if DEBUG
-                    print("📷 Dialog: Take Photo selected")
-                    #endif
-                    activePickerType = .camera
+                                        activePickerType = .camera
                 }
                 Button("Choose from Library") {
                     activePickerType = .photoLibrary
@@ -3580,26 +3446,14 @@ struct AddWeightView: View {
                     // Save all images locally
                     do {
                         try ImageCacheManager.shared.saveWeightImages(images, for: entryId.uuidString)
-                        #if DEBUG
-                        print("✅ Saved \(images.count) weight images to local cache for entry: \(entryId)")
-                        #endif
-                    } catch {
-                        #if DEBUG
-                        print("⚠️ Failed to cache weight images locally: \(error)")
-                        #endif
-                    }
+                                            } catch {
+                                            }
 
                     // Upload to Firebase for backup/sync
                     do {
                         photoURLs = try await firebaseManager.uploadWeightPhotos(images)
-                        #if DEBUG
-                        print("☁️ Uploaded \(photoURLs.count) weight images to Firebase")
-                        #endif
-                    } catch {
-                        #if DEBUG
-                        print("⚠️ Firebase upload failed (using local cache): \(error)")
-                        #endif
-                    }
+                                            } catch {
+                                            }
                 }
 
                 // Parse measurements
@@ -3659,10 +3513,7 @@ struct AddWeightView: View {
                     dismiss()
                 }
             } catch {
-                #if DEBUG
-                print("Error saving weight entry: \(error)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     isUploading = false
                 }
             }
@@ -3911,14 +3762,8 @@ struct EditWeightView: View {
 
                                     // Delete button
                                     Button(action: {
-                                        #if DEBUG
-                                        print("   Current photo count: \(selectedPhotos.count)")
-                                        #endif
-                                        selectedPhotos.removeAll { $0.id == identifiableImage.id }
-                                        #if DEBUG
-                                        print("   After deletion count: \(selectedPhotos.count)")
-                                        #endif
-                                    }) {
+                                                                                selectedPhotos.removeAll { $0.id == identifiableImage.id }
+                                                                            }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.system(size: 24))
                                             .foregroundColor(.white)
@@ -4075,20 +3920,14 @@ struct EditWeightView: View {
                     ImagePicker(selectedImage: nil, sourceType: .camera) { image in
                         activePickerType = nil // Dismiss picker
                         if let image = image, selectedPhotos.count < 3 {
-                            #if DEBUG
-                            print("✅ EditWeightView: Photo from camera, adding to array (current count: \(selectedPhotos.count))")
-                            #endif
-                            selectedPhotos.append(IdentifiableImage(image: image, url: nil))
+                                                        selectedPhotos.append(IdentifiableImage(image: image, url: nil))
                         }
                     }
                 }
             }
             .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
                 Button("Take Photo") {
-                    #if DEBUG
-                    print("📷 Take Photo button tapped")
-                    #endif
-                    activePickerType = .camera
+                                        activePickerType = .camera
                 }
                 Button("Choose from Library") {
                     showingMultiImagePicker = true
@@ -4097,26 +3936,15 @@ struct EditWeightView: View {
             }
             .fullScreenCover(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-                    #if DEBUG
-                    print("   Current photo count before adding: \(selectedPhotos.count)")
-
-                    // Add photos up to the limit of 3
-                    #endif
-                    let availableSlots = 3 - selectedPhotos.count
+                                        let availableSlots = 3 - selectedPhotos.count
                     let photosToAdd = min(images.count, availableSlots)
 
                     for i in 0..<photosToAdd {
                         selectedPhotos.append(IdentifiableImage(image: images[i], url: nil))
-                        #if DEBUG
-                        print("   ✅ Added photo \(i + 1)/\(photosToAdd), new count: \(selectedPhotos.count)")
-                        #endif
-                    }
+                                            }
 
                     if images.count > photosToAdd {
-                        #if DEBUG
-                        print("   ⚠️ Ignored \(images.count - photosToAdd) photos (limit reached)")
-                        #endif
-                    }
+                                            }
                 }
             }
             .fullScreenCover(item: $selectedPhotoForViewing) { photo in
@@ -4150,30 +3978,17 @@ struct EditWeightView: View {
     }
 
     private func convertWeight(from oldUnit: WeightUnit, to newUnit: WeightUnit) {
-        #if DEBUG
-        print("   Current primaryWeight: '\(primaryWeight)', secondaryWeight: '\(secondaryWeight)'")
-
-        #endif
-        withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.2)) {
             // First, get current weight in kg for conversion
             guard let primary = Double(primaryWeight), primary > 0 else { return }
             let secondary = !secondaryWeight.isEmpty ? Double(secondaryWeight) : nil
 
             // Convert from old unit to kg
             let kg = oldUnit.toKg(primary: primary, secondary: secondary)
-            #if DEBUG
-            print("   Intermediate kg value: \(kg) kg")
-
-            #endif
-            if newUnit == .kg {
+                        if newUnit == .kg {
                 // Converting TO kg
                 self.primaryWeight = String(format: "%.1f", kg)
-                #if DEBUG
-                print("   ✅ Converted to \(self.primaryWeight) kg")
-
-                // Clear secondary field after delay
-                #endif
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self.secondaryWeight = ""
                 }
             } else if newUnit == .stones {
@@ -4183,19 +3998,11 @@ struct EditWeightView: View {
                 // Update stones/lbs fields FIRST
                 self.primaryWeight = String(format: "%.0f", converted.primary)
                 self.secondaryWeight = String(format: "%.1f", converted.secondary ?? 0)
-                #if DEBUG
-                print("   ✅ Converted to \(self.primaryWeight) st \(self.secondaryWeight) lbs")
-                #endif
-            } else if newUnit == .lbs {
+                            } else if newUnit == .lbs {
                 // Converting TO lbs
                 let converted = WeightUnit.lbs.fromKg(kg)
                 self.primaryWeight = String(format: "%.1f", converted.primary)
-                #if DEBUG
-                print("   ✅ Converted to \(self.primaryWeight) lbs")
-
-                // Clear secondary field after delay
-                #endif
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self.secondaryWeight = ""
                 }
             }
@@ -4203,29 +4010,16 @@ struct EditWeightView: View {
     }
 
     private func convertHeight(from oldUnit: HeightUnit, to newUnit: HeightUnit) {
-        #if DEBUG
-        print("   Current primaryHeight: '\(primaryHeight)', secondaryHeight: '\(secondaryHeight)'")
-
-        #endif
-        withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.2)) {
             guard let primary = Double(primaryHeight), primary > 0 else { return }
             let secondary = !secondaryHeight.isEmpty ? Double(secondaryHeight) : nil
 
             // Convert from old unit to cm
             let cm = oldUnit.toCm(primary: primary, secondary: secondary)
-            #if DEBUG
-            print("   Intermediate cm value: \(cm) cm")
-
-            #endif
-            if newUnit == .cm {
+                        if newUnit == .cm {
                 // Converting TO cm
                 self.primaryHeight = String(format: "%.0f", cm)
-                #if DEBUG
-                print("   ✅ Converted to \(self.primaryHeight) cm")
-
-                // Clear secondary field after delay
-                #endif
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self.secondaryHeight = ""
                 }
             } else if newUnit == .ftIn {
@@ -4235,10 +4029,7 @@ struct EditWeightView: View {
                 // Update ft/in fields FIRST
                 self.primaryHeight = String(format: "%.0f", converted.primary)
                 self.secondaryHeight = String(format: "%.0f", converted.secondary ?? 0)
-                #if DEBUG
-                print("   ✅ Converted to \(self.primaryHeight) ft \(self.secondaryHeight) in")
-                #endif
-            }
+                            }
         }
     }
 
@@ -4265,10 +4056,7 @@ struct EditWeightView: View {
                 for (index, image) in cachedImages.enumerated() {
                     loadedImages.append(IdentifiableImage(image: image, url: urls[index]))
                 }
-                #if DEBUG
-                print("⚡️ Loaded \(cachedImages.count) weight images from local cache")
-                #endif
-            } else {
+                            } else {
                 // Load from Firebase and cache locally
                 for (index, url) in urls.enumerated() {
                     do {
@@ -4279,24 +4067,12 @@ struct EditWeightView: View {
                         let imageId = "\(entry.id.uuidString)_\(index)"
                         do {
                             try await ImageCacheManager.shared.saveWeightImageAsync(image, for: imageId)
-                            #if DEBUG
-                            print("💾 Cached downloaded weight image: \(imageId)")
-                            #endif
-                        } catch {
-                            #if DEBUG
-                            print("⚠️ Failed to cache downloaded image: \(error)")
-                            #endif
-                        }
+                                                    } catch {
+                                                    }
                     } catch {
-                        #if DEBUG
-                        print("Error loading photo from \(url): \(error)")
-                        #endif
-                    }
+                                            }
                 }
-                #if DEBUG
-                print("📸 Loaded \(loadedImages.count) weight images from Firebase")
-                #endif
-            }
+                            }
 
             await MainActor.run {
                 selectedPhotos = loadedImages
@@ -4336,27 +4112,15 @@ struct EditWeightView: View {
                             let imageId = "\(entry.id.uuidString)_\(currentPhotoCount + index)"
                             try await ImageCacheManager.shared.saveWeightImageAsync(image, for: imageId)
                         }
-                        #if DEBUG
-                        print("✅ Saved \(newPhotosToUpload.count) new weight images to local cache")
-                        #endif
-                    } catch {
-                        #if DEBUG
-                        print("⚠️ Failed to cache new weight images locally: \(error)")
-                        #endif
-                    }
+                                            } catch {
+                                            }
 
                     // Upload new photos to Firebase for backup/sync
                     do {
                         let newURLs = try await firebaseManager.uploadWeightPhotos(newPhotosToUpload)
                         photoURLs.append(contentsOf: newURLs)
-                        #if DEBUG
-                        print("☁️ Uploaded \(newURLs.count) new weight images to Firebase")
-                        #endif
-                    } catch {
-                        #if DEBUG
-                        print("⚠️ Firebase upload failed (using local cache): \(error)")
-                        #endif
-                    }
+                                            } catch {
+                                            }
                 }
 
                 // Parse measurements
@@ -4424,10 +4188,7 @@ struct EditWeightView: View {
                     dismiss()
                 }
             } catch {
-                #if DEBUG
-                print("Error updating weight entry: \(error)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     isUploading = false
                 }
             }
@@ -4568,10 +4329,7 @@ struct HeightSetupView: View {
                     dismiss()
                 }
             } catch {
-                #if DEBUG
-                print("Error saving height: \(error)")
-                #endif
-            }
+                            }
         }
     }
 }
@@ -5124,31 +4882,19 @@ struct AddFoodMainView: View {
             isCheckingLimit = true
             do {
                 let hasAccess = subscriptionManager.hasAccess
-                #if DEBUG
-                print("📊 Diary limit check - hasAccess: \(hasAccess), isSubscribed: \(subscriptionManager.isSubscribed), isInTrial: \(subscriptionManager.isInTrial), isPremiumOverride: \(subscriptionManager.isPremiumOverride)")
-                #endif
-                if hasAccess {
+                                if hasAccess {
                     canAddMore = true
                     currentDayEntryCount = 0
-                    #if DEBUG
-                    print("📊 Premium user - unlimited entries allowed")
-                    #endif
-                } else {
+                                    } else {
                     let count = try await FirebaseManager.shared.countFoodEntries(for: Date())
                     currentDayEntryCount = count
                     let limit = SubscriptionManager.freeDiaryEntriesPerDay
                     canAddMore = count < limit
-                    #if DEBUG
-                    print("📊 Free user - count: \(count), limit: \(limit), canAddMore: \(canAddMore)")
-                    #endif
-                }
+                                    }
             } catch {
                 // On error, allow adding (fail open)
                 canAddMore = true
-                #if DEBUG
-                print("❌ Error checking diary limit: \(error)")
-                #endif
-            }
+                            }
             isCheckingLimit = false
         }
     }
@@ -5614,10 +5360,7 @@ struct PendingVerificationRow: View {
                                             barcodeImage: barcode
                                         )
                                     } catch {
-                                        #if DEBUG
-                                        print("Error completing submission: \(error)")
-                                        #endif
-                                    }
+                                                                            }
                                 }
                             },
                             onSkip: {

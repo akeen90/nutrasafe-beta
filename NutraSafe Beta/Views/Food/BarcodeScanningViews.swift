@@ -110,7 +110,7 @@ struct AddFoodBarcodeView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(UIColor.systemBackground))
+                .background(Color.adaptiveCard)
 
             } else {
                 // Camera scanning view
@@ -249,20 +249,14 @@ struct AddFoodBarcodeView: View {
 
         // If all nutrition is zero AND no ingredients, reject
         if allZero && !hasIngredients {
-            #if DEBUG
-            print("❌ Validation failed: All nutrition values zero and no ingredients")
-            #endif
-            return false
+                        return false
         }
 
         // If we have macros but zero calories, that's suspicious
         // (Exception: very small amounts can round to 0)
         let totalMacros = protein + carbs + fat
         if totalMacros > 5 && calories == 0 {
-            #if DEBUG
-            print("❌ Validation failed: Has macros (\(totalMacros)g) but 0 calories")
-            #endif
-            return false
+                        return false
         }
 
         // Calculate expected calories from macros (protein=4, carbs=4, fat=9 kcal/g)
@@ -274,26 +268,17 @@ struct AddFoodBarcodeView: View {
             let ratio = calories / expectedCalories
             // Reject if calories are way off (less than 30% or more than 200% of expected)
             if ratio < 0.3 || ratio > 2.0 {
-                #if DEBUG
-                print("❌ Validation failed: Calories (\(calories)) don't match macros (expected ~\(Int(expectedCalories)))")
-                #endif
-                return false
+                                return false
             }
         }
 
         // If we have calories but zero macros, that's also suspicious
         // (Exception: diet drinks can have 1-5 kcal with essentially 0 macros)
         if calories > 10 && totalMacros == 0 && !hasIngredients {
-            #if DEBUG
-            print("❌ Validation failed: Has calories (\(calories)) but no macros and no ingredients")
-            #endif
-            return false
+                        return false
         }
 
-        #if DEBUG
-        print("✅ Nutrition data validated: \(Int(calories)) kcal, P:\(protein)g C:\(carbs)g F:\(fat)g, ingredients: \(hasIngredients)")
-        #endif
-        return true
+                return true
     }
 
     // MARK: - Barcode Handling
@@ -306,20 +291,14 @@ struct AddFoodBarcodeView: View {
         Task {
             // Step 1: Normalize barcode to handle format variations
             let barcodeVariations = normalizeBarcode(barcode)
-            #if DEBUG
-            print("🔍 Searching for barcode variations: \(barcodeVariations)")
-            #endif
-
+            
             // Step 2: Try Algolia exact barcode lookup across indices (fast path)
             var foundInAlgolia: FoodSearchResult? = nil
             for variation in barcodeVariations {
                 do {
                     if let hit = try await AlgoliaSearchManager.shared.searchByBarcode(variation) {
                         foundInAlgolia = hit
-                        #if DEBUG
-                        print("✅ Found in Algolia with barcode: \(variation)")
-                        #endif
-                        break
+                                                break
                     }
                 } catch {
                     // Continue to next variation/fallback
@@ -336,17 +315,11 @@ struct AddFoodBarcodeView: View {
                     }
                     return
                 } else {
-                    #if DEBUG
-                    print("⚠️ Algolia product has invalid nutrition data, trying Cloud Function...")
-                    #endif
-                    // Continue to Cloud Function fallback
+                                        // Continue to Cloud Function fallback
                 }
             }
 
-            #if DEBUG
-            print("⚠️ Not found in Algolia, falling back to Firebase Cloud Function...")
-            #endif
-
+            
             // Step 3: Fallback to Firebase Cloud Function (which falls back to OpenFoodFacts)
             searchProductByBarcode(barcode) { result in
                 Task { @MainActor in
@@ -355,22 +328,13 @@ struct AddFoodBarcodeView: View {
                     switch result {
                     case .success(let response):
                         if response.success, let product = response.toFoodSearchResult() {
-                            #if DEBUG
-                            print("✅ Found via Cloud Function: \(product.name)")
-                            print("   Nutrition per 100g → kcal: \(product.calories), protein: \(product.protein), carbs: \(product.carbs), fat: \(product.fat), fiber: \(product.fiber), sugar: \(product.sugar), sodium: \(product.sodium)")
-                            print("   Serving: \(product.servingDescription ?? "nil") sizeG: \(product.servingSizeG ?? -1)")
-                            print("   Ingredients: \(product.ingredients?.count ?? 0) items")
-                            #endif
-
+                            
                             // Validate nutrition data from external sources (OpenFoodFacts)
                             // Reject products with missing/invalid data
                             if self.hasValidNutritionData(product) {
                                 self.scannedProduct = product
                             } else {
-                                #if DEBUG
-                                print("⚠️ Rejecting product - invalid/missing nutrition data")
-                                #endif
-                                self.errorMessage = "This product has incomplete nutrition data."
+                                                                self.errorMessage = "This product has incomplete nutrition data."
                                 self.pendingContribution = PendingFoodContribution(
                                     placeholderId: "",
                                     barcode: barcode
@@ -379,10 +343,7 @@ struct AddFoodBarcodeView: View {
                         } else if response.action == "user_contribution_needed",
                                   let placeholderId = response.placeholder_id {
                             // Product not found anywhere - show manual add option
-                            #if DEBUG
-                            print("📱 Product not found anywhere. Showing manual add option.")
-                            #endif
-                            self.pendingContribution = PendingFoodContribution(
+                                                        self.pendingContribution = PendingFoodContribution(
                                 placeholderId: placeholderId,
                                 barcode: barcode
                             )
@@ -396,10 +357,7 @@ struct AddFoodBarcodeView: View {
                         }
                     case .failure(let error):
                         // Network failure - show user-friendly error and manual add option
-                        #if DEBUG
-                        print("❌ Network error: \(error)")
-                        #endif
-
+                        
                         // Determine error type and show appropriate message
                         if let urlError = error as? URLError {
                             switch urlError.code {
@@ -586,15 +544,6 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             return
         }
 
-        #if DEBUG
-        print("📸 Using camera: \(videoCaptureDevice.localizedName)")
-        print("📸 Device type: \(videoCaptureDevice.deviceType.rawValue)")
-        print("📸 Is virtual device: \(videoCaptureDevice.isVirtualDevice)")
-        if videoCaptureDevice.isVirtualDevice {
-            print("📸 Constituent devices: \(videoCaptureDevice.constituentDevices.map { $0.localizedName })")
-        }
-        #endif
-
         self.videoCaptureDevice = videoCaptureDevice
 
         let captureSession = AVCaptureSession()
@@ -616,10 +565,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                     .auto,
                     restrictedSwitchingBehaviorConditions: []
                 )
-                #if DEBUG
-                print("📸 Enabled automatic camera switching for macro mode")
-                #endif
-            }
+                            }
 
             // Enable continuous autofocus
             if videoCaptureDevice.isFocusModeSupported(.continuousAutoFocus) {
@@ -653,10 +599,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
                 let actualZoom = min(desiredZoom, maxZoom)
                 videoCaptureDevice.videoZoomFactor = actualZoom
-                #if DEBUG
-                print("📸 Camera zoom set to \(actualZoom)x for close-up scanning")
-                #endif
-            }
+                            }
 
             videoCaptureDevice.unlockForConfiguration()
 
@@ -694,10 +637,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             self.captureSession = captureSession
             self.previewLayer = previewLayer
             
-            #if DEBUG
-            print("Camera setup completed successfully")
-            #endif
-            
+                        
         } catch {
             showCameraError("Camera setup failed: \(error.localizedDescription)")
         }
@@ -754,10 +694,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20)
         ])
 
-        #if DEBUG
-        print("📷 Camera Error: \(message)")
-        #endif
-    }
+            }
     
     // MARK: - Barcode Detection Delegate
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
@@ -780,16 +717,10 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             if candidateBarcode == stringValue {
                 // Same barcode detected again - increment counter
                 consecutiveDetections += 1
-                #if DEBUG
-                print("📸 Barcode verification: \(consecutiveDetections)/\(requiredConsecutiveDetections) - \(stringValue)")
-                #endif
-
+                
                 if consecutiveDetections >= requiredConsecutiveDetections {
                     // Success! We have 3 consecutive identical reads
-                    #if DEBUG
-                    print("✅ Barcode verified after \(requiredConsecutiveDetections) consecutive detections: \(stringValue)")
-                    #endif
-
+                    
                     lastScannedBarcode = stringValue
                     lastScanTime = now
 
@@ -805,17 +736,11 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 // Different barcode detected - reset and start new verification
                 candidateBarcode = stringValue
                 consecutiveDetections = 1
-                #if DEBUG
-                print("🔄 New barcode candidate: \(stringValue) (1/\(requiredConsecutiveDetections))")
-                #endif
-            }
+                            }
         } else {
             // No barcode detected in this frame - reset verification
             if candidateBarcode != nil {
-                #if DEBUG
-                print("❌ Lost barcode lock - resetting verification")
-                #endif
-                candidateBarcode = nil
+                                candidateBarcode = nil
                 consecutiveDetections = 0
             }
         }

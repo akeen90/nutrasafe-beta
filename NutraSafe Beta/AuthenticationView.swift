@@ -164,10 +164,7 @@ struct SignInView: View {
 
                 // Apple Sign In - Custom Button with ASAuthorizationController
                 Button(action: {
-                    #if DEBUG
-                    print("🍎 Apple Sign In button tapped!")
-                    #endif
-                    appleSignInCoordinator.startSignInWithApple(firebaseManager: firebaseManager) { result in
+                                        appleSignInCoordinator.startSignInWithApple(firebaseManager: firebaseManager) { result in
                         handleAppleSignIn(result: result)
                     }
                 }) {
@@ -243,20 +240,11 @@ struct SignInView: View {
         switch result {
         case .success(let authorization):
             isLoading = true
-            #if DEBUG
-            print("✅ Apple authorization received, attempting Firebase sign in...")
-            #endif
-            Task {
+                        Task {
                 do {
                     try await firebaseManager.signInWithApple(authorization: authorization)
-                    #if DEBUG
-                    print("✅ Successfully signed in with Apple!")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("❌ Apple sign-in error: \(error.localizedDescription)")
-                    #endif
-                    await MainActor.run {
+                                    } catch {
+                                        await MainActor.run {
                         errorMessage = "Sign in failed: \(error.localizedDescription)"
                         showingError = true
                         isLoading = false
@@ -264,10 +252,7 @@ struct SignInView: View {
                 }
             }
         case .failure(let error):
-            #if DEBUG
-            print("❌ Apple authorization failed: \(error.localizedDescription), code: \((error as NSError).code)")
-            #endif
-            // Don't show error for user cancellation
+                        // Don't show error for user cancellation
             if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
                 errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
                 showingError = true
@@ -430,10 +415,7 @@ struct SignUpView: View {
 
                 // Apple Sign In - Custom Button with ASAuthorizationController
                 Button(action: {
-                    #if DEBUG
-                    print("🍎 Apple Sign Up button tapped!")
-                    #endif
-                    appleSignInCoordinator.startSignInWithApple(firebaseManager: firebaseManager) { result in
+                                        appleSignInCoordinator.startSignInWithApple(firebaseManager: firebaseManager) { result in
                         handleAppleSignIn(result: result)
                     }
                 }) {
@@ -473,20 +455,11 @@ struct SignUpView: View {
         switch result {
         case .success(let authorization):
             isLoading = true
-            #if DEBUG
-            print("✅ Apple authorization received (Sign Up), attempting Firebase sign in...")
-            #endif
-            Task {
+                        Task {
                 do {
                     try await firebaseManager.signInWithApple(authorization: authorization)
-                    #if DEBUG
-                    print("✅ Successfully signed up/in with Apple!")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("❌ Apple sign-up error: \(error.localizedDescription)")
-                    #endif
-                    await MainActor.run {
+                                    } catch {
+                                        await MainActor.run {
                         errorMessage = "Sign up failed: \(error.localizedDescription)"
                         showingError = true
                         isLoading = false
@@ -494,10 +467,7 @@ struct SignUpView: View {
                 }
             }
         case .failure(let error):
-            #if DEBUG
-            print("❌ Apple authorization failed (Sign Up): \(error.localizedDescription), code: \((error as NSError).code)")
-            #endif
-            // Don't show error for user cancellation
+                        // Don't show error for user cancellation
             if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
                 errorMessage = "Apple Sign Up failed: \(error.localizedDescription)"
                 showingError = true
@@ -923,20 +893,14 @@ class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControl
     private var currentNonce: String?
 
     func startSignInWithApple(firebaseManager: FirebaseManager, completion: @escaping (Result<ASAuthorization, Error>) -> Void) {
-        #if DEBUG
-        print("🍎 [Coordinator] Starting Apple Sign In flow...")
-        #endif
-
+        
         self.completionHandler = completion
 
         // Generate nonce
         let nonce = firebaseManager.startAppleSignIn()
         self.currentNonce = nonce
 
-        #if DEBUG
-        print("🍎 [Coordinator] Nonce generated, creating request...")
-        #endif
-
+        
         // Create Apple ID request
         let appleIDProvider = ASAuthorizationAppleIDProvider()
         let request = appleIDProvider.createRequest()
@@ -948,10 +912,7 @@ class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControl
         authorizationController.delegate = self
         authorizationController.presentationContextProvider = self
 
-        #if DEBUG
-        print("🍎 [Coordinator] Performing authorization request...")
-        #endif
-
+        
         // Perform request
         authorizationController.performRequests()
     }
@@ -959,18 +920,12 @@ class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControl
     // MARK: - ASAuthorizationControllerDelegate
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-        #if DEBUG
-        print("✅ [Coordinator] Authorization completed successfully!")
-        #endif
-        completionHandler?(.success(authorization))
+                completionHandler?(.success(authorization))
         completionHandler = nil
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        #if DEBUG
-        print("❌ [Coordinator] Authorization failed with error: \(error.localizedDescription)")
-        #endif
-        completionHandler?(.failure(error))
+                completionHandler?(.failure(error))
         completionHandler = nil
     }
 
@@ -980,15 +935,9 @@ class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControl
         // Return the window to present the authorization UI
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else {
-            #if DEBUG
-            print("⚠️ [Coordinator] No window found, returning empty window")
-            #endif
-            return UIWindow()
+                        return UIWindow()
         }
 
-        #if DEBUG
-        print("✅ [Coordinator] Returning presentation window")
-        #endif
-        return window
+                return window
     }
 }

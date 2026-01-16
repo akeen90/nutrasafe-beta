@@ -140,7 +140,7 @@ struct MicronutrientTimelineView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -165,7 +165,7 @@ struct MicronutrientTimelineView: View {
                     .frame(maxWidth: .infinity)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemBackground))
+                            .fill(Color.adaptiveCard)
                     )
             } else {
                 VStack(spacing: 12) {
@@ -221,7 +221,7 @@ struct MicronutrientTimelineView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
         )
     }
 

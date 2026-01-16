@@ -113,17 +113,11 @@ class MicronutrientDatabase {
 
     private func openDatabase() {
         guard let dbPath = Bundle.main.path(forResource: "micronutrients_ingredients_v6", ofType: "db") else {
-            #if DEBUG
-            print("❌ MicronutrientDatabase: Database file not found in bundle")
-            #endif
-            return
+                        return
         }
 
         if sqlite3_open(dbPath, &db) == SQLITE_OK {
-            #if DEBUG
-            print("✅ MicronutrientDatabase: Successfully opened database at \(dbPath)")
-            #endif
-            isInitialized = true
+                        isInitialized = true
 
             // PERFORMANCE: Preload all nutrients in background (non-blocking startup)
             // This saves 150ms on app launch by not blocking the main thread
@@ -131,14 +125,8 @@ class MicronutrientDatabase {
                 self?.preloadAllNutrients()
             }
         } else {
-            #if DEBUG
-            print("❌ MicronutrientDatabase: Failed to open database")
-            #endif
-            if let error = sqlite3_errmsg(db) {
-                #if DEBUG
-                print("   Error: \(String(cString: error))")
-                #endif
-            }
+                        if let error = sqlite3_errmsg(db) {
+                            }
         }
     }
 
@@ -169,10 +157,7 @@ class MicronutrientDatabase {
         }
 
         guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
-            #if DEBUG
-            print("❌ Failed to prepare preload query")
-            #endif
-            return
+                        return
         }
 
         while sqlite3_step(statement) == SQLITE_ROW {
@@ -193,10 +178,7 @@ class MicronutrientDatabase {
         }
 
         let elapsed = Date().timeIntervalSince(startTime) * 1000 // Convert to milliseconds
-        #if DEBUG
-        print("✅ Preloaded \(count) nutrients into cache in \(String(format: "%.1f", elapsed))ms")
-        #endif
-    }
+            }
 
     // MARK: - Synonym Lookup
 
@@ -421,10 +403,7 @@ class MicronutrientDatabase {
         }
 
         // Cache miss - query database
-        #if DEBUG
-        print("⚠️  Cache miss for nutrient '\(nutrient)' (normalized: '\(normalizedNutrient)') - querying database")
-        #endif
-
+        
         // Use normalizedNutrient (already computed above) for database query
         let query = """
         SELECT nutrient, name, category, benefits, deficiency_signs, common_sources, recommended_daily_intake
@@ -440,10 +419,7 @@ class MicronutrientDatabase {
 
         let prepareResult = sqlite3_prepare_v2(db, query, -1, &statement, nil)
         guard prepareResult == SQLITE_OK else {
-            #if DEBUG
-            print("❌ Failed to prepare statement for '\(normalizedNutrient)': result = \(prepareResult)")
-            #endif
-            return nil
+                        return nil
         }
 
         // CRITICAL: Use SQLITE_TRANSIENT to copy the string
@@ -452,10 +428,7 @@ class MicronutrientDatabase {
 
         let stepResult = sqlite3_step(statement)
         guard stepResult == SQLITE_ROW else {
-            #if DEBUG
-            print("❌ Nutrient not found in database: '\(normalizedNutrient)'")
-            #endif
-            return nil
+                        return nil
         }
 
         let info = NutrientInfo(
@@ -599,10 +572,7 @@ class MicronutrientDatabase {
             // Fortified nutrients are categorized as high sources (0.7 contribution)
             // See bioavailability research above for scientific rationale
             nutrientContributions[detected.nutrient] = 0.7
-            #if DEBUG
-            print("   ✅ \(detected.nutrient) (fortified) - from: \(detected.rawText)")
-            #endif
-        }
+                    }
 
         // 3. Calculate dish complexity penalty
         //

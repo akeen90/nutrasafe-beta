@@ -455,6 +455,8 @@ struct PrivacyPolicyView: View {
                         .frame(height: 40)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.adaptiveBackground.ignoresSafeArea())
             .navigationTitle("Privacy Policy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -465,6 +467,7 @@ struct PrivacyPolicyView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -493,7 +496,7 @@ struct PrivacySection: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)

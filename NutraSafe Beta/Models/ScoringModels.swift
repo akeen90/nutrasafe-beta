@@ -607,35 +607,13 @@ class ProcessingScorer {
         }
         cacheLock.unlock()
 
-        #if DEBUG
-        print("⚗️ [ProcessingScorer] analyzeAdditives() called")
-        print("⚗️ [ProcessingScorer] Input text: '\(ingredientsText.prefix(150))...'")
-        print("⚗️ [ProcessingScorer] Text length: \(ingredientsText.count) characters")
-        print("⚗️ [ProcessingScorer] Database status: \(comprehensiveAdditives != nil ? "LOADED (\(comprehensiveAdditives!.count) additives)" : "NOT LOADED")")
-        print("⚗️ [ProcessingScorer] Database version: \(databaseVersion)")
+                let analysis = analyseAdditives(in: ingredientsText)
 
-        #endif
-        let analysis = analyseAdditives(in: ingredientsText)
-
-        #if DEBUG
-        print("⚗️ [ProcessingScorer] Analysis complete")
-        print("⚗️ [ProcessingScorer] Comprehensive additives found: \(analysis.comprehensiveAdditives.count)")
-
-        #endif
-        if !analysis.comprehensiveAdditives.isEmpty {
-            #if DEBUG
-            print("⚗️ [ProcessingScorer] Detected:")
-            #endif
-            for additive in analysis.comprehensiveAdditives {
-                #if DEBUG
-                print("   - \(additive.eNumber): \(additive.name)")
-                #endif
-            }
+                if !analysis.comprehensiveAdditives.isEmpty {
+                        for additive in analysis.comprehensiveAdditives {
+                            }
         } else {
-            #if DEBUG
-            print("⚠️ [ProcessingScorer] NO ADDITIVES FOUND IN ANALYSIS!")
-            #endif
-        }
+                    }
 
         // PERFORMANCE: Cache the result
         cacheLock.lock()
@@ -920,19 +898,13 @@ class ProcessingScorer {
 
     private lazy var ultraProcessedDatabase: [String: UltraProcessedIngredient]? = {
         guard let path = Bundle.main.path(forResource: "ultra_processed_ingredients", ofType: "json") else {
-            #if DEBUG
-            print("⚠️ WARNING: ultra_processed_ingredients.json not found in bundle!")
-            #endif
-            return nil
+                        return nil
         }
 
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let ingredients = json["ultra_processed_ingredients"] as? [String: Any] else {
-            #if DEBUG
-            print("❌ ERROR: Could not parse ultra_processed_ingredients.json")
-            #endif
-            return nil
+                        return nil
         }
 
         var database: [String: UltraProcessedIngredient] = [:]
@@ -971,51 +943,23 @@ class ProcessingScorer {
             }
         }
 
-        #if DEBUG
-        print("✅ Loaded \(database.count) ultra-processed ingredient entries")
-        #endif
-        return database
+                return database
     }()
 
     private lazy var comprehensiveAdditives: [String: AdditiveInfo]? = {
 
         guard let path = Bundle.main.path(forResource: "ingredients_consolidated", ofType: "json") else {
-            #if DEBUG
-            print("❌ ERROR: ingredients_consolidated.json not found in bundle!")
-            print("📦 Bundle path: \(Bundle.main.bundlePath)")
-            print("📁 Looking for: ingredients_consolidated.json")
-            #endif
-            return nil
+                        return nil
         }
 
-        #if DEBUG
-        print("✅ Found consolidated database file at: \(path)")
-
-        #endif
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
-            #if DEBUG
-            print("❌ ERROR: Could not read data from \(path)")
-            #endif
-            return nil
+                guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+                        return nil
         }
 
-        #if DEBUG
-        print("✅ Loaded \(data.count) bytes of data")
-
-        // Try to decode as consolidated ingredients database format
-        #endif
-        let decoder = JSONDecoder()
+                let decoder = JSONDecoder()
         do {
             let consolidated = try decoder.decode(ConsolidatedIngredientsDatabase.self, from: data)
-            #if DEBUG
-            print("✅ Successfully decoded consolidated database format")
-            print("   - Version: \(consolidated.metadata.version)")
-            print("   - Total ingredients: \(consolidated.metadata.totalCount)")
-            print("   - Last updated: \(consolidated.metadata.last_updated)")
-
-            // Store the version
-            #endif
-            ProcessingScorer.shared.databaseVersion = consolidated.metadata.version
+                        ProcessingScorer.shared.databaseVersion = consolidated.metadata.version
 
             // Convert array to dictionary keyed by eNumber, name, AND synonyms (for better matching)
             var additives: [String: AdditiveInfo] = [:]
@@ -1046,87 +990,30 @@ class ProcessingScorer {
             // Count ingredients with sources
             let withSources = consolidated.ingredients.filter { !$0.sources.isEmpty }.count
             let totalSources = consolidated.ingredients.reduce(0) { $0 + $1.sources.count }
-            #if DEBUG
-            print("✅ Loaded \(uniqueENumbers.count) unique E-numbers from \(consolidated.ingredients.count) ingredients")
-            print("📊 Total database entries (including names/synonyms): \(additives.count)")
-            print("📚 Ingredients with sources: \(withSources)")
-            print("📖 Total source citations: \(totalSources)")
-
-            #endif
             return additives
         } catch {
-            #if DEBUG
-            print("❌ ERROR: Failed to decode consolidated database format: \(error)")
-            #endif
-            if let decodingError = error as? DecodingError {
-                switch decodingError {
-                case .keyNotFound(let key, let context):
-                    #if DEBUG
-                    print("   Missing key '\(key.stringValue)' - \(context.debugDescription)")
-                    #endif
-                case .typeMismatch(let type, let context):
-                    #if DEBUG
-                    print("   Type mismatch for type '\(type)' - \(context.debugDescription)")
-                    #endif
-                case .valueNotFound(let type, let context):
-                    #if DEBUG
-                    print("   Value not found for type '\(type)' - \(context.debugDescription)")
-                    #endif
-                case .dataCorrupted(let context):
-                    #if DEBUG
-                    print("   Data corrupted - \(context.debugDescription)")
-                    #endif
-                @unknown default:
-                    #if DEBUG
-                    print("   Unknown decoding error")
-                    #endif
-                }
-            }
+            // Decoding failed - try fallback format below
         }
 
         // Fallback: Try old nested format for backward compatibility
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            #if DEBUG
-            print("❌ ERROR: Could not parse JSON from data")
-            #endif
-            return nil
+                        return nil
         }
 
-        #if DEBUG
-        print("⚠️ Using legacy database format parser")
-
-        // Check metadata and extract version
-        #endif
-        if let metadata = json["metadata"] as? [String: Any] {
+                if let metadata = json["metadata"] as? [String: Any] {
             let version = metadata["version"] as? String ?? "2025.1"
-            #if DEBUG
-            print("   - Version: \(version)")
-            print("   - Total additives: \(metadata["total_additives"] as? Int ?? 0)")
-            print("   - Last updated: \(metadata["last_updated"] as? String ?? "unknown")")
-
-            // Store the version
-            #endif
-            ProcessingScorer.shared.databaseVersion = version
+                        ProcessingScorer.shared.databaseVersion = version
         }
 
         var additives: [String: AdditiveInfo] = [:]
 
         // Parse the nested category structure (legacy format)
         if let categories = json["categories"] as? [String: Any] {
-            #if DEBUG
-            print("✅ Found \(categories.count) categories in database")
-            #endif
-            for (categoryName, categoryData) in categories {
+                        for (categoryName, categoryData) in categories {
                 if let categoryDict = categoryData as? [String: Any] {
-                    #if DEBUG
-                    print("   📂 Category: \(categoryName)")
-                    #endif
-                    for (rangeName, rangeData) in categoryDict {
+                                        for (rangeName, rangeData) in categoryDict {
                         if let rangeDict = rangeData as? [String: Any] {
-                            #if DEBUG
-                            print("      📊 Range: \(rangeName) with \(rangeDict.count) additives")
-                            #endif
-                            for (code, additiveData) in rangeDict {
+                                                        for (code, additiveData) in rangeDict {
                                 if let additiveDict = additiveData as? [String: Any],
                                    let name = additiveDict["name"] as? String {
 
@@ -1199,10 +1086,7 @@ class ProcessingScorer {
             }
         }
 
-        #if DEBUG
-        print("✅ Loaded \(additives.count) additives from legacy database")
-        #endif
-        return additives
+                return additives
     }()
 
     private static func mapCategoryToGroup(_ categoryName: String) -> AdditiveGroup {
@@ -1275,12 +1159,6 @@ class ProcessingScorer {
         } else {
             cacheLock.unlock()
             guard let newRegex = try? NSRegularExpression(pattern: regexPattern, options: .caseInsensitive) else {
-                #if DEBUG
-                // Only log if pattern seems suspicious
-                if pattern.contains("invert") || pattern.contains("hydrolys") {
-                    print("⚠️ [REGEX ERROR] Failed to create regex for pattern: '\(pattern)'")
-                }
-                #endif
                 return false
             }
             cacheLock.lock()
@@ -1293,13 +1171,6 @@ class ProcessingScorer {
         let matched = regex.firstMatch(in: text, range: range) != nil
 
         // DEBUG: Log matches for problematic patterns
-        #if DEBUG
-        if matched && (pattern.contains("invert") || pattern.contains("hydrolys")) {
-            print("🚨 [MATCH FOUND] Pattern '\(pattern)' matched in text!")
-            print("   Text snippet: '\(text.prefix(200))'")
-        }
-        #endif
-
         return matched
     }
 
@@ -1357,25 +1228,11 @@ class ProcessingScorer {
 
         // Debug logging for Tartrazine specifically
         if additive.eNumber == "E102" && score > 0 {
-            #if DEBUG
-            print("🐛 [DEBUG] E102 Tartrazine matched!")
-            print("   Normalized text: '\(normalized)'")
-            print("   Match types: \(matchDetails.joined(separator: ", "))")
-            print("   Confidence: \(score)")
-            #endif
-        }
+                    }
 
         // DEBUG: Log Invert sugar false positives
         if additive.name.lowercased() == "invert sugar" && score > 0 {
-            #if DEBUG
-            print("🚨 [FALSE POSITIVE?] Invert sugar matched with score \(score)")
-            print("   E-number: '\(additive.eNumber)'")
-            print("   Name: '\(additive.name)'")
-            print("   Synonyms: \(additive.synonyms)")
-            print("   Match details: \(matchDetails)")
-            print("   Normalized text: '\(normalized.prefix(200))'")
-            #endif
-        }
+                    }
 
         return min(score, 1.0)  // Cap at 100%
     }
@@ -1426,13 +1283,7 @@ class ProcessingScorer {
 
         // Use comprehensive database if available
         if let comprehensiveDB = comprehensiveAdditives {
-            #if DEBUG
-            print("🔬 [analyseAdditives] Database available with \(comprehensiveDB.count) additives")
-            print("🔬 [analyseAdditives] Starting matching loop...")
-            print("🔬 [analyseAdditives] Text to analyze: \(normalizedFood.prefix(200))...")
-
-            #endif
-            var matchCount = 0
+                        var matchCount = 0
             // Check for E-numbers and additive names with word boundary detection
             for (code, additiveInfo) in comprehensiveDB {
                 // Calculate match confidence with word boundaries
@@ -1441,12 +1292,7 @@ class ProcessingScorer {
                 // Only include matches with confidence >= 60%
                 if confidence >= 0.6 {
                     matchCount += 1
-                    #if DEBUG
-                    print("🔬 [analyseAdditives] MATCH #\(matchCount): \(code) - \(additiveInfo.name) (confidence: \(confidence))")
-
-                    // Check if already detected (avoid duplicates)
-                    #endif
-                    if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
+                                        if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
                         detectedAdditives.append(additiveInfo)
 
                         // If E-number matched directly, add to eNumbers array
@@ -1464,15 +1310,8 @@ class ProcessingScorer {
                 }
             }
 
-            #if DEBUG
-            print("🔬 [analyseAdditives] Matching loop complete. Total matches: \(matchCount)")
-            print("🔬 [analyseAdditives] Detected additives: \(detectedAdditives.count)")
-            #endif
-        } else {
-            #if DEBUG
-            print("⚠️ [analyseAdditives] Database NOT available! Using fallback analysis")
-            #endif
-        }
+                    } else {
+                    }
         
         // Fallback to basic analysis if comprehensive database not available
         if detectedAdditives.isEmpty {
@@ -1546,18 +1385,9 @@ class ProcessingScorer {
             }
 
             if !ultraProcessedIngredients.isEmpty {
-                #if DEBUG
-                print("🏭 [ProcessingScorer] Detected \(ultraProcessedIngredients.count) ultra-processed ingredients:")
-                #endif
-                for ing in ultraProcessedIngredients {
-                    #if DEBUG
-                    print("   - \(ing.name) (penalty: \(ing.processing_penalty))")
-                    #endif
-                }
-                #if DEBUG
-                print("   Total ultra-processed penalty: \(ultraProcessedPenalty)")
-                #endif
-            }
+                                for ing in ultraProcessedIngredients {
+                                    }
+                            }
         }
 
         let result = AdditiveAnalysis(

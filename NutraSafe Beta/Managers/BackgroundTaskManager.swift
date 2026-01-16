@@ -25,10 +25,7 @@ class BackgroundTaskManager {
             self.handleNotificationRefresh(task: task as! BGAppRefreshTask)
         }
 
-        #if DEBUG
-        print("✅ Background tasks registered: \(Self.notificationRefreshTaskId)")
-        #endif
-    }
+            }
 
     /// Schedule next background refresh task
     func scheduleNotificationRefresh() {
@@ -37,31 +34,19 @@ class BackgroundTaskManager {
 
         do {
             try BGTaskScheduler.shared.submit(request)
-            #if DEBUG
-            print("📅 Background refresh scheduled for \(request.earliestBeginDate!)")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ Could not schedule background refresh: \(error)")
-            #endif
-        }
+                    } catch {
+                    }
     }
 
     /// Handle background notification refresh task
     private func handleNotificationRefresh(task: BGAppRefreshTask) {
-        #if DEBUG
-        print("⏰ Background notification refresh task started")
-        #endif
-
+        
         // Schedule next iteration before processing
         scheduleNotificationRefresh()
 
         // Set expiration handler
         task.expirationHandler = {
-            #if DEBUG
-            print("⚠️ Background task expired")
-            #endif
-        }
+                    }
 
         // Execute refresh asynchronously
         Task {
@@ -75,10 +60,7 @@ class BackgroundTaskManager {
                     let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
                     await UseByNotificationManager.shared.refreshAllNotifications(for: items)
                 } catch {
-                    #if DEBUG
-                    print("⚠️ Failed to refresh Use By notifications: \(error)")
-                    #endif
-                }
+                                    }
 
                 task.setTaskCompleted(success: true)
             } catch {

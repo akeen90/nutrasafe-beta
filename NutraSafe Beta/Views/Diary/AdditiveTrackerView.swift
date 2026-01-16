@@ -111,7 +111,7 @@ struct AdditiveTrackerSection: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+                .fill(Color.adaptiveCard)
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
         .padding(.horizontal, 16)

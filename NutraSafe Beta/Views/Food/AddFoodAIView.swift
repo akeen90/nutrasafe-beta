@@ -153,7 +153,7 @@ struct AddFoodAIView: View {
         }
         .padding(.top, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         // Removed auto-launch - user chooses camera or gallery from the initial screen
         .fullScreenCover(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { [self] image in
@@ -165,26 +165,17 @@ struct AddFoodAIView: View {
                     let isPremiumOverride = subscriptionManager.isPremiumOverride
                     let hasPro = isSubscribed || isInTrial || isPremiumOverride
 
-                    #if DEBUG
-                    print("📸 Subscription check - isSubscribed: \(isSubscribed), isInTrial: \(isInTrial), isPremiumOverride: \(isPremiumOverride), hasPro: \(hasPro)")
-                    #endif
-
+                    
                     if hasPro {
                         // Pro user - proceed with analysis
                         isScanning = true
                         errorMessage = nil
-                        #if DEBUG
-                        print("📸 Image received, starting analysis...")
-                        #endif
-                        analyzeImage(image)
+                                                analyzeImage(image)
                     } else {
                         // Non-subscriber - show Pro feature gate
                         capturedImageForGate = image
                         showingProFeatureGate = true
-                        #if DEBUG
-                        print("📸 Image captured, showing Pro feature gate...")
-                        #endif
-                    }
+                                            }
                 } else {
                     // User cancelled OR image extraction failed
                     hasLaunchedCamera = false
@@ -234,34 +225,22 @@ struct AddFoodAIView: View {
                         let isPremiumOverride = subscriptionManager.isPremiumOverride
                         let hasPro = isSubscribed || isInTrial || isPremiumOverride
 
-                        #if DEBUG
-                        print("📸 Gallery subscription check - isSubscribed: \(isSubscribed), isInTrial: \(isInTrial), isPremiumOverride: \(isPremiumOverride), hasPro: \(hasPro)")
-                        #endif
-
+                        
                         if hasPro {
                             // Pro user - proceed with analysis
                             isScanning = true
                             errorMessage = nil
-                            #if DEBUG
-                            print("📸 Gallery image received, starting analysis...")
-                            #endif
-                            analyzeImage(image)
+                                                        analyzeImage(image)
                         } else {
                             // Non-subscriber - show Pro feature gate
                             capturedImageForGate = image
                             showingProFeatureGate = true
-                            #if DEBUG
-                            print("📸 Gallery image captured, showing Pro feature gate...")
-                            #endif
-                        }
+                                                    }
                     } else {
                         // User cancelled or image loading failed
                         hasLaunchedCamera = false
                         // Only show error if this wasn't an explicit cancel (images array was expected)
-                        #if DEBUG
-                        print("⚠️ No image from gallery picker")
-                        #endif
-                    }
+                                            }
                 }
             }
         }
@@ -379,19 +358,13 @@ struct AddFoodAIView: View {
                 DispatchQueue.main.async {
                     if granted {
                         self.presentImagePicker()
-                    } else {
-                        // Show permission denied message
-                        #if DEBUG
-                        print("Camera permission denied")
-                        #endif
                     }
+                    // If not granted, user can try again later
                 }
             }
         case .denied, .restricted:
-            // Show settings alert to enable camera
-            #if DEBUG
-            print("Camera permission denied - redirect to settings")
-            #endif
+            // Show settings alert to enable camera - handled by UI
+            break
         @unknown default:
             break
         }
@@ -429,11 +402,7 @@ struct AddFoodAIView: View {
         recognizedFoods = []
         errorMessage = nil
 
-        #if DEBUG
-        print("📸 Starting food recognition...")
-        print("   Image size: \(Int(image.size.width))x\(Int(image.size.height))")
-        #endif
-
+        
         Task {
             do {
                 let recognizedItems = try await recognizeFoodWithRetry(from: image, maxRetries: 2)
@@ -442,15 +411,9 @@ struct AddFoodAIView: View {
                     if recognizedItems.isEmpty {
                         self.errorMessage = "No food items detected. Try taking another photo with better lighting."
                         self.hasLaunchedCamera = false
-                        #if DEBUG
-                        print("⚠️ No foods detected in image")
-                        #endif
-                    } else {
+                                            } else {
                         self.recognizedFoods = recognizedItems
-                        #if DEBUG
-                        print("✅ Detected \(recognizedItems.count) food items")
-                        #endif
-                    }
+                                            }
                 }
             } catch let error as NSError {
                 await MainActor.run {
@@ -502,14 +465,7 @@ struct AddFoodAIView: View {
                         self.errorMessage = "Analysis failed \(diagInfo)."
                     }
 
-                    #if DEBUG
-                    print("❌ Food recognition failed: \(error.localizedDescription)")
-                    print("   Domain: \(error.domain), Code: \(error.code)")
-                    if let userInfo = error.userInfo[NSLocalizedDescriptionKey] as? String {
-                        print("   Description: \(userInfo)")
                     }
-                    #endif
-                }
             }
         }
     }
@@ -519,18 +475,10 @@ struct AddFoodAIView: View {
 
         for attempt in 0...maxRetries {
             do {
-                #if DEBUG
-                if attempt > 0 {
-                    print("🔄 Retry attempt \(attempt) of \(maxRetries)")
-                }
-                #endif
                 return try await recognizeFood(from: image)
             } catch {
                 lastError = error
-                #if DEBUG
-                print("⚠️ Attempt \(attempt + 1) failed: \(error.localizedDescription)")
-                #endif
-
+                
                 // Only retry on network errors, not server errors
                 if let nsError = error as NSError?,
                    nsError.domain == NSURLErrorDomain,
@@ -557,10 +505,7 @@ struct AddFoodAIView: View {
             image.draw(in: CGRect(origin: .zero, size: newSize))
             processedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
             UIGraphicsEndImageContext()
-            #if DEBUG
-            print("   Resized image to \(Int(newSize.width))x\(Int(newSize.height))")
-            #endif
-        }
+                    }
 
         // Compress image for upload (0.8 for better quality)
         guard let imageData = processedImage.jpegData(compressionQuality: 0.8) else {
@@ -570,12 +515,7 @@ struct AddFoodAIView: View {
         let base64Image = imageData.base64EncodedString()
         let imageSizeKB = imageData.count / 1024
 
-        #if DEBUG
-        print("   Compressed image size: \(imageSizeKB) KB")
-        print("   Base64 length: \(base64Image.count) chars")
-        print("   Calling Firebase recognizeFood function...")
-        #endif
-
+        
         // Call Firebase function for AI food recognition
         let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/recognizeFood"
         guard let url = URL(string: urlString) else {
@@ -591,50 +531,22 @@ struct AddFoodAIView: View {
         let bodyData = try JSONSerialization.data(withJSONObject: body)
         request.httpBody = bodyData
 
-        #if DEBUG
-        print("   Request body size: \(bodyData.count / 1024) KB")
-        #endif
-
-        #if DEBUG
-        let startTime = Date()
-        #endif
-
+        
         let (data, response) = try await URLSession.shared.data(for: request)
-
-        #if DEBUG
-        let elapsed = Date().timeIntervalSince(startTime)
-        print("   Response received in \(String(format: "%.1f", elapsed))s")
-        #endif
 
         // Check HTTP status code
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "AddFoodAIView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
         }
 
-        #if DEBUG
-        print("   HTTP status: \(httpResponse.statusCode)")
-        #endif
-
+        
         if httpResponse.statusCode != 200 {
-            #if DEBUG
-            if let errorText = String(data: data, encoding: .utf8) {
-                print("   Error response: \(errorText.prefix(500))")
-            }
-            #endif
             throw NSError(domain: "AddFoodAIView", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server error: \(httpResponse.statusCode)"])
         }
 
         // Decode response
         do {
             let decodedResponse = try JSONDecoder().decode(FoodRecognitionResponse.self, from: data)
-
-            #if DEBUG
-            print("   Decoded \(decodedResponse.foods.count) food items")
-            for food in decodedResponse.foods {
-                let source = (food.isFromDatabase ?? false) ? "DB" : "AI"
-                print("   - \(food.name) [\(source)] \(Int(food.calories)) kcal")
-            }
-            #endif
 
             return decodedResponse.foods.map { foodItem in
                 let portionGrams = foodItem.portionGrams ?? 100
@@ -661,13 +573,6 @@ struct AddFoodAIView: View {
                 )
             }
         } catch let decodeError {
-            #if DEBUG
-            print("   JSON decode error: \(decodeError)")
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("   Raw response: \(jsonString.prefix(500))")
-            }
-            #endif
-
             // Extract helpful error info for debugging
             var errorDetail = "parse error"
             if let decodingError = decodeError as? DecodingError {
@@ -728,10 +633,7 @@ struct ImagePicker: UIViewControllerRepresentable {
     let onImageSelected: (UIImage?) -> Void
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
-        #if DEBUG
-        print("📸 ImagePicker makeUIViewController - sourceType: \(sourceType == .camera ? "CAMERA" : "PHOTO LIBRARY")")
-        #endif
-        let picker = UIImagePickerController()
+                let picker = UIImagePickerController()
         picker.delegate = context.coordinator
         picker.sourceType = sourceType
         picker.allowsEditing = false
@@ -764,23 +666,13 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            #if DEBUG
-            print("📷 ImagePicker didFinishPicking called")
-            print("   Available keys: \(info.keys.map { $0.rawValue })")
-            #endif
-
+            
             if let image = info[.originalImage] as? UIImage {
-                #if DEBUG
-                print("   ✅ Got image: \(Int(image.size.width))x\(Int(image.size.height))")
-                #endif
-                parent.selectedImage?.wrappedValue = image
+                                parent.selectedImage?.wrappedValue = image
                 parent.onImageSelected(image)
             } else {
                 // Failed to extract image - still call callback with nil to trigger error handling
-                #if DEBUG
-                print("   ❌ Failed to extract image from info dictionary")
-                #endif
-                parent.onImageSelected(nil)
+                                parent.onImageSelected(nil)
             }
         }
 
@@ -825,18 +717,12 @@ struct MultiImagePicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            #if DEBUG
-            print("📸 MultiImagePicker: User finished picking \(results.count) photos")
-            #endif
-
+            
             // Don't call picker.dismiss() - let SwiftUI handle dismissal via the sheet binding
             // This prevents race conditions between manual dismiss and binding state
 
             guard !results.isEmpty else {
-                #if DEBUG
-                print("⚠️ MultiImagePicker: User cancelled - no photos selected")
-                #endif
-                DispatchQueue.main.async {
+                                DispatchQueue.main.async {
                     self.parent.onImagesSelected([])
                 }
                 return
@@ -855,22 +741,13 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                         imageQueue.sync {
                             images.append(image)
                         }
-                        #if DEBUG
-                        print("✅ MultiImagePicker: Successfully loaded image")
-                        #endif
-                    } else {
-                        #if DEBUG
-                        print("❌ MultiImagePicker: Failed to load image: \(error?.localizedDescription ?? "unknown error")")
-                        #endif
-                    }
+                                            } else {
+                                            }
                 }
             }
 
             group.notify(queue: .main) {
-                #if DEBUG
-                print("📦 MultiImagePicker: Returning \(images.count) images to callback")
-                #endif
-                self.parent.onImagesSelected(images)
+                                self.parent.onImagesSelected(images)
             }
         }
     }
@@ -996,7 +873,7 @@ struct AIFoodSelectionView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color.adaptiveCard)
         .sheet(item: $selectedFood) { food in
             NavigationView {
                 // Use constant binding to prevent Details view from changing main tab while in AI scanner
@@ -1131,7 +1008,7 @@ struct AIFoodSelectionRow: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .background(Color(UIColor.systemBackground))
+        .background(Color.adaptiveCard)
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
@@ -1347,17 +1224,11 @@ struct CombinedMealView: View {
                     showingSuccessAlert = true
                 }
             } catch let error as FirebaseManager.DiaryLimitError {
-                #if DEBUG
-                print("Diary limit reached: \(error.localizedDescription)")
-                #endif
-                await MainActor.run {
+                                await MainActor.run {
                     showingLimitError = true
                 }
             } catch {
-                #if DEBUG
-                print("Error saving combined meal: \(error)")
-                #endif
-            }
+                            }
         }
     }
 }
@@ -1461,7 +1332,7 @@ struct CombinedMealFoodRow: View {
             }
         }
         .padding()
-        .background(Color(UIColor.systemBackground))
+        .background(Color.adaptiveCard)
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
     }

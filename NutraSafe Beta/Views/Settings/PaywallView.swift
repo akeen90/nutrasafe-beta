@@ -28,7 +28,7 @@ struct PaywallView: View {
     var body: some View {
         ZStack {
             // Background
-            Color(.systemBackground)
+            Color.adaptiveBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {

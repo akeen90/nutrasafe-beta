@@ -628,7 +628,7 @@ struct FirstUseEducationOverlay: View {
                     .padding(.top, 8)
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(Color.adaptiveCard)
                 .cornerRadius(20)
                 .padding()
                 .shadow(radius: 20)

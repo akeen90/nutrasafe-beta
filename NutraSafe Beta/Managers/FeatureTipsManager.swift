@@ -36,6 +36,10 @@ class FeatureTipsManager: ObservableObject {
 
         // Nutrients Tab
         case nutrientsOverview = "hasSeenTip_nutrientsOverview"
+
+        // Insights Tab
+        case insightsOverview = "hasSeenTip_insightsOverview"
+        case additivesTracker = "hasSeenTip_additivesTracker"
     }
 
     /// Tip content for display
@@ -162,6 +166,30 @@ class FeatureTipsManager: ObservableObject {
                 "Tap any nutrient for more details",
                 "See your intake over the last 7 days",
                 "Get food suggestions to fill gaps"
+            ]
+        ),
+        .insightsOverview: TipContent(
+            title: "Food Insights",
+            message: "Dig deeper into your diet with detailed analysis. Switch between Additives and Vitamins & Minerals using the tabs.",
+            icon: "chart.bar.xaxis",
+            accentColor: .indigo,
+            bulletPoints: [
+                "Track your exposure to food additives",
+                "Monitor vitamin and mineral intake",
+                "Understand what's really in your food",
+                "Make more informed food choices"
+            ]
+        ),
+        .additivesTracker: TipContent(
+            title: "Additive Exposure Tracker",
+            message: "See which food additives (E-numbers) you've consumed. Track your exposure over time to make healthier choices.",
+            icon: "flask.fill",
+            accentColor: .purple,
+            bulletPoints: [
+                "View additives from your food diary",
+                "See safety ratings for each additive",
+                "Track how often you consume each one",
+                "Identify foods with the most additives"
             ]
         )
     ]

@@ -82,7 +82,7 @@ struct FastingHistoryDropdown: View {
                 }
             }
             .padding(16)
-            .background(Color(.systemBackground))
+            .background(Color.adaptiveCard)
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
         }

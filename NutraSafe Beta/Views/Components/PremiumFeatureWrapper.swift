@@ -473,7 +473,6 @@ struct PremiumUnlockCard: View {
     InlineUpgradePrompt(
         message: "Unlock unlimited reactions"
     ) {
-        print("Upgrade tapped")
     }
     .padding()
 }

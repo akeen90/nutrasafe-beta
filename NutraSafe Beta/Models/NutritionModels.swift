@@ -313,7 +313,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
         // Bagged/boxed chocolate products (check BEFORE generic brand detection)
         // These come in bags/pouches/boxes, not as bars
-        let baggedChocolateProducts = ["revels", "maltesers", "celebrations", "minstrels", "m&m", "m&ms", "buttons", "giant buttons", "heroes", "roses", "quality street", "after eight", "matchmakers", "galaxy counters", "milkybar buttons", "smarties", "aero bubbles", "bitsa wispa"]
+        let baggedChocolateProducts = ["revels", "maltesers", "celebrations", "minstrels", "m&m", "m&ms", "buttons", "giant buttons", "heroes", "roses", "quality street", "after eight", "matchmakers", "galaxy counters", "milkybar buttons", "smarties", "aero bubbles", "bitsa wispa", "lindor", "lindt lindor", "ferrero rocher", "ferrero", "thorntons", "godiva", "guylian", "toblerone"]
 
         // Actual chocolate BAR products (single bars, not bags)
         let chocolateBarProducts = ["mars bar", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat", "aero bar", "yorkie", "wispa bar", "flake", "crunchie", "double decker", "boost", "picnic", "dairy milk bar", "fruit & nut", "whole nut", "caramel", "turkish delight", "fudge", "curly wurly", "chomp", "freddo", "timeout", "toffee crisp", "drifter", "lion bar", "star bar", "topic"]
@@ -390,7 +390,8 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         if eggKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("aubergine") { return .egg }
         if yogurtKeywords.contains(where: { nameLower.contains($0) }) { return .yogurt }
         if cheeseKeywords.contains(where: { nameLower.contains($0) }) { return .cheese }
-        if milkKeywords.contains(where: { nameLower.contains($0) }) { return .milk }
+        // Check milk but exclude "milk chocolate" products
+        if milkKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("milk chocolate") && !nameLower.contains("chocolate milk") { return .milk }
         if nutKeywords.contains(where: { nameLower.contains($0) }) { return .nuts }
         if riceKeywords.contains(where: { nameLower.contains($0) }) { return .rice }
         if pastaKeywords.contains(where: { nameLower.contains($0) }) { return .pasta }
@@ -1295,13 +1296,7 @@ struct FoodEntry: Identifiable, Codable {
             ingredients = ingredientsArray
         } else if let ingredientsValue = data["ingredients"] {
             // CRITICAL: Reject entire entry if ingredients field contains invalid type
-            #if DEBUG
-            print("❌ CORRUPT DATA: ingredients field has invalid type \(type(of: ingredientsValue)) for food: \(foodName) (ID: \(id))")
-            #endif
-            #if DEBUG
-            print("   Rejecting entry to prevent cache crash")
-            #endif
-            return nil
+                                    return nil
         }
 
         // Deserialize additives if available with type safety
@@ -1312,13 +1307,7 @@ struct FoodEntry: Identifiable, Codable {
             additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: additivesData)
         } else if let additivesValue = data["additives"] {
             // CRITICAL: Reject entire entry if additives field contains invalid type
-            #if DEBUG
-            print("❌ CORRUPT DATA: additives field has invalid type \(type(of: additivesValue)) for food: \(foodName) (ID: \(id))")
-            #endif
-            #if DEBUG
-            print("   Rejecting entry to prevent cache crash")
-            #endif
-            return nil
+                                    return nil
         }
 
         // Deserialize micronutrient profile if available with type safety
@@ -1334,30 +1323,12 @@ struct FoodEntry: Identifiable, Codable {
                let micronutrientsData = try? JSONSerialization.data(withJSONObject: micronutrientsDict, options: []) {
                 micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: micronutrientsData)
             } else {
-                #if DEBUG
-                print("⚠️ MALFORMED DATA: micronutrientProfile has invalid structure for food: \(foodName) (ID: \(id))")
-                #endif
-                #if DEBUG
-                print("   vitamins type: \(type(of: micronutrientsDict["vitamins"] as Any))")
-                #endif
-                #if DEBUG
-                print("   minerals type: \(type(of: micronutrientsDict["minerals"] as Any))")
-                #endif
-                #if DEBUG
-                print("   Skipping micronutrient data but keeping entry")
-                #endif
-                // Don't reject the entire entry, just skip the micronutrient data
+                                                                                // Don't reject the entire entry, just skip the micronutrient data
                 micronutrientProfile = nil
             }
         } else if let micronutrientValue = data["micronutrientProfile"] {
             // CRITICAL: Reject entire entry if micronutrientProfile field contains invalid type
-            #if DEBUG
-            print("❌ CORRUPT DATA: micronutrientProfile field has invalid type \(type(of: micronutrientValue)) for food: \(foodName) (ID: \(id))")
-            #endif
-            #if DEBUG
-            print("   Rejecting entry to prevent cache crash")
-            #endif
-            return nil
+                                    return nil
         }
 
         return FoodEntry(

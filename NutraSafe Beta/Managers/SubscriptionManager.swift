@@ -58,12 +58,10 @@ final class SubscriptionManager: ObservableObject {
                 try await self.loadProductInternal()
             }
         } catch is TimeoutError {
-            print("StoreKit: Product loading timed out after 10 seconds")
             isProductLoaded = false
             purchaseError = "Unable to connect to App Store. The subscription may be pending approval or there may be a network issue. Please try again later."
             await refreshPremiumOverride()
         } catch {
-            print("StoreKit: Product loading failed with error: \(error)")
             isProductLoaded = false
             purchaseError = "Failed to load subscription: \(error.localizedDescription)"
             await refreshPremiumOverride()
@@ -74,12 +72,9 @@ final class SubscriptionManager: ObservableObject {
         // Don't sync on load to avoid triggering authentication popup
         // Products will load from local StoreKit data first
         // Sync only happens during purchase/restore when user explicitly takes action
-        print("StoreKit: Loading products for id: \(productID)")
         let products = try await Product.products(for: [productID])
-        print("StoreKit: Product fetch count: \(products.count)")
 
         if let first = products.first {
-            print("StoreKit: Loaded product: \(first.id) price=\(first.displayPrice)")
             product = first
             isProductLoaded = true
             await refreshEligibility()
@@ -89,7 +84,6 @@ final class SubscriptionManager: ObservableObject {
         }
 
         // Still unavailable; set error state and proceed with override only
-        print("StoreKit: Products still unavailable after all attempts. Using premium override only.")
         isProductLoaded = false
         purchaseError = "Subscription is currently unavailable. This may be because it's pending Apple approval. Please check back later or contact support."
         await refreshPremiumOverride()
@@ -99,7 +93,6 @@ final class SubscriptionManager: ObservableObject {
         purchaseError = nil
 
         guard let initialProduct = product else {
-            print("StoreKit: purchase() ignored — product is nil (not loaded)")
             purchaseError = "Unable to load subscription. Please check your internet connection and try again."
             return
         }
@@ -111,7 +104,6 @@ final class SubscriptionManager: ObservableObject {
         // The product pricing is already correct from initial load
         // Transaction updates are handled automatically via Transaction.updates listener
         let productToPurchase = initialProduct
-        print("StoreKit: Starting purchase for \(productToPurchase.id) at \(productToPurchase.displayPrice)")
 
         do {
             let result = try await productToPurchase.purchase()
@@ -119,27 +111,21 @@ final class SubscriptionManager: ObservableObject {
             case .success(let verification):
                 do {
                     let transaction = try checkVerified(verification)
-                    print("StoreKit: Purchase verified. Finishing transaction \(transaction.id)")
                     await transaction.finish()
                     await refreshEligibility()
                     try await refreshStatus()
                     purchaseError = nil
                 } catch {
-                    print("StoreKit: Purchase verification failed: \(error)")
                     purchaseError = "Purchase verification failed. Please try again."
                 }
             case .userCancelled:
-                print("StoreKit: Purchase cancelled by user")
                 purchaseError = nil
             case .pending:
-                print("StoreKit: Purchase pending")
                 purchaseError = "Purchase is pending approval. Please check back later."
             @unknown default:
-                print("StoreKit: Purchase result: \(result)")
                 purchaseError = "Unknown purchase result. Please contact support."
             }
         } catch {
-            print("StoreKit: Purchase error: \(error)")
             purchaseError = "Purchase failed: \(error.localizedDescription)"
             throw error
         }
@@ -165,13 +151,11 @@ final class SubscriptionManager: ObservableObject {
             isSubscribed = false
             isInTrial = false
         }
-        print("StoreKit: refreshStatus — isSubscribed=\(isSubscribed) isInTrial=\(isInTrial) statusCount=\(status.count)")
     }
 
     func refreshEligibility() async {
         guard let product = product, let subscription = product.subscription else {
             isEligibleForTrial = false
-            print("StoreKit: Cannot check trial eligibility - product or subscription is nil")
             return
         }
 
@@ -181,37 +165,25 @@ final class SubscriptionManager: ObservableObject {
 
         // Log trial configuration for debugging
         if let introOffer = subscription.introductoryOffer {
-            print("StoreKit: Trial eligibility check:")
-            print("  - Eligible: \(eligible)")
-            print("  - Offer type: \(introOffer.paymentMode)")
-            print("  - Period: \(introOffer.period)")
             if introOffer.paymentMode == .freeTrial {
-                print("  - Free trial available: \(introOffer.period.value) \(introOffer.period.unit)")
             }
         } else {
-            print("StoreKit: No introductory offer configured in App Store Connect")
-            print("  - Eligibility: \(eligible)")
         }
     }
 
     func restore() async throws {
-        print("StoreKit: Starting restore purchases")
 
         // IMPORTANT: We MUST call AppStore.sync() when user explicitly requests restore
         // This syncs with Apple's servers to fetch existing purchases
         // Without this, restore won't work after app reinstall or if local data is cleared
         do {
-            print("StoreKit: Syncing with App Store servers...")
             try await AppStore.sync()
-            print("StoreKit: Sync completed, refreshing subscription status...")
 
             // Refresh subscription status - this checks for existing transactions
             await refreshEligibility()
             try await refreshStatus()
             await refreshPremiumOverride()
-            print("StoreKit: Restore completed successfully")
         } catch {
-            print("StoreKit: Restore failed with error: \(error)")
             // Still try to refresh premium override and eligibility even if status refresh fails
             await refreshEligibility()
             await refreshPremiumOverride()
@@ -221,7 +193,6 @@ final class SubscriptionManager: ObservableObject {
 
     func manageSubscriptions() async {
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-            print("StoreKit: No valid window scene found for subscription management")
             return
         }
 
@@ -230,15 +201,12 @@ final class SubscriptionManager: ObservableObject {
             try await withTimeout(seconds: 10) {
                 do {
                     try await AppStore.showManageSubscriptions(in: scene)
-                    print("StoreKit: Successfully opened subscription management")
                 } catch {
-                    print("StoreKit: Error showing manage subscriptions: \(error)")
                     // If the native sheet fails, fall back to opening subscription URL
                     await self.openSubscriptionManagementURL()
                 }
             }
         } catch {
-            print("StoreKit: Timeout or error in manageSubscriptions: \(error)")
             // Fall back to opening subscription URL directly
             await self.openSubscriptionManagementURL()
         }
@@ -277,11 +245,9 @@ final class SubscriptionManager: ObservableObject {
         for await result in Transaction.updates {
             do {
                 let transaction = try checkVerified(result)
-                print("StoreKit: Transaction update received: \(transaction.id)")
                 await transaction.finish()
                 try? await refreshStatus()
             } catch {
-                print("StoreKit: Transaction verification failed: \(error)")
             }
         }
     }
