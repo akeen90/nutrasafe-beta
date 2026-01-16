@@ -3422,10 +3422,10 @@ struct AddWeightView: View {
             }
             .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
                 Button("Take Photo") {
-                                        activePickerType = .camera
+                    activePickerType = .camera
                 }
                 Button("Choose from Library") {
-                    activePickerType = .photoLibrary
+                    showingMultiImagePicker = true
                 }
                 Button("Cancel", role: .cancel) { }
             }

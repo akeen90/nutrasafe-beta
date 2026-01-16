@@ -4,6 +4,7 @@ google-services.json
 .env
 *.key
 *.pem
+Secrets.xcconfig
 
 # Firebase
 .firebase/
