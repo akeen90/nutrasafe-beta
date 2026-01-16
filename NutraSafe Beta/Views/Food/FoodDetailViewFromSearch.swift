@@ -2159,6 +2159,9 @@ private var nutritionFactsSection: some View {
             let originalMeal = originalMealType
             let date = targetDate
             let manager = diaryDataManager
+            let vm = fastingViewModel
+            let shouldEndFast = endFast
+            let shouldStartFast = startFast
 
             Task.detached(priority: .userInitiated) {
                 do {
@@ -2166,6 +2169,29 @@ private var nutritionFactsSection: some View {
                         try await manager.moveFoodItem(entry, from: originalMeal, to: meal, for: date, hasProAccess: hasAccess)
                     } else {
                         try await manager.replaceFoodItem(entry, to: meal, for: date, hasProAccess: hasAccess)
+                    }
+
+                    // Handle fasting actions (same as new entry path)
+                    if shouldEndFast, let fastingVM = vm {
+                        let endedSession = await fastingVM.endFastingSession()
+                        if endedSession == nil {
+                            let isInFastingWindow = await MainActor.run {
+                                if case .fasting = fastingVM.currentRegimeState {
+                                    return true
+                                }
+                                return false
+                            }
+                            if isInFastingWindow {
+                                await fastingVM.skipCurrentRegimeFast()
+                            }
+                        }
+                    }
+
+                    if shouldStartFast, let fastingVM = vm {
+                        await fastingVM.startFastingSession()
+                        await MainActor.run {
+                            NotificationCenter.default.post(name: .navigateToFasting, object: nil)
+                        }
                     }
                 } catch is FirebaseManager.DiaryLimitError {
                     // Diary limit reached - silently fail as we're in background
