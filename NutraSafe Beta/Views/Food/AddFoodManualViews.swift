@@ -327,6 +327,9 @@ struct ManualFoodDetailEntryView: View {
     @State private var showingNutritionCamera = false
     @State private var isProcessingNutritionOCR = false
 
+    // Unified product scanner state
+    @State private var showingUnifiedScanner = false
+
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
@@ -428,6 +431,37 @@ struct ManualFoodDetailEntryView: View {
                                 }
                             }
                         }
+
+                    // Scan to Add Button - Auto-fill all fields from photos
+                    Button(action: {
+                        showingUnifiedScanner = true
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 20))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Scan Product to Auto-Fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Take photos of the front, ingredients, and nutrition label")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white.opacity(0.85))
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(
+                            LinearGradient(
+                                colors: [Color.blue, Color.blue.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                    }
+                    .padding(.top, 8)
 
                     // Diary nutrition form
                     Divider()
@@ -824,12 +858,94 @@ struct ManualFoodDetailEntryView: View {
                     }
                 )
             }
+            .fullScreenCover(isPresented: $showingUnifiedScanner) {
+                UnifiedProductScannerView(
+                    onScanComplete: { response in
+                        showingUnifiedScanner = false
+                        processUnifiedScan(response)
+                    },
+                    onDismiss: {
+                        showingUnifiedScanner = false
+                    }
+                )
+            }
             .onAppear {
                 // Initialize barcode from prefilledBarcode if provided
                 if let prefilledBarcode = prefilledBarcode {
                     barcode = prefilledBarcode
                 }
             }
+        }
+    }
+
+    /// Process unified scan response and auto-fill all form fields
+    private func processUnifiedScan(_ response: ScanProductResponse) {
+        // Product name and brand
+        if let name = response.productName, !name.isEmpty {
+            foodName = name
+        }
+        if let brandName = response.brand, !brandName.isEmpty {
+            brand = brandName
+        }
+
+        // Barcode
+        if let barcodeValue = response.barcode, !barcodeValue.isEmpty {
+            barcode = barcodeValue
+        }
+
+        // Serving size
+        if let size = response.servingSize, size > 0 && size <= 500 {
+            servingSize = String(format: "%.0f", size)
+        }
+        if let unit = response.servingUnit, servingUnits.contains(unit) {
+            servingUnit = unit
+        }
+
+        // Ingredients
+        if let ingredients = response.ingredientsText, !ingredients.isEmpty {
+            ingredientsText = ingredients
+        }
+
+        // Nutrition values (per 100g)
+        if let nutrition = response.nutrition {
+            if let cal = nutrition.calories {
+                calories = String(format: "%.0f", cal)
+            }
+            if let prot = nutrition.protein {
+                protein = String(format: "%.1f", prot)
+            }
+            if let carb = nutrition.carbohydrates {
+                carbs = String(format: "%.1f", carb)
+            }
+            if let f = nutrition.fat {
+                fat = String(format: "%.1f", f)
+            }
+            if let fib = nutrition.fiber {
+                fiber = String(format: "%.1f", fib)
+            }
+            if let sug = nutrition.sugar {
+                sugar = String(format: "%.1f", sug)
+            }
+            if let salt = nutrition.salt {
+                sodium = String(format: "%.2f", salt)
+            }
+        }
+
+        // Show feedback about what was detected
+        let detectedItems = response.detectedContent.map { content -> String in
+            switch content {
+            case "front": return "product info"
+            case "ingredients": return "ingredients"
+            case "nutrition": return "nutrition"
+            case "barcode": return "barcode"
+            default: return content
+            }
+        }
+
+        if !detectedItems.isEmpty {
+            // Provide subtle feedback about what was detected
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
         }
     }
 
@@ -2862,6 +2978,411 @@ struct MultiPhotoCameraView: UIViewControllerRepresentable {
 
         @objc func doneTapped() {
             parent.onDone()
+        }
+    }
+}
+
+// MARK: - Unified Product Scanner View
+
+/// Response model from scanProductComplete Cloud Function
+struct ScanProductResponse: Codable {
+    var productName: String?
+    var brand: String?
+    var barcode: String?
+    var ingredientsText: String?
+    var allergens: [String]?
+    var containsStatement: String?
+    var nutrition: ScanProductNutrition?
+    var servingSize: Double?
+    var servingUnit: String?
+    var servingsPerContainer: Double?
+    var confidence: Double
+    var detectedContent: [String]
+    var warnings: [String]?
+}
+
+struct ScanProductNutrition: Codable {
+    var calories: Double?
+    var protein: Double?
+    var carbohydrates: Double?
+    var fat: Double?
+    var fiber: Double?
+    var sugar: Double?
+    var salt: Double?
+    var saturatedFat: Double?
+}
+
+/// Unified product scanner that captures multiple photos and uses AI to auto-detect content
+struct UnifiedProductScannerView: View {
+    let onScanComplete: (ScanProductResponse) -> Void
+    let onDismiss: () -> Void
+
+    @State private var showingCamera = false
+    @State private var capturedImages: [UIImage] = []
+    @State private var currentImage: UIImage?
+    @State private var isProcessing = false
+    @State private var processingStage = ""
+    @State private var showingError = false
+    @State private var errorMessage = ""
+
+    // Checklist state
+    @State private var hasFrontPhoto = false
+    @State private var hasIngredientsPhoto = false
+    @State private var hasNutritionPhoto = false
+
+    private var totalPhotos: Int {
+        capturedImages.count + (currentImage != nil ? 1 : 0)
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 12) {
+                        Image(systemName: "camera.viewfinder")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+
+                        Text("Scan Product")
+                            .font(.title2.bold())
+
+                        Text(totalPhotos == 0 ? "Take photos to auto-fill all fields" : "\(totalPhotos) photo\(totalPhotos == 1 ? "" : "s") ready")
+                            .font(.subheadline)
+                            .foregroundColor(totalPhotos > 0 ? .blue : .secondary)
+                    }
+                    .padding(.top, 20)
+
+                    // Checklist
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("For best results, capture:")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+
+                        ScanChecklistItem(
+                            title: "Front of Package",
+                            subtitle: "Product name, brand, barcode",
+                            isChecked: hasFrontPhoto,
+                            icon: "rectangle.portrait"
+                        )
+
+                        ScanChecklistItem(
+                            title: "Ingredients List",
+                            subtitle: "Full ingredients text",
+                            isChecked: hasIngredientsPhoto,
+                            icon: "list.bullet.rectangle"
+                        )
+
+                        ScanChecklistItem(
+                            title: "Nutrition Table",
+                            subtitle: "Calories, protein, carbs, fat",
+                            isChecked: hasNutritionPhoto,
+                            icon: "tablecells"
+                        )
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+
+                    // Captured photos gallery
+                    if totalPhotos > 0 {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Captured Photos")
+                                .font(.subheadline.bold())
+                                .padding(.horizontal)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    // Previous images
+                                    ForEach(Array(capturedImages.enumerated()), id: \.offset) { index, image in
+                                        CapturedPhotoThumbnail(
+                                            image: image,
+                                            index: index + 1,
+                                            onRemove: { capturedImages.remove(at: index) }
+                                        )
+                                    }
+
+                                    // Current image
+                                    if let current = currentImage {
+                                        CapturedPhotoThumbnail(
+                                            image: current,
+                                            index: totalPhotos,
+                                            isNew: true,
+                                            onRemove: { currentImage = nil }
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+
+                    // Tips (only show if no photos yet)
+                    if totalPhotos == 0 {
+                        VStack(alignment: .leading, spacing: 10) {
+                            OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
+                            OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
+                            OCRTipRow(icon: "text.magnifyingglass", color: .blue, text: "Focus on the text areas")
+                            OCRTipRow(icon: "barcode", color: .purple, text: "Include barcode if visible")
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+
+                    // Processing overlay
+                    if isProcessing {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                                .scaleEffect(1.5)
+
+                            Text("Analyzing Photos...")
+                                .font(.headline)
+
+                            Text(processingStage)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 32)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+
+                    // Action buttons
+                    if !isProcessing {
+                        VStack(spacing: 12) {
+                            // Add & Take Another (if we have a current image)
+                            if currentImage != nil {
+                                Button(action: {
+                                    if let img = currentImage {
+                                        capturedImages.append(img)
+                                        currentImage = nil
+                                    }
+                                    showingCamera = true
+                                }) {
+                                    Label("Add & Take Another", systemImage: "plus.circle.fill")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.orange)
+                                        .cornerRadius(12)
+                                }
+                            }
+
+                            // Process button (if we have any images)
+                            if totalPhotos > 0 {
+                                Button(action: { processAllImages() }) {
+                                    HStack {
+                                        Image(systemName: "wand.and.stars")
+                                        Text("Auto-Fill from Photos")
+                                            .font(.headline)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.blue)
+                                    .cornerRadius(12)
+                                }
+                            }
+
+                            // Take Photo button
+                            Button(action: { showingCamera = true }) {
+                                Label(
+                                    totalPhotos == 0 ? "Take Photo" : "Take Another Photo",
+                                    systemImage: "camera.fill"
+                                )
+                                .font(.headline)
+                                .foregroundColor(totalPhotos == 0 ? .white : .blue)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(totalPhotos == 0 ? Color.blue : Color.blue.opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 30)
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { onDismiss() }
+                }
+            }
+            .sheet(isPresented: $showingCamera) {
+                ImagePickerView(image: $currentImage, sourceType: .camera)
+            }
+            .alert("Scan Error", isPresented: $showingError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .onChange(of: totalPhotos) { _, newCount in
+                // Update checklist based on photo count (simple heuristic)
+                hasFrontPhoto = newCount >= 1
+                hasIngredientsPhoto = newCount >= 2
+                hasNutritionPhoto = newCount >= 3
+            }
+        }
+    }
+
+    private func processAllImages() {
+        var allImages = capturedImages
+        if let current = currentImage { allImages.append(current) }
+        guard !allImages.isEmpty else { return }
+
+        isProcessing = true
+        processingStage = "Preparing images..."
+
+        Task {
+            do {
+                // Convert images to base64
+                processingStage = "Uploading to AI..."
+                var imagePayloads: [[String: String]] = []
+
+                for image in allImages {
+                    guard let imageData = image.jpegData(compressionQuality: 0.8) else { continue }
+                    let base64String = imageData.base64EncodedString()
+                    imagePayloads.append([
+                        "base64": base64String,
+                        "mimeType": "image/jpeg"
+                    ])
+                }
+
+                processingStage = "AI analyzing photos..."
+
+                // Call the Cloud Function
+                let functions = Functions.functions()
+                let callable = functions.httpsCallable("scanProductComplete")
+                let result = try await callable.call(["images": imagePayloads])
+
+                processingStage = "Processing results..."
+
+                guard let data = result.data as? [String: Any] else {
+                    throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from AI"])
+                }
+
+                // Parse the response
+                let response = parseScanResponse(data)
+
+                await MainActor.run {
+                    isProcessing = false
+                    onScanComplete(response)
+                }
+            } catch {
+                await MainActor.run {
+                    isProcessing = false
+                    errorMessage = "Failed to scan product: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
+        }
+    }
+
+    private func parseScanResponse(_ data: [String: Any]) -> ScanProductResponse {
+        var response = ScanProductResponse(
+            confidence: data["confidence"] as? Double ?? 0.5,
+            detectedContent: data["detectedContent"] as? [String] ?? []
+        )
+
+        response.productName = data["productName"] as? String
+        response.brand = data["brand"] as? String
+        response.barcode = data["barcode"] as? String
+        response.ingredientsText = data["ingredientsText"] as? String
+        response.allergens = data["allergens"] as? [String]
+        response.containsStatement = data["containsStatement"] as? String
+        response.servingSize = data["servingSize"] as? Double
+        response.servingUnit = data["servingUnit"] as? String
+        response.servingsPerContainer = data["servingsPerContainer"] as? Double
+        response.warnings = data["warnings"] as? [String]
+
+        // Parse nutrition sub-object
+        if let nutritionData = data["nutrition"] as? [String: Any] {
+            var nutrition = ScanProductNutrition()
+            nutrition.calories = nutritionData["calories"] as? Double
+            nutrition.protein = nutritionData["protein"] as? Double
+            nutrition.carbohydrates = nutritionData["carbohydrates"] as? Double
+            nutrition.fat = nutritionData["fat"] as? Double
+            nutrition.fiber = nutritionData["fiber"] as? Double
+            nutrition.sugar = nutritionData["sugar"] as? Double
+            nutrition.salt = nutritionData["salt"] as? Double
+            nutrition.saturatedFat = nutritionData["saturatedFat"] as? Double
+            response.nutrition = nutrition
+        }
+
+        return response
+    }
+}
+
+/// Checklist item for scan progress
+private struct ScanChecklistItem: View {
+    let title: String
+    let subtitle: String
+    let isChecked: Bool
+    let icon: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 20))
+                .foregroundColor(isChecked ? .green : Color(.systemGray3))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.bold())
+                    .foregroundColor(isChecked ? .primary : .secondary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(isChecked ? .blue : Color(.systemGray4))
+        }
+    }
+}
+
+/// Thumbnail for captured photo in gallery
+private struct CapturedPhotoThumbnail: View {
+    let image: UIImage
+    let index: Int
+    var isNew: Bool = false
+    let onRemove: () -> Void
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isNew ? Color.blue : Color(.systemGray4), lineWidth: isNew ? 2 : 1)
+                )
+                .overlay(alignment: .topTrailing) {
+                    Button(action: onRemove) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                            .background(Circle().fill(Color.red))
+                    }
+                    .offset(x: 8, y: -8)
+                }
+
+            Text("Photo \(index)")
+                .font(.caption2)
+                .foregroundColor(isNew ? .blue : .secondary)
         }
     }
 }

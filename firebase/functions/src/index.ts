@@ -38,6 +38,7 @@ export { parseIngredientsOCR, parseIngredientsOCRCached } from './parse-ingredie
 export { findIngredients } from './find-ingredients';
 export { auditMissingIngredients } from './audit-missing-ingredients';
 export { recognizeFood } from './recognize-food';
+export { scanProductComplete } from './scan-product-complete';
 
 // Algolia integration
 export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
