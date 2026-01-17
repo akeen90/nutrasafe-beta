@@ -715,14 +715,17 @@ class FirebaseManager: ObservableObject {
             }
             let queryStart = calendar.startOfDay(for: startDate)
 
-            // PERFORMANCE: Add limit to prevent fetching thousands of documents
+            // PERFORMANCE: Dynamic limit based on period - prevents fetching excessive documents
+            // ~20 entries/day is generous: 7 days = 150, 30 days = 300, 90 days = 500
+            let entryLimit = min(500, max(150, days * 20))
+
             let snapshot = try await withRetry {
                 try await self.db.collection("users").document(userId)
                     .collection("foodEntries")
                     .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
                     .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
                     .order(by: "date", descending: true)
-                    .limit(to: 1000) // Reasonable limit for nutrition analysis
+                    .limit(to: entryLimit)
                     .getDocuments()
             }
 
@@ -782,13 +785,16 @@ class FirebaseManager: ObservableObject {
         }
         let queryStart = startDate  // Already at start of day
 
+        // PERFORMANCE: Dynamic limit based on period - prevents fetching excessive documents
+        let entryLimit = min(500, max(150, days * 20))
+
         let snapshot = try await withRetry {
             try await self.db.collection("users").document(userId)
                 .collection("foodEntries")
                 .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
                 .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endOfToday))
                 .order(by: "date", descending: true)
-                .limit(to: 1000)
+                .limit(to: entryLimit)
                 .getDocuments()
         }
 
@@ -849,22 +855,37 @@ class FirebaseManager: ObservableObject {
         }
     }
 
-    func deleteFoodEntry(entryId: String) async throws {
+    /// Delete a food entry by ID
+    /// - Parameters:
+    ///   - entryId: The ID of the entry to delete
+    ///   - date: Optional date of the entry - if provided, only invalidates cache for that date (more efficient)
+    func deleteFoodEntry(entryId: String, date: Date? = nil) async throws {
         guard let userId = currentUser?.uid else { return }
         try await db.collection("users").document(userId)
             .collection("foodEntries").document(entryId).delete()
 
-        // Clear entire cache since we don't know which date this entry belongs to - thread-safe
-        // Also cancel all in-flight requests
-        cacheQueue.sync {
-            foodEntriesCache.removeAll()
-            foodEntriesCacheAccessTime.removeAll()
-            periodCache.removeAll()
-            periodCacheAccessTime.removeAll()
-            inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
-            inFlightFoodEntriesRequests.removeAll()
-            inFlightPeriodRequests.values.forEach { $0.cancel() }
-            inFlightPeriodRequests.removeAll()
+        // PERFORMANCE: Granular cache invalidation when date is known
+        if let date = date {
+            invalidateFoodEntriesCache(for: date, userId: userId)
+            // Also need to invalidate period cache since aggregated data changed
+            cacheQueue.sync {
+                periodCache.removeAll()
+                periodCacheAccessTime.removeAll()
+                inFlightPeriodRequests.values.forEach { $0.cancel() }
+                inFlightPeriodRequests.removeAll()
+            }
+        } else {
+            // Fallback: Clear entire cache since we don't know which date this entry belongs to
+            cacheQueue.sync {
+                foodEntriesCache.removeAll()
+                foodEntriesCacheAccessTime.removeAll()
+                periodCache.removeAll()
+                periodCacheAccessTime.removeAll()
+                inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+                inFlightFoodEntriesRequests.removeAll()
+                inFlightPeriodRequests.values.forEach { $0.cancel() }
+                inFlightPeriodRequests.removeAll()
+            }
         }
 
         // Notify that food diary was updated
@@ -875,7 +896,10 @@ class FirebaseManager: ObservableObject {
 
     /// Delete multiple food entries atomically using Firestore batch writes
     /// More efficient than deleting one at a time for bulk operations
-    func deleteFoodEntries(entryIds: [String]) async throws {
+    /// - Parameters:
+    ///   - entryIds: Array of entry IDs to delete
+    ///   - dates: Optional set of dates for these entries - if provided, only invalidates cache for those dates (more efficient)
+    func deleteFoodEntries(entryIds: [String], dates: Set<Date>? = nil) async throws {
         guard let userId = currentUser?.uid else { return }
         guard !entryIds.isEmpty else { return }
 
@@ -894,16 +918,30 @@ class FirebaseManager: ObservableObject {
             try await batch.commit()
         }
 
-        // Clear caches after batch delete
-        cacheQueue.sync {
-            foodEntriesCache.removeAll()
-            foodEntriesCacheAccessTime.removeAll()
-            periodCache.removeAll()
-            periodCacheAccessTime.removeAll()
-            inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
-            inFlightFoodEntriesRequests.removeAll()
-            inFlightPeriodRequests.values.forEach { $0.cancel() }
-            inFlightPeriodRequests.removeAll()
+        // PERFORMANCE: Granular cache invalidation when dates are known
+        if let dates = dates, !dates.isEmpty {
+            for date in dates {
+                invalidateFoodEntriesCache(for: date, userId: userId)
+            }
+            // Period cache still needs full clear since aggregated data changed
+            cacheQueue.sync {
+                periodCache.removeAll()
+                periodCacheAccessTime.removeAll()
+                inFlightPeriodRequests.values.forEach { $0.cancel() }
+                inFlightPeriodRequests.removeAll()
+            }
+        } else {
+            // Fallback: Clear all caches
+            cacheQueue.sync {
+                foodEntriesCache.removeAll()
+                foodEntriesCacheAccessTime.removeAll()
+                periodCache.removeAll()
+                periodCacheAccessTime.removeAll()
+                inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+                inFlightFoodEntriesRequests.removeAll()
+                inFlightPeriodRequests.values.forEach { $0.cancel() }
+                inFlightPeriodRequests.removeAll()
+            }
         }
 
         // Notify that food diary was updated
