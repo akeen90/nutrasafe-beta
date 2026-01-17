@@ -288,7 +288,8 @@ final class AlgoliaSearchManager {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 10 // 10 second timeout
         config.timeoutIntervalForResource = 30
-        config.waitsForConnectivity = true
+        // PERFORMANCE: Don't wait indefinitely for network - fail fast instead
+        config.waitsForConnectivity = false
         session = URLSession(configuration: config)
         searchCache.countLimit = 100
     }
@@ -356,15 +357,19 @@ final class AlgoliaSearchManager {
         let expandedQueries = expandSearchQuery(trimmedQuery)
 
         // Add word order variants for 2-word queries
-        var allSearchQueries: [String] = []
+        // PERFORMANCE: Use Set to deduplicate queries before executing them
+        var querySet = Set<String>()
         for query in expandedQueries {
             if shouldUseFlexibleWordOrder(query) {
                 let variants = generateWordOrderVariants(query)
-                allSearchQueries.append(contentsOf: variants)
-                } else {
-                allSearchQueries.append(query)
+                for variant in variants {
+                    querySet.insert(variant.lowercased())
+                }
+            } else {
+                querySet.insert(query.lowercased())
             }
         }
+        let allSearchQueries = Array(querySet)
 
         // PERFORMANCE: Search all queries in parallel instead of sequentially
         // This reduces search time from (N x 200ms) to ~200ms for N query variants
@@ -966,13 +971,24 @@ final class AlgoliaSearchManager {
     }
 
     private func searchBarcodeInIndices(_ barcode: String) async throws -> FoodSearchResult? {
-        // Search all indices in priority order; return first exact match
-        for (indexName, _) in indices {
-            if let result = try await searchIndexByBarcode(indexName: indexName, barcode: barcode) {
-                return result
+        // PERFORMANCE: Search all indices in PARALLEL and return first exact match
+        // This reduces worst-case from N × timeout to single timeout
+        return await withTaskGroup(of: FoodSearchResult?.self) { group in
+            for (indexName, _) in indices {
+                group.addTask {
+                    try? await self.searchIndexByBarcode(indexName: indexName, barcode: barcode)
+                }
             }
+
+            // Return first successful result
+            for await result in group {
+                if let result = result {
+                    group.cancelAll() // Cancel remaining tasks
+                    return result
+                }
+            }
+            return nil
         }
-        return nil
     }
 
     private func searchIndexByBarcode(indexName: String, barcode: String) async throws -> FoodSearchResult? {
