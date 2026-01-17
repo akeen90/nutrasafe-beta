@@ -619,7 +619,13 @@ class FirebaseManager: ObservableObject {
                 do {
                     return try doc.data(as: FoodEntry.self)
                 } catch {
-                                        return nil
+                    // Log parsing failure for debugging - helps identify corrupt entries
+                    PrivacyLogger.warning(
+                        "Failed to parse FoodEntry (doc: \(doc.documentID)): \(error.localizedDescription)",
+                        subsystem: .firebase,
+                        category: .dataSync
+                    )
+                    return nil
                 }
             }
 
@@ -735,7 +741,13 @@ class FirebaseManager: ObservableObject {
                 do {
                     return try doc.data(as: FoodEntry.self)
                 } catch {
-                                        return nil
+                    // Log parsing failure for debugging - helps identify corrupt entries
+                    PrivacyLogger.warning(
+                        "Failed to parse FoodEntry in period query (doc: \(doc.documentID)): \(error.localizedDescription)",
+                        subsystem: .firebase,
+                        category: .dataSync
+                    )
+                    return nil
                 }
             }
 
@@ -806,7 +818,16 @@ class FirebaseManager: ObservableObject {
             if data["id"] == nil {
                 data["id"] = doc.documentID
             }
-            return FoodEntry.fromDictionary(data)
+            let entry = FoodEntry.fromDictionary(data)
+            if entry == nil {
+                // Log parsing failure for debugging - helps identify corrupt entries
+                PrivacyLogger.warning(
+                    "Failed to parse FoodEntry with additives (doc: \(doc.documentID))",
+                    subsystem: .firebase,
+                    category: .dataSync
+                )
+            }
+            return entry
         }
     }
 
@@ -831,7 +852,13 @@ class FirebaseManager: ObservableObject {
             do {
                 return try doc.data(as: FoodEntry.self)
             } catch {
-                                return nil
+                // Log parsing failure for debugging - helps identify corrupt entries
+                PrivacyLogger.warning(
+                    "Failed to parse FoodEntry in range query (doc: \(doc.documentID)): \(error.localizedDescription)",
+                    subsystem: .firebase,
+                    category: .dataSync
+                )
+                return nil
             }
         }
     }
@@ -1071,8 +1098,18 @@ class FirebaseManager: ObservableObject {
                 .getDocuments()
         }
 
-        let entries = try snapshot.documents.compactMap { doc in
-            try doc.data(as: FoodEntry.self)
+        let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
+            do {
+                return try doc.data(as: FoodEntry.self)
+            } catch {
+                // Log parsing failure for debugging - helps identify corrupt entries
+                PrivacyLogger.warning(
+                    "Failed to parse FoodEntry for reaction analysis (doc: \(doc.documentID)): \(error.localizedDescription)",
+                    subsystem: .firebase,
+                    category: .dataSync
+                )
+                return nil
+            }
         }
 
         return entries

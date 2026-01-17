@@ -72,6 +72,11 @@ class HealthKitManager: ObservableObject {
     // Track which date the current HealthKit values represent (prevents race conditions)
     private var currentDisplayDate: Date = Date()
 
+    // Task cancellation for rapid date changes
+    private var exerciseCaloriesTask: Task<Void, Never>?
+    private var stepCountTask: Task<Void, Never>?
+    private var activeEnergyTask: Task<Void, Never>?
+
     private init() {}
 
     /// Check if HealthKit authorization has already been granted
@@ -99,9 +104,19 @@ class HealthKitManager: ObservableObject {
     }
 
     /// Set the currently displayed date before fetching HealthKit data
-    /// This prevents stale async responses from overwriting current data
+    /// This cancels any in-flight requests and prevents stale async responses from overwriting current data
     func setCurrentDisplayDate(_ date: Date) {
-        currentDisplayDate = Calendar.current.startOfDay(for: date)
+        let newDate = Calendar.current.startOfDay(for: date)
+
+        // Only cancel tasks if the date actually changed
+        if newDate != currentDisplayDate {
+            // Cancel in-flight tasks to prevent stale data from racing with new requests
+            exerciseCaloriesTask?.cancel()
+            stepCountTask?.cancel()
+            activeEnergyTask?.cancel()
+        }
+
+        currentDisplayDate = newDate
     }
     
     func requestAuthorization() async {
@@ -269,33 +284,42 @@ class HealthKitManager: ObservableObject {
     
     func updateExerciseCalories(for date: Date = Date()) async {
         let normalizedDate = Calendar.current.startOfDay(for: date)
-        do {
-            let calories = try await fetchExerciseCalories(for: date)
-            await MainActor.run {
+
+        // Store task reference for cancellation
+        let task = Task { @MainActor in
+            // Early exit if cancelled before starting
+            guard !Task.isCancelled else { return }
+
+            do {
+                let calories = try await fetchExerciseCalories(for: date)
+
+                // Check cancellation after async work completes
+                guard !Task.isCancelled else { return }
+
                 // Only update if this date is still the displayed date (prevents race condition)
                 guard normalizedDate == self.currentDisplayDate else { return }
                 self.exerciseCalories = calories
                 self.errorMessage = nil
                 self.showError = false
-            }
-        } catch {
-            
-            // Don't show error for "no data" case - set to 0
-            let nsError = error as NSError
-            if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
-                // No data - set to 0 (common for future dates)
-                await MainActor.run {
+            } catch {
+                guard !Task.isCancelled else { return }
+
+                // Don't show error for "no data" case - set to 0
+                let nsError = error as NSError
+                if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
+                    // No data - set to 0 (common for future dates)
                     guard normalizedDate == self.currentDisplayDate else { return }
                     self.exerciseCalories = 0
+                    return
                 }
-                return
-            }
 
-            await MainActor.run {
                 self.errorMessage = "Unable to load exercise data from HealthKit"
                 self.showError = true
             }
         }
+
+        exerciseCaloriesTask = task
+        await task.value
     }
 
     // MARK: - Step Count Methods
@@ -342,64 +366,78 @@ class HealthKitManager: ObservableObject {
 
     func updateStepCount(for date: Date = Date()) async {
         let normalizedDate = Calendar.current.startOfDay(for: date)
-        do {
-            let steps = try await fetchStepCount(for: date)
-            await MainActor.run {
+
+        // Store task reference for cancellation
+        let task = Task { @MainActor in
+            guard !Task.isCancelled else { return }
+
+            do {
+                let steps = try await fetchStepCount(for: date)
+
+                guard !Task.isCancelled else { return }
+
                 // Only update if this date is still the displayed date (prevents race condition)
                 guard normalizedDate == self.currentDisplayDate else { return }
                 self.stepCount = steps
                 self.errorMessage = nil
                 self.showError = false
-            }
-        } catch {
-            
-            // Don't show error for "no data" case - set to 0
-            let nsError = error as NSError
-            if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
-                // No data - set to 0 (common for future dates)
-                await MainActor.run {
+            } catch {
+                guard !Task.isCancelled else { return }
+
+                // Don't show error for "no data" case - set to 0
+                let nsError = error as NSError
+                if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
+                    // No data - set to 0 (common for future dates)
                     guard normalizedDate == self.currentDisplayDate else { return }
                     self.stepCount = 0
+                    return
                 }
-                return
-            }
 
-            await MainActor.run {
                 self.errorMessage = "Unable to load step count from HealthKit"
                 self.showError = true
             }
         }
+
+        stepCountTask = task
+        await task.value
     }
 
     func updateActiveEnergy(for date: Date = Date()) async {
         let normalizedDate = Calendar.current.startOfDay(for: date)
-        do {
-            let energy = try await fetchActiveEnergyBurned(for: date)
-            await MainActor.run {
+
+        // Store task reference for cancellation
+        let task = Task { @MainActor in
+            guard !Task.isCancelled else { return }
+
+            do {
+                let energy = try await fetchActiveEnergyBurned(for: date)
+
+                guard !Task.isCancelled else { return }
+
                 // Only update if this date is still the displayed date (prevents race condition)
                 guard normalizedDate == self.currentDisplayDate else { return }
                 self.activeEnergyBurned = energy
                 self.errorMessage = nil
                 self.showError = false
-            }
-        } catch {
-            
-            // Don't show error for "no data" case - set to 0
-            let nsError = error as NSError
-            if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
-                // No data - set to 0 (common for future dates)
-                await MainActor.run {
+            } catch {
+                guard !Task.isCancelled else { return }
+
+                // Don't show error for "no data" case - set to 0
+                let nsError = error as NSError
+                if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
+                    // No data - set to 0 (common for future dates)
                     guard normalizedDate == self.currentDisplayDate else { return }
                     self.activeEnergyBurned = 0
+                    return
                 }
-                return
-            }
 
-            await MainActor.run {
                 self.errorMessage = "Unable to load active energy from HealthKit"
                 self.showError = true
             }
         }
+
+        activeEnergyTask = task
+        await task.value
     }
 
     func fetchWorkouts(for date: Date) async throws -> [HKWorkout] {
