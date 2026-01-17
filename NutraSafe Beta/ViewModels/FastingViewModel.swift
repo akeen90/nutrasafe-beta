@@ -86,7 +86,7 @@ class FastingViewModel: ObservableObject {
     let firebaseManager: FirebaseManager // Exposed for early-end modal
     private var timer: Timer?
     let userId: String
-    private let fastingService = FastingService()
+    private let fastingService: FastingService?  // Optional - nil if user not authenticated
 
     // MARK: - Regime State Tracking
     private var previousRegimeState: FastingPlan.RegimeState?
@@ -257,6 +257,7 @@ class FastingViewModel: ObservableObject {
     init(firebaseManager: FirebaseManager, userId: String) {
         self.firebaseManager = firebaseManager
         self.userId = userId
+        self.fastingService = FastingService()  // Optional - will be nil if user not authenticated
 
         // Listen for session updates
         NotificationCenter.default.addObserver(
@@ -735,6 +736,12 @@ class FastingViewModel: ObservableObject {
                 isLoading = true
         defer { isLoading = false }
 
+        guard let fastingService = fastingService else {
+            self.error = NSError(domain: "FastingViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "Fasting service unavailable - please sign in"])
+            self.showError = true
+            return
+        }
+
         do {
             try await fastingService.startRegime(planId: planId)
 
@@ -789,6 +796,12 @@ class FastingViewModel: ObservableObject {
     func stopRegime() async {
         guard let plan = activePlan, let planId = plan.id else {
             self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
+            self.showError = true
+            return
+        }
+
+        guard let fastingService = fastingService else {
+            self.error = NSError(domain: "FastingViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "Fasting service unavailable - please sign in"])
             self.showError = true
             return
         }

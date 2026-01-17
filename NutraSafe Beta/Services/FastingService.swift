@@ -6,10 +6,12 @@ import UserNotifications
 class FastingService: ObservableObject {
     private let db = Firestore.firestore()
     private let userId: String
-    
-    init() {
+
+    /// Initialize FastingService. Returns nil if user is not authenticated.
+    /// Callers should check authentication state before creating this service.
+    init?() {
         guard let currentUser = Auth.auth().currentUser else {
-            fatalError("User must be authenticated")
+            return nil
         }
         self.userId = currentUser.uid
     }

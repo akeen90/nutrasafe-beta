@@ -80,6 +80,14 @@ class MealManager: ObservableObject {
         listenerRegistration = nil
     }
 
+    deinit {
+        // Clean up Firebase listeners to prevent memory leaks
+        listenerRegistration?.remove()
+        if let handle = authStateHandle {
+            Auth.auth().removeStateDidChangeListener(handle)
+        }
+    }
+
     // MARK: - CRUD Operations
 
     /// Create a new meal

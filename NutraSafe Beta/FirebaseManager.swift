@@ -199,6 +199,7 @@ class FirebaseManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "goalWeight")
         UserDefaults.standard.removeObject(forKey: "userHeight")
         UserDefaults.standard.removeObject(forKey: "weightHistory")
+        UserDefaults.standard.removeObject(forKey: "recentFoods")  // Clear recent foods to prevent data leak between users
         logInfo("Cleared local UserDefaults data on sign out", subsystem: .app, category: .security)
 
         // Clear ReactionManager data to prevent leakage between accounts
