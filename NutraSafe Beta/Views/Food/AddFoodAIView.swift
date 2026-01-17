@@ -664,29 +664,23 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            // Extract image first before dismissing
+            // Extract image
             let selectedImage = info[.originalImage] as? UIImage
 
-            // Dismiss picker and call callback in completion handler
-            // This prevents double-dismissal issues when presented in a sheet
-            picker.dismiss(animated: true) { [weak self] in
-                guard let self = self else { return }
-                if let image = selectedImage {
-                    self.parent.selectedImage?.wrappedValue = image
-                    self.parent.onImageSelected(image)
-                } else {
-                    // Failed to extract image - still call callback with nil to trigger error handling
-                    self.parent.onImageSelected(nil)
-                }
+            // Do NOT call picker.dismiss() - let SwiftUI handle dismissal via the binding
+            // This prevents double-dismissal cascade that was causing parent views to dismiss
+            if let image = selectedImage {
+                parent.selectedImage?.wrappedValue = image
+                parent.onImageSelected(image)
+            } else {
+                // Failed to extract image - still call callback with nil to trigger error handling
+                parent.onImageSelected(nil)
             }
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            // Dismiss picker and call callback in completion handler
-            // This prevents double-dismissal issues when presented in a sheet
-            picker.dismiss(animated: true) { [weak self] in
-                self?.parent.onImageSelected(nil)
-            }
+            // Do NOT call picker.dismiss() - let SwiftUI handle dismissal via the binding
+            parent.onImageSelected(nil)
         }
     }
 }
