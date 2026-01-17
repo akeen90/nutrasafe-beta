@@ -23,6 +23,7 @@ class MealManager: ObservableObject {
     // MARK: - Private Properties
     private let db = Firestore.firestore()
     private var listenerRegistration: ListenerRegistration?
+    private var authStateHandle: AuthStateDidChangeListenerHandle?
     private let mealsKey = "savedMeals"
 
     private init() {
@@ -35,7 +36,7 @@ class MealManager: ObservableObject {
 
     // MARK: - Auth State Handling
     private func setupAuthStateListener() {
-        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+        authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 if user != nil {
                     self?.startListening()
