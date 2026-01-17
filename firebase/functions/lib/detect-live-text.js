@@ -55,17 +55,14 @@ exports.detectLiveText = functions.https.onRequest(async (req, res) => {
             const fullText = textAnnotations[0].description || '';
             const fullTextConfidence = textAnnotations[0].confidence || 0;
             // Extract individual text blocks with bounding boxes
-            const boundingBoxes = textAnnotations.slice(1).map(annotation => {
-                var _a, _b;
-                return ({
-                    text: annotation.description || '',
-                    vertices: ((_b = (_a = annotation.boundingPoly) === null || _a === void 0 ? void 0 : _a.vertices) === null || _b === void 0 ? void 0 : _b.map(vertex => ({
-                        x: vertex.x || 0,
-                        y: vertex.y || 0
-                    }))) || [],
-                    confidence: annotation.confidence || 0
-                });
-            });
+            const boundingBoxes = textAnnotations.slice(1).map(annotation => ({
+                text: annotation.description || '',
+                vertices: annotation.boundingPoly?.vertices?.map(vertex => ({
+                    x: vertex.x || 0,
+                    y: vertex.y || 0
+                })) || [],
+                confidence: annotation.confidence || 0
+            }));
             // Filter text based on scan type
             let processedText = fullText;
             if (scanType === 'ingredients') {

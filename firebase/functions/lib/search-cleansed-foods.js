@@ -1,15 +1,4 @@
 "use strict";
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.searchCleansedFoods = void 0;
 const functions = require("firebase-functions");
@@ -76,13 +65,11 @@ exports.searchCleansedFoods = functions.https.onRequest(async (req, res) => {
         // Convert to results and add relevance scoring
         let allResults = cleanedSnapshot.docs
             .filter(doc => {
-            var _a, _b;
             const data = doc.data();
             // Filter out foods recommended for deletion
-            return !((_a = data.cleanedData) === null || _a === void 0 ? void 0 : _a.recommendedForDeletion) && !((_b = data.aiAnalysis) === null || _b === void 0 ? void 0 : _b.recommendedForDeletion);
+            return !data.cleanedData?.recommendedForDeletion && !data.aiAnalysis?.recommendedForDeletion;
         })
             .map(doc => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
             const data = doc.data();
             const cleanedData = data.cleanedData || {};
             const foodName = cleanedData.foodName || cleanedData.name || '';
@@ -90,13 +77,13 @@ exports.searchCleansedFoods = functions.https.onRequest(async (req, res) => {
             // Calculate relevance score for ranking
             const relevanceScore = calculateRelevance(foodName, brandName, query, queryWords);
             // Transform cleansed data to match app's expected format
-            const calorieValue = ((_a = cleanedData.calories) === null || _a === void 0 ? void 0 : _a.kcal) || ((_b = cleanedData.nutritionData) === null || _b === void 0 ? void 0 : _b.calories) || 0;
-            const proteinValue = ((_c = cleanedData.protein) === null || _c === void 0 ? void 0 : _c.per100g) || ((_d = cleanedData.nutritionData) === null || _d === void 0 ? void 0 : _d.protein) || 0;
-            const carbsValue = ((_e = cleanedData.carbs) === null || _e === void 0 ? void 0 : _e.per100g) || ((_f = cleanedData.nutritionData) === null || _f === void 0 ? void 0 : _f.carbs) || 0;
-            const fatValue = ((_g = cleanedData.fat) === null || _g === void 0 ? void 0 : _g.per100g) || ((_h = cleanedData.nutritionData) === null || _h === void 0 ? void 0 : _h.fat) || 0;
-            const fiberValue = ((_j = cleanedData.fiber) === null || _j === void 0 ? void 0 : _j.per100g) || ((_k = cleanedData.nutritionData) === null || _k === void 0 ? void 0 : _k.fiber) || 0;
-            const sugarValue = ((_l = cleanedData.sugar) === null || _l === void 0 ? void 0 : _l.per100g) || ((_m = cleanedData.nutritionData) === null || _m === void 0 ? void 0 : _m.sugar) || 0;
-            const sodiumValue = ((_o = cleanedData.sodium) === null || _o === void 0 ? void 0 : _o.per100g) || ((_p = cleanedData.nutritionData) === null || _p === void 0 ? void 0 : _p.sodium) || 0;
+            const calorieValue = cleanedData.calories?.kcal || cleanedData.nutritionData?.calories || 0;
+            const proteinValue = cleanedData.protein?.per100g || cleanedData.nutritionData?.protein || 0;
+            const carbsValue = cleanedData.carbs?.per100g || cleanedData.nutritionData?.carbs || 0;
+            const fatValue = cleanedData.fat?.per100g || cleanedData.nutritionData?.fat || 0;
+            const fiberValue = cleanedData.fiber?.per100g || cleanedData.nutritionData?.fiber || 0;
+            const sugarValue = cleanedData.sugar?.per100g || cleanedData.nutritionData?.sugar || 0;
+            const sodiumValue = cleanedData.sodium?.per100g || cleanedData.nutritionData?.sodium || 0;
             return {
                 id: doc.id,
                 name: foodName,
@@ -140,7 +127,7 @@ exports.searchCleansedFoods = functions.https.onRequest(async (req, res) => {
             .slice(0, 20) // Limit to 20 results
             .map(result => {
             // Remove internal relevance score and source from final results
-            const { _relevance, _source } = result, cleanResult = __rest(result, ["_relevance", "_source"]);
+            const { _relevance, _source, ...cleanResult } = result;
             return cleanResult;
         });
         console.log(`🔎 searchCleansedFoods: Found ${filteredResults.length} relevant foods from cleansed database`);

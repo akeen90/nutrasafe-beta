@@ -12,7 +12,6 @@ const generative_ai_1 = require("@google/generative-ai");
 exports.findIngredients = functions
     .region('us-central1')
     .https.onRequest(async (req, res) => {
-    var _a;
     // CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -40,7 +39,7 @@ exports.findIngredients = functions
                 : `${productName} UK nutrition per 100g ingredients`;
         console.log(`🌐 Search query: ${searchQuery}`);
         // Get Gemini API key
-        const geminiApiKey = (_a = functions.config().gemini) === null || _a === void 0 ? void 0 : _a.api_key;
+        const geminiApiKey = functions.config().gemini?.api_key;
         if (!geminiApiKey) {
             throw new Error('Gemini API key not configured');
         }

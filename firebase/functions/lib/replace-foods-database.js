@@ -72,7 +72,11 @@ exports.replaceAllFoods = functions
             const chunk = foods.slice(i, i + batchSize);
             chunk.forEach((food) => {
                 const docRef = db.collection('verifiedFoods').doc();
-                batch.set(docRef, Object.assign(Object.assign({}, food), { importedAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+                batch.set(docRef, {
+                    ...food,
+                    importedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
                 uploadedCount++;
             });
             await batch.commit();

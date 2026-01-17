@@ -191,7 +191,7 @@ exports.UK_PRODUCT_DATABASE = [
 ];
 function findUKProduct(name, brand) {
     const normalizedName = name.toLowerCase().trim();
-    const normalizedBrand = brand === null || brand === void 0 ? void 0 : brand.toLowerCase().trim();
+    const normalizedBrand = brand?.toLowerCase().trim();
     for (const product of exports.UK_PRODUCT_DATABASE) {
         // Check if name matches any of the product names
         const nameMatch = product.names.some(productName => normalizedName.includes(productName.toLowerCase()) ||

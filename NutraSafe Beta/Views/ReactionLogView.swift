@@ -212,6 +212,9 @@ struct ReactionLogView: View {
                     message: "Log at least 2 reactions to identify potential triggers and patterns"
                 )
             } else {
+                // Flagged foods patterns
+                commonFoodsView
+
                 // Common ingredients patterns
                 commonIngredientsView
             }
@@ -285,6 +288,46 @@ struct ReactionLogView: View {
         .padding(.vertical, 40)
     }
 
+    // MARK: - Common Foods View (Flagged Foods)
+    private var commonFoodsView: some View {
+        let commonFoods = calculateCommonFoods()
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "flag.fill")
+                    .foregroundColor(.orange)
+                Text("Flagged Foods")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+            }
+
+            Text("These specific foods appear frequently before your reactions. Track these items to identify patterns.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 4)
+
+            if commonFoods.isEmpty {
+                Text("Not enough observations yet to identify food patterns")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                ForEach(commonFoods.prefix(10), id: \.name) { food in
+                    CommonFoodRow(
+                        name: food.name,
+                        frequency: food.frequency,
+                        percentage: food.percentage
+                    )
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(.systemGray6).opacity(0.5))
+        .cornerRadius(12)
+    }
+
     // MARK: - Common Ingredients View
     private var commonIngredientsView: some View {
         let commonIngredients = calculateCommonIngredients()
@@ -345,6 +388,33 @@ struct ReactionLogView: View {
             .map { (name: $0.value.displayName, frequency: $0.value.count, percentage: (Double($0.value.count) / Double(totalReactions)) * 100.0) }
             .sorted { $0.frequency > $1.frequency }
     }
+
+    // MARK: - Calculate Common Foods (Flagged Foods)
+    private func calculateCommonFoods() -> [(name: String, frequency: Int, percentage: Double)] {
+        var foodCounts: [String: (count: Int, displayName: String)] = [:]
+
+        // Count foods across all reactions (case-insensitive)
+        for entry in manager.reactionLogs {
+            guard let analysis = entry.triggerAnalysis else { continue }
+
+            for food in analysis.topFoods {
+                let normalizedName = food.foodName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if foodCounts[normalizedName] == nil {
+                    foodCounts[normalizedName] = (count: 1, displayName: food.foodName)
+                } else {
+                    foodCounts[normalizedName]?.count += 1
+                }
+            }
+        }
+
+        // Filter to foods appearing in 2+ reactions and calculate percentages
+        let totalReactions = manager.reactionLogs.count
+        return foodCounts
+            .filter { $0.value.count >= 2 }
+            .map { (name: $0.value.displayName, frequency: $0.value.count, percentage: (Double($0.value.count) / Double(totalReactions)) * 100.0) }
+            .sorted { $0.frequency > $1.frequency }
+    }
 }
 
 // MARK: - Stat Card
@@ -401,6 +471,60 @@ struct CommonIngredientRow: View {
                     .foregroundColor(frequencyColor)
 
                 Text("frequency")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(12)
+        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+        .cornerRadius(10)
+        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+    }
+
+    private var frequencyColor: Color {
+        if percentage >= 80 {
+            return .red
+        } else if percentage >= 50 {
+            return .orange
+        } else {
+            return .yellow
+        }
+    }
+}
+
+// MARK: - Common Food Row (Flagged Foods)
+struct CommonFoodRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let name: String
+    let frequency: Int
+    let percentage: Double
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "flag.fill")
+                .font(.system(size: 12))
+                .foregroundColor(frequencyColor)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+
+                Text("Before \(frequency) reaction\(frequency == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(Int(percentage))%")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(frequencyColor)
+
+                Text("correlation")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }

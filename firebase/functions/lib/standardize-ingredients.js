@@ -4,7 +4,6 @@ exports.standardizeIngredients = void 0;
 const functions = require("firebase-functions");
 const axios_1 = require("axios");
 exports.standardizeIngredients = functions.https.onCall(async (data, context) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
     try {
         const { ingredients } = data;
         if (!ingredients || ingredients.length === 0) {
@@ -15,7 +14,7 @@ exports.standardizeIngredients = functions.https.onCall(async (data, context) =>
         }
         console.log(`🧠 Standardizing ${ingredients.length} ingredients with Gemini`);
         // Get Gemini API key
-        const geminiApiKey = (_a = functions.config().gemini) === null || _a === void 0 ? void 0 : _a.api_key;
+        const geminiApiKey = functions.config().gemini?.api_key;
         if (!geminiApiKey) {
             throw new functions.https.HttpsError('failed-precondition', 'Gemini API key not configured');
         }
@@ -84,7 +83,7 @@ Output: "wheat flour, nuts, sesame"`;
             },
             timeout: 15000
         });
-        const standardizedText = (_h = (_g = (_f = (_e = (_d = (_c = (_b = geminiResponse.data) === null || _b === void 0 ? void 0 : _b.candidates) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.content) === null || _e === void 0 ? void 0 : _e.parts) === null || _f === void 0 ? void 0 : _f[0]) === null || _g === void 0 ? void 0 : _g.text) === null || _h === void 0 ? void 0 : _h.trim();
+        const standardizedText = geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (!standardizedText || standardizedText === 'NONE') {
             console.log('ℹ️ No valid ingredients after standardization');
             return {

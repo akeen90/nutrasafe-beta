@@ -20,11 +20,20 @@ async function enhanceManufacturerData(food) {
             console.log(`✅ Successfully enhanced ${food.name} with manufacturer: ${aiEnhancedData.manufacturerName}, source: ${aiEnhancedData.supermarketSource}`);
             return {
                 success: true,
-                enhancedData: Object.assign(Object.assign({}, food), { manufacturerName: aiEnhancedData.manufacturerName, brandName: aiEnhancedData.brandName || extractedManufacturer, supermarketSource: aiEnhancedData.supermarketSource, storeAvailability: aiEnhancedData.storeAvailability || [], ukSpecific: true, dataConfidence: aiEnhancedData.confidence || 0.85, enhancementLog: [
+                enhancedData: {
+                    ...food,
+                    manufacturerName: aiEnhancedData.manufacturerName,
+                    brandName: aiEnhancedData.brandName || extractedManufacturer,
+                    supermarketSource: aiEnhancedData.supermarketSource,
+                    storeAvailability: aiEnhancedData.storeAvailability || [],
+                    ukSpecific: true,
+                    dataConfidence: aiEnhancedData.confidence || 0.85,
+                    enhancementLog: [
                         `Manufacturer identified: ${aiEnhancedData.manufacturerName}`,
                         `Source verified: ${aiEnhancedData.supermarketSource}`,
                         `AI confidence: ${Math.round((aiEnhancedData.confidence || 0.85) * 100)}%`
-                    ] })
+                    ]
+                }
             };
         }
         else {
@@ -237,15 +246,14 @@ async function ethicalWebSearch(foodName, barcode) {
 }
 // AI-enhanced manufacturer data validation and enhancement
 async function aiEnhanceManufacturerData(food, extractedManufacturer, supermarketData) {
-    var _a, _b;
     try {
         let manufacturerName = extractedManufacturer;
         let supermarketSource = supermarketData.supermarketFound;
         let confidence = 0.7;
         // Enhanced logic based on supermarket data
         if (supermarketData.supermarketFound) {
-            manufacturerName = ((_a = supermarketData[supermarketData.supermarketFound.toLowerCase()]) === null || _a === void 0 ? void 0 : _a.manufacturerName) || extractedManufacturer;
-            confidence = ((_b = supermarketData[supermarketData.supermarketFound.toLowerCase()]) === null || _b === void 0 ? void 0 : _b.confidence) || 0.8;
+            manufacturerName = supermarketData[supermarketData.supermarketFound.toLowerCase()]?.manufacturerName || extractedManufacturer;
+            confidence = supermarketData[supermarketData.supermarketFound.toLowerCase()]?.confidence || 0.8;
         }
         // UK-specific manufacturer detection
         if (!manufacturerName) {

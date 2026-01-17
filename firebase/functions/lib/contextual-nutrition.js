@@ -31,7 +31,11 @@ exports.getContextualNutritionScore = functions.https.onRequest(async (req, res)
         // Define realistic consumption contexts based on food type
         const contexts = getConsumptionContexts(foodName, servingSizeGrams);
         // Calculate scores for each context
-        const contextualScores = contexts.map(context => (Object.assign({ context: context.description, likelihood: context.likelihood }, calculateContextualScore(perServing, context, foodName))));
+        const contextualScores = contexts.map(context => ({
+            context: context.description,
+            likelihood: context.likelihood,
+            ...calculateContextualScore(perServing, context, foodName)
+        }));
         res.json({
             success: true,
             foodName,

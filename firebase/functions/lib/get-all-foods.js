@@ -33,20 +33,19 @@ exports.getAllFoods = functions.https.onRequest(async (req, res) => {
                     .get();
                 console.log(`Collection ${collectionName}: ${snapshot.docs.length} foods found`);
                 snapshot.docs.forEach(doc => {
-                    var _a, _b, _c, _d, _e, _f, _g;
                     const data = doc.data();
                     allFoods.push({
                         id: doc.id,
                         collection: collectionName,
                         name: data.foodName || data.name || 'Unknown',
                         brand: data.brandName || data.brand || null,
-                        calories: data.calories || ((_a = data.nutritionPer100g) === null || _a === void 0 ? void 0 : _a.calories) || null,
-                        protein: data.protein || ((_b = data.nutritionPer100g) === null || _b === void 0 ? void 0 : _b.protein) || null,
-                        carbs: data.carbs || data.carbohydrates || ((_c = data.nutritionPer100g) === null || _c === void 0 ? void 0 : _c.carbs) || null,
-                        fat: data.fat || ((_d = data.nutritionPer100g) === null || _d === void 0 ? void 0 : _d.fat) || null,
-                        sugar: data.sugar || ((_e = data.nutritionPer100g) === null || _e === void 0 ? void 0 : _e.sugar) || null,
-                        fiber: data.fiber || ((_f = data.nutritionPer100g) === null || _f === void 0 ? void 0 : _f.fiber) || null,
-                        sodium: data.sodium || ((_g = data.nutritionPer100g) === null || _g === void 0 ? void 0 : _g.sodium) || null,
+                        calories: data.calories || data.nutritionPer100g?.calories || null,
+                        protein: data.protein || data.nutritionPer100g?.protein || null,
+                        carbs: data.carbs || data.carbohydrates || data.nutritionPer100g?.carbs || null,
+                        fat: data.fat || data.nutritionPer100g?.fat || null,
+                        sugar: data.sugar || data.nutritionPer100g?.sugar || null,
+                        fiber: data.fiber || data.nutritionPer100g?.fiber || null,
+                        sodium: data.sodium || data.nutritionPer100g?.sodium || null,
                         ingredients: data.ingredients || data.extractedIngredients || null,
                         barcode: data.barcode || null,
                         source: data.source || data.verifiedBy || 'manual',

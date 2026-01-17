@@ -63,7 +63,6 @@ const ALLERGEN_DATABASE = [
     }
 ];
 exports.extractIngredientsWithAI = functions.https.onCall(async (data, context) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
     try {
         const { imageBase64, foodName, brandName } = data;
         if (!imageBase64) {
@@ -71,7 +70,7 @@ exports.extractIngredientsWithAI = functions.https.onCall(async (data, context) 
         }
         console.log(`🧠 Starting intelligent ingredient extraction for: ${foodName} ${brandName ? `by ${brandName}` : ''}`);
         // Get Gemini API key
-        const geminiApiKey = (_a = functions.config().gemini) === null || _a === void 0 ? void 0 : _a.api_key;
+        const geminiApiKey = functions.config().gemini?.api_key;
         if (!geminiApiKey) {
             throw new functions.https.HttpsError('failed-precondition', 'Gemini API key not configured');
         }
@@ -112,7 +111,7 @@ Respond with ONLY the clean ingredients list, nothing else. If no clear ingredie
                 'Content-Type': 'application/json'
             }
         });
-        const extractedText = (_h = (_g = (_f = (_e = (_d = (_c = (_b = geminiResponse.data) === null || _b === void 0 ? void 0 : _b.candidates) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.content) === null || _e === void 0 ? void 0 : _e.parts) === null || _f === void 0 ? void 0 : _f[0]) === null || _g === void 0 ? void 0 : _g.text) === null || _h === void 0 ? void 0 : _h.trim();
+        const extractedText = geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (!extractedText || extractedText === 'NO_INGREDIENTS_FOUND') {
             console.log('❌ No ingredients found in image');
             return {

@@ -41,7 +41,42 @@ exports.importGenericFoods = functions.https.onRequest(async (req, res) => {
         let imported = 0;
         for (const food of foods) {
             // Create nutrition data object
-            const nutritionData = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ calories: food.energy || 0, protein: food.protein || 0, carbs: food.carbs || 0, fat: food.fat || 0, fiber: food.fiber || 0, sugar: food.sugar || 0 }, (food.vitamin_a && { vitaminA: food.vitamin_a })), (food.vitamin_d && { vitaminD: food.vitamin_d })), (food.vitamin_e && { vitaminE: food.vitamin_e })), (food.vitamin_k && { vitaminK: food.vitamin_k })), (food.vitamin_c && { vitaminC: food.vitamin_c })), (food.thiamine && { thiamine: food.thiamine })), (food.riboflavin && { riboflavin: food.riboflavin })), (food.niacin && { niacin: food.niacin })), (food.pantothenic_acid && { pantothenicAcid: food.pantothenic_acid })), (food.vitamin_b6 && { vitaminB6: food.vitamin_b6 })), (food.biotin && { biotin: food.biotin })), (food.folate && { folate: food.folate })), (food.vitamin_b12 && { vitaminB12: food.vitamin_b12 })), (food.calcium && { calcium: food.calcium })), (food.iron && { iron: food.iron })), (food.magnesium && { magnesium: food.magnesium })), (food.phosphorus && { phosphorus: food.phosphorus })), (food.potassium && { potassium: food.potassium })), (food.zinc && { zinc: food.zinc })), (food.copper && { copper: food.copper })), (food.manganese && { manganese: food.manganese })), (food.selenium && { selenium: food.selenium })), (food.chromium && { chromium: food.chromium })), (food.molybdenum && { molybdenum: food.molybdenum })), (food.iodine && { iodine: food.iodine })), (food.omega_3 && { omega3: food.omega_3 })), (food.choline && { choline: food.choline }));
+            const nutritionData = {
+                calories: food.energy || 0,
+                protein: food.protein || 0,
+                carbs: food.carbs || 0,
+                fat: food.fat || 0,
+                fiber: food.fiber || 0,
+                sugar: food.sugar || 0,
+                // Micronutrients (only include if not null)
+                ...(food.vitamin_a && { vitaminA: food.vitamin_a }),
+                ...(food.vitamin_d && { vitaminD: food.vitamin_d }),
+                ...(food.vitamin_e && { vitaminE: food.vitamin_e }),
+                ...(food.vitamin_k && { vitaminK: food.vitamin_k }),
+                ...(food.vitamin_c && { vitaminC: food.vitamin_c }),
+                ...(food.thiamine && { thiamine: food.thiamine }),
+                ...(food.riboflavin && { riboflavin: food.riboflavin }),
+                ...(food.niacin && { niacin: food.niacin }),
+                ...(food.pantothenic_acid && { pantothenicAcid: food.pantothenic_acid }),
+                ...(food.vitamin_b6 && { vitaminB6: food.vitamin_b6 }),
+                ...(food.biotin && { biotin: food.biotin }),
+                ...(food.folate && { folate: food.folate }),
+                ...(food.vitamin_b12 && { vitaminB12: food.vitamin_b12 }),
+                ...(food.calcium && { calcium: food.calcium }),
+                ...(food.iron && { iron: food.iron }),
+                ...(food.magnesium && { magnesium: food.magnesium }),
+                ...(food.phosphorus && { phosphorus: food.phosphorus }),
+                ...(food.potassium && { potassium: food.potassium }),
+                ...(food.zinc && { zinc: food.zinc }),
+                ...(food.copper && { copper: food.copper }),
+                ...(food.manganese && { manganese: food.manganese }),
+                ...(food.selenium && { selenium: food.selenium }),
+                ...(food.chromium && { chromium: food.chromium }),
+                ...(food.molybdenum && { molybdenum: food.molybdenum }),
+                ...(food.iodine && { iodine: food.iodine }),
+                ...(food.omega_3 && { omega3: food.omega_3 }),
+                ...(food.choline && { choline: food.choline })
+            };
             // Create Firestore document
             const docData = {
                 foodName: food.name,
@@ -61,7 +96,12 @@ exports.importGenericFoods = functions.https.onRequest(async (req, res) => {
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 // Micronutrient profile for the new system
-                micronutrientProfile: Object.assign({ hasData: true, dataSource: 'reference_database', confidenceScore: 'high' }, nutritionData)
+                micronutrientProfile: {
+                    hasData: true,
+                    dataSource: 'reference_database',
+                    confidenceScore: 'high',
+                    ...nutritionData
+                }
             };
             // Use a consistent document ID
             const docId = `generic_${food.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${food.serving_name || 'standard'}`;

@@ -29,7 +29,6 @@ exports.recognizeFood = (0, https_1.onRequest)({
     memory: '1GiB',
     secrets: [geminiApiKey, algoliaAdminKey],
 }, async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         res.set('Access-Control-Allow-Origin', '*');
@@ -81,17 +80,17 @@ exports.recognizeFood = (0, https_1.onRequest)({
                 const dbMatch = await searchDatabaseForFood(algoliaClient, identified);
                 if (dbMatch) {
                     // Extract nutrition with fallbacks for different field naming conventions
-                    const caloriesVal = (_c = (_b = (_a = dbMatch.calories) !== null && _a !== void 0 ? _a : dbMatch.Calories) !== null && _b !== void 0 ? _b : dbMatch.energy) !== null && _c !== void 0 ? _c : 0;
-                    const proteinVal = (_e = (_d = dbMatch.protein) !== null && _d !== void 0 ? _d : dbMatch.Protein) !== null && _e !== void 0 ? _e : 0;
-                    const carbsVal = (_h = (_g = (_f = dbMatch.carbs) !== null && _f !== void 0 ? _f : dbMatch.Carbs) !== null && _g !== void 0 ? _g : dbMatch.carbohydrates) !== null && _h !== void 0 ? _h : 0;
-                    const fatVal = (_k = (_j = dbMatch.fat) !== null && _j !== void 0 ? _j : dbMatch.Fat) !== null && _k !== void 0 ? _k : 0;
-                    const fiberVal = (_o = (_m = (_l = dbMatch.fiber) !== null && _l !== void 0 ? _l : dbMatch.Fiber) !== null && _m !== void 0 ? _m : dbMatch.fibre) !== null && _o !== void 0 ? _o : 0;
-                    const sugarVal = (_q = (_p = dbMatch.sugar) !== null && _p !== void 0 ? _p : dbMatch.Sugar) !== null && _q !== void 0 ? _q : 0;
-                    const sodiumVal = (_s = (_r = dbMatch.sodium) !== null && _r !== void 0 ? _r : dbMatch.Sodium) !== null && _s !== void 0 ? _s : 0;
-                    const brandVal = (_u = (_t = dbMatch.brandName) !== null && _t !== void 0 ? _t : dbMatch.brand) !== null && _u !== void 0 ? _u : identified.brand;
+                    const caloriesVal = dbMatch.calories ?? dbMatch.Calories ?? dbMatch.energy ?? 0;
+                    const proteinVal = dbMatch.protein ?? dbMatch.Protein ?? 0;
+                    const carbsVal = dbMatch.carbs ?? dbMatch.Carbs ?? dbMatch.carbohydrates ?? 0;
+                    const fatVal = dbMatch.fat ?? dbMatch.Fat ?? 0;
+                    const fiberVal = dbMatch.fiber ?? dbMatch.Fiber ?? dbMatch.fibre ?? 0;
+                    const sugarVal = dbMatch.sugar ?? dbMatch.Sugar ?? 0;
+                    const sodiumVal = dbMatch.sodium ?? dbMatch.Sodium ?? 0;
+                    const brandVal = dbMatch.brandName ?? dbMatch.brand ?? identified.brand;
                     // For PACKAGED products with database match, prefer the database serving size
                     // over AI-estimated portion (AI should only estimate portions for generic plated food)
-                    const dbServingSize = (_w = (_v = dbMatch.servingSize) !== null && _v !== void 0 ? _v : dbMatch.ServingSize) !== null && _w !== void 0 ? _w : dbMatch.serving_size;
+                    const dbServingSize = dbMatch.servingSize ?? dbMatch.ServingSize ?? dbMatch.serving_size;
                     let finalPortionGrams;
                     if (dbServingSize && dbServingSize > 0) {
                         // Use database serving size for packaged products
@@ -364,7 +363,6 @@ If no food is visible, return: {"foods": []}`;
  * Identify foods using Gemini 2.0 Flash (best balance of speed and accuracy)
  */
 async function identifyFoodsWithGemini(base64Image, apiKey) {
-    var _a, _b, _c, _d, _e;
     // Using gemini-2.0-flash for best multimodal performance
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const response = await axios_1.default.post(url, {
@@ -386,7 +384,7 @@ async function identifyFoodsWithGemini(base64Image, apiKey) {
             maxOutputTokens: 4096,
         }
     });
-    const text = ((_e = (_d = (_c = (_b = (_a = response.data.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '{"foods": []}';
+    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '{"foods": []}';
     return parseGeminiResponse(text);
 }
 /**

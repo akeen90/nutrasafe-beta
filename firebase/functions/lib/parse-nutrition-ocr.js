@@ -62,7 +62,10 @@ exports.parseNutritionOCRCached = (0, https_1.onCall)({
             const cacheAge = Date.now() - cachedData.timestamp;
             if (cacheAge < 7 * 24 * 60 * 60 * 1000) {
                 console.log('✅ Using cached nutrition OCR data');
-                return Object.assign(Object.assign({}, cachedData.result), { cached: true });
+                return {
+                    ...cachedData.result,
+                    cached: true,
+                };
             }
         }
         const prompt = buildNutritionExtractionPrompt(ocrText, preferPer100g);
@@ -74,7 +77,7 @@ exports.parseNutritionOCRCached = (0, https_1.onCall)({
             ocrText: ocrText.substring(0, 500), // Store truncated for reference
         });
         console.log(`✅ Extracted nutrition data (cached for future)`);
-        return Object.assign(Object.assign({}, result), { cached: false });
+        return { ...result, cached: false };
     }
     catch (error) {
         console.error('❌ AI nutrition OCR parsing failed:', error);
@@ -163,7 +166,6 @@ Return ONLY the JSON. No explanations, no markdown.
 `.trim();
 }
 async function callGeminiAPI(prompt, apiKey) {
-    var _a, _b, _c, _d, _e;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
     const response = await axios_1.default.post(url, {
         contents: [{
@@ -176,11 +178,10 @@ async function callGeminiAPI(prompt, apiKey) {
             maxOutputTokens: 1024,
         }
     });
-    const text = ((_e = (_d = (_c = (_b = (_a = response.data.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '{}';
+    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     return parseAIResponse(text);
 }
 function parseAIResponse(responseText) {
-    var _a;
     try {
         let cleanedText = responseText.trim();
         // Remove markdown code blocks if present
@@ -191,7 +192,7 @@ function parseAIResponse(responseText) {
         const parsed = JSON.parse(cleanedText);
         // Validate and normalize the response
         const result = {
-            isPerServing: (_a = parsed.isPerServing) !== null && _a !== void 0 ? _a : false,
+            isPerServing: parsed.isPerServing ?? false,
             confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
         };
         // Extract numeric values with validation

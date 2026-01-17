@@ -14,7 +14,7 @@ export { fastSearchFoods } from './fast-search';
 export { searchFoodsWeb } from './search-foods-web';
 export { getFoodDetails } from './food-details';
 export { searchFoodsByCollection } from './search-foods-by-collection';
-export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, moveFoodBetweenCollections, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes } from './food-management';
+export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, moveFoodBetweenCollections, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes } from './food-management';
 export { getOverviewStats, getAnalyticsData } from './analytics';
 export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics } from './user-management';
 export { getContextualNutritionScore } from './contextual-nutrition';
@@ -49,3 +49,10 @@ export { configureQueryRules, getQueryRulesStats, clearQueryRules } from './algo
 
 // Mailchimp email marketing sync
 export { syncEmailConsentToMailchimp, syncAllEmailConsentsToMailchimp } from './mailchimp-sync';
+
+// Database scanning and batch operations
+export { scanDatabaseIssues, batchUpdateFoods } from './scan-database';
+
+// UK Data Cleansing - Google Discovery and Extraction
+export { discoverUKProductPage, generateManualSearchLinks } from './uk-discovery';
+export { extractUKProductData } from './uk-extractor';

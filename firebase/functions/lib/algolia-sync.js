@@ -196,10 +196,9 @@ exports.syncVerifiedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     document: "verifiedFoods/{foodId}",
     secrets: [algoliaAdminKey],
 }, async (event) => {
-    var _a, _b;
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
     const foodId = event.params.foodId;
-    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    const afterData = event.data?.after?.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -210,7 +209,10 @@ exports.syncVerifiedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
         return;
     }
     // Create or Update
-    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    const algoliaObject = {
+        objectID: foodId,
+        ...prepareForAlgolia(afterData),
+    };
     await client.saveObject({
         indexName: VERIFIED_FOODS_INDEX,
         body: algoliaObject,
@@ -224,10 +226,9 @@ exports.syncFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     document: "foods/{foodId}",
     secrets: [algoliaAdminKey],
 }, async (event) => {
-    var _a, _b;
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
     const foodId = event.params.foodId;
-    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    const afterData = event.data?.after?.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -238,7 +239,10 @@ exports.syncFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
         return;
     }
     // Create or Update
-    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    const algoliaObject = {
+        objectID: foodId,
+        ...prepareForAlgolia(afterData),
+    };
     await client.saveObject({
         indexName: FOODS_INDEX,
         body: algoliaObject,
@@ -252,10 +256,9 @@ exports.syncManualFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     document: "manualFoods/{foodId}",
     secrets: [algoliaAdminKey],
 }, async (event) => {
-    var _a, _b;
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
     const foodId = event.params.foodId;
-    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    const afterData = event.data?.after?.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -266,7 +269,10 @@ exports.syncManualFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
         return;
     }
     // Create or Update
-    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    const algoliaObject = {
+        objectID: foodId,
+        ...prepareForAlgolia(afterData),
+    };
     await client.saveObject({
         indexName: MANUAL_FOODS_INDEX,
         body: algoliaObject,
@@ -280,10 +286,9 @@ exports.syncUserAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     document: "userAdded/{foodId}",
     secrets: [algoliaAdminKey],
 }, async (event) => {
-    var _a, _b;
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
     const foodId = event.params.foodId;
-    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    const afterData = event.data?.after?.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -294,7 +299,10 @@ exports.syncUserAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
         return;
     }
     // Create or Update
-    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    const algoliaObject = {
+        objectID: foodId,
+        ...prepareForAlgolia(afterData),
+    };
     await client.saveObject({
         indexName: USER_ADDED_INDEX,
         body: algoliaObject,
@@ -308,10 +316,9 @@ exports.syncAIEnhancedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     document: "aiEnhanced/{foodId}",
     secrets: [algoliaAdminKey],
 }, async (event) => {
-    var _a, _b;
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
     const foodId = event.params.foodId;
-    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    const afterData = event.data?.after?.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -327,7 +334,10 @@ exports.syncAIEnhancedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
         return;
     }
     // Create or Update
-    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    const algoliaObject = {
+        objectID: foodId,
+        ...prepareForAlgolia(afterData),
+    };
     await client.saveObject({
         indexName: AI_ENHANCED_INDEX,
         body: algoliaObject,
@@ -341,10 +351,9 @@ exports.syncAIManuallyAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     document: "aiManuallyAdded/{foodId}",
     secrets: [algoliaAdminKey],
 }, async (event) => {
-    var _a, _b;
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
     const foodId = event.params.foodId;
-    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    const afterData = event.data?.after?.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -355,7 +364,10 @@ exports.syncAIManuallyAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
         return;
     }
     // Create or Update
-    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    const algoliaObject = {
+        objectID: foodId,
+        ...prepareForAlgolia(afterData),
+    };
     await client.saveObject({
         indexName: AI_MANUALLY_ADDED_INDEX,
         body: algoliaObject,
@@ -426,7 +438,10 @@ exports.bulkImportFoodsToAlgolia = functions.https.onCall({
     };
     for (const collection of collections) {
         const snapshot = await db.collection(collection.name).get();
-        let algoliaObjects = snapshot.docs.map((doc) => (Object.assign({ objectID: doc.id }, prepareForAlgolia(doc.data()))));
+        let algoliaObjects = snapshot.docs.map((doc) => ({
+            objectID: doc.id,
+            ...prepareForAlgolia(doc.data()),
+        }));
         // Filter aiEnhanced to only include approved foods
         if (collection.name === "aiEnhanced") {
             const originalCount = algoliaObjects.length;
@@ -470,7 +485,10 @@ exports.syncNewDatabasesToAlgolia = functions.https.onRequest({
     for (const collection of collections) {
         console.log(`📦 Processing ${collection.name}...`);
         const snapshot = await db.collection(collection.name).get();
-        const algoliaObjects = snapshot.docs.map((doc) => (Object.assign({ objectID: doc.id }, prepareForAlgolia(doc.data()))));
+        const algoliaObjects = snapshot.docs.map((doc) => ({
+            objectID: doc.id,
+            ...prepareForAlgolia(doc.data()),
+        }));
         if (algoliaObjects.length > 0) {
             // Configure index settings first
             await configureIndexSettings(client, collection.indexName);
@@ -580,10 +598,10 @@ exports.searchFoodsAlgolia = functions.https.onRequest({
     })));
     // Combine all results from all indices
     const allHits = [
-        ...searchResults[0].hits.map((h) => (Object.assign(Object.assign({}, h), { _sourceIndex: "user_added", _sourcePriority: 0 }))),
-        ...searchResults[1].hits.map((h) => (Object.assign(Object.assign({}, h), { _sourceIndex: "ai_enhanced", _sourcePriority: 1 }))),
-        ...searchResults[2].hits.map((h) => (Object.assign(Object.assign({}, h), { _sourceIndex: "ai_manually_added", _sourcePriority: 2 }))),
-        ...searchResults[3].hits.map((h) => (Object.assign(Object.assign({}, h), { _sourceIndex: "foods", _sourcePriority: 3 }))),
+        ...searchResults[0].hits.map((h) => ({ ...h, _sourceIndex: "user_added", _sourcePriority: 0 })),
+        ...searchResults[1].hits.map((h) => ({ ...h, _sourceIndex: "ai_enhanced", _sourcePriority: 1 })),
+        ...searchResults[2].hits.map((h) => ({ ...h, _sourceIndex: "ai_manually_added", _sourcePriority: 2 })),
+        ...searchResults[3].hits.map((h) => ({ ...h, _sourceIndex: "foods", _sourcePriority: 3 })),
     ];
     // Sort by Algolia's relevance ranking, NOT by index priority
     // This ensures "Big Mac" (matching both words) ranks before "Huel" (matching one word)
@@ -629,7 +647,6 @@ exports.searchFoodsAlgolia = functions.https.onRequest({
  * This transforms the Firebase document into an Algolia-optimized format
  */
 function prepareForAlgolia(data) {
-    var _a, _b;
     const name = data.name || data.foodName || "";
     const brandName = data.brandName || data.brand || "";
     // Custom ranking attributes
@@ -662,8 +679,8 @@ function prepareForAlgolia(data) {
         allergens: data.allergens || [],
         additives: data.additives || [],
         // Timestamps
-        createdAt: ((_a = data.createdAt) === null || _a === void 0 ? void 0 : _a._seconds) || Date.now() / 1000,
-        updatedAt: ((_b = data.updatedAt) === null || _b === void 0 ? void 0 : _b._seconds) || Date.now() / 1000,
+        createdAt: data.createdAt?._seconds || Date.now() / 1000,
+        updatedAt: data.updatedAt?._seconds || Date.now() / 1000,
         // Nutrition score for ranking
         nutritionGrade: data.nutritionGrade || data.nutrition_grade || "",
         score: data.score || 0,

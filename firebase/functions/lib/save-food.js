@@ -1,15 +1,4 @@
 "use strict";
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.batchSaveFoods = exports.getFood = exports.deleteFood = exports.saveFood = void 0;
 const functions = require("firebase-functions");
@@ -45,9 +34,13 @@ exports.saveFood = functions.https.onRequest(async (req, res) => {
         const foodId = foodData.objectID;
         // Prepare the food document for Firestore
         // Remove objectID from the data (it's used as the document ID)
-        const { objectID } = foodData, foodDataWithoutId = __rest(foodData, ["objectID"]);
+        const { objectID, ...foodDataWithoutId } = foodData;
         // Add metadata
-        const firestoreData = Object.assign(Object.assign({}, foodDataWithoutId), { updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: 'database_manager' });
+        const firestoreData = {
+            ...foodDataWithoutId,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedBy: 'database_manager',
+        };
         // If this is a new food, add createdAt
         const existingDoc = await db.collection('foods').doc(foodId).get();
         if (!existingDoc.exists) {
@@ -111,7 +104,6 @@ exports.deleteFood = functions.https.onRequest(async (req, res) => {
  * Returns the latest data without waiting for Algolia sync
  */
 exports.getFood = functions.https.onRequest(async (req, res) => {
-    var _a;
     // Set CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -121,7 +113,7 @@ exports.getFood = functions.https.onRequest(async (req, res) => {
         return;
     }
     try {
-        const foodId = req.query.foodId || ((_a = req.body) === null || _a === void 0 ? void 0 : _a.foodId);
+        const foodId = req.query.foodId || req.body?.foodId;
         if (!foodId) {
             res.status(400).json({ success: false, error: 'Food ID is required' });
             return;
@@ -136,7 +128,10 @@ exports.getFood = functions.https.onRequest(async (req, res) => {
         // Return food with objectID included
         res.status(200).json({
             success: true,
-            food: Object.assign({ objectID: foodDoc.id }, data)
+            food: {
+                objectID: foodDoc.id,
+                ...data
+            }
         });
     }
     catch (error) {
@@ -177,8 +172,12 @@ exports.batchSaveFoods = functions.https.onRequest(async (req, res) => {
                 continue; // Skip foods without objectID
             }
             const foodRef = db.collection('foods').doc(food.objectID);
-            const { objectID } = food, foodDataWithoutId = __rest(food, ["objectID"]);
-            batch.set(foodRef, Object.assign(Object.assign({}, foodDataWithoutId), { updatedAt: timestamp, updatedBy: 'database_manager' }), { merge: true });
+            const { objectID, ...foodDataWithoutId } = food;
+            batch.set(foodRef, {
+                ...foodDataWithoutId,
+                updatedAt: timestamp,
+                updatedBy: 'database_manager',
+            }, { merge: true });
         }
         await batch.commit();
         console.log(`✅ Batch saved ${foods.length} foods to Firestore`);

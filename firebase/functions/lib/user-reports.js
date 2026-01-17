@@ -31,11 +31,14 @@ exports.getUserReports = functions.https.onRequest(async (req, res) => {
         }
         const snapshot = await query.get();
         const reports = snapshot.docs.map(doc => {
-            var _a, _b, _c, _d, _e, _f;
             const data = doc.data();
-            return Object.assign(Object.assign({ id: doc.id }, data), { 
+            return {
+                id: doc.id,
+                ...data,
                 // Convert Firestore Timestamp to ISO string
-                reportedAt: ((_c = (_b = (_a = data.reportedAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) === null || _c === void 0 ? void 0 : _c.toISOString()) || null, resolvedAt: ((_f = (_e = (_d = data.resolvedAt) === null || _d === void 0 ? void 0 : _d.toDate) === null || _e === void 0 ? void 0 : _e.call(_d)) === null || _f === void 0 ? void 0 : _f.toISOString()) || null });
+                reportedAt: data.reportedAt?.toDate?.()?.toISOString() || null,
+                resolvedAt: data.resolvedAt?.toDate?.()?.toISOString() || null
+            };
         });
         // Count pending reports
         const pendingCount = reports.filter(r => r.status === 'pending').length;

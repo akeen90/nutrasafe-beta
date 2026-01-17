@@ -1,15 +1,4 @@
 "use strict";
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fastSearchFoods = void 0;
 const functions = require("firebase-functions");
@@ -118,13 +107,13 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
         });
         // Simple ranking (much faster than complex scoring)
         filteredResults = filteredResults
-            .map(food => (Object.assign(Object.assign({}, food), { _score: calculateFastScore(food, normalizedQuery, queryWords) })))
+            .map(food => ({
+            ...food,
+            _score: calculateFastScore(food, normalizedQuery, queryWords)
+        }))
             .sort((a, b) => b._score - a._score)
             .slice(0, 20)
-            .map((_a) => {
-            var { _score } = _a, food = __rest(_a, ["_score"]);
-            return food;
-        }); // Remove score from final result
+            .map(({ _score, ...food }) => food); // Remove score from final result
         // Cache the results
         searchCache.set(cacheKey, {
             results: filteredResults,

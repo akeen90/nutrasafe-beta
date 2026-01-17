@@ -124,7 +124,6 @@ Return ONLY the JSON array. No explanations, no markdown.
 `.trim();
 }
 async function callGeminiAPI(prompt, apiKey) {
-    var _a, _b, _c, _d, _e;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
     const response = await axios_1.default.post(url, {
         contents: [{
@@ -137,7 +136,7 @@ async function callGeminiAPI(prompt, apiKey) {
             maxOutputTokens: 2048,
         }
     });
-    const text = ((_e = (_d = (_c = (_b = (_a = response.data.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '[]';
+    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
     return parseAIResponse(text);
 }
 function parseAIResponse(responseText) {

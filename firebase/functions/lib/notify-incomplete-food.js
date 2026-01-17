@@ -10,7 +10,6 @@ const nodemailer = require("nodemailer");
  * Sends an email to contact@nutrasafe.co.uk when a user reports missing data
  */
 exports.notifyIncompleteFood = functions.https.onRequest(async (req, res) => {
-    var _a, _b, _c;
     // Set CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -37,9 +36,9 @@ exports.notifyIncompleteFood = functions.https.onRequest(async (req, res) => {
             userEmail,
             hasFullFoodData: !!fullFoodData,
             fullFoodDataKeys: fullFoodData ? Object.keys(fullFoodData) : [],
-            calories: fullFoodData === null || fullFoodData === void 0 ? void 0 : fullFoodData.calories,
-            protein: fullFoodData === null || fullFoodData === void 0 ? void 0 : fullFoodData.protein,
-            ingredients: ((_a = fullFoodData === null || fullFoodData === void 0 ? void 0 : fullFoodData.ingredients) === null || _a === void 0 ? void 0 : _a.length) || 0,
+            calories: fullFoodData?.calories,
+            protein: fullFoodData?.protein,
+            ingredients: fullFoodData?.ingredients?.length || 0,
             timestamp: new Date().toISOString()
         });
         // Build the report document with full food data if available
@@ -85,8 +84,8 @@ exports.notifyIncompleteFood = functions.https.onRequest(async (req, res) => {
         const docRef = await admin.firestore().collection('userReports').add(reportData);
         console.log('✅ Notification saved to Firestore:', docRef.id);
         // Try to send email if credentials are configured
-        const emailUser = ((_b = functions.config().email) === null || _b === void 0 ? void 0 : _b.user) || process.env.EMAIL_USER;
-        const emailPassword = ((_c = functions.config().email) === null || _c === void 0 ? void 0 : _c.password) || process.env.EMAIL_PASSWORD;
+        const emailUser = functions.config().email?.user || process.env.EMAIL_USER;
+        const emailPassword = functions.config().email?.password || process.env.EMAIL_PASSWORD;
         if (emailUser && emailPassword) {
             try {
                 // Configure email transport for Gmail

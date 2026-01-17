@@ -1,15 +1,4 @@
 "use strict";
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.searchFoods = void 0;
 const functions = require("firebase-functions");
@@ -271,7 +260,11 @@ exports.searchFoods = functions
                     const processingScore = (0, additive_analyzer_enhanced_1.calculateProcessingScore)(analysisResult.detectedAdditives, ingredientsString);
                     const grade = (0, additive_analyzer_enhanced_1.determineGrade)(processingScore.totalScore, analysisResult.hasRedFlags);
                     // Transform additives to match iOS app expectations
-                    additiveAnalysis = analysisResult.detectedAdditives.map(additive => (Object.assign(Object.assign({}, additive), { id: additive.code, consumerInfo: additive.consumer_guide })));
+                    additiveAnalysis = analysisResult.detectedAdditives.map(additive => ({
+                        ...additive,
+                        id: additive.code, // Use code as ID for iOS Identifiable requirement
+                        consumerInfo: additive.consumer_guide
+                    }));
                     processingInfo = {
                         score: processingScore.totalScore,
                         grade: grade.grade,
@@ -324,9 +317,9 @@ exports.searchFoods = functions
                 micronutrientProfile: data.micronutrientProfile || null,
                 // Include additive analysis using comprehensive 400+ database
                 additives: additiveAnalysis || [],
-                processingScore: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.score) || 0,
-                processingGrade: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.grade) || 'A',
-                processingLabel: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.label) || 'Minimal processing',
+                processingScore: processingInfo?.score || 0,
+                processingGrade: processingInfo?.grade || 'A',
+                processingLabel: processingInfo?.label || 'Minimal processing',
                 // Add relevance score for sorting
                 _relevance: relevanceScore
             };
@@ -343,7 +336,7 @@ exports.searchFoods = functions
             .slice(0, 20) // Limit to 20 results
             .map(result => {
             // Remove internal relevance score from final results
-            const { _relevance } = result, cleanResult = __rest(result, ["_relevance"]);
+            const { _relevance, ...cleanResult } = result;
             return cleanResult;
         });
         console.log(`Found ${filteredResults.length} relevant foods from ${allResults.length} total`);
@@ -378,7 +371,11 @@ exports.searchFoods = functions
                         const analysisResult = (0, additive_analyzer_enhanced_1.analyzeIngredientsForAdditives)(ingredientsString);
                         const processingScore = (0, additive_analyzer_enhanced_1.calculateProcessingScore)(analysisResult.detectedAdditives, ingredientsString);
                         const grade = (0, additive_analyzer_enhanced_1.determineGrade)(processingScore.totalScore, analysisResult.hasRedFlags);
-                        transformed.additives = analysisResult.detectedAdditives.map(additive => (Object.assign(Object.assign({}, additive), { id: additive.code, consumerInfo: additive.consumer_guide })));
+                        transformed.additives = analysisResult.detectedAdditives.map(additive => ({
+                            ...additive,
+                            id: additive.code,
+                            consumerInfo: additive.consumer_guide
+                        }));
                         transformed.processingScore = processingScore.totalScore;
                         transformed.processingGrade = grade.grade;
                         transformed.processingLabel = grade.label;

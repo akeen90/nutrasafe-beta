@@ -1,12 +1,30 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
+exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
 const functions = require("firebase-functions");
+const functionsV2 = require("firebase-functions/v2");
+const params_1 = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const algoliasearch_1 = require("algoliasearch");
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
     admin.initializeApp();
 }
+// Algolia configuration
+const ALGOLIA_APP_ID = 'WK0TIF84M2';
+const algoliaAdminKey = (0, params_1.defineSecret)('ALGOLIA_ADMIN_API_KEY');
+// Map Algolia index names to Firestore collection names (where applicable)
+const INDEX_TO_COLLECTION = {
+    'uk_foods_cleaned': null, // Algolia-only, no direct Firestore sync
+    'fast_foods_database': null, // Algolia-only
+    'generic_database': null, // Algolia-only
+    'foods': 'foods', // Has Firestore backing
+    'verified_foods': 'verifiedFoods',
+    'manual_foods': 'manualFoods',
+    'user_added': 'userAdded',
+    'ai_enhanced': 'aiEnhanced',
+    'ai_manually_added': 'aiManuallyAdded',
+};
 // Update verified food
 exports.updateVerifiedFood = functions.https.onRequest(async (req, res) => {
     // Set CORS headers
@@ -120,7 +138,13 @@ exports.addVerifiedFood = functions.https.onRequest(async (req, res) => {
             success: true,
             message: 'Food added successfully',
             foodId: docRef.id,
-            food: Object.assign(Object.assign({ id: docRef.id }, foodData), { createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), verifiedAt: new Date().toISOString() })
+            food: {
+                id: docRef.id,
+                ...foodData,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                verifiedAt: new Date().toISOString()
+            }
         });
     }
     catch (error) {
@@ -235,6 +259,67 @@ exports.deleteVerifiedFoods = functions.https.onRequest(async (req, res) => {
     catch (error) {
         console.error('Error deleting foods:', error);
         res.status(500).json({ error: 'Failed to delete foods' });
+    }
+});
+// Delete food from any Algolia index (and Firestore if applicable)
+exports.deleteFoodFromAlgolia = functionsV2.https.onRequest({
+    secrets: [algoliaAdminKey],
+    cors: true,
+}, async (req, res) => {
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        res.status(200).send();
+        return;
+    }
+    try {
+        const { foodId, indexName } = req.body;
+        if (!foodId) {
+            res.status(400).json({ success: false, error: 'Food ID (objectID) is required' });
+            return;
+        }
+        if (!indexName) {
+            res.status(400).json({ success: false, error: 'Index name is required' });
+            return;
+        }
+        console.log(`🗑️ Deleting food ${foodId} from Algolia index: ${indexName}`);
+        // Initialize Algolia client
+        const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+        // Delete from Algolia
+        await client.deleteObject({
+            indexName: indexName,
+            objectID: foodId,
+        });
+        console.log(`✅ Deleted ${foodId} from Algolia index: ${indexName}`);
+        // Also try to delete from Firestore if there's a corresponding collection
+        const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+        if (firestoreCollection) {
+            try {
+                await admin.firestore().collection(firestoreCollection).doc(foodId).delete();
+                console.log(`✅ Also deleted ${foodId} from Firestore collection: ${firestoreCollection}`);
+            }
+            catch (firestoreError) {
+                // Log but don't fail - Algolia deletion is the priority
+                console.log(`ℹ️ No matching Firestore document found in ${firestoreCollection} (this is OK)`);
+            }
+        }
+        res.json({
+            success: true,
+            message: `Successfully deleted food from ${indexName}`,
+            deletedId: foodId,
+            indexName: indexName,
+            firestoreDeleted: firestoreCollection ? true : false
+        });
+    }
+    catch (error) {
+        console.error('❌ Error deleting food from Algolia:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete food',
+            details: error.message
+        });
     }
 });
 // Move food between collections (for future use when collections are separated)

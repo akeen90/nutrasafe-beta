@@ -68,7 +68,6 @@ function loadAdditiveDatabase() {
 }
 // Load master 6,247-additive JSON database (4-level nested structure)
 function loadMasterJSONDatabase(jsonPath) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     console.log('📊 Loading master JSON database from:', jsonPath);
     const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
     const database = JSON.parse(jsonContent);
@@ -100,20 +99,20 @@ function loadMasterJSONDatabase(jsonPath) {
                             code: eNumber.toUpperCase(),
                             name: rawAdditive.name || 'Unknown',
                             category: mapCategoryToGroup(groupKey),
-                            permitted_GB: ((_a = rawAdditive.regulatory) === null || _a === void 0 ? void 0 : _a.GB) !== 'banned',
-                            permitted_NI: ((_b = rawAdditive.regulatory) === null || _b === void 0 ? void 0 : _b.NI) !== 'banned',
-                            permitted_EU: ((_c = rawAdditive.regulatory) === null || _c === void 0 ? void 0 : _c.EU) !== 'banned',
-                            status_notes: ((_d = rawAdditive.regulatory) === null || _d === void 0 ? void 0 : _d.notes) || undefined,
-                            child_warning: ((_e = rawAdditive.warnings) === null || _e === void 0 ? void 0 : _e.child_hyperactivity) === true,
-                            PKU_warning: ((_f = rawAdditive.warnings) === null || _f === void 0 ? void 0 : _f.PKU) === true,
-                            polyols_warning: ((_g = rawAdditive.warnings) === null || _g === void 0 ? void 0 : _g.polyol_laxative) === true,
-                            sulphites_allergen_label: ((_h = rawAdditive.warnings) === null || _h === void 0 ? void 0 : _h.sulphite_allergen) === true,
+                            permitted_GB: rawAdditive.regulatory?.GB !== 'banned',
+                            permitted_NI: rawAdditive.regulatory?.NI !== 'banned',
+                            permitted_EU: rawAdditive.regulatory?.EU !== 'banned',
+                            status_notes: rawAdditive.regulatory?.notes || undefined,
+                            child_warning: rawAdditive.warnings?.child_hyperactivity === true,
+                            PKU_warning: rawAdditive.warnings?.PKU === true,
+                            polyols_warning: rawAdditive.warnings?.polyol_laxative === true,
+                            sulphites_allergen_label: rawAdditive.warnings?.sulphite_allergen === true,
                             origin: rawAdditive.origin || 'unknown',
                             consumer_guide: formatConsumerGuide(rawAdditive),
                             effects_verdict: mapRiskToVerdict(rawAdditive.risk_level),
                             synonyms: rawAdditive.synonyms || [],
                             matches: [
-                                ((_j = rawAdditive.name) === null || _j === void 0 ? void 0 : _j.toLowerCase()) || '',
+                                rawAdditive.name?.toLowerCase() || '',
                                 ...(rawAdditive.synonyms || []).map((s) => s.toLowerCase()),
                                 eNumber.toLowerCase()
                             ].filter(m => m.length > 0),
@@ -180,16 +179,15 @@ function mapRiskToVerdict(riskLevel) {
 }
 // Helper function to format consumer guide from master JSON data
 function formatConsumerGuide(rawAdditive) {
-    var _a, _b;
     const sections = [
         `**What is it?**\n${rawAdditive.description || rawAdditive.name || 'No description available'}`,
         `**Why is it added to food?**\n${rawAdditive.purpose || 'Purpose not specified'}`,
         `**Found in these foods:**\n${rawAdditive.common_uses || 'Common uses not specified'}`,
-        `**For parents - child safety:**\n${((_a = rawAdditive.warnings) === null || _a === void 0 ? void 0 : _a.child_hyperactivity) ? '⚠️ May affect activity and attention in children' : 'No specific guidance available for children'}`,
+        `**For parents - child safety:**\n${rawAdditive.warnings?.child_hyperactivity ? '⚠️ May affect activity and attention in children' : 'No specific guidance available for children'}`,
         `**Who should be extra careful:**\n${formatWarnings(rawAdditive.warnings)}`,
         `**Health impact summary:**\n${rawAdditive.health_effects || 'Health impact information not available'}`,
         `**What you can do:**\n${rawAdditive.consumer_advice || 'No specific consumer guidance available'}`,
-        `**UK regulatory notes:**\n${((_b = rawAdditive.regulatory) === null || _b === void 0 ? void 0 : _b.notes) || 'No additional UK-specific information'}`
+        `**UK regulatory notes:**\n${rawAdditive.regulatory?.notes || 'No additional UK-specific information'}`
     ];
     return sections.join('\n\n');
 }
@@ -439,7 +437,7 @@ function parseSourcesFromJSON(sourcesStr) {
     try {
         return JSON.parse(sourcesStr) || [];
     }
-    catch (_a) {
+    catch {
         return [];
     }
 }
@@ -1639,7 +1637,10 @@ exports.analyzeAdditivesEnhanced = functions.https.onRequest(async (req, res) =>
         // Determine overall grade
         const grade = determineGrade(processingScore.totalScore, analysisResult.hasRedFlags);
         // Transform additives to match iOS app expectations (map consumer_guide to consumerInfo)
-        const transformedAdditives = analysisResult.detectedAdditives.map(additive => (Object.assign(Object.assign({}, additive), { consumerInfo: additive.consumer_guide })));
+        const transformedAdditives = analysisResult.detectedAdditives.map(additive => ({
+            ...additive,
+            consumerInfo: additive.consumer_guide
+        }));
         const response = {
             success: true,
             additives: transformedAdditives,

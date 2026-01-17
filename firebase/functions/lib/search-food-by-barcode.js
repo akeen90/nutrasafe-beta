@@ -204,7 +204,11 @@ exports.searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
                 if (!snapshot.empty) {
                     const doc = snapshot.docs[0];
                     const data = doc.data();
-                    foundFood = Object.assign({ id: doc.id, collection: collection }, data);
+                    foundFood = {
+                        id: doc.id,
+                        collection: collection,
+                        ...data
+                    };
                     foundCollection = collection;
                     console.log(`Found food in ${collection}: ${data.foodName || data.name}`);
                     break;
@@ -227,7 +231,11 @@ exports.searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
                         const analysisResult = (0, additive_analyzer_enhanced_1.analyzeIngredientsForAdditives)(transformedFood.ingredients);
                         const processingScore = (0, additive_analyzer_enhanced_1.calculateProcessingScore)(analysisResult.detectedAdditives, transformedFood.ingredients);
                         const grade = (0, additive_analyzer_enhanced_1.determineGrade)(processingScore.totalScore, analysisResult.hasRedFlags);
-                        transformedFood.additives = analysisResult.detectedAdditives.map(additive => (Object.assign(Object.assign({}, additive), { id: additive.code, consumerInfo: additive.consumer_guide })));
+                        transformedFood.additives = analysisResult.detectedAdditives.map(additive => ({
+                            ...additive,
+                            id: additive.code,
+                            consumerInfo: additive.consumer_guide
+                        }));
                         transformedFood.processing_score = processingScore.totalScore;
                         transformedFood.processing_grade = grade.grade;
                         transformedFood.processing_label = grade.label;
@@ -309,7 +317,11 @@ exports.searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
                 const analysisResult = (0, additive_analyzer_enhanced_1.analyzeIngredientsForAdditives)(ingredientsString);
                 const processingScore = (0, additive_analyzer_enhanced_1.calculateProcessingScore)(analysisResult.detectedAdditives, ingredientsString);
                 const grade = (0, additive_analyzer_enhanced_1.determineGrade)(processingScore.totalScore, analysisResult.hasRedFlags);
-                additiveAnalysis = analysisResult.detectedAdditives.map(additive => (Object.assign(Object.assign({}, additive), { id: additive.code, consumerInfo: additive.consumer_guide })));
+                additiveAnalysis = analysisResult.detectedAdditives.map(additive => ({
+                    ...additive,
+                    id: additive.code,
+                    consumerInfo: additive.consumer_guide
+                }));
                 processingInfo = {
                     score: processingScore.totalScore,
                     grade: grade.grade,
@@ -348,9 +360,9 @@ exports.searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
             // Include additive analysis
             additives: additiveAnalysis || [],
             additivesDatabaseVersion: additive_analyzer_enhanced_1.DATABASE_VERSION, // Database version used for analysis
-            processing_score: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.score) || 0,
-            processing_grade: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.grade) || 'A',
-            processing_label: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.label) || 'Minimal processing',
+            processing_score: processingInfo?.score || 0,
+            processing_grade: processingInfo?.grade || 'A',
+            processing_label: processingInfo?.label || 'Minimal processing',
             // Include micronutrient profile
             micronutrient_profile: foundFood.micronutrientProfile || null,
             // Include source information

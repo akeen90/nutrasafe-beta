@@ -1,15 +1,4 @@
 "use strict";
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUserAnalytics = exports.deleteUsers = exports.updateUser = exports.addUser = exports.getUsers = void 0;
 const functions = require("firebase-functions");
@@ -42,11 +31,10 @@ async function requireAdmin(context) {
 }
 // Get all users with pagination (ADMIN ONLY)
 exports.getUsers = functions.https.onCall(async (data, context) => {
-    var _a;
     // Verify admin access
     await requireAdmin(context);
     try {
-        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} getting users list...`);
+        console.log(`Admin ${context.auth?.uid} getting users list...`);
         const db = admin.firestore();
         const limit = data.limit || 50;
         const offset = data.offset || 0;
@@ -59,9 +47,14 @@ exports.getUsers = functions.https.onCall(async (data, context) => {
         // Also get total count
         const totalSnapshot = await db.collection('users').get();
         const totalUsers = totalSnapshot.size;
-        const users = usersSnapshot.docs.map(doc => (Object.assign(Object.assign({ id: doc.id }, doc.data()), { 
+        const users = usersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
             // Convert Firestore timestamps to ISO strings
-            createdAt: doc.data().createdAt ? doc.data().createdAt.toDate().toISOString() : null, lastLogin: doc.data().lastLogin ? doc.data().lastLogin.toDate().toISOString() : null, lastActivity: doc.data().lastActivity ? doc.data().lastActivity.toDate().toISOString() : null })));
+            createdAt: doc.data().createdAt ? doc.data().createdAt.toDate().toISOString() : null,
+            lastLogin: doc.data().lastLogin ? doc.data().lastLogin.toDate().toISOString() : null,
+            lastActivity: doc.data().lastActivity ? doc.data().lastActivity.toDate().toISOString() : null
+        }));
         console.log(`Found ${users.length} users (${totalUsers} total)`);
         return {
             success: true,
@@ -77,7 +70,6 @@ exports.getUsers = functions.https.onCall(async (data, context) => {
 });
 // Add new user (ADMIN ONLY)
 exports.addUser = functions.https.onCall(async (data, context) => {
-    var _a;
     // Verify admin access
     await requireAdmin(context);
     try {
@@ -85,7 +77,7 @@ exports.addUser = functions.https.onCall(async (data, context) => {
         if (!email) {
             throw new functions.https.HttpsError('invalid-argument', 'Email is required');
         }
-        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} adding new user: ${email}`);
+        console.log(`Admin ${context.auth?.uid} adding new user: ${email}`);
         const db = admin.firestore();
         const userRef = db.collection('users').doc();
         const userData = {
@@ -110,7 +102,11 @@ exports.addUser = functions.https.onCall(async (data, context) => {
             success: true,
             message: 'User added successfully',
             userId: userRef.id,
-            user: Object.assign(Object.assign({ id: userRef.id }, userData), { createdAt: new Date().toISOString() })
+            user: {
+                id: userRef.id,
+                ...userData,
+                createdAt: new Date().toISOString()
+            }
         };
     }
     catch (error) {
@@ -120,20 +116,22 @@ exports.addUser = functions.https.onCall(async (data, context) => {
 });
 // Update user (ADMIN ONLY)
 exports.updateUser = functions.https.onCall(async (data, context) => {
-    var _a;
     // Verify admin access
     await requireAdmin(context);
     try {
-        const { userId } = data, updateData = __rest(data, ["userId"]);
+        const { userId, ...updateData } = data;
         if (!userId) {
             throw new functions.https.HttpsError('invalid-argument', 'User ID is required');
         }
-        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} updating user: ${userId}`);
+        console.log(`Admin ${context.auth?.uid} updating user: ${userId}`);
         const db = admin.firestore();
         const userRef = db.collection('users').doc(userId);
         // Remove fields that shouldn't be updated directly
-        const { createdAt } = updateData, safeUpdateData = __rest(updateData, ["createdAt"]);
-        await userRef.update(Object.assign(Object.assign({}, safeUpdateData), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+        const { createdAt, ...safeUpdateData } = updateData;
+        await userRef.update({
+            ...safeUpdateData,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
         return {
             success: true,
             message: 'User updated successfully',
@@ -147,7 +145,6 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
 });
 // Delete users (batch operation) (ADMIN ONLY)
 exports.deleteUsers = functions.https.onCall(async (data, context) => {
-    var _a;
     // Verify admin access
     await requireAdmin(context);
     try {
@@ -155,7 +152,7 @@ exports.deleteUsers = functions.https.onCall(async (data, context) => {
         if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
             throw new functions.https.HttpsError('invalid-argument', 'User IDs array is required');
         }
-        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} deleting users: ${userIds.join(', ')}`);
+        console.log(`Admin ${context.auth?.uid} deleting users: ${userIds.join(', ')}`);
         const db = admin.firestore();
         const batch = db.batch();
         for (const userId of userIds) {
@@ -176,11 +173,10 @@ exports.deleteUsers = functions.https.onCall(async (data, context) => {
 });
 // Get user analytics (ADMIN ONLY)
 exports.getUserAnalytics = functions.https.onCall(async (data, context) => {
-    var _a;
     // Verify admin access
     await requireAdmin(context);
     try {
-        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} getting user analytics...`);
+        console.log(`Admin ${context.auth?.uid} getting user analytics...`);
         const db = admin.firestore();
         // Get all users for analysis
         const usersSnapshot = await db.collection('users').get();

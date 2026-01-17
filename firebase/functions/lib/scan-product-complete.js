@@ -129,7 +129,6 @@ Only include fields where you have data. Omit fields where data wasn't found.
 Return ONLY valid JSON, no explanations or markdown code blocks.`;
 }
 async function callGeminiVisionAPI(prompt, images, apiKey) {
-    var _a, _b, _c, _d, _e, _f;
     // Build the parts array with text prompt and all images
     const parts = [
         { text: prompt }
@@ -154,7 +153,7 @@ async function callGeminiVisionAPI(prompt, images, apiKey) {
         headers: { 'Content-Type': 'application/json' },
         timeout: 55000,
     });
-    const rawText = (_f = (_e = (_d = (_c = (_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.candidates) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.content) === null || _d === void 0 ? void 0 : _d.parts) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.text;
+    const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
         throw new Error('No response from Gemini Vision API');
     }

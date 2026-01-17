@@ -36,7 +36,6 @@ const getMailchimpConfig = () => {
  * Subscribe a user to Mailchimp
  */
 const subscribeToMailchimp = async (email, userId) => {
-    var _a, _b, _c;
     const config = getMailchimpConfig();
     const url = `https://${config.serverPrefix}.api.mailchimp.com/3.0/lists/${config.audienceId}/members`;
     try {
@@ -59,12 +58,12 @@ const subscribeToMailchimp = async (email, userId) => {
         console.log(`✅ Subscribed ${email} to Mailchimp:`, response.data.id);
     }
     catch (error) {
-        if (((_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.title) === 'Member Exists') {
+        if (error.response?.data?.title === 'Member Exists') {
             // User already subscribed - update their status
             await updateMailchimpSubscription(email, 'subscribed');
         }
         else {
-            console.error(`❌ Failed to subscribe ${email}:`, ((_c = error.response) === null || _c === void 0 ? void 0 : _c.data) || error.message);
+            console.error(`❌ Failed to subscribe ${email}:`, error.response?.data || error.message);
             throw error;
         }
     }
@@ -73,7 +72,6 @@ const subscribeToMailchimp = async (email, userId) => {
  * Update existing Mailchimp subscription status
  */
 const updateMailchimpSubscription = async (email, status) => {
-    var _a;
     const config = getMailchimpConfig();
     // Generate subscriber hash (MD5 of lowercase email)
     const crypto = require('crypto');
@@ -94,7 +92,7 @@ const updateMailchimpSubscription = async (email, status) => {
         console.log(`✅ Updated ${email} to status "${status}":`, response.data.id);
     }
     catch (error) {
-        console.error(`❌ Failed to update ${email}:`, ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
+        console.error(`❌ Failed to update ${email}:`, error.response?.data || error.message);
         throw error;
     }
 };
@@ -117,17 +115,17 @@ exports.syncEmailConsentToMailchimp = functions.firestore
     const newData = change.after.exists ? change.after.data() : null;
     const oldData = change.before.exists ? change.before.data() : null;
     // Check if email consent fields exist and have changed
-    const newConsent = newData === null || newData === void 0 ? void 0 : newData.emailMarketingConsent;
-    const oldConsent = oldData === null || oldData === void 0 ? void 0 : oldData.emailMarketingConsent;
-    const isWithdrawn = (newData === null || newData === void 0 ? void 0 : newData.emailMarketingConsentWithdrawn) || false;
-    const email = newData === null || newData === void 0 ? void 0 : newData.email;
+    const newConsent = newData?.emailMarketingConsent;
+    const oldConsent = oldData?.emailMarketingConsent;
+    const isWithdrawn = newData?.emailMarketingConsentWithdrawn || false;
+    const email = newData?.email;
     // Skip if no email address
     if (!email || email === '') {
         console.log(`⏭️  Skipping sync for ${userId}: no email address`);
         return null;
     }
     // Skip if consent hasn't changed
-    if (newConsent === oldConsent && isWithdrawn === (oldData === null || oldData === void 0 ? void 0 : oldData.emailMarketingConsentWithdrawn)) {
+    if (newConsent === oldConsent && isWithdrawn === oldData?.emailMarketingConsentWithdrawn) {
         console.log(`⏭️  Skipping sync for ${userId}: no consent change`);
         return null;
     }
