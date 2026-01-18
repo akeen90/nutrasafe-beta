@@ -12076,19 +12076,25 @@
                 }
 
                 // Auto-restart logic
+                const buildStatus = state.tescoBuildProgress?.status;
+                const timeSinceLastRestart = state.tescoLastAutoRestart
+                    ? (now - state.tescoLastAutoRestart)
+                    : Infinity;
+                const cooldownMet = timeSinceLastRestart > state.tescoAutoRestartCooldown;
+
+                // Debug logging for auto-restart
+                if (elapsed > 60000) {
+                    console.log(`[Auto-Restart Check] elapsed=${Math.round(elapsed/1000)}s, threshold=${state.tescoAutoRestartThreshold/1000}s, enabled=${state.tescoAutoRestartEnabled}, restarting=${state.tescoAutoRestarting}, status=${buildStatus}, cooldownMet=${cooldownMet}`);
+                }
+
                 if (shouldAutoRestart &&
                     state.tescoAutoRestartEnabled &&
                     !state.tescoAutoRestarting &&
-                    state.tescoBuildProgress?.status === 'running') {
+                    buildStatus === 'running' &&
+                    cooldownMet) {
 
-                    // Check cooldown to prevent rapid restarts
-                    const timeSinceLastRestart = state.tescoLastAutoRestart
-                        ? (now - state.tescoLastAutoRestart)
-                        : Infinity;
-
-                    if (timeSinceLastRestart > state.tescoAutoRestartCooldown) {
-                        this.autoRestartTescoBuild();
-                    }
+                    console.log('[Auto-Restart] Triggering auto-restart now!');
+                    this.autoRestartTescoBuild();
                 }
             },
 
@@ -12169,11 +12175,19 @@
 
             // Auto-restart the build when stalled
             async autoRestartTescoBuild() {
-                if (state.tescoAutoRestarting) return; // Already restarting
+                if (state.tescoAutoRestarting) {
+                    console.log('[Auto-Restart] Already restarting, skipping');
+                    return;
+                }
 
+                console.log('[Auto-Restart] === Starting auto-restart process ===');
                 state.tescoAutoRestarting = true;
                 state.tescoLastAutoRestart = Date.now();
                 state.tescoAutoRestartCount++;
+
+                // Stop polling during restart to prevent interference
+                this.stopTescoProgressPolling();
+                console.log('[Auto-Restart] Stopped polling');
 
                 // Update UI
                 const autoRestartContainer = document.querySelector('.tesco-auto-restart');
@@ -12193,38 +12207,45 @@
 
                 try {
                     // Step 1: Pause the build
-                    console.log('Auto-restart: Pausing build...');
+                    console.log('[Auto-Restart] Step 1: Pausing build...');
                     const pauseTescoBuild = firebase.functions().httpsCallable('pauseTescoBuild');
-                    await pauseTescoBuild();
+                    const pauseResult = await pauseTescoBuild();
+                    console.log('[Auto-Restart] Pause result:', pauseResult.data);
                     this.addActivityLogEntry('Build paused for restart', 'info');
 
-                    // Wait a moment
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Wait for pause to take effect
+                    console.log('[Auto-Restart] Waiting 3 seconds for pause to take effect...');
+                    await new Promise(resolve => setTimeout(resolve, 3000));
 
                     // Step 2: Resume the build
-                    console.log('Auto-restart: Resuming build...');
+                    console.log('[Auto-Restart] Step 2: Resuming build...');
                     const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
                     const result = await startTescoBuild();
+                    console.log('[Auto-Restart] Resume result:', result.data);
 
                     if (result.data.success) {
                         state.tescoLastUpdateTime = Date.now();
                         this.addActivityLogEntry('✅ Build resumed successfully', 'success');
-                        this.startTescoProgressPolling();
+                        console.log('[Auto-Restart] === Success! Build resumed ===');
                     } else {
-                        throw new Error(result.data.error || 'Resume failed');
+                        throw new Error(result.data.message || result.data.error || 'Resume failed');
                     }
                 } catch (error) {
-                    console.error('Auto-restart failed:', error);
+                    console.error('[Auto-Restart] FAILED:', error);
                     this.addActivityLogEntry(`❌ Auto-restart failed: ${error.message}`, 'error');
                     this.showToast('Auto-restart failed: ' + error.message, 'error');
                 } finally {
                     state.tescoAutoRestarting = false;
+                    console.log('[Auto-Restart] Cleanup - restarting polling');
 
                     // Remove restarting class
                     const autoRestartContainer = document.querySelector('.tesco-auto-restart');
                     if (autoRestartContainer) {
                         autoRestartContainer.classList.remove('restarting');
                     }
+
+                    // Always restart polling
+                    this.startTescoProgressPolling();
 
                     // Refresh UI
                     this.refreshTescoProgress();
