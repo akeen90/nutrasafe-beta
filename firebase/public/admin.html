@@ -3927,6 +3927,157 @@
             border-bottom: 1px solid #fecaca;
         }
 
+        /* Live Activity Feed */
+        .tesco-live-feed {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid #3b82f6;
+        }
+
+        .tesco-live-feed.stalled {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .live-feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .live-feed-header h4 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-indicator {
+            width: 10px;
+            height: 10px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        .live-indicator.stalled {
+            background: #f59e0b;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        .stall-warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .stall-warning.visible {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stall-warning-icon {
+            font-size: 20px;
+        }
+
+        .stall-warning-text {
+            flex: 1;
+            font-size: 14px;
+            color: #92400e;
+        }
+
+        .current-activity {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+        }
+
+        .current-activity-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .current-activity-text {
+            font-size: 14px;
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .current-activity-detail {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .activity-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .activity-log-entry {
+            padding: 4px 0;
+            color: #94a3b8;
+            border-bottom: 1px solid #334155;
+        }
+
+        .activity-log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .activity-log-entry.success {
+            color: #4ade80;
+        }
+
+        .activity-log-entry.error {
+            color: #f87171;
+        }
+
+        .activity-log-entry.info {
+            color: #60a5fa;
+        }
+
+        .activity-log-entry .timestamp {
+            color: #64748b;
+            margin-right: 8px;
+        }
+
+        .time-since-update {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .time-since-update.warning {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .time-since-update.danger {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
         /* Login Styles */
         .login-container {
             position: fixed;
@@ -4697,6 +4848,41 @@
                     </div>
                 </div>
 
+                <!-- Live Activity Feed (shown during active build) -->
+                <div class="tesco-live-feed" id="tesco-live-feed" style="display: none;">
+                    <div class="live-feed-header">
+                        <h4>
+                            <span class="live-indicator" id="live-indicator"></span>
+                            Live Activity
+                        </h4>
+                        <span class="time-since-update" id="time-since-update">Updated just now</span>
+                    </div>
+
+                    <!-- Stall Warning -->
+                    <div class="stall-warning" id="stall-warning">
+                        <span class="stall-warning-icon">⚠️</span>
+                        <span class="stall-warning-text" id="stall-warning-text">
+                            No updates for 60 seconds. The build may be stalled or processing a large request.
+                        </span>
+                        <button class="btn btn-sm btn-secondary" onclick="app.refreshTescoProgress()">Check Status</button>
+                    </div>
+
+                    <!-- Current Activity -->
+                    <div class="current-activity">
+                        <div class="current-activity-label">Currently Processing</div>
+                        <div class="current-activity-text" id="current-activity-text">Waiting for activity...</div>
+                        <div class="current-activity-detail" id="current-activity-detail"></div>
+                    </div>
+
+                    <!-- Activity Log -->
+                    <div class="activity-log" id="activity-log">
+                        <div class="activity-log-entry info">
+                            <span class="timestamp">[--:--:--]</span>
+                            Waiting for build to start...
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Controls -->
                 <div class="tesco-controls">
                     <button class="btn btn-primary btn-large" id="tesco-start-btn" onclick="app.startTescoBuild()">
@@ -5281,6 +5467,10 @@
             // Tesco Database Builder State
             tescoBuildProgress: null, // Current build progress from Firebase
             tescoBuildLoading: false,
+            tescoLastUpdateTime: null, // Timestamp of last progress update
+            tescoActivityLog: [], // Activity log entries
+            tescoStallThreshold: 60000, // 60 seconds before showing stall warning
+            tescoPreviousProgress: null, // Previous progress for change detection
             tescoStats: null, // Database statistics
 
             // Authentication State
@@ -11314,6 +11504,9 @@
                 const statSkipped = document.getElementById('tesco-stat-skipped');
                 const statErrors = document.getElementById('tesco-stat-errors');
                 const lastUpdatedEl = document.getElementById('tesco-last-updated');
+                const liveFeed = document.getElementById('tesco-live-feed');
+                const currentActivityText = document.getElementById('current-activity-text');
+                const currentActivityDetail = document.getElementById('current-activity-detail');
 
                 // Show productsSaved from progress when available, otherwise use stats count
                 if (statTotal) {
@@ -11327,11 +11520,42 @@
                 const currentTermEl = document.getElementById('tesco-current-term');
 
                 if (progress) {
+                    // Check for progress changes and log them
+                    this.checkProgressChanges(progress);
+
+                    // Update previous progress for next comparison
+                    state.tescoPreviousProgress = { ...progress };
+
+                    // Update last update time for stall detection
+                    if (progress.lastUpdated) {
+                        const newUpdateTime = new Date(progress.lastUpdated).getTime();
+                        if (newUpdateTime !== state.tescoLastUpdateTime) {
+                            state.tescoLastUpdateTime = newUpdateTime;
+                        }
+                    }
+
                     // Show status
                     const status = progress.status || 'idle';
                     if (statusBadge) {
                         statusBadge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
                         statusBadge.className = 'status-badge status-' + status;
+                    }
+
+                    // Show/hide live feed based on status
+                    if (liveFeed) {
+                        liveFeed.style.display = status === 'running' ? 'block' : 'none';
+                    }
+
+                    // Update live feed current activity
+                    if (status === 'running' && currentActivityText) {
+                        if (progress.currentTerm) {
+                            currentActivityText.textContent = `Searching Tesco for "${progress.currentTerm}"`;
+                            const termsRemaining = (progress.totalTerms || 0) - (progress.currentTermIndex || 0);
+                            currentActivityDetail.textContent = `Term ${progress.currentTermIndex || 0} of ${progress.totalTerms || 0} • ${termsRemaining} remaining`;
+                        } else {
+                            currentActivityText.textContent = 'Processing...';
+                            currentActivityDetail.textContent = '';
+                        }
                     }
 
                     // Update progress bar
@@ -11390,6 +11614,9 @@
                         this.renderTescoErrors(progress.errorMessages);
                     }
                 } else {
+                    // Hide live feed when no progress
+                    if (liveFeed) liveFeed.style.display = 'none';
+
                     if (statusBadge) {
                         statusBadge.textContent = 'Not Started';
                         statusBadge.className = 'status-badge status-idle';
@@ -11522,6 +11749,12 @@
                     if (result.data.success) {
                         this.showToast('Tesco database build started!', 'success');
 
+                        // Initialize activity log
+                        state.tescoActivityLog = [];
+                        state.tescoLastUpdateTime = Date.now();
+                        state.tescoPreviousProgress = null;
+                        this.addActivityLogEntry('Build started', 'success');
+
                         // Start polling for progress
                         this.startTescoProgressPolling();
                     } else {
@@ -11552,6 +11785,7 @@
 
                     if (result.data.success) {
                         this.showToast('Tesco build paused. Progress saved.', 'success');
+                        this.addActivityLogEntry('Build paused by user', 'info');
                         this.stopTescoProgressPolling();
                     } else {
                         throw new Error(result.data.error || 'Failed to pause build');
@@ -11581,6 +11815,13 @@
 
                     if (result.data.success) {
                         this.showToast('Tesco build resumed!', 'success');
+
+                        // Initialize tracking if not already
+                        if (!state.tescoLastUpdateTime) {
+                            state.tescoLastUpdateTime = Date.now();
+                        }
+                        this.addActivityLogEntry('Build resumed', 'success');
+
                         this.startTescoProgressPolling();
                     } else {
                         throw new Error(result.data.error || 'Failed to resume build');
@@ -11636,22 +11877,143 @@
 
             // Polling for progress updates
             tescoPollingInterval: null,
+            tescoTimeSinceUpdateInterval: null,
 
             startTescoProgressPolling() {
                 this.stopTescoProgressPolling(); // Clear any existing
 
-                // Poll every 5 seconds
+                // Poll every 2 seconds during active build for live updates
                 this.tescoPollingInterval = setInterval(() => {
                     if (state.currentView === 'tesco-builder') {
                         this.refreshTescoProgress();
                     }
-                }, 5000);
+                }, 2000);
+
+                // Update "time since" display every second
+                this.tescoTimeSinceUpdateInterval = setInterval(() => {
+                    this.updateTimeSinceDisplay();
+                }, 1000);
             },
 
             stopTescoProgressPolling() {
                 if (this.tescoPollingInterval) {
                     clearInterval(this.tescoPollingInterval);
                     this.tescoPollingInterval = null;
+                }
+                if (this.tescoTimeSinceUpdateInterval) {
+                    clearInterval(this.tescoTimeSinceUpdateInterval);
+                    this.tescoTimeSinceUpdateInterval = null;
+                }
+            },
+
+            // Update the "time since last update" display
+            updateTimeSinceDisplay() {
+                if (!state.tescoLastUpdateTime) return;
+
+                const now = Date.now();
+                const elapsed = now - state.tescoLastUpdateTime;
+                const seconds = Math.floor(elapsed / 1000);
+
+                const timeEl = document.getElementById('time-since-update');
+                const stallWarning = document.getElementById('stall-warning');
+                const liveIndicator = document.getElementById('live-indicator');
+                const liveFeed = document.getElementById('tesco-live-feed');
+
+                if (timeEl) {
+                    let timeText;
+                    if (seconds < 5) {
+                        timeText = 'Updated just now';
+                        timeEl.className = 'time-since-update';
+                    } else if (seconds < 60) {
+                        timeText = `Updated ${seconds}s ago`;
+                        timeEl.className = 'time-since-update';
+                    } else {
+                        const mins = Math.floor(seconds / 60);
+                        timeText = `Updated ${mins}m ${seconds % 60}s ago`;
+                        timeEl.className = seconds > 90 ? 'time-since-update danger' : 'time-since-update warning';
+                    }
+                    timeEl.textContent = timeText;
+                }
+
+                // Show stall warning after threshold
+                const isStalled = elapsed > state.tescoStallThreshold;
+                if (stallWarning) {
+                    stallWarning.className = isStalled ? 'stall-warning visible' : 'stall-warning';
+                    if (isStalled) {
+                        const mins = Math.floor(elapsed / 60000);
+                        const secs = Math.floor((elapsed % 60000) / 1000);
+                        document.getElementById('stall-warning-text').textContent =
+                            `No updates for ${mins}m ${secs}s. The build may be stalled or processing a large request.`;
+                    }
+                }
+                if (liveIndicator) {
+                    liveIndicator.className = isStalled ? 'live-indicator stalled' : 'live-indicator';
+                }
+                if (liveFeed) {
+                    liveFeed.className = isStalled ? 'tesco-live-feed stalled' : 'tesco-live-feed';
+                }
+            },
+
+            // Add entry to activity log
+            addActivityLogEntry(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString('en-GB');
+                state.tescoActivityLog.unshift({ timestamp, message, type });
+
+                // Keep only last 50 entries
+                if (state.tescoActivityLog.length > 50) {
+                    state.tescoActivityLog = state.tescoActivityLog.slice(0, 50);
+                }
+
+                this.renderActivityLog();
+            },
+
+            renderActivityLog() {
+                const container = document.getElementById('activity-log');
+                if (!container) return;
+
+                if (state.tescoActivityLog.length === 0) {
+                    container.innerHTML = `
+                        <div class="activity-log-entry info">
+                            <span class="timestamp">[--:--:--]</span>
+                            Waiting for build to start...
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = state.tescoActivityLog.map(entry => `
+                    <div class="activity-log-entry ${entry.type}">
+                        <span class="timestamp">[${entry.timestamp}]</span>
+                        ${entry.message}
+                    </div>
+                `).join('');
+            },
+
+            // Check for progress changes and log them
+            checkProgressChanges(newProgress) {
+                const prev = state.tescoPreviousProgress;
+                if (!prev || !newProgress) return;
+
+                // Detect new products
+                if (newProgress.productsSaved > prev.productsSaved) {
+                    const diff = newProgress.productsSaved - prev.productsSaved;
+                    this.addActivityLogEntry(`+${diff} product${diff > 1 ? 's' : ''} saved to database`, 'success');
+                }
+
+                // Detect search term change
+                if (newProgress.currentTerm && newProgress.currentTerm !== prev.currentTerm) {
+                    this.addActivityLogEntry(`Searching: "${newProgress.currentTerm}"`, 'info');
+                }
+
+                // Detect errors
+                if (newProgress.errors > prev.errors) {
+                    const diff = newProgress.errors - prev.errors;
+                    this.addActivityLogEntry(`${diff} error${diff > 1 ? 's' : ''} occurred`, 'error');
+                }
+
+                // Detect duplicates skipped
+                if (newProgress.duplicatesSkipped > prev.duplicatesSkipped) {
+                    const diff = newProgress.duplicatesSkipped - prev.duplicatesSkipped;
+                    this.addActivityLogEntry(`Skipped ${diff} duplicate${diff > 1 ? 's' : ''}`, 'info');
                 }
             }
         };
