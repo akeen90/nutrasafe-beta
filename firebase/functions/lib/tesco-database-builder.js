@@ -95,7 +95,8 @@ function hasValidNutrition(nutrition) {
 // Helper: Sleep function
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // Helper: Retry with exponential backoff
-async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 2000, operationName = 'operation') {
+async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 500, // Reduced from 2000ms - API supports 5 req/s
+operationName = 'operation') {
     let lastError;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
@@ -145,7 +146,7 @@ async function searchTescoProducts(query, page = 0) {
         const pagination = response.data?.data?.pagination || {};
         const totalPages = pagination.totalPages || 1;
         return { products, totalPages };
-    }, 3, 3000, `search "${query}" page ${page}`);
+    }, 3, 1000, `search "${query}" page ${page}`); // Reduced from 3000ms
 }
 async function getProductDetails(productId) {
     try {
@@ -159,7 +160,7 @@ async function getProductDetails(productId) {
                 },
                 timeout: 15000
             });
-        }, 3, 3000, `product details ${productId}`);
+        }, 3, 1000, `product details ${productId}`); // Reduced from 3000ms
         // Debug logging
         console.log(`Product ${productId} response status: ${response.status}`);
         console.log(`Product ${productId} response success: ${response.data?.success}`);
@@ -614,13 +615,13 @@ exports.startTescoBuild = functions
                             processedInBatch = 0;
                         }
                     }
-                    // Rate limiting - 2 seconds between API calls to avoid 429 errors
-                    await sleep(2000);
+                    // Rate limiting - 250ms between API calls (API supports 5 req/s)
+                    await sleep(250);
                 }
-                // Process additional pages (up to 3 per term to stay within rate limits)
-                const maxPages = Math.min(totalPages, 3);
+                // Process additional pages (up to 5 per term with faster API)
+                const maxPages = Math.min(totalPages, 5);
                 for (let page = 1; page < maxPages; page++) {
-                    await sleep(1500); // 1.5 second delay between pages
+                    await sleep(250); // 250ms delay between pages
                     const { products: pageProducts } = await searchTescoProducts(term, page);
                     for (const searchResult of pageProducts) {
                         if (seenProductIds.has(searchResult.id)) {
@@ -721,7 +722,7 @@ exports.startTescoBuild = functions
                                 processedInBatch = 0;
                             }
                         }
-                        await sleep(2000); // 2 second delay to avoid API rate limits
+                        await sleep(250); // 250ms delay (API supports 5 req/s)
                     }
                 }
             }
@@ -732,14 +733,14 @@ exports.startTescoBuild = functions
                     progress.errorMessages = progress.errorMessages.slice(-50);
                 }
                 console.error(`Error searching "${term}":`, searchError.message);
-                // Rate limit on error - wait longer before continuing
+                // Rate limit on error - wait before continuing
                 if (searchError.response?.status === 429) {
-                    console.log('Rate limited - waiting 30 seconds before next term');
-                    await sleep(30000);
+                    console.log('Rate limited - waiting 10 seconds before next term');
+                    await sleep(10000);
                 }
                 else {
                     // Short delay for other errors
-                    await sleep(2000);
+                    await sleep(500);
                 }
             }
             // Check for pause request
