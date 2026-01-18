@@ -9,26 +9,22 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.recognizeFood = void 0;
-const https_1 = require("firebase-functions/v2/https");
-const params_1 = require("firebase-functions/params");
+const functions = require("firebase-functions");
 const axios_1 = require("axios");
 const algoliasearch_1 = require("algoliasearch");
-// Secrets
-const geminiApiKey = (0, params_1.defineSecret)('GEMINI_API_KEY');
-const algoliaAdminKey = (0, params_1.defineSecret)('ALGOLIA_ADMIN_API_KEY');
+// Access secrets from functions.config() - set via: firebase functions:config:set gemini.api_key="xxx" algolia.admin_key="xxx"
+// Or use environment variables from .env file
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 // Database indices - new cleaned databases
 const SEARCH_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
 /**
  * Cloud Function: Recognize food items using Gemini + Algolia hybrid approach
+ * Using v1 functions style
  */
-exports.recognizeFood = (0, https_1.onRequest)({
-    cors: true,
-    timeoutSeconds: 90, // Increased for database lookups
-    memory: '1GiB',
-    secrets: [geminiApiKey, algoliaAdminKey],
-}, async (req, res) => {
+exports.recognizeFood = functions
+    .runWith({ timeoutSeconds: 90, memory: '1GB' })
+    .https.onRequest(async (req, res) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         res.set('Access-Control-Allow-Origin', '*');
@@ -46,10 +42,18 @@ exports.recognizeFood = (0, https_1.onRequest)({
         res.status(400).json({ error: 'Base64 encoded image is required' });
         return;
     }
+    // Get API keys from secrets (v1 style)
+    const geminiApiKey = process.env.GEMINI_API_KEY || '';
+    const algoliaAdminKey = process.env.ALGOLIA_ADMIN_API_KEY || '';
+    if (!geminiApiKey || !algoliaAdminKey) {
+        console.error('Missing required API keys');
+        res.status(500).json({ error: 'Server configuration error' });
+        return;
+    }
     try {
         // Step 1: Identify foods with Gemini
         console.log('🔍 Step 1: Identifying foods with Gemini...');
-        const identifiedFoods = await identifyFoodsWithGemini(image, geminiApiKey.value());
+        const identifiedFoods = await identifyFoodsWithGemini(image, geminiApiKey);
         console.log(`✅ Gemini identified ${identifiedFoods.length} foods`);
         if (identifiedFoods.length === 0) {
             res.set('Access-Control-Allow-Origin', '*');
@@ -58,7 +62,7 @@ exports.recognizeFood = (0, https_1.onRequest)({
         }
         // Step 2: Look up packaged foods in database, use AI estimates for plated food
         console.log('📚 Step 2: Processing foods (DB lookup for packaging, AI for plated)...');
-        const algoliaClient = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+        const algoliaClient = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey);
         const finalFoods = [];
         for (const identified of identifiedFoods) {
             // FILTER OUT NON-FOOD PRODUCTS

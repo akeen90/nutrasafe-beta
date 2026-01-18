@@ -7,14 +7,12 @@
  * 3. Falls back to AI estimates only when no database match
  */
 
-import { onRequest } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
+import * as functions from 'firebase-functions';
 import axios from 'axios';
 import { algoliasearch } from 'algoliasearch';
 
-// Secrets
-const geminiApiKey = defineSecret('GEMINI_API_KEY');
-const algoliaAdminKey = defineSecret('ALGOLIA_ADMIN_API_KEY');
+// Access secrets from functions.config() - set via: firebase functions:config:set gemini.api_key="xxx" algolia.admin_key="xxx"
+// Or use environment variables from .env file
 
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
@@ -87,15 +85,11 @@ interface FoodRecognitionItem {
 
 /**
  * Cloud Function: Recognize food items using Gemini + Algolia hybrid approach
+ * Using v1 functions style
  */
-export const recognizeFood = onRequest(
-  {
-    cors: true,
-    timeoutSeconds: 90,  // Increased for database lookups
-    memory: '1GiB',
-    secrets: [geminiApiKey, algoliaAdminKey],
-  },
-  async (req, res) => {
+export const recognizeFood = functions
+  .runWith({ timeoutSeconds: 90, memory: '1GB' })
+  .https.onRequest(async (req: functions.https.Request, res: functions.Response) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
       res.set('Access-Control-Allow-Origin', '*');
@@ -117,10 +111,20 @@ export const recognizeFood = onRequest(
       return;
     }
 
+    // Get API keys from secrets (v1 style)
+    const geminiApiKey = process.env.GEMINI_API_KEY || '';
+    const algoliaAdminKey = process.env.ALGOLIA_ADMIN_API_KEY || '';
+
+    if (!geminiApiKey || !algoliaAdminKey) {
+      console.error('Missing required API keys');
+      res.status(500).json({ error: 'Server configuration error' });
+      return;
+    }
+
     try {
       // Step 1: Identify foods with Gemini
       console.log('🔍 Step 1: Identifying foods with Gemini...');
-      const identifiedFoods = await identifyFoodsWithGemini(image, geminiApiKey.value());
+      const identifiedFoods = await identifyFoodsWithGemini(image, geminiApiKey);
       console.log(`✅ Gemini identified ${identifiedFoods.length} foods`);
 
       if (identifiedFoods.length === 0) {
@@ -131,7 +135,7 @@ export const recognizeFood = onRequest(
 
       // Step 2: Look up packaged foods in database, use AI estimates for plated food
       console.log('📚 Step 2: Processing foods (DB lookup for packaging, AI for plated)...');
-      const algoliaClient = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value());
+      const algoliaClient = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey);
       const finalFoods: FoodRecognitionItem[] = [];
 
       for (const identified of identifiedFoods) {
