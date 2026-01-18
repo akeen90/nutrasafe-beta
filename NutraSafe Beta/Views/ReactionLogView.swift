@@ -16,6 +16,7 @@ struct ReactionLogView: View {
     @State private var selectedTab: AnalysisTab = .potentialTriggers
     @State private var showingPDFExportSheet = false
     @State private var isLoadingData = false
+    @State private var userAllergens: Set<Allergen> = []
 
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
@@ -79,11 +80,41 @@ struct ReactionLogView: View {
         }
         .task {
             isLoadingData = true
-            await manager.loadReactionLogs()
+            async let logsTask: () = manager.loadReactionLogs()
+            async let allergensTask: () = loadUserAllergens()
+            await logsTask
+            await allergensTask
             isLoadingData = false
         }
     }
 
+    // MARK: - Load User Allergens
+
+    private func loadUserAllergens() async {
+        do {
+            let settings = try await FirebaseManager.shared.getUserSettings()
+            await MainActor.run {
+                userAllergens = Set(settings.allergens ?? [])
+            }
+        } catch {
+            // Silently fail - allergens are optional
+        }
+    }
+
+    /// Check if an ingredient matches user's saved allergens
+    private func isUserAllergenIngredient(_ ingredient: String) -> Bool {
+        let lower = ingredient.lowercased()
+
+        for allergen in userAllergens {
+            // Check against allergen keywords
+            for keyword in allergen.keywords {
+                if lower.contains(keyword.lowercased()) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
 
     // MARK: - Log Reaction Button
     private var logReactionButton: some View {
@@ -331,6 +362,7 @@ struct ReactionLogView: View {
     // MARK: - Common Ingredients View
     private var commonIngredientsView: some View {
         let commonIngredients = calculateCommonIngredients()
+        let matchedAllergens = commonIngredients.filter { isUserAllergenIngredient($0.name) }
 
         return VStack(alignment: .leading, spacing: 16) {
             Text("Ingredient Patterns")
@@ -343,6 +375,37 @@ struct ReactionLogView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 4)
 
+            // User allergen warning banner
+            if !matchedAllergens.isEmpty && !userAllergens.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(matchedAllergens.count) of your allergens detected")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+
+                        Text("These match allergens you've saved in your profile")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+
+                    Spacer()
+                }
+                .padding(14)
+                .background(
+                    LinearGradient(
+                        colors: [Color.red, Color.orange.opacity(0.9)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(12)
+                .shadow(color: .red.opacity(0.3), radius: 6, x: 0, y: 3)
+            }
+
             if commonIngredients.isEmpty {
                 Text("Not enough observations yet to identify ingredient patterns")
                     .font(.subheadline)
@@ -354,7 +417,8 @@ struct ReactionLogView: View {
                     CommonIngredientRow(
                         name: ingredient.name,
                         frequency: ingredient.frequency,
-                        percentage: ingredient.percentage
+                        percentage: ingredient.percentage,
+                        isUserAllergen: isUserAllergenIngredient(ingredient.name)
                     )
                 }
             }
@@ -446,17 +510,47 @@ struct CommonIngredientRow: View {
     let name: String
     let frequency: Int
     let percentage: Double
+    var isUserAllergen: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
-            Circle()
-                .fill(frequencyColor)
-                .frame(width: 10, height: 10)
+            // User allergen warning badge
+            if isUserAllergen {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(6)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.red, Color.orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(Circle())
+                    .shadow(color: .red.opacity(0.4), radius: 3, x: 0, y: 2)
+            } else {
+                Circle()
+                    .fill(frequencyColor)
+                    .frame(width: 10, height: 10)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(name)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.primary)
+                HStack(spacing: 6) {
+                    Text(name)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(isUserAllergen ? .red : .primary)
+
+                    if isUserAllergen {
+                        Text("YOUR ALLERGEN")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.red)
+                            .cornerRadius(4)
+                    }
+                }
 
                 Text("Appears in \(frequency) reaction\(frequency == 1 ? "" : "s")")
                     .font(.caption)
@@ -476,9 +570,17 @@ struct CommonIngredientRow: View {
             }
         }
         .padding(12)
-        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+        .background(
+            isUserAllergen
+                ? Color.red.opacity(0.1)
+                : (colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(isUserAllergen ? Color.red.opacity(0.5) : Color.clear, lineWidth: 2)
+        )
         .cornerRadius(10)
-        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+        .shadow(color: isUserAllergen ? .red.opacity(0.2) : .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
 
     private var frequencyColor: Color {
@@ -945,6 +1047,8 @@ struct ReactionLogDetailView: View {
     @State private var selectedFood: WeightedFoodScore?
     @State private var selectedIngredient: WeightedIngredientScore?
     @State private var selectedAllergenCategory: String?
+    @State private var userAllergens: Set<Allergen> = []
+    @State private var isLoadingAllergens = true
 
     var body: some View {
         NavigationView {
@@ -1001,7 +1105,63 @@ struct ReactionLogDetailView: View {
             .fullScreenCover(item: $selectedAllergenCategory) { category in
                 AllergenCategoryDetailView(category: category, entry: entry)
             }
+            .task {
+                await loadUserAllergens()
+            }
         }
+    }
+
+    // MARK: - Load User Allergens
+
+    private func loadUserAllergens() async {
+        do {
+            let settings = try await FirebaseManager.shared.getUserSettings()
+            await MainActor.run {
+                userAllergens = Set(settings.allergens ?? [])
+                isLoadingAllergens = false
+            }
+        } catch {
+            await MainActor.run {
+                isLoadingAllergens = false
+            }
+        }
+    }
+
+    /// Check if an allergen category matches user's saved allergens
+    private func isUserAllergen(_ category: String) -> Bool {
+        let categoryLower = category.lowercased()
+
+        for allergen in userAllergens {
+            switch allergen {
+            case .dairy, .lactose:
+                if categoryLower == "milk" || categoryLower == "dairy" || categoryLower == "lactose" {
+                    return true
+                }
+            case .eggs:
+                if categoryLower == "eggs" { return true }
+            case .fish:
+                if categoryLower == "fish" { return true }
+            case .shellfish:
+                if categoryLower == "shellfish" { return true }
+            case .treeNuts:
+                if categoryLower == "tree nuts" { return true }
+            case .peanuts:
+                if categoryLower == "peanuts" { return true }
+            case .wheat, .gluten:
+                if categoryLower == "gluten" || categoryLower == "wheat" { return true }
+            case .soy:
+                if categoryLower == "soya" || categoryLower == "soy" { return true }
+            case .sesame:
+                if categoryLower == "sesame" { return true }
+            case .sulfites:
+                if categoryLower == "sulphites" || categoryLower == "sulfites" { return true }
+            case .msg:
+                if categoryLower == "msg" { return true }
+            case .corn:
+                if categoryLower == "corn" { return true }
+            }
+        }
+        return false
     }
 
     private var reactionHeader: some View {
@@ -1108,6 +1268,7 @@ struct ReactionLogDetailView: View {
                                 allergenCategory: group.category,
                                 categoryScore: group.maxScore,
                                 ingredients: group.ingredients,
+                                isUserAllergen: isUserAllergen(group.category),
                                 onIngredientTap: { ingredient in
                                     selectedIngredient = ingredient
                                 },
@@ -1465,6 +1626,7 @@ struct ReactionAllergenGroup: View {
     let allergenCategory: String
     let categoryScore: Int
     let ingredients: [WeightedIngredientScore]
+    var isUserAllergen: Bool = false
     let onIngredientTap: (WeightedIngredientScore) -> Void
     let onCategoryTap: () -> Void
 
@@ -1475,9 +1637,32 @@ struct ReactionAllergenGroup: View {
                 onCategoryTap()
             }) {
                 HStack(alignment: .center, spacing: 12) {
+                    // User allergen warning badge
+                    if isUserAllergen {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("YOUR ALLERGEN")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.red, Color.orange],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(8)
+                        .shadow(color: .red.opacity(0.4), radius: 4, x: 0, y: 2)
+                    }
+
                     Text(allergenCategory)
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(isUserAllergen ? .red : .primary)
 
                     Spacer()
 

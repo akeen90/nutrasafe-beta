@@ -16,7 +16,7 @@ export { getFoodDetails } from './food-details';
 export { searchFoodsByCollection } from './search-foods-by-collection';
 export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, moveFoodBetweenCollections, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes } from './food-management';
 export { getOverviewStats, getAnalyticsData } from './analytics';
-export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics } from './user-management';
+export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp } from './user-management';
 export { getContextualNutritionScore } from './contextual-nutrition';
 export { analyzeAdditivesEnhanced } from './additive-analyzer-enhanced';
 export { extractIngredientsWithAI } from './intelligent-ingredient-extractor';
@@ -55,4 +55,7 @@ export { scanDatabaseIssues, batchUpdateFoods } from './scan-database';
 
 // UK Data Cleansing - Google Discovery and Extraction
 export { discoverUKProductPage, generateManualSearchLinks } from './uk-discovery';
-export { extractUKProductData } from './uk-extractor';
+export { extractUKProductData, extractWithPuppeteer, lookupTescoProduct } from './uk-extractor';
+
+// Tesco Database Builder - builds comprehensive UK food database from Tesco API
+export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, resetTescoDatabase, getTescoDatabaseStats } from './tesco-database-builder';

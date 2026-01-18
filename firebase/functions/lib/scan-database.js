@@ -518,15 +518,19 @@ exports.batchUpdateFoods = functionsV2.https.onRequest({
                 objectID: u.objectID,
                 ...u.changes,
             }));
+            // DEBUG: Log the first few objects being updated
+            console.log(`📝 Objects to update (first 3):`, JSON.stringify(objects.slice(0, 3), null, 2));
             // Process in batches of 1000
             const batchSize = 1000;
             for (let i = 0; i < objects.length; i += batchSize) {
                 const batch = objects.slice(i, i + batchSize);
-                await client.partialUpdateObjects({
+                console.log(`   Processing batch starting at index ${i}, batch size: ${batch.length}`);
+                const updateResponse = await client.partialUpdateObjects({
                     indexName,
                     objects: batch,
                     createIfNotExists: false,
                 });
+                console.log(`   Algolia response:`, JSON.stringify(updateResponse, null, 2));
                 updatedCount += batch.length;
                 console.log(`   Updated batch: ${batch.length} records`);
             }

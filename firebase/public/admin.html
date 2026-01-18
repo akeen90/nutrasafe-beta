@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NutraSafe Admin Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAW1cyvgMe7jU38P6b1RgAOd7w6lCGK5lE",
+            authDomain: "nutrasafe-705c7.firebaseapp.com",
+            projectId: "nutrasafe-705c7",
+            storageBucket: "nutrasafe-705c7.firebasestorage.app",
+            messagingSenderId: "128150759188",
+            appId: "1:128150759188:ios:cc965730162576d9574401"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
     <style>
         * {
             margin: 0;
@@ -3461,19 +3477,657 @@
                 justify-content: flex-start;
             }
         }
+
+        /* Email Marketing Styles */
+        .email-marketing-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .email-header {
+            margin-bottom: 24px;
+        }
+
+        .email-header h2 {
+            color: #1a1a2e;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .email-header p {
+            color: #6b7280;
+        }
+
+        .email-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .email-stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            text-align: center;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .email-stat-card .stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .email-stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .email-stat-card .stat-label {
+            color: #6b7280;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .email-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .email-filter {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .email-filter .search-input {
+            flex: 1;
+            max-width: 400px;
+            padding: 10px 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .email-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .email-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .email-table th {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .email-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
+        }
+
+        .email-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .email-table tbody tr.selected {
+            background: #eff6ff;
+        }
+
+        .email-table input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .email-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .email-status.verified {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .email-status.unverified {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .email-status.disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px !important;
+            color: #6b7280;
+        }
+
+        .mailchimp-status {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .mailchimp-status h4 {
+            margin-bottom: 12px;
+            color: #1a1a2e;
+        }
+
+        .mailchimp-result {
+            font-size: 14px;
+        }
+
+        .mailchimp-result .success {
+            color: #059669;
+        }
+
+        .mailchimp-result .error {
+            color: #dc2626;
+        }
+
+        /* Additional email table styles */
+        .email-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .email-table th.sortable:hover {
+            background: #eef2f7;
+        }
+
+        .email-table-footer {
+            padding: 12px 16px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+            background: #f8f9fa;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .email-table-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+
+        .email-cell {
+            font-family: 'SF Mono', monospace;
+            font-size: 13px;
+        }
+
+        .spinner-small {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Tesco Database Builder Styles */
+        .tesco-builder-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .tesco-header {
+            margin-bottom: 24px;
+        }
+
+        .tesco-header h2 {
+            color: #1a1a2e;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .tesco-header p {
+            color: #6b7280;
+        }
+
+        .tesco-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .tesco-stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+            max-width: 200px;
+        }
+
+        .tesco-stat-card .stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .tesco-stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .tesco-stat-card .stat-label {
+            color: #6b7280;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .tesco-progress-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .progress-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-idle { background: #e5e7eb; color: #374151; }
+        .status-running { background: #dbeafe; color: #1d4ed8; }
+        .status-paused { background: #fef3c7; color: #92400e; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+
+        .progress-bar-container {
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .tesco-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn-large {
+            padding: 12px 24px;
+            font-size: 15px;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .tesco-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+
+        .tesco-info h4 {
+            color: #0369a1;
+            margin-bottom: 12px;
+        }
+
+        .tesco-info ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .tesco-info li {
+            padding: 6px 0;
+            color: #0c4a6e;
+            font-size: 14px;
+        }
+
+        .tesco-recent {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .tesco-recent h4 {
+            margin-bottom: 12px;
+            color: #1a1a2e;
+        }
+
+        .recent-products-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .recent-product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .recent-product-item .product-name {
+            font-weight: 500;
+        }
+
+        .recent-product-item .product-brand {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .recent-product-item .product-nutrition {
+            font-size: 12px;
+            color: #059669;
+        }
+
+        .tesco-errors {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+
+        .tesco-errors h4 {
+            color: #991b1b;
+            margin-bottom: 12px;
+        }
+
+        .error-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 13px;
+            color: #7f1d1d;
+        }
+
+        .error-log p {
+            padding: 4px 0;
+            border-bottom: 1px solid #fecaca;
+        }
+
+        /* Login Styles */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .login-container.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .login-logo h1 span {
+            color: #2563eb;
+        }
+
+        .login-logo p {
+            color: #6b7280;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .login-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .login-field label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .login-field input {
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .login-field input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .login-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .login-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .login-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .login-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .main-app {
+            display: none;
+        }
+
+        .main-app.authenticated {
+            display: block;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid #e5e7eb;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 16px;
+        }
+
+        .logout-btn:hover {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .user-email {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
-    <header class="header">
-        <h1>Nutra<span>Safe</span> Admin</h1>
-        <nav class="nav-tabs">
-            <button class="nav-tab active" data-view="foods">Foods</button>
-            <button class="nav-tab" data-view="reports">
-                Reports <span id="reports-badge" class="nav-badge">0</span>
-            </button>
-            <button class="nav-tab" data-view="database-check">Database Check</button>
-        </nav>
-    </header>
+    <!-- Login Container -->
+    <div id="login-container" class="login-container">
+        <div class="login-box">
+            <div class="login-logo">
+                <h1>Nutra<span>Safe</span></h1>
+                <p>Admin Dashboard Login</p>
+            </div>
+            <form id="login-form" class="login-form" onsubmit="return app.handleLogin(event)">
+                <div class="login-field">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" placeholder="admin@nutrasafe.com" required>
+                </div>
+                <div class="login-field">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Enter your password" required>
+                </div>
+                <div id="login-error" class="login-error"></div>
+                <button type="submit" id="login-btn" class="login-btn">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App (hidden until authenticated) -->
+    <div id="main-app" class="main-app">
+        <header class="header">
+            <h1>Nutra<span>Safe</span> Admin</h1>
+            <div style="display: flex; align-items: center;">
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-view="foods">Foods</button>
+                    <button class="nav-tab" data-view="reports">
+                        Reports <span id="reports-badge" class="nav-badge">0</span>
+                    </button>
+                    <button class="nav-tab" data-view="database-check">Database Check</button>
+                    <button class="nav-tab" data-view="email-marketing">Email Marketing</button>
+                    <button class="nav-tab" data-view="tesco-builder">Tesco Builder</button>
+                </nav>
+                <div class="user-info">
+                    <span id="user-email" class="user-email"></span>
+                    <button class="logout-btn" onclick="app.handleLogout()">Sign Out</button>
+                </div>
+            </div>
+        </header>
 
     <main class="main-content">
         <!-- Foods View -->
@@ -3922,6 +4576,173 @@
                 </div> <!-- end database-check-main -->
             </div> <!-- end database-check-layout -->
         </div>
+
+        <!-- Email Marketing View -->
+        <div id="email-marketing-view" class="view">
+            <div class="email-marketing-container">
+                <div class="email-header">
+                    <h2>📧 Email Marketing</h2>
+                    <p>Manage user emails from Firebase Authentication and sync with Mailchimp</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="email-stats">
+                    <div class="email-stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="email-stat-total">-</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                    <div class="email-stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-value" id="email-stat-verified">-</div>
+                        <div class="stat-label">Verified Emails</div>
+                    </div>
+                    <div class="email-stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-value" id="email-stat-recent">-</div>
+                        <div class="stat-label">Active (7 days)</div>
+                    </div>
+                    <div class="email-stat-card">
+                        <div class="stat-icon">☑️</div>
+                        <div class="stat-value" id="email-stat-selected">0</div>
+                        <div class="stat-label">Selected</div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="email-controls">
+                    <button class="btn btn-primary" id="refresh-emails-btn" onclick="app.loadAuthEmails()">
+                        🔄 Refresh
+                    </button>
+                    <button class="btn btn-secondary" onclick="app.exportEmailsCSV()">
+                        📥 Export CSV
+                    </button>
+                    <button class="btn btn-secondary" onclick="app.copyEmailsToClipboard()">
+                        📋 Copy Emails
+                    </button>
+                    <button class="btn btn-ai" id="sync-mailchimp-btn" onclick="app.syncSelectedToMailchimp()">
+                        📧 Sync to Mailchimp
+                    </button>
+                </div>
+
+                <!-- Filter -->
+                <div class="email-filter">
+                    <input type="text" id="email-search-input" class="search-input" placeholder="Search by email or name..." oninput="app.filterEmails()">
+                </div>
+
+                <!-- Email Table Container - dynamically rendered -->
+                <div id="email-table-container" class="email-table-wrapper">
+                    <div class="empty-state">
+                        <p>Loading authenticated users...</p>
+                    </div>
+                </div>
+
+                <!-- Mailchimp Status -->
+                <div class="mailchimp-status" id="mailchimp-status" style="display: none;">
+                    <h4>Mailchimp Sync Result</h4>
+                    <div class="mailchimp-result" id="mailchimp-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tesco Database Builder View -->
+        <div id="tesco-builder-view" class="view">
+            <div class="tesco-builder-container">
+                <div class="tesco-header">
+                    <h2>🛒 Tesco Database Builder</h2>
+                    <p>Build a comprehensive UK food database by scanning Tesco's product catalog via their official API</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="tesco-stats">
+                    <div class="tesco-stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="tesco-stat-total">-</div>
+                        <div class="stat-label">Products Saved</div>
+                    </div>
+                    <div class="tesco-stat-card">
+                        <div class="stat-icon">🥗</div>
+                        <div class="stat-value" id="tesco-stat-nutrition">-</div>
+                        <div class="stat-label">With Nutrition</div>
+                    </div>
+                    <div class="tesco-stat-card">
+                        <div class="stat-icon">🔍</div>
+                        <div class="stat-value" id="tesco-stat-found">-</div>
+                        <div class="stat-label">Products Found</div>
+                    </div>
+                    <div class="tesco-stat-card">
+                        <div class="stat-icon">⏭️</div>
+                        <div class="stat-value" id="tesco-stat-skipped">-</div>
+                        <div class="stat-label">Duplicates Skipped</div>
+                    </div>
+                    <div class="tesco-stat-card" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-value" id="tesco-stat-errors" style="color: #991b1b;">0</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="tesco-progress-section">
+                    <div class="progress-header">
+                        <span id="tesco-status-badge" class="status-badge status-idle">Idle</span>
+                        <span id="tesco-current-term">Not started</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="tesco-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-details">
+                        <span id="tesco-progress-text">0 / 0 search terms processed</span>
+                        <span id="tesco-last-updated">-</span>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="tesco-controls">
+                    <button class="btn btn-primary btn-large" id="tesco-start-btn" onclick="app.startTescoBuild()">
+                        ▶️ Start Build
+                    </button>
+                    <button class="btn btn-warning btn-large" id="tesco-pause-btn" onclick="app.pauseTescoBuild()" style="display: none;">
+                        ⏸️ Pause
+                    </button>
+                    <button class="btn btn-success btn-large" id="tesco-resume-btn" onclick="app.resumeTescoBuild()" style="display: none;">
+                        ▶️ Resume
+                    </button>
+                    <button class="btn btn-secondary" id="tesco-refresh-btn" onclick="app.refreshTescoProgress()">
+                        🔄 Refresh Status
+                    </button>
+                    <button class="btn btn-danger" id="tesco-reset-btn" onclick="app.resetTescoDatabase()">
+                        🗑️ Reset Database
+                    </button>
+                </div>
+
+                <!-- Info Section -->
+                <div class="tesco-info">
+                    <h4>ℹ️ How it works</h4>
+                    <ul>
+                        <li><strong>Systematic Scan:</strong> Searches A-Z plus common food terms through Tesco's API</li>
+                        <li><strong>Full Details:</strong> Fetches complete nutrition, ingredients, allergens, and serving sizes</li>
+                        <li><strong>Resume Capability:</strong> Progress is saved - you can stop and resume anytime</li>
+                        <li><strong>Dual Storage:</strong> Saves to both Firestore (tescoProducts) and Algolia (tesco_products)</li>
+                        <li><strong>Rate Limited:</strong> Respects API limits to prevent blocks</li>
+                    </ul>
+                </div>
+
+                <!-- Products Found -->
+                <div class="tesco-recent">
+                    <h4>📦 Products</h4>
+                    <div id="tesco-recent-products" class="recent-products-list">
+                        <p class="empty-state">No products yet. Start the build to begin.</p>
+                    </div>
+                </div>
+
+                <!-- Error Log -->
+                <div class="tesco-errors" id="tesco-errors-section" style="display: none;">
+                    <h4>⚠️ Errors</h4>
+                    <div id="tesco-error-log" class="error-log"></div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Edit Food Modal -->
@@ -4351,6 +5172,7 @@
             </div>
         </div>
     </div>
+    </div><!-- End main-app -->
 
 
     <script>
@@ -4445,16 +5267,175 @@
             batchDiscoveryFailed: 0,
             batchDiscoveryRateLimit: 100, // ms between calls (10 req/sec - Google is the real bottleneck)
             batchDiscoveryResults: [], // Live results for display {objectID, name, status, source, changes, error, barcode, brand}
-            batchResultsFilter: 'all' // Filter for batch results display: all | success | failed | skipped
+            batchResultsFilter: 'all', // Filter for batch results display: all | success | failed | skipped
+
+            // Email Marketing State
+            authEmails: [], // All authenticated user emails
+            filteredAuthEmails: [], // Filtered emails for display
+            selectedAuthEmails: new Set(), // Selected email UIDs
+            emailSearchQuery: '', // Current search query
+            emailsLoading: false,
+            emailsSortBy: 'createdAt', // createdAt | lastSignIn | email
+            emailsSortOrder: 'desc', // asc | desc
+
+            // Tesco Database Builder State
+            tescoBuildProgress: null, // Current build progress from Firebase
+            tescoBuildLoading: false,
+            tescoStats: null, // Database statistics
+
+            // Authentication State
+            currentUser: null, // Firebase auth user
+            isAuthenticated: false,
+            authLoading: true // Show loading until auth state is determined
         };
 
         // Main Application
         const app = {
             init() {
+                // Set up Firebase Auth state listener FIRST
+                this.setupAuthListener();
+            },
+
+            // Called after successful authentication
+            initAuthenticatedApp() {
                 this.bindEvents();
                 this.loadFoods();
                 this.loadReportsCount();
                 this.loadSavedSessions();
+            },
+
+            setupAuthListener() {
+                console.log('Setting up auth listener...');
+                firebase.auth().onAuthStateChanged(async (user) => {
+                    state.authLoading = false;
+                    console.log('Auth state changed:', user ? user.email : 'not signed in');
+
+                    if (user) {
+                        // User is signed in - verify token is valid
+                        try {
+                            const token = await user.getIdToken(true); // Force refresh
+                            console.log('Auth token refreshed, length:', token.length);
+                            state.currentUser = user;
+                            state.isAuthenticated = true;
+                            this.onAuthSuccess(user);
+                        } catch (tokenError) {
+                            console.error('Failed to get auth token:', tokenError);
+                            // Token refresh failed - force re-login
+                            await firebase.auth().signOut();
+                            this.showLoginForm();
+                        }
+                    } else {
+                        // User is signed out
+                        state.currentUser = null;
+                        state.isAuthenticated = false;
+                        this.showLoginForm();
+                    }
+                });
+            },
+
+            onAuthSuccess(user) {
+                // Hide login, show main app
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('main-app').classList.add('authenticated');
+
+                // Display user email and UID (for admin setup)
+                const userEmailEl = document.getElementById('user-email');
+                if (userEmailEl) {
+                    userEmailEl.textContent = user.email;
+                    userEmailEl.title = `UID: ${user.uid}`; // Show UID on hover
+                }
+
+                // Initialize the rest of the app
+                this.initAuthenticatedApp();
+
+                console.log('User authenticated:', user.email);
+                console.log('User UID (add to /admins collection for full access):', user.uid);
+            },
+
+            showLoginForm() {
+                document.getElementById('login-container').classList.remove('hidden');
+                document.getElementById('main-app').classList.remove('authenticated');
+                document.getElementById('login-error').classList.remove('show');
+            },
+
+            async handleLogin(event) {
+                event.preventDefault();
+
+                const email = document.getElementById('login-email').value.trim();
+                const password = document.getElementById('login-password').value;
+                const loginBtn = document.getElementById('login-btn');
+                const errorEl = document.getElementById('login-error');
+
+                if (!email || !password) {
+                    errorEl.textContent = 'Please enter both email and password';
+                    errorEl.classList.add('show');
+                    return false;
+                }
+
+                // Disable button during login
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Signing in...';
+                errorEl.classList.remove('show');
+
+                try {
+                    await firebase.auth().signInWithEmailAndPassword(email, password);
+                    // Auth state listener will handle the rest
+                } catch (error) {
+                    console.error('Login error:', error);
+
+                    // User-friendly error messages
+                    let message = 'Login failed. Please try again.';
+                    switch (error.code) {
+                        case 'auth/invalid-email':
+                            message = 'Invalid email address format.';
+                            break;
+                        case 'auth/user-disabled':
+                            message = 'This account has been disabled.';
+                            break;
+                        case 'auth/user-not-found':
+                            message = 'No account found with this email.';
+                            break;
+                        case 'auth/wrong-password':
+                            message = 'Incorrect password.';
+                            break;
+                        case 'auth/too-many-requests':
+                            message = 'Too many failed attempts. Please try again later.';
+                            break;
+                        case 'auth/invalid-credential':
+                            message = 'Invalid email or password.';
+                            break;
+                    }
+
+                    errorEl.textContent = message;
+                    errorEl.classList.add('show');
+                } finally {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Sign In';
+                }
+
+                return false;
+            },
+
+            async handleLogout() {
+                try {
+                    // Stop any polling
+                    this.stopTescoProgressPolling();
+
+                    await firebase.auth().signOut();
+                    // Auth state listener will handle the rest
+
+                    // Reset relevant state
+                    state.authEmails = [];
+                    state.filteredAuthEmails = [];
+                    state.selectedAuthEmails.clear();
+                    state.tescoBuildProgress = null;
+                    state.tescoStats = null;
+
+                    console.log('User signed out');
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    this.showToast('Failed to sign out', 'error');
+                }
             },
 
             bindEvents() {
@@ -4493,6 +5474,14 @@
 
                 if (view === 'reports') {
                     this.loadReports();
+                } else if (view === 'email-marketing') {
+                    // Load emails if not already loaded
+                    if (state.authEmails.length === 0 && !state.emailsLoading) {
+                        this.loadAuthEmails();
+                    }
+                } else if (view === 'tesco-builder') {
+                    // Load Tesco build progress
+                    this.refreshTescoProgress();
                 }
             },
 
@@ -4798,48 +5787,73 @@
                 const ingredientsRaw = document.getElementById('edit-ingredients').value;
                 const ingredients = ingredientsRaw ? ingredientsRaw.split(',').map(i => i.trim()).filter(i => i) : [];
 
-                const foodData = {
-                    foodId: id,
+                // Get the current Algolia index from collection filter
+                const indexName = document.getElementById('collection-filter').value;
+
+                // Build changes object for Algolia update (flat structure)
+                const changes = {
                     foodName: document.getElementById('edit-food-name').value,
+                    name: document.getElementById('edit-food-name').value, // Algolia uses 'name' field
                     brandName: document.getElementById('edit-brand-name').value,
+                    brand: document.getElementById('edit-brand-name').value, // Algolia uses 'brand' field
                     barcode: document.getElementById('edit-barcode').value,
                     servingSize: document.getElementById('edit-serving-size').value,
                     category: document.getElementById('edit-category').value,
                     extractedIngredients: ingredients,
+                    ingredients: ingredients, // Algolia uses 'ingredients' field
                     verifiedBy: document.getElementById('edit-verified-by').value || null,
+                    // Flat nutrition fields for Algolia
+                    calories: parseFloat(document.getElementById('edit-calories').value) || 0,
+                    protein: parseFloat(document.getElementById('edit-protein').value) || 0,
+                    carbs: parseFloat(document.getElementById('edit-carbs').value) || 0,
+                    carbohydrates: parseFloat(document.getElementById('edit-carbs').value) || 0,
+                    fat: parseFloat(document.getElementById('edit-fat').value) || 0,
+                    fiber: parseFloat(document.getElementById('edit-fiber').value) || 0,
+                    sugar: parseFloat(document.getElementById('edit-sugar').value) || 0,
+                    sodium: parseFloat(document.getElementById('edit-sodium').value) || 0,
+                    salt: parseFloat(document.getElementById('edit-salt').value) || 0
+                };
+
+                // Also keep nested nutritionData for compatibility
+                const foodData = {
+                    ...changes,
                     nutritionData: {
-                        calories: parseFloat(document.getElementById('edit-calories').value) || null,
-                        protein: parseFloat(document.getElementById('edit-protein').value) || null,
-                        carbohydrates: parseFloat(document.getElementById('edit-carbs').value) || null,
-                        fat: parseFloat(document.getElementById('edit-fat').value) || null,
-                        fiber: parseFloat(document.getElementById('edit-fiber').value) || null,
-                        sugar: parseFloat(document.getElementById('edit-sugar').value) || null,
-                        sodium: parseFloat(document.getElementById('edit-sodium').value) || null,
-                        salt: parseFloat(document.getElementById('edit-salt').value) || null
+                        calories: changes.calories,
+                        protein: changes.protein,
+                        carbohydrates: changes.carbohydrates,
+                        fat: changes.fat,
+                        fiber: changes.fiber,
+                        sugar: changes.sugar,
+                        sodium: changes.sodium,
+                        salt: changes.salt
                     }
                 };
 
                 try {
-                    const response = await fetch(`${CONFIG.API_BASE}/updateVerifiedFood`, {
+                    // Use batchUpdateFoods to update Algolia directly (not Firestore)
+                    const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoods`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(foodData)
+                        body: JSON.stringify({
+                            indexName: indexName,
+                            updates: [{ objectID: id, changes: changes }],
+                            deletes: []
+                        })
                     });
 
                     const result = await response.json();
+                    console.log('Save response:', result);
 
                     if (result.success) {
                         this.showToast('Food saved successfully!', 'success');
 
                         // Check if food still matches current filter
                         const filter = document.getElementById('quality-filter').value;
+
+                        // Update with ALL fields (including Algolia-compatible field names)
                         const updatedFood = {
                             ...state.editingFood,
-                            foodName: foodData.foodName,
-                            brandName: foodData.brandName,
-                            barcode: foodData.barcode,
-                            extractedIngredients: foodData.extractedIngredients,
-                            nutritionData: foodData.nutritionData
+                            ...changes  // Apply all the Algolia changes (name, brand, ingredients, calories, etc.)
                         };
 
                         const stillMatchesFilter = this.foodMatchesFilter(updatedFood, filter);
@@ -4874,11 +5888,12 @@
                             this.renderFoods();
                         }
                     } else {
-                        this.showToast('Error saving food: ' + (result.error || 'Unknown error'), 'error');
+                        console.error('Save failed:', result);
+                        this.showToast('Error saving food: ' + (result.error || result.details || 'Unknown error'), 'error');
                     }
                 } catch (error) {
                     console.error('Save error:', error);
-                    this.showToast('Error saving food. Please try again.', 'error');
+                    this.showToast('Error saving food: ' + error.message, 'error');
                 }
             },
 
@@ -7310,6 +8325,14 @@
 
                         if (extractResult.result?.success && extractResult.result?.data) {
                             const data = extractResult.result.data;
+
+                            // CRITICAL: Validate that extracted product matches original item
+                            const validation = this.validateProductMatch(item, data);
+                            if (!validation.isMatch) {
+                                console.log(`${supermarket.name}: Product mismatch - "${validation.originalName}" vs "${validation.extractedName}" (${validation.confidence}%)`);
+                                continue; // Try next supermarket
+                            }
+
                             const nutrition = data.nutrition || {};
                             const changes = {};
                             const changeLabels = [];
@@ -7357,6 +8380,107 @@
                     error: 'No UK sources found',
                     hint: `Try searching: ${supermarkets[0].url}`
                 };
+            },
+
+            // Validate that extracted product matches the original item
+            validateProductMatch(originalItem, extractedData) {
+                const originalName = (originalItem.foodName || originalItem.name || '').toLowerCase().trim();
+                const originalBrand = (originalItem.brandName || originalItem.brand || '').toLowerCase().trim();
+                const extractedName = (extractedData.name || '').toLowerCase().trim();
+                const extractedBrand = (extractedData.brand || '').toLowerCase().trim();
+
+                // Normalize strings for comparison
+                const normalize = (str) => str.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+                const normOrigName = normalize(originalName);
+                const normExtName = normalize(extractedName);
+                const normOrigBrand = normalize(originalBrand);
+                const normExtBrand = normalize(extractedBrand);
+
+                let confidence = 0;
+                const reasons = [];
+
+                // 1. Check name match
+                if (normOrigName && normExtName) {
+                    // Check containment (one contains the other)
+                    if (normExtName.includes(normOrigName) || normOrigName.includes(normExtName)) {
+                        confidence += 40;
+                        reasons.push('Name contains match');
+                    } else {
+                        // Check word overlap
+                        const origWords = new Set(normOrigName.split(' ').filter(w => w.length > 2));
+                        const extWords = new Set(normExtName.split(' ').filter(w => w.length > 2));
+                        const overlap = [...origWords].filter(w => extWords.has(w)).length;
+                        const total = Math.max(origWords.size, extWords.size);
+                        if (total > 0) {
+                            const wordOverlapPercent = (overlap / total) * 100;
+                            if (wordOverlapPercent >= 60) {
+                                confidence += 30;
+                                reasons.push(`Word overlap ${Math.round(wordOverlapPercent)}%`);
+                            } else if (wordOverlapPercent >= 40) {
+                                confidence += 15;
+                                reasons.push(`Partial word overlap ${Math.round(wordOverlapPercent)}%`);
+                            } else {
+                                reasons.push(`Low word overlap ${Math.round(wordOverlapPercent)}%`);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Check brand match
+                if (normOrigBrand && normExtBrand) {
+                    if (normExtBrand.includes(normOrigBrand) || normOrigBrand.includes(normExtBrand)) {
+                        confidence += 30;
+                        reasons.push('Brand matches');
+                    } else {
+                        // Different brand is a red flag!
+                        confidence -= 20;
+                        reasons.push(`Brand mismatch: "${originalBrand}" vs "${extractedBrand}"`);
+                    }
+                } else if (normOrigBrand && !normExtBrand) {
+                    // Original has brand but extracted doesn't - check if brand is in name
+                    if (normExtName.includes(normOrigBrand)) {
+                        confidence += 20;
+                        reasons.push('Brand found in extracted name');
+                    }
+                }
+
+                // 3. Size/weight match (if present)
+                const sizePatterns = [
+                    /(\d+)\s*(g|kg|ml|l|oz|lb)/gi,
+                    /(\d+)\s*x\s*(\d+)/gi
+                ];
+                for (const pattern of sizePatterns) {
+                    const origSizes = originalName.match(pattern) || [];
+                    const extSizes = extractedName.match(pattern) || [];
+                    if (origSizes.length > 0 && extSizes.length > 0) {
+                        if (origSizes[0]?.toLowerCase() === extSizes[0]?.toLowerCase()) {
+                            confidence += 15;
+                            reasons.push('Size matches');
+                        } else {
+                            confidence -= 10;
+                            reasons.push(`Size mismatch: ${origSizes[0]} vs ${extSizes[0]}`);
+                        }
+                    }
+                }
+
+                // 4. Bonus for exact match
+                if (normOrigName === normExtName) {
+                    confidence += 20;
+                    reasons.push('Exact name match');
+                }
+
+                const result = {
+                    isMatch: confidence >= 50,
+                    confidence: Math.min(100, Math.max(0, confidence)),
+                    reasons,
+                    originalName,
+                    extractedName,
+                    originalBrand,
+                    extractedBrand
+                };
+
+                console.log('Product validation:', result);
+                return result;
             },
 
             // Process a single item in batch mode - returns result object
@@ -7418,6 +8542,20 @@
 
                 // Map extracted data to changes
                 const data = extractResult.result.data;
+
+                // CRITICAL: Validate that extracted product matches original item
+                const validation = this.validateProductMatch(item, data);
+                if (!validation.isMatch) {
+                    const mismatchMsg = `Product mismatch (${validation.confidence}%): "${validation.originalName}" vs "${validation.extractedName}"`;
+                    console.warn('Product validation failed:', validation);
+                    this.markIssueError(item.objectID, mismatchMsg);
+                    return {
+                        success: false,
+                        error: 'Product mismatch - wrong product found',
+                        sourceUrl: bestSource.url,
+                        hint: `Found "${validation.extractedName}" but expected "${validation.originalName}". ${validation.reasons.join(', ')}`
+                    };
+                }
                 const nutrition = data.nutrition || {};
                 const changes = {};
                 const changeLabels = [];
@@ -7573,6 +8711,15 @@
                 }));
                 const deletes = Array.from(state.pendingDeletes);
 
+                // DEBUG: Log what we're about to send
+                console.log('=== APPLY ALL CHANGES DEBUG ===');
+                console.log('Index:', indexName);
+                console.log('pendingEdits object:', JSON.stringify(state.pendingEdits, null, 2));
+                console.log('Updates array:', JSON.stringify(updates, null, 2));
+                console.log('Deletes array:', deletes);
+                console.log('Updates count:', updates.length);
+                console.log('Deletes count:', deletes.length);
+
                 if (updates.length === 0 && deletes.length === 0) {
                     this.showToast('No changes to apply', 'info');
                     return;
@@ -7585,13 +8732,18 @@
                 document.getElementById('apply-changes-btn').textContent = 'Applying...';
 
                 try {
+                    const requestBody = { indexName, updates, deletes };
+                    console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
+
                     const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoods`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ indexName, updates, deletes })
+                        body: JSON.stringify(requestBody)
                     });
 
+                    console.log('Response status:', response.status);
                     const result = await response.json();
+                    console.log('Response body:', JSON.stringify(result, null, 2));
 
                     if (result.success) {
                         this.showToast(`Applied ${result.updated} updates and ${result.deleted} deletions`, 'success');
@@ -9679,6 +10831,827 @@
 
                     this.saveSessions();
                     this.renderSessionList();
+                }
+            },
+
+            // =====================
+            // Email Marketing Functions
+            // =====================
+
+            async loadAuthEmails() {
+                if (state.emailsLoading) return;
+
+                // Verify authentication before calling
+                if (!state.isAuthenticated || !state.currentUser) {
+                    console.error('Not authenticated - cannot load emails');
+                    this.showToast('Please sign in to access Email Marketing', 'error');
+                    return;
+                }
+
+                console.log('Loading auth emails... User:', state.currentUser.email);
+                state.emailsLoading = true;
+                this.updateEmailLoadingState(true);
+
+                try {
+                    const getAuthenticatedEmails = firebase.functions().httpsCallable('getAuthenticatedEmails');
+                    console.log('Calling getAuthenticatedEmails...');
+                    const result = await getAuthenticatedEmails();
+                    console.log('Result:', result.data);
+
+                    if (result.data.success) {
+                        state.authEmails = result.data.emails;
+                        state.filteredAuthEmails = [...state.authEmails];
+                        this.sortEmails();
+                        this.updateEmailStats();
+                        this.renderEmailTable();
+                        this.showToast(`Loaded ${result.data.totalCount} authenticated users`, 'success');
+                    } else {
+                        throw new Error('Failed to load emails');
+                    }
+                } catch (error) {
+                    console.error('Error loading authenticated emails:', error);
+                    console.error('Error details:', JSON.stringify(error, null, 2));
+
+                    // Better error messages
+                    let errorMsg = error.message || 'Unknown error';
+                    let errorTitle = 'Error Loading Emails';
+
+                    if (error.code === 'permission-denied') {
+                        const uid = state.currentUser?.uid || 'unknown';
+                        errorMsg = `Admin access required. Add your UID (${uid}) to the /admins collection in Firestore.`;
+                        errorTitle = 'Access Denied';
+                        console.log('Your UID to add to /admins:', uid);
+                    } else if (error.code === 'unauthenticated') {
+                        errorMsg = 'Please sign in again.';
+                        errorTitle = 'Not Authenticated';
+                    } else if (error.code === 'failed-precondition') {
+                        errorTitle = 'Configuration Required';
+                        // Keep the error message from the server as it contains useful info
+                    } else if (error.code === 'internal') {
+                        // Show the server's actual error message for internal errors
+                        errorTitle = 'Server Error';
+                        console.error('Internal error - check Firebase Functions logs for details');
+                    }
+
+                    this.showToast('Failed to load emails: ' + errorMsg, 'error');
+
+                    // Show error in the table container
+                    const tableContainer = document.getElementById('email-table-container');
+                    if (tableContainer) {
+                        let helpText = '';
+                        if (error.code === 'permission-denied') {
+                            helpText = `<p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
+                                Go to Firebase Console → Firestore → Create document:<br>
+                                <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">/admins/${state.currentUser?.uid || 'YOUR_UID'}</code>
+                            </p>`;
+                        } else if (error.code === 'failed-precondition') {
+                            helpText = `<p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
+                                Go to <a href="https://console.cloud.google.com/iam-admin/iam?project=nutrasafe-705c7" target="_blank" style="color: #2563eb;">GCP IAM Console</a> and add the "Firebase Authentication Admin" role to the Cloud Functions service account.
+                            </p>`;
+                        } else if (error.code === 'internal') {
+                            helpText = `<p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
+                                Check <a href="https://console.firebase.google.com/project/nutrasafe-705c7/functions/logs" target="_blank" style="color: #2563eb;">Firebase Functions Logs</a> for details.
+                            </p>`;
+                        }
+
+                        tableContainer.innerHTML = `<div class="error-message" style="padding: 40px; text-align: center; color: #991b1b;">
+                            <h3>${errorTitle}</h3>
+                            <p>${errorMsg}</p>
+                            ${helpText}
+                            <button onclick="app.loadAuthEmails()" class="btn btn-primary" style="margin-top: 20px;">🔄 Retry</button>
+                        </div>`;
+                    }
+                } finally {
+                    state.emailsLoading = false;
+                    this.updateEmailLoadingState(false);
+                }
+            },
+
+            updateEmailLoadingState(loading) {
+                const refreshBtn = document.getElementById('refresh-emails-btn');
+
+                if (refreshBtn) {
+                    refreshBtn.disabled = loading;
+                    refreshBtn.innerHTML = loading ? '<span class="spinner-small"></span> Loading...' : '🔄 Refresh';
+                }
+
+                if (loading) {
+                    const tableContainer = document.getElementById('email-table-container');
+                    if (tableContainer) {
+                        tableContainer.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading authenticated users...</span></div>';
+                    }
+                }
+            },
+
+            updateEmailStats() {
+                const totalEl = document.getElementById('email-stat-total');
+                const verifiedEl = document.getElementById('email-stat-verified');
+                const recentEl = document.getElementById('email-stat-recent');
+                const selectedEl = document.getElementById('email-stat-selected');
+
+                if (totalEl) totalEl.textContent = state.authEmails.length;
+
+                if (verifiedEl) {
+                    const verified = state.authEmails.filter(e => e.emailVerified).length;
+                    verifiedEl.textContent = verified;
+                }
+
+                if (recentEl) {
+                    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+                    const recent = state.authEmails.filter(e => {
+                        if (!e.lastSignIn) return false;
+                        return new Date(e.lastSignIn) > weekAgo;
+                    }).length;
+                    recentEl.textContent = recent;
+                }
+
+                if (selectedEl) {
+                    selectedEl.textContent = state.selectedAuthEmails.size;
+                }
+            },
+
+            filterEmails() {
+                const query = (document.getElementById('email-search-input')?.value || '').toLowerCase().trim();
+                state.emailSearchQuery = query;
+
+                if (!query) {
+                    state.filteredAuthEmails = [...state.authEmails];
+                } else {
+                    state.filteredAuthEmails = state.authEmails.filter(e => {
+                        const email = (e.email || '').toLowerCase();
+                        const name = (e.displayName || '').toLowerCase();
+                        return email.includes(query) || name.includes(query);
+                    });
+                }
+
+                this.sortEmails();
+                this.renderEmailTable();
+            },
+
+            sortEmails() {
+                const sortBy = state.emailsSortBy;
+                const order = state.emailsSortOrder;
+
+                state.filteredAuthEmails.sort((a, b) => {
+                    let valA, valB;
+
+                    if (sortBy === 'email') {
+                        valA = (a.email || '').toLowerCase();
+                        valB = (b.email || '').toLowerCase();
+                    } else if (sortBy === 'createdAt') {
+                        valA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                        valB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    } else if (sortBy === 'lastSignIn') {
+                        valA = a.lastSignIn ? new Date(a.lastSignIn).getTime() : 0;
+                        valB = b.lastSignIn ? new Date(b.lastSignIn).getTime() : 0;
+                    }
+
+                    if (order === 'asc') {
+                        return valA < valB ? -1 : valA > valB ? 1 : 0;
+                    } else {
+                        return valA > valB ? -1 : valA < valB ? 1 : 0;
+                    }
+                });
+            },
+
+            changeEmailSort(sortBy) {
+                if (state.emailsSortBy === sortBy) {
+                    // Toggle order
+                    state.emailsSortOrder = state.emailsSortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.emailsSortBy = sortBy;
+                    state.emailsSortOrder = 'desc';
+                }
+                this.sortEmails();
+                this.renderEmailTable();
+            },
+
+            toggleSelectAllEmails(checked) {
+                if (checked) {
+                    state.filteredAuthEmails.forEach(e => state.selectedAuthEmails.add(e.uid));
+                } else {
+                    state.selectedAuthEmails.clear();
+                }
+                this.updateEmailStats();
+                this.renderEmailTable();
+            },
+
+            toggleEmailSelection(uid, checked) {
+                if (checked) {
+                    state.selectedAuthEmails.add(uid);
+                } else {
+                    state.selectedAuthEmails.delete(uid);
+                }
+                this.updateEmailStats();
+
+                // Update individual checkbox and select all state
+                const allSelected = state.filteredAuthEmails.every(e => state.selectedAuthEmails.has(e.uid));
+                const selectAllCheckbox = document.getElementById('email-select-all');
+                if (selectAllCheckbox) selectAllCheckbox.checked = allSelected;
+            },
+
+            renderEmailTable() {
+                const container = document.getElementById('email-table-container');
+                if (!container) return;
+
+                if (state.filteredAuthEmails.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <p>${state.authEmails.length === 0 ? 'No authenticated users found. Click Refresh to load.' : 'No emails match your search.'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const sortIcon = (col) => {
+                    if (state.emailsSortBy !== col) return '';
+                    return state.emailsSortOrder === 'asc' ? ' ↑' : ' ↓';
+                };
+
+                const allSelected = state.filteredAuthEmails.every(e => state.selectedAuthEmails.has(e.uid));
+
+                let html = `
+                    <table class="email-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="email-select-all" ${allSelected ? 'checked' : ''} onchange="app.toggleSelectAllEmails(this.checked)">
+                                </th>
+                                <th class="sortable" onclick="app.changeEmailSort('email')">Email${sortIcon('email')}</th>
+                                <th>Name</th>
+                                <th class="sortable" onclick="app.changeEmailSort('createdAt')">Created${sortIcon('createdAt')}</th>
+                                <th class="sortable" onclick="app.changeEmailSort('lastSignIn')">Last Sign In${sortIcon('lastSignIn')}</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                state.filteredAuthEmails.forEach(user => {
+                    const isSelected = state.selectedAuthEmails.has(user.uid);
+                    const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-';
+                    const lastSignIn = user.lastSignIn ? new Date(user.lastSignIn).toLocaleDateString() : 'Never';
+
+                    html += `
+                        <tr class="${isSelected ? 'selected' : ''}">
+                            <td>
+                                <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="app.toggleEmailSelection('${user.uid}', this.checked)">
+                            </td>
+                            <td class="email-cell">${this.escapeHtml(user.email)}</td>
+                            <td>${this.escapeHtml(user.displayName || '-')}</td>
+                            <td>${createdDate}</td>
+                            <td>${lastSignIn}</td>
+                            <td>
+                                ${user.emailVerified ? '<span class="badge badge-success">Verified</span>' : '<span class="badge badge-warning">Unverified</span>'}
+                                ${user.disabled ? '<span class="badge badge-danger">Disabled</span>' : ''}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                html += `<div class="email-table-footer">Showing ${state.filteredAuthEmails.length} of ${state.authEmails.length} users</div>`;
+                container.innerHTML = html;
+            },
+
+            escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            },
+
+            exportEmailsCSV() {
+                const emails = state.selectedAuthEmails.size > 0
+                    ? state.authEmails.filter(e => state.selectedAuthEmails.has(e.uid))
+                    : state.filteredAuthEmails;
+
+                if (emails.length === 0) {
+                    this.showToast('No emails to export', 'info');
+                    return;
+                }
+
+                const headers = ['Email', 'Name', 'UID', 'Created At', 'Last Sign In', 'Email Verified', 'Disabled'];
+                const rows = emails.map(e => [
+                    e.email,
+                    e.displayName || '',
+                    e.uid,
+                    e.createdAt || '',
+                    e.lastSignIn || '',
+                    e.emailVerified ? 'Yes' : 'No',
+                    e.disabled ? 'Yes' : 'No'
+                ]);
+
+                const csvContent = [headers, ...rows]
+                    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                    .join('\n');
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `nutrasafe_users_${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+
+                this.showToast(`Exported ${emails.length} emails to CSV`, 'success');
+            },
+
+            copyEmailsToClipboard() {
+                const emails = state.selectedAuthEmails.size > 0
+                    ? state.authEmails.filter(e => state.selectedAuthEmails.has(e.uid))
+                    : state.filteredAuthEmails;
+
+                if (emails.length === 0) {
+                    this.showToast('No emails to copy', 'info');
+                    return;
+                }
+
+                const emailList = emails.map(e => e.email).join('\n');
+                navigator.clipboard.writeText(emailList).then(() => {
+                    this.showToast(`Copied ${emails.length} emails to clipboard`, 'success');
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    this.showToast('Failed to copy to clipboard', 'error');
+                });
+            },
+
+            async syncSelectedToMailchimp() {
+                const emails = state.selectedAuthEmails.size > 0
+                    ? state.authEmails.filter(e => state.selectedAuthEmails.has(e.uid))
+                    : state.filteredAuthEmails;
+
+                if (emails.length === 0) {
+                    this.showToast('No emails to sync', 'info');
+                    return;
+                }
+
+                if (!confirm(`Sync ${emails.length} emails to Mailchimp?\n\nThis will add new subscribers and update existing ones.`)) {
+                    return;
+                }
+
+                const syncBtn = document.getElementById('sync-mailchimp-btn');
+                if (syncBtn) {
+                    syncBtn.disabled = true;
+                    syncBtn.innerHTML = '<span class="spinner-small"></span> Syncing...';
+                }
+
+                try {
+                    const bulkAddToMailchimp = firebase.functions().httpsCallable('bulkAddToMailchimp');
+                    const result = await bulkAddToMailchimp({
+                        emails: emails.map(e => ({
+                            email: e.email,
+                            displayName: e.displayName,
+                            uid: e.uid
+                        }))
+                    });
+
+                    if (result.data.success) {
+                        let message = `Mailchimp sync complete!\n`;
+                        message += `• Added: ${result.data.addedCount}\n`;
+                        message += `• Updated: ${result.data.updatedCount}\n`;
+                        if (result.data.errorCount > 0) {
+                            message += `• Errors: ${result.data.errorCount}`;
+                        }
+                        this.showToast(message, result.data.errorCount > 0 ? 'warning' : 'success');
+                    } else {
+                        throw new Error('Sync failed');
+                    }
+                } catch (error) {
+                    console.error('Mailchimp sync error:', error);
+                    this.showToast('Mailchimp sync failed: ' + error.message, 'error');
+                } finally {
+                    if (syncBtn) {
+                        syncBtn.disabled = false;
+                        syncBtn.innerHTML = '📧 Sync to Mailchimp';
+                    }
+                }
+            },
+
+            // =========================================
+            // TESCO DATABASE BUILDER FUNCTIONS
+            // =========================================
+
+            async refreshTescoProgress() {
+                if (state.tescoBuildLoading) return;
+
+                // Verify authentication before calling
+                if (!state.isAuthenticated || !state.currentUser) {
+                    console.error('Not authenticated - cannot load Tesco progress');
+                    this.showToast('Please sign in to access Tesco Builder', 'error');
+                    return;
+                }
+
+                console.log('Loading Tesco progress... User:', state.currentUser.email);
+                state.tescoBuildLoading = true;
+                this.updateTescoLoadingState(true);
+
+                try {
+                    const getTescoBuildProgress = firebase.functions().httpsCallable('getTescoBuildProgress');
+                    const getTescoDatabaseStats = firebase.functions().httpsCallable('getTescoDatabaseStats');
+
+                    console.log('Calling Tesco functions...');
+                    // Load both progress and stats in parallel
+                    const [progressResult, statsResult] = await Promise.all([
+                        getTescoBuildProgress(),
+                        getTescoDatabaseStats()
+                    ]);
+                    console.log('Tesco results:', progressResult.data, statsResult.data);
+
+                    // getTescoBuildProgress returns the progress object directly
+                    if (progressResult.data) {
+                        state.tescoBuildProgress = progressResult.data;
+                    }
+
+                    // getTescoDatabaseStats returns { totalProducts, hasNutritionEstimate, recentProducts, collectionName, algoliaIndex }
+                    if (statsResult.data) {
+                        state.tescoStats = statsResult.data;
+                    }
+
+                    this.updateTescoUI();
+                } catch (error) {
+                    console.error('Error loading Tesco progress:', error);
+
+                    // Better error messages
+                    let errorMsg = error.message || 'Unknown error';
+                    if (error.code === 'unauthenticated') {
+                        errorMsg = 'Please sign in to access Tesco Builder.';
+                    } else if (error.code === 'permission-denied') {
+                        const uid = state.currentUser?.uid || 'unknown';
+                        errorMsg = `Admin access required. Add UID (${uid}) to /admins collection.`;
+                    }
+
+                    this.showToast('Failed to load Tesco progress: ' + errorMsg, 'error');
+
+                    // Show error in the UI
+                    const statsEl = document.getElementById('tesco-database-stats');
+                    if (statsEl) {
+                        statsEl.innerHTML = `<div style="padding: 20px; text-align: center; color: #991b1b;">
+                            <p><strong>Error:</strong> ${errorMsg}</p>
+                            ${error.code === 'unauthenticated' ? '<p>Please sign in using the login form.</p>' : ''}
+                        </div>`;
+                    }
+                } finally {
+                    state.tescoBuildLoading = false;
+                    this.updateTescoLoadingState(false);
+                }
+            },
+
+            updateTescoLoadingState(loading) {
+                const refreshBtn = document.getElementById('tesco-refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.disabled = loading;
+                    refreshBtn.innerHTML = loading ? '<span class="spinner-small"></span> Loading...' : '🔄 Refresh';
+                }
+            },
+
+            updateTescoUI() {
+                const progress = state.tescoBuildProgress;
+                const stats = state.tescoStats;
+
+                // Update stats from getTescoDatabaseStats response
+                const statTotal = document.getElementById('tesco-stat-total');
+                const statNutrition = document.getElementById('tesco-stat-nutrition');
+                const statFound = document.getElementById('tesco-stat-found');
+                const statSkipped = document.getElementById('tesco-stat-skipped');
+                const statErrors = document.getElementById('tesco-stat-errors');
+                const lastUpdatedEl = document.getElementById('tesco-last-updated');
+
+                // Show productsSaved from progress when available, otherwise use stats count
+                if (statTotal) {
+                    statTotal.textContent = progress?.productsSaved ?? stats?.totalProducts ?? 0;
+                }
+
+                // Update progress section
+                const statusBadge = document.getElementById('tesco-status-badge');
+                const progressBar = document.getElementById('tesco-progress-bar');
+                const progressText = document.getElementById('tesco-progress-text');
+                const currentTermEl = document.getElementById('tesco-current-term');
+
+                if (progress) {
+                    // Show status
+                    const status = progress.status || 'idle';
+                    if (statusBadge) {
+                        statusBadge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                        statusBadge.className = 'status-badge status-' + status;
+                    }
+
+                    // Update progress bar
+                    const totalTerms = progress.totalTerms || 1;
+                    const currentTermIndex = progress.currentTermIndex || 0;
+                    const percentage = Math.round((currentTermIndex / totalTerms) * 100);
+
+                    if (progressBar) progressBar.style.width = percentage + '%';
+                    if (progressText) progressText.textContent = `${currentTermIndex} / ${totalTerms} search terms processed`;
+
+                    // Update details
+                    if (currentTermEl) {
+                        currentTermEl.textContent = progress.currentTerm ? `Searching: "${progress.currentTerm}"` : 'Not started';
+                    }
+
+                    // Update stat cards from progress
+                    if (statNutrition) statNutrition.textContent = progress.productsWithNutrition || 0;
+                    if (statFound) statFound.textContent = progress.productsFound || 0;
+                    if (statSkipped) statSkipped.textContent = progress.duplicatesSkipped || 0;
+                    if (statErrors) statErrors.textContent = progress.errors || 0;
+
+                    // Update last updated
+                    if (lastUpdatedEl && progress.lastUpdated) {
+                        lastUpdatedEl.textContent = 'Updated: ' + new Date(progress.lastUpdated).toLocaleString();
+                    }
+
+                    // Show/hide buttons based on status
+                    const startBtn = document.getElementById('tesco-start-btn');
+                    const pauseBtn = document.getElementById('tesco-pause-btn');
+                    const resumeBtn = document.getElementById('tesco-resume-btn');
+
+                    if (status === 'running') {
+                        if (startBtn) startBtn.style.display = 'none';
+                        if (pauseBtn) pauseBtn.style.display = 'inline-flex';
+                        if (resumeBtn) resumeBtn.style.display = 'none';
+                    } else if (status === 'paused') {
+                        if (startBtn) startBtn.style.display = 'none';
+                        if (pauseBtn) pauseBtn.style.display = 'none';
+                        if (resumeBtn) resumeBtn.style.display = 'inline-flex';
+                    } else {
+                        if (startBtn) startBtn.style.display = 'inline-flex';
+                        if (pauseBtn) pauseBtn.style.display = 'none';
+                        if (resumeBtn) resumeBtn.style.display = 'none';
+                    }
+
+                    // Render recently found products from progress (during active build)
+                    if (progress.recentlyFoundProducts && progress.recentlyFoundProducts.length > 0) {
+                        this.renderTescoRecentProducts(progress.recentlyFoundProducts, true);
+                    } else if (stats?.recentProducts) {
+                        // Fall back to stats recent products if no active build products
+                        this.renderTescoRecentProducts(stats.recentProducts, false);
+                    }
+
+                    // Show errors if any
+                    if (progress.errors > 0 && progress.errorMessages?.length > 0) {
+                        this.renderTescoErrors(progress.errorMessages);
+                    }
+                } else {
+                    if (statusBadge) {
+                        statusBadge.textContent = 'Not Started';
+                        statusBadge.className = 'status-badge status-idle';
+                    }
+                    if (progressBar) progressBar.style.width = '0%';
+                    if (progressText) progressText.textContent = '0 / 0 search terms processed';
+                    if (currentTermEl) currentTermEl.textContent = 'Not started';
+                    if (statNutrition) statNutrition.textContent = '0';
+                    if (statFound) statFound.textContent = '0';
+                    if (statSkipped) statSkipped.textContent = '0';
+                    if (statErrors) statErrors.textContent = '0';
+                    if (lastUpdatedEl) lastUpdatedEl.textContent = '-';
+
+                    // Show start button only
+                    const startBtn = document.getElementById('tesco-start-btn');
+                    const pauseBtn = document.getElementById('tesco-pause-btn');
+                    const resumeBtn = document.getElementById('tesco-resume-btn');
+                    if (startBtn) startBtn.style.display = 'inline-flex';
+                    if (pauseBtn) pauseBtn.style.display = 'none';
+                    if (resumeBtn) resumeBtn.style.display = 'none';
+                }
+            },
+
+            renderTescoRecentProducts(recentProducts, isFromActiveBuild = false) {
+                const container = document.getElementById('tesco-recent-products');
+                if (!container) return;
+
+                if (!recentProducts || recentProducts.length === 0) {
+                    container.innerHTML = '<p class="empty-state">No products yet. Start the build to begin.</p>';
+                    return;
+                }
+
+                const headerText = isFromActiveBuild
+                    ? `🔄 Products Found This Session (${recentProducts.length})`
+                    : '📦 Recently Saved Products';
+
+                let html = `
+                    <div class="recent-products-header" style="margin-bottom: 10px; font-size: 13px; color: ${isFromActiveBuild ? '#059669' : '#6b7280'};">
+                        ${headerText}
+                    </div>
+                    <div class="recent-products-grid">
+                `;
+                recentProducts.forEach(product => {
+                    const hasNutrition = product.hasNutrition ? '✅' : '❌';
+                    const timeAgo = product.savedAt ? this.formatTimeAgo(product.savedAt) : '';
+                    html += `
+                        <div class="recent-product-card" style="border-left: 3px solid ${product.hasNutrition ? '#059669' : '#f59e0b'};">
+                            <div class="product-title">${this.escapeHtml(product.title)}</div>
+                            <div class="product-meta">
+                                <span class="product-brand">${this.escapeHtml(product.brand || 'Tesco')}</span>
+                                <span class="product-nutrition">${hasNutrition} Nutrition</span>
+                                ${timeAgo ? `<span class="product-time" style="color: #9ca3af; font-size: 11px;">${timeAgo}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            },
+
+            formatTimeAgo(dateString) {
+                const now = new Date();
+                const date = new Date(dateString);
+                const seconds = Math.floor((now - date) / 1000);
+
+                if (seconds < 60) return 'just now';
+                if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+                if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+                return `${Math.floor(seconds / 86400)}d ago`;
+            },
+
+            renderTescoErrors(errorMessages) {
+                const section = document.getElementById('tesco-errors-section');
+                const log = document.getElementById('tesco-error-log');
+                if (!section || !log) return;
+
+                section.style.display = 'block';
+                // Show more errors (last 25) with better formatting
+                const errors = errorMessages.slice(-25);
+                log.innerHTML = `
+                    <p style="margin-bottom: 10px; color: #6b7280; font-size: 12px;">
+                        Showing last ${errors.length} of ${errorMessages.length} errors
+                    </p>
+                    ${errors.map(msg =>
+                        `<div class="error-entry" style="padding: 8px; margin-bottom: 4px; background: #fff; border-left: 3px solid #ef4444; font-size: 12px;">${this.escapeHtml(msg)}</div>`
+                    ).join('')}
+                `;
+            },
+
+            renderTescoCompletedTerms(completedTerms) {
+                const container = document.getElementById('tesco-completed-terms');
+                if (!container) return;
+
+                if (completedTerms.length === 0) {
+                    container.innerHTML = '<p class="text-muted">No terms completed yet</p>';
+                    return;
+                }
+
+                // Show last 20 completed terms
+                const recentTerms = completedTerms.slice(-20).reverse();
+
+                let html = '<div class="completed-terms-list">';
+                recentTerms.forEach(term => {
+                    html += `<span class="term-badge">${this.escapeHtml(term)}</span>`;
+                });
+                html += '</div>';
+
+                if (completedTerms.length > 20) {
+                    html += `<p class="text-muted">... and ${completedTerms.length - 20} more</p>`;
+                }
+
+                container.innerHTML = html;
+            },
+
+            async startTescoBuild() {
+                if (!confirm('Start building the Tesco database?\n\nThis will scan Tesco products A-Z and save them to your database. You can pause at any time.')) {
+                    return;
+                }
+
+                const startBtn = document.getElementById('tesco-start-btn');
+                if (startBtn) {
+                    startBtn.disabled = true;
+                    startBtn.innerHTML = '<span class="spinner-small"></span> Starting...';
+                }
+
+                try {
+                    const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
+                    const result = await startTescoBuild();
+
+                    if (result.data.success) {
+                        this.showToast('Tesco database build started!', 'success');
+
+                        // Start polling for progress
+                        this.startTescoProgressPolling();
+                    } else {
+                        throw new Error(result.data.error || 'Failed to start build');
+                    }
+                } catch (error) {
+                    console.error('Error starting Tesco build:', error);
+                    this.showToast('Failed to start build: ' + error.message, 'error');
+                } finally {
+                    if (startBtn) {
+                        startBtn.disabled = false;
+                        startBtn.innerHTML = '▶️ Start Build';
+                    }
+                    this.refreshTescoProgress();
+                }
+            },
+
+            async pauseTescoBuild() {
+                const pauseBtn = document.getElementById('tesco-pause-btn');
+                if (pauseBtn) {
+                    pauseBtn.disabled = true;
+                    pauseBtn.innerHTML = '<span class="spinner-small"></span> Pausing...';
+                }
+
+                try {
+                    const pauseTescoBuild = firebase.functions().httpsCallable('pauseTescoBuild');
+                    const result = await pauseTescoBuild();
+
+                    if (result.data.success) {
+                        this.showToast('Tesco build paused. Progress saved.', 'success');
+                        this.stopTescoProgressPolling();
+                    } else {
+                        throw new Error(result.data.error || 'Failed to pause build');
+                    }
+                } catch (error) {
+                    console.error('Error pausing Tesco build:', error);
+                    this.showToast('Failed to pause: ' + error.message, 'error');
+                } finally {
+                    if (pauseBtn) {
+                        pauseBtn.disabled = false;
+                        pauseBtn.innerHTML = '⏸️ Pause';
+                    }
+                    this.refreshTescoProgress();
+                }
+            },
+
+            async resumeTescoBuild() {
+                const resumeBtn = document.getElementById('tesco-resume-btn');
+                if (resumeBtn) {
+                    resumeBtn.disabled = true;
+                    resumeBtn.innerHTML = '<span class="spinner-small"></span> Resuming...';
+                }
+
+                try {
+                    const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
+                    const result = await startTescoBuild(); // Same function handles resume
+
+                    if (result.data.success) {
+                        this.showToast('Tesco build resumed!', 'success');
+                        this.startTescoProgressPolling();
+                    } else {
+                        throw new Error(result.data.error || 'Failed to resume build');
+                    }
+                } catch (error) {
+                    console.error('Error resuming Tesco build:', error);
+                    this.showToast('Failed to resume: ' + error.message, 'error');
+                } finally {
+                    if (resumeBtn) {
+                        resumeBtn.disabled = false;
+                        resumeBtn.innerHTML = '▶️ Resume';
+                    }
+                    this.refreshTescoProgress();
+                }
+            },
+
+            async resetTescoDatabase() {
+                if (!confirm('⚠️ WARNING: This will delete ALL Tesco products and reset the build progress.\n\nAre you sure?')) {
+                    return;
+                }
+
+                if (!confirm('This action cannot be undone. Type "RESET" mentally and click OK to confirm.')) {
+                    return;
+                }
+
+                const resetBtn = document.getElementById('tesco-reset-btn');
+                if (resetBtn) {
+                    resetBtn.disabled = true;
+                    resetBtn.innerHTML = '<span class="spinner-small"></span> Resetting...';
+                }
+
+                try {
+                    const resetTescoDatabase = firebase.functions().httpsCallable('resetTescoDatabase');
+                    const result = await resetTescoDatabase({ confirm: true });
+
+                    if (result.data.success) {
+                        this.showToast('Tesco database reset complete', 'success');
+                        this.stopTescoProgressPolling();
+                    } else {
+                        throw new Error(result.data.error || 'Failed to reset database');
+                    }
+                } catch (error) {
+                    console.error('Error resetting Tesco database:', error);
+                    this.showToast('Failed to reset: ' + error.message, 'error');
+                } finally {
+                    if (resetBtn) {
+                        resetBtn.disabled = false;
+                        resetBtn.innerHTML = '🗑️ Reset Database';
+                    }
+                    this.refreshTescoProgress();
+                }
+            },
+
+            // Polling for progress updates
+            tescoPollingInterval: null,
+
+            startTescoProgressPolling() {
+                this.stopTescoProgressPolling(); // Clear any existing
+
+                // Poll every 5 seconds
+                this.tescoPollingInterval = setInterval(() => {
+                    if (state.currentView === 'tesco-builder') {
+                        this.refreshTescoProgress();
+                    }
+                }, 5000);
+            },
+
+            stopTescoProgressPolling() {
+                if (this.tescoPollingInterval) {
+                    clearInterval(this.tescoPollingInterval);
+                    this.tescoPollingInterval = null;
                 }
             }
         };

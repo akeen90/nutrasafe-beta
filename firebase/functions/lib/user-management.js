@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserAnalytics = exports.deleteUsers = exports.updateUser = exports.addUser = exports.getUsers = void 0;
+exports.bulkAddToMailchimp = exports.getAuthenticatedEmails = exports.getUserAnalytics = exports.deleteUsers = exports.updateUser = exports.addUser = exports.getUsers = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 // Initialize Firebase Admin if not already initialized
@@ -16,6 +16,13 @@ async function isAdmin(uid) {
     const adminDoc = await db.collection('admins').doc(uid).get();
     return adminDoc.exists;
 }
+// Owner emails - always have admin access (project owners)
+const OWNER_EMAILS = [
+    'aaronmkeen@gmail.com',
+    'aaron@nutrasafe.co.uk'
+];
+// Legacy owner UID for backwards compatibility
+const OWNER_UID = 'dM0rqAAVhjRcfFhAYtkJ6AFOd9j2';
 /**
  * Helper function to verify admin access for sensitive operations
  * Throws an error if user is not authenticated or not an admin
@@ -24,10 +31,33 @@ async function requireAdmin(context) {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated to access this function');
     }
+    // Debug logging
+    console.log('=== requireAdmin check ===');
+    console.log('User UID:', context.auth.uid);
+    console.log('User email from token:', context.auth.token.email);
+    console.log('OWNER_UID:', OWNER_UID);
+    console.log('OWNER_EMAILS:', OWNER_EMAILS);
+    // Check if owner by UID (legacy)
+    if (context.auth.uid === OWNER_UID) {
+        console.log('Access granted: UID matches OWNER_UID');
+        return;
+    }
+    // Check if owner by email
+    const userEmail = context.auth.token.email?.toLowerCase();
+    console.log('Checking email:', userEmail);
+    if (userEmail && OWNER_EMAILS.some(email => email.toLowerCase() === userEmail)) {
+        console.log('Access granted: Email matches OWNER_EMAILS');
+        return;
+    }
+    // Check if admin in Firestore
+    console.log('Checking Firestore /admins collection for UID:', context.auth.uid);
     const userIsAdmin = await isAdmin(context.auth.uid);
+    console.log('Is admin in Firestore:', userIsAdmin);
     if (!userIsAdmin) {
+        console.log('Access DENIED: Not owner, not admin');
         throw new functions.https.HttpsError('permission-denied', 'Admin access required. User must be in /admins collection.');
     }
+    console.log('Access granted: User is admin in Firestore');
 }
 // Get all users with pagination (ADMIN ONLY)
 exports.getUsers = functions.https.onCall(async (data, context) => {
@@ -263,5 +293,136 @@ exports.getUserAnalytics = functions.https.onCall(async (data, context) => {
         console.error('Error getting user analytics:', error);
         throw new functions.https.HttpsError('internal', 'Failed to get user analytics');
     }
+});
+// Get all authenticated user emails (ADMIN ONLY)
+// Pulls directly from Firebase Authentication, not Firestore
+exports.getAuthenticatedEmails = functions.https.onCall(async (data, context) => {
+    console.log('=== getAuthenticatedEmails START ===');
+    // Step 1: Check auth exists
+    if (!context.auth) {
+        console.log('No auth context');
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+    }
+    console.log('Auth exists, UID:', context.auth.uid);
+    // Step 2: Check if owner (skip Firestore admin check for simplicity)
+    const OWNER_UID = 'dM0rqAAVhjRcfFhAYtkJ6AFOd9j2';
+    const OWNER_EMAILS = ['aaronmkeen@gmail.com', 'aaron@nutrasafe.co.uk'];
+    const userEmail = context.auth.token.email?.toLowerCase();
+    const isOwner = context.auth.uid === OWNER_UID ||
+        (userEmail && OWNER_EMAILS.some(e => e.toLowerCase() === userEmail));
+    if (!isOwner) {
+        console.log('Not owner - UID:', context.auth.uid, 'Email:', userEmail);
+        throw new functions.https.HttpsError('permission-denied', 'Admin access required');
+    }
+    console.log('Owner check passed');
+    // Step 3: Get users from Firebase Auth
+    try {
+        console.log('Calling admin.auth().listUsers...');
+        const listUsersResult = await admin.auth().listUsers(1000);
+        console.log('listUsers returned', listUsersResult.users.length, 'users');
+        const emails = listUsersResult.users
+            .filter(u => u.email)
+            .map(u => ({
+            uid: u.uid,
+            email: u.email,
+            displayName: u.displayName || null,
+            createdAt: u.metadata.creationTime || null,
+            lastSignIn: u.metadata.lastSignInTime || null,
+            emailVerified: u.emailVerified,
+            disabled: u.disabled
+        }));
+        console.log('Returning', emails.length, 'emails');
+        return {
+            success: true,
+            emails,
+            totalCount: emails.length,
+            generatedAt: new Date().toISOString()
+        };
+    }
+    catch (authError) {
+        console.error('admin.auth().listUsers failed:', authError.message);
+        console.error('Error code:', authError.code);
+        // Return empty list instead of crashing
+        return {
+            success: true,
+            emails: [],
+            totalCount: 0,
+            error: `Auth Admin SDK error: ${authError.message}. Add Firebase Authentication Admin role to service account.`,
+            generatedAt: new Date().toISOString()
+        };
+    }
+});
+// Bulk add emails to Mailchimp (ADMIN ONLY)
+exports.bulkAddToMailchimp = functions.https.onCall(async (data, context) => {
+    // Verify admin access
+    await requireAdmin(context);
+    const { emails } = data;
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'Emails array is required');
+    }
+    console.log(`Admin ${context.auth?.uid} bulk adding ${emails.length} emails to Mailchimp...`);
+    // Get Mailchimp config
+    const config = functions.config().mailchimp;
+    if (!config || !config.api_key || !config.audience_id) {
+        throw new functions.https.HttpsError('failed-precondition', 'Mailchimp not configured. Run: firebase functions:config:set mailchimp.api_key="YOUR_KEY" mailchimp.audience_id="YOUR_ID" mailchimp.server_prefix="us1"');
+    }
+    const axios = require('axios');
+    const serverPrefix = config.server_prefix || 'us1';
+    const url = `https://${serverPrefix}.api.mailchimp.com/3.0/lists/${config.audience_id}`;
+    let addedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+    // Mailchimp batch operation - add members
+    // Use batch endpoint for efficiency
+    const members = emails.map((item) => ({
+        email_address: item.email,
+        status: 'subscribed',
+        merge_fields: {
+            FNAME: item.displayName?.split(' ')[0] || '',
+            LNAME: item.displayName?.split(' ').slice(1).join(' ') || '',
+            UID: item.uid || ''
+        },
+        tags: ['NutraSafe App', 'Bulk Import']
+    }));
+    try {
+        // Use Mailchimp batch subscribe/update endpoint
+        const response = await axios.post(`${url}`, {
+            members,
+            update_existing: true
+        }, {
+            auth: {
+                username: 'anystring',
+                password: config.api_key
+            },
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        addedCount = response.data.new_members?.length || 0;
+        updatedCount = response.data.updated_members?.length || 0;
+        if (response.data.errors) {
+            for (const err of response.data.errors) {
+                errorCount++;
+                errors.push({
+                    email: err.email_address,
+                    error: err.error
+                });
+            }
+        }
+        console.log(`Mailchimp bulk add: ${addedCount} added, ${updatedCount} updated, ${errorCount} errors`);
+    }
+    catch (error) {
+        console.error('Mailchimp bulk add error:', error.response?.data || error.message);
+        throw new functions.https.HttpsError('internal', `Mailchimp error: ${error.response?.data?.detail || error.message}`);
+    }
+    return {
+        success: true,
+        addedCount,
+        updatedCount,
+        errorCount,
+        errors: errors.slice(0, 10), // Return first 10 errors
+        totalProcessed: emails.length
+    };
 });
 //# sourceMappingURL=user-management.js.map

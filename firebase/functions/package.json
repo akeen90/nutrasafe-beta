@@ -17,6 +17,7 @@
   "dependencies": {
     "@google-cloud/vision": "^4.3.2",
     "@google/generative-ai": "^0.24.1",
+    "@sparticuz/chromium": "^143.0.4",
     "@types/nodemailer": "^7.0.2",
     "algoliasearch": "^5.44.0",
     "axios": "^1.11.0",
@@ -30,6 +31,7 @@
     "node-cache": "^5.1.2",
     "nodemailer": "^7.0.9",
     "puppeteer": "^24.17.1",
+    "puppeteer-core": "^24.35.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },
