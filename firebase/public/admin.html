@@ -3836,6 +3836,95 @@
             background: #dc2626;
         }
 
+        /* Auto-Restart Toggle */
+        .tesco-auto-restart {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #10b981;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .auto-restart-count {
+            margin-left: auto;
+            font-size: 13px;
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .auto-restart-count strong {
+            color: #374151;
+        }
+
+        .tesco-auto-restart.restarting {
+            background: #fef3c7;
+            border-color: #fbbf24;
+            animation: pulse-restart 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse-restart {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
         .tesco-info {
             background: #f0f9ff;
             border: 1px solid #bae6fd;
@@ -4902,6 +4991,18 @@
                     </button>
                 </div>
 
+                <!-- Auto-Restart Toggle -->
+                <div class="tesco-auto-restart">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="tesco-auto-restart-toggle" checked onchange="app.toggleAutoRestart(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label">Auto-restart on stall (90s)</span>
+                    <span class="auto-restart-count" id="auto-restart-count" style="display: none;">
+                        Restarts: <strong id="restart-count-value">0</strong>
+                    </span>
+                </div>
+
                 <!-- Info Section -->
                 <div class="tesco-info">
                     <h4>ℹ️ How it works</h4>
@@ -5472,6 +5573,12 @@
             tescoStallThreshold: 60000, // 60 seconds before showing stall warning
             tescoPreviousProgress: null, // Previous progress for change detection
             tescoStats: null, // Database statistics
+            tescoAutoRestartEnabled: true, // Auto-restart on stall (default ON)
+            tescoAutoRestartThreshold: 90000, // 90 seconds before auto-restart
+            tescoAutoRestartCount: 0, // Count of auto-restarts this session
+            tescoLastAutoRestart: null, // Timestamp of last auto-restart
+            tescoAutoRestartCooldown: 30000, // Minimum 30s between auto-restarts
+            tescoAutoRestarting: false, // Currently in auto-restart process
 
             // Authentication State
             currentUser: null, // Firebase auth user
@@ -11937,13 +12044,28 @@
 
                 // Show stall warning after threshold
                 const isStalled = elapsed > state.tescoStallThreshold;
+                const shouldAutoRestart = elapsed > state.tescoAutoRestartThreshold;
+
                 if (stallWarning) {
                     stallWarning.className = isStalled ? 'stall-warning visible' : 'stall-warning';
                     if (isStalled) {
                         const mins = Math.floor(elapsed / 60000);
                         const secs = Math.floor((elapsed % 60000) / 1000);
-                        document.getElementById('stall-warning-text').textContent =
-                            `No updates for ${mins}m ${secs}s. The build may be stalled or processing a large request.`;
+                        const stallText = document.getElementById('stall-warning-text');
+                        if (stallText) {
+                            if (state.tescoAutoRestartEnabled && !state.tescoAutoRestarting) {
+                                const timeToRestart = Math.max(0, Math.ceil((state.tescoAutoRestartThreshold - elapsed) / 1000));
+                                if (timeToRestart > 0) {
+                                    stallText.textContent = `No updates for ${mins}m ${secs}s. Auto-restart in ${timeToRestart}s...`;
+                                } else {
+                                    stallText.textContent = `No updates for ${mins}m ${secs}s. Auto-restarting...`;
+                                }
+                            } else if (state.tescoAutoRestarting) {
+                                stallText.textContent = `Restarting build... please wait`;
+                            } else {
+                                stallText.textContent = `No updates for ${mins}m ${secs}s. The build may be stalled. Click Pause then Resume to restart.`;
+                            }
+                        }
                     }
                 }
                 if (liveIndicator) {
@@ -11951,6 +12073,22 @@
                 }
                 if (liveFeed) {
                     liveFeed.className = isStalled ? 'tesco-live-feed stalled' : 'tesco-live-feed';
+                }
+
+                // Auto-restart logic
+                if (shouldAutoRestart &&
+                    state.tescoAutoRestartEnabled &&
+                    !state.tescoAutoRestarting &&
+                    state.tescoBuildProgress?.status === 'running') {
+
+                    // Check cooldown to prevent rapid restarts
+                    const timeSinceLastRestart = state.tescoLastAutoRestart
+                        ? (now - state.tescoLastAutoRestart)
+                        : Infinity;
+
+                    if (timeSinceLastRestart > state.tescoAutoRestartCooldown) {
+                        this.autoRestartTescoBuild();
+                    }
                 }
             },
 
@@ -12014,6 +12152,82 @@
                 if (newProgress.duplicatesSkipped > prev.duplicatesSkipped) {
                     const diff = newProgress.duplicatesSkipped - prev.duplicatesSkipped;
                     this.addActivityLogEntry(`Skipped ${diff} duplicate${diff > 1 ? 's' : ''}`, 'info');
+                }
+            },
+
+            // Toggle auto-restart feature
+            toggleAutoRestart(enabled) {
+                state.tescoAutoRestartEnabled = enabled;
+                console.log('Auto-restart:', enabled ? 'enabled' : 'disabled');
+
+                if (enabled) {
+                    this.addActivityLogEntry('Auto-restart enabled (90s threshold)', 'info');
+                } else {
+                    this.addActivityLogEntry('Auto-restart disabled', 'info');
+                }
+            },
+
+            // Auto-restart the build when stalled
+            async autoRestartTescoBuild() {
+                if (state.tescoAutoRestarting) return; // Already restarting
+
+                state.tescoAutoRestarting = true;
+                state.tescoLastAutoRestart = Date.now();
+                state.tescoAutoRestartCount++;
+
+                // Update UI
+                const autoRestartContainer = document.querySelector('.tesco-auto-restart');
+                if (autoRestartContainer) {
+                    autoRestartContainer.classList.add('restarting');
+                }
+
+                // Update restart count display
+                const countEl = document.getElementById('auto-restart-count');
+                const countValue = document.getElementById('restart-count-value');
+                if (countEl && countValue) {
+                    countEl.style.display = 'inline';
+                    countValue.textContent = state.tescoAutoRestartCount;
+                }
+
+                this.addActivityLogEntry(`🔄 Auto-restart #${state.tescoAutoRestartCount} triggered (stall detected)`, 'warning');
+
+                try {
+                    // Step 1: Pause the build
+                    console.log('Auto-restart: Pausing build...');
+                    const pauseTescoBuild = firebase.functions().httpsCallable('pauseTescoBuild');
+                    await pauseTescoBuild();
+                    this.addActivityLogEntry('Build paused for restart', 'info');
+
+                    // Wait a moment
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // Step 2: Resume the build
+                    console.log('Auto-restart: Resuming build...');
+                    const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
+                    const result = await startTescoBuild();
+
+                    if (result.data.success) {
+                        state.tescoLastUpdateTime = Date.now();
+                        this.addActivityLogEntry('✅ Build resumed successfully', 'success');
+                        this.startTescoProgressPolling();
+                    } else {
+                        throw new Error(result.data.error || 'Resume failed');
+                    }
+                } catch (error) {
+                    console.error('Auto-restart failed:', error);
+                    this.addActivityLogEntry(`❌ Auto-restart failed: ${error.message}`, 'error');
+                    this.showToast('Auto-restart failed: ' + error.message, 'error');
+                } finally {
+                    state.tescoAutoRestarting = false;
+
+                    // Remove restarting class
+                    const autoRestartContainer = document.querySelector('.tesco-auto-restart');
+                    if (autoRestartContainer) {
+                        autoRestartContainer.classList.remove('restarting');
+                    }
+
+                    // Refresh UI
+                    this.refreshTescoProgress();
                 }
             }
         };
