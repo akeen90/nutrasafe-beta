@@ -135,6 +135,12 @@ export const recognizeFood = onRequest(
       const finalFoods: FoodRecognitionItem[] = [];
 
       for (const identified of identifiedFoods) {
+        // FILTER OUT NON-FOOD PRODUCTS
+        if (isNonFoodProduct(identified.name, identified.brand)) {
+          console.log(`  🚫 [Non-food] Skipping "${identified.name}" (${identified.brand || 'no brand'}) - not a food product`);
+          continue;
+        }
+
         // For PACKAGED products, cap portion size to prevent logging whole pack
         // AI often estimates total pack weight (e.g., 700g for 4 chicken breasts)
         // but users typically want to log a single serving
@@ -168,48 +174,57 @@ export const recognizeFood = onRequest(
             const sodiumVal = dbMatch.sodium ?? dbMatch.Sodium ?? 0;
             const brandVal = dbMatch.brandName ?? dbMatch.brand ?? identified.brand;
 
-            // For PACKAGED products with database match, prefer the database serving size
-            // over AI-estimated portion (AI should only estimate portions for generic plated food)
-            const dbServingSize = dbMatch.servingSize ?? dbMatch.ServingSize ?? dbMatch.serving_size;
-            let finalPortionGrams: number;
-
-            if (dbServingSize && dbServingSize > 0) {
-              // Use database serving size for packaged products
-              finalPortionGrams = dbServingSize;
-              console.log(`  📐 Using DB serving size: ${finalPortionGrams}g (AI estimated: ${adjustedPortionGrams}g)`);
-            } else {
-              // Fallback to AI estimate if no database serving size
-              finalPortionGrams = adjustedPortionGrams;
-              console.log(`  📐 No DB serving size, using AI estimate: ${finalPortionGrams}g`);
-            }
-
-            const finalPortionMultiplier = finalPortionGrams / 100;
-
             // Log the raw database record for debugging
             console.log(`  📦 DB record fields: ${Object.keys(dbMatch).join(', ')}`);
-            console.log(`  📊 Nutrition values - cal: ${caloriesVal}, prot: ${proteinVal}, carbs: ${carbsVal}, fat: ${fatVal}`);
+            console.log(`  📊 Nutrition values (per 100g) - cal: ${caloriesVal}, prot: ${proteinVal}, carbs: ${carbsVal}, fat: ${fatVal}`);
 
-            // Database match found - use verified nutrition scaled to portion
-            finalFoods.push({
-              name: dbMatch.name,
-              brand: brandVal,
-              calories: Math.round(caloriesVal * finalPortionMultiplier),
-              protein: Math.round(proteinVal * finalPortionMultiplier * 10) / 10,
-              carbs: Math.round(carbsVal * finalPortionMultiplier * 10) / 10,
-              fat: Math.round(fatVal * finalPortionMultiplier * 10) / 10,
-              fiber: Math.round(fiberVal * finalPortionMultiplier * 10) / 10,
-              sugar: Math.round(sugarVal * finalPortionMultiplier * 10) / 10,
-              sodium: Math.round(sodiumVal * finalPortionMultiplier * 10) / 10,
-              portionGrams: finalPortionGrams,
-              confidence: identified.confidence,
-              isFromDatabase: true,
-              databaseId: dbMatch.objectID,
-              ingredients: Array.isArray(dbMatch.ingredients)
-                ? dbMatch.ingredients.join(', ')
-                : (dbMatch.ingredients || null),
-            });
-            console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${caloriesVal} kcal/100g × ${finalPortionMultiplier.toFixed(2)} = ${Math.round(caloriesVal * finalPortionMultiplier)} kcal)`);
-            continue;
+            // VALIDATE nutrition data before using it
+            const validation = validateNutritionData(caloriesVal, proteinVal, carbsVal, fatVal, dbMatch.name);
+
+            if (!validation.isValid) {
+              // Bad database data - fall through to AI estimates
+              console.log(`  ❌ [Packaging] "${identified.name}" → DB match "${dbMatch.name}" has invalid nutrition, using AI estimate instead`);
+              // Don't continue - fall through to AI estimate
+            } else {
+              // For PACKAGED products with database match, prefer the database serving size
+              // over AI-estimated portion (AI should only estimate portions for generic plated food)
+              const dbServingSize = dbMatch.servingSize ?? dbMatch.ServingSize ?? dbMatch.serving_size;
+              let finalPortionGrams: number;
+
+              if (dbServingSize && dbServingSize > 0) {
+                // Use database serving size for packaged products
+                finalPortionGrams = dbServingSize;
+                console.log(`  📐 Using DB serving size: ${finalPortionGrams}g (AI estimated: ${adjustedPortionGrams}g)`);
+              } else {
+                // Fallback to AI estimate if no database serving size
+                finalPortionGrams = adjustedPortionGrams;
+                console.log(`  📐 No DB serving size, using AI estimate: ${finalPortionGrams}g`);
+              }
+
+              const finalPortionMultiplier = finalPortionGrams / 100;
+
+              // Database match found with valid nutrition - use verified data scaled to portion
+              finalFoods.push({
+                name: dbMatch.name,
+                brand: brandVal,
+                calories: Math.round(caloriesVal * finalPortionMultiplier),
+                protein: Math.round(proteinVal * finalPortionMultiplier * 10) / 10,
+                carbs: Math.round(carbsVal * finalPortionMultiplier * 10) / 10,
+                fat: Math.round(fatVal * finalPortionMultiplier * 10) / 10,
+                fiber: Math.round(fiberVal * finalPortionMultiplier * 10) / 10,
+                sugar: Math.round(sugarVal * finalPortionMultiplier * 10) / 10,
+                sodium: Math.round(sodiumVal * finalPortionMultiplier * 10) / 10,
+                portionGrams: finalPortionGrams,
+                confidence: identified.confidence,
+                isFromDatabase: true,
+                databaseId: dbMatch.objectID,
+                ingredients: Array.isArray(dbMatch.ingredients)
+                  ? dbMatch.ingredients.join(', ')
+                  : (dbMatch.ingredients || null),
+              });
+              console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${caloriesVal} kcal/100g × ${finalPortionMultiplier.toFixed(2)} = ${Math.round(caloriesVal * finalPortionMultiplier)} kcal)`);
+              continue;
+            }
           }
           // If no DB match for packaging, fall through to AI estimate
           console.log(`  ⚠️ [Packaging] "${identified.name}" → No DB match, using AI estimate`);
@@ -218,22 +233,52 @@ export const recognizeFood = onRequest(
         }
 
         // Use AI estimates for plated food or when no DB match found
-        finalFoods.push({
-          name: identified.name,
-          brand: identified.brand,
-          calories: Math.round(identified.estimatedCaloriesPer100g * portionMultiplier),
-          protein: Math.round(identified.estimatedProteinPer100g * portionMultiplier * 10) / 10,
-          carbs: Math.round(identified.estimatedCarbsPer100g * portionMultiplier * 10) / 10,
-          fat: Math.round(identified.estimatedFatPer100g * portionMultiplier * 10) / 10,
-          fiber: 0,
-          sugar: 0,
-          sodium: 0,
-          portionGrams: adjustedPortionGrams,
-          confidence: identified.isPackaging ? identified.confidence * 0.8 : identified.confidence,  // Lower confidence only for failed DB lookups
-          isFromDatabase: false,
-          databaseId: null,
-          ingredients: null,
-        });
+        // Validate AI estimates before using them
+        const aiValidation = validateNutritionData(
+          identified.estimatedCaloriesPer100g,
+          identified.estimatedProteinPer100g,
+          identified.estimatedCarbsPer100g,
+          identified.estimatedFatPer100g,
+          `AI estimate: ${identified.name}`
+        );
+
+        if (aiValidation.issues.length > 0 && !aiValidation.isValid) {
+          // AI gave unrealistic values - use reasonable defaults
+          console.log(`  ⚠️ [AI] "${identified.name}" has invalid estimates, using conservative defaults`);
+          finalFoods.push({
+            name: identified.name,
+            brand: identified.brand,
+            calories: Math.round(150 * portionMultiplier), // Conservative default: 150 kcal/100g
+            protein: Math.round(5 * portionMultiplier * 10) / 10,
+            carbs: Math.round(20 * portionMultiplier * 10) / 10,
+            fat: Math.round(5 * portionMultiplier * 10) / 10,
+            fiber: 0,
+            sugar: 0,
+            sodium: 0,
+            portionGrams: adjustedPortionGrams,
+            confidence: 0.3,  // Low confidence for defaulted values
+            isFromDatabase: false,
+            databaseId: null,
+            ingredients: null,
+          });
+        } else {
+          finalFoods.push({
+            name: identified.name,
+            brand: identified.brand,
+            calories: Math.round(identified.estimatedCaloriesPer100g * portionMultiplier),
+            protein: Math.round(identified.estimatedProteinPer100g * portionMultiplier * 10) / 10,
+            carbs: Math.round(identified.estimatedCarbsPer100g * portionMultiplier * 10) / 10,
+            fat: Math.round(identified.estimatedFatPer100g * portionMultiplier * 10) / 10,
+            fiber: 0,
+            sugar: 0,
+            sodium: 0,
+            portionGrams: adjustedPortionGrams,
+            confidence: identified.isPackaging ? identified.confidence * 0.8 : identified.confidence,  // Lower confidence only for failed DB lookups
+            isFromDatabase: false,
+            databaseId: null,
+            ingredients: null,
+          });
+        }
       }
 
       const dbMatches = finalFoods.filter(f => f.isFromDatabase).length;
@@ -251,6 +296,111 @@ export const recognizeFood = onRequest(
     }
   }
 );
+
+/**
+ * Non-food products that should be filtered out
+ * These are common household items that might appear in photos
+ */
+const NON_FOOD_KEYWORDS = [
+  // Oral care
+  'toothpaste', 'mouthwash', 'dental', 'toothbrush', 'oral-b', 'oral b', 'colgate',
+  'sensodyne', 'listerine', 'floss', 'denture',
+  // Personal care
+  'shampoo', 'conditioner', 'soap', 'body wash', 'lotion', 'deodorant', 'antiperspirant',
+  'moisturizer', 'moisturiser', 'sunscreen', 'perfume', 'cologne', 'hair gel', 'hairspray',
+  // Cleaning products
+  'detergent', 'bleach', 'dishwasher', 'fabric softener', 'cleaner', 'disinfectant',
+  'polish', 'wax', 'air freshener',
+  // Medicine / Health
+  'medicine', 'tablet', 'capsule', 'pill', 'paracetamol', 'ibuprofen', 'aspirin',
+  'vitamins supplement', 'multivitamin', 'bandage', 'plaster', 'first aid',
+  // Pet care
+  'cat food', 'dog food', 'pet food', 'fish food', 'bird food', 'pet treats',
+  // Baby care (non-food)
+  'diaper', 'nappy', 'baby wipes', 'baby lotion', 'baby powder',
+  // Other household
+  'battery', 'light bulb', 'paper towel', 'toilet paper', 'tissue',
+];
+
+/**
+ * Check if an identified item is a non-food product
+ */
+function isNonFoodProduct(name: string, brand: string | null): boolean {
+  const searchText = `${name} ${brand || ''}`.toLowerCase();
+
+  for (const keyword of NON_FOOD_KEYWORDS) {
+    if (searchText.includes(keyword)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Validate nutrition data for reasonable values
+ * Returns true if data seems valid, false if clearly wrong
+ */
+function validateNutritionData(
+  caloriesPer100g: number,
+  proteinPer100g: number,
+  carbsPer100g: number,
+  fatPer100g: number,
+  foodName: string
+): { isValid: boolean; issues: string[] } {
+  const issues: string[] = [];
+
+  // Check for negative values
+  if (caloriesPer100g < 0) issues.push(`Negative calories: ${caloriesPer100g}`);
+  if (proteinPer100g < 0) issues.push(`Negative protein: ${proteinPer100g}`);
+  if (carbsPer100g < 0) issues.push(`Negative carbs: ${carbsPer100g}`);
+  if (fatPer100g < 0) issues.push(`Negative fat: ${fatPer100g}`);
+
+  // Check calorie range (pure water = 0, pure fat = ~900 kcal/100g)
+  // Allow up to 950 for oils/fats
+  if (caloriesPer100g > 950) {
+    issues.push(`Calories too high: ${caloriesPer100g} kcal/100g (max expected ~900)`);
+  }
+
+  // Check for all-zeros (likely missing data)
+  if (caloriesPer100g === 0 && proteinPer100g === 0 && carbsPer100g === 0 && fatPer100g === 0) {
+    issues.push('All nutrition values are 0 (missing data)');
+  }
+
+  // Macro consistency check: calories should roughly match calculated from macros
+  // Protein: 4 kcal/g, Carbs: 4 kcal/g, Fat: 9 kcal/g
+  const calculatedCalories = (proteinPer100g * 4) + (carbsPer100g * 4) + (fatPer100g * 9);
+
+  // Allow variance for fiber, alcohol, rounding (±40% or ±50 kcal, whichever is larger)
+  const tolerance = Math.max(50, calculatedCalories * 0.4);
+
+  if (caloriesPer100g > 0 && calculatedCalories > 0) {
+    const diff = Math.abs(caloriesPer100g - calculatedCalories);
+    if (diff > tolerance) {
+      issues.push(`Macro mismatch: stated ${caloriesPer100g} kcal, calculated ${Math.round(calculatedCalories)} kcal (diff: ${Math.round(diff)})`);
+    }
+  }
+
+  // Check for suspiciously high individual macros
+  if (proteinPer100g > 100) issues.push(`Protein too high: ${proteinPer100g}g/100g (max ~90g for pure protein)`);
+  if (carbsPer100g > 100) issues.push(`Carbs too high: ${carbsPer100g}g/100g`);
+  if (fatPer100g > 100) issues.push(`Fat too high: ${fatPer100g}g/100g`);
+
+  // Log validation results
+  if (issues.length > 0) {
+    console.log(`  ⚠️ [Nutrition validation] "${foodName}" has ${issues.length} issue(s):`);
+    issues.forEach(issue => console.log(`      - ${issue}`));
+  }
+
+  // Consider valid if no critical issues (negative values, extreme values)
+  const hasCriticalIssue = issues.some(issue =>
+    issue.includes('Negative') ||
+    issue.includes('too high') ||
+    issue.includes('All nutrition values are 0')
+  );
+
+  return { isValid: !hasCriticalIssue, issues };
+}
 
 /**
  * Build the prompt for food identification with enhanced image analysis
@@ -424,6 +574,18 @@ VEGETABLES:
 
 DO NOT estimate over 1000 kcal unless clearly large portions or high-calorie items.
 
+## CRITICAL: ONLY IDENTIFY EDIBLE FOOD ITEMS
+DO NOT identify non-food products. SKIP and IGNORE:
+- Oral care: toothpaste, mouthwash, dental products, toothbrushes (Oral-B, Colgate, Sensodyne, etc.)
+- Personal care: shampoo, conditioner, soap, lotion, deodorant, sunscreen, makeup
+- Cleaning products: detergent, bleach, cleaners, dishwasher products
+- Medicine: tablets, pills, supplements, vitamins (unless clearly food/drink vitamins)
+- Pet food: cat food, dog food, pet treats
+- Baby products: diapers, wipes, baby lotion (baby food IS acceptable)
+- Household items: batteries, tissues, paper towels
+
+Only return items that are HUMAN FOOD OR DRINK. If a non-food product is visible, simply ignore it.
+
 ## RESPONSE FORMAT
 Respond with ONLY valid JSON (no markdown):
 {
@@ -533,6 +695,7 @@ function parseGeminiResponse(responseText: string): GeminiIdentifiedFood[] {
 
 /**
  * Search Algolia database for a food match
+ * PRIORITIZES UK results over generic/US versions
  */
 async function searchDatabaseForFood(
   client: ReturnType<typeof algoliasearch>,
@@ -549,7 +712,16 @@ async function searchDatabaseForFood(
     searchQueries.unshift(`${food.brand} ${food.name}`);
   }
 
-  // Try each search query across indices
+  // Collect ALL potential matches across all indices, then prioritize
+  interface CandidateMatch {
+    hit: AlgoliaFoodHit;
+    matchScore: number;
+    indexName: string;
+    isUkSource: boolean;
+  }
+  const candidates: CandidateMatch[] = [];
+
+  // Search all indices for all queries
   for (const query of searchQueries) {
     for (const indexName of SEARCH_INDICES) {
       try {
@@ -565,16 +737,23 @@ async function searchDatabaseForFood(
         });
 
         if (result.hits && result.hits.length > 0) {
-          const hit = result.hits[0] as unknown as AlgoliaFoodHit;
+          for (const rawHit of result.hits) {
+            const hit = rawHit as unknown as AlgoliaFoodHit;
 
-          // Check if it's a reasonable match (basic validation)
-          const queryWords = query.toLowerCase().split(' ');
-          const hitName = hit.name.toLowerCase();
-          const matchScore = queryWords.filter(word => hitName.includes(word)).length / queryWords.length;
+            // Calculate match score
+            const queryWords = query.toLowerCase().split(' ');
+            const hitName = hit.name.toLowerCase();
+            const matchScore = queryWords.filter(word => hitName.includes(word)).length / queryWords.length;
 
-          // Accept if at least 50% of query words match
-          if (matchScore >= 0.5) {
-            return hit;
+            // Only consider if at least 50% of query words match
+            if (matchScore >= 0.5) {
+              candidates.push({
+                hit,
+                matchScore,
+                indexName,
+                isUkSource: indexName === 'uk_foods_cleaned',
+              });
+            }
           }
         }
       } catch (error) {
@@ -584,5 +763,31 @@ async function searchDatabaseForFood(
     }
   }
 
-  return null;
+  // No matches found
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  // PRIORITIZE UK results over non-UK results
+  // Sort by: 1) UK source first, 2) Match score descending
+  candidates.sort((a, b) => {
+    // UK sources always come first
+    if (a.isUkSource && !b.isUkSource) return -1;
+    if (!a.isUkSource && b.isUkSource) return 1;
+    // Within same source type, prefer higher match score
+    return b.matchScore - a.matchScore;
+  });
+
+  const bestMatch = candidates[0];
+  console.log(`  🎯 Best match: "${bestMatch.hit.name}" from ${bestMatch.indexName} (score: ${(bestMatch.matchScore * 100).toFixed(0)}%, UK: ${bestMatch.isUkSource})`);
+
+  // If best match is non-UK but UK matches exist, log warning
+  if (!bestMatch.isUkSource) {
+    const ukMatches = candidates.filter(c => c.isUkSource);
+    if (ukMatches.length > 0) {
+      console.log(`  ⚠️ Note: UK match exists but non-UK was selected: "${ukMatches[0].hit.name}"`);
+    }
+  }
+
+  return bestMatch.hit;
 }

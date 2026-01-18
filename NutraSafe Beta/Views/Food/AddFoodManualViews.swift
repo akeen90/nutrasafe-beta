@@ -2826,11 +2826,13 @@ struct ImagePickerView: UIViewControllerRepresentable {
             if let uiImage = info[.originalImage] as? UIImage {
                 parent.image = uiImage
             }
-            // Do NOT call picker.dismiss() - let SwiftUI handle dismissal via the binding
+            // Must explicitly dismiss - SwiftUI sheet doesn't auto-dismiss UIKit controllers
+            picker.dismiss(animated: true)
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            // Do NOT call picker.dismiss() - let SwiftUI handle dismissal via the binding
+            // Must explicitly dismiss - SwiftUI sheet doesn't auto-dismiss UIKit controllers
+            picker.dismiss(animated: true)
         }
     }
 }

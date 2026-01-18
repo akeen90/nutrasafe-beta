@@ -178,14 +178,55 @@ async function getProductDetails(productId) {
         const details = productData.details || {};
         // Check if this is a food item (filter out non-food products)
         const category = (productData.superDepartment || productData.department || '').toLowerCase();
+        const title = (productData.title || '').toLowerCase();
+        const brand = (productData.brand || '').toLowerCase();
+        // Non-food categories
         const NON_FOOD_CATEGORIES = [
             'household', 'cleaning', 'laundry', 'pet', 'health', 'beauty',
             'toiletries', 'baby', 'nappies', 'home', 'garden', 'diy',
-            'electrical', 'stationery', 'clothing', 'toys', 'seasonal'
+            'electrical', 'stationery', 'clothing', 'toys', 'seasonal',
+            'battery', 'batteries'
         ];
+        // Non-food brands (products from these brands are never food)
+        const NON_FOOD_BRANDS = [
+            'duracell', 'energizer', 'panasonic', 'varta', // Batteries
+            'oral-b', 'oral b', 'colgate', 'sensodyne', 'aquafresh', 'listerine', // Oral care
+            'dove', 'lynx', 'sure', 'nivea', 'garnier', 'loreal', "l'oreal", // Personal care
+            'andrex', 'cushelle', 'kleenex', 'plenty', // Toilet/tissue
+            'fairy', 'persil', 'ariel', 'bold', 'daz', 'surf', 'comfort', // Cleaning/laundry
+            'dettol', 'domestos', 'flash', 'cillit bang', 'mr muscle', // Disinfectant/cleaning
+            'nurofen', 'paracetamol', 'ibuprofen', 'calpol', 'lemsip', // Medicine
+            'pampers', 'huggies', // Baby care
+            'whiskas', 'felix', 'pedigree', 'iams', 'purina' // Pet food
+        ];
+        // Non-food keywords in title
+        const NON_FOOD_KEYWORDS = [
+            'battery', 'batteries', 'charger',
+            'toothpaste', 'toothbrush', 'mouthwash', 'dental', 'floss',
+            'shampoo', 'conditioner', 'soap', 'shower gel', 'body wash',
+            'deodorant', 'antiperspirant', 'moisturiser', 'moisturizer',
+            'toilet roll', 'toilet tissue', 'kitchen roll', 'tissues',
+            'washing liquid', 'laundry', 'dishwasher', 'washing up',
+            'bleach', 'disinfectant', 'cleaner', 'polish',
+            'painkiller', 'tablet', 'capsule', 'medicine',
+            'nappies', 'nappy', 'diaper', 'baby wipe',
+            'cat food', 'dog food', 'pet food', 'pet treats',
+            'light bulb', 'lightbulb', 'extension lead', 'plug'
+        ];
+        // Check category
         if (NON_FOOD_CATEGORIES.some(nf => category.includes(nf))) {
             console.log(`Skipping non-food product: ${productData.title} (category: ${category})`);
             return { product: null, error: `Non-food item: ${category}` };
+        }
+        // Check brand
+        if (NON_FOOD_BRANDS.some(nfb => brand.includes(nfb))) {
+            console.log(`Skipping non-food brand: ${productData.title} (brand: ${productData.brand})`);
+            return { product: null, error: `Non-food brand: ${productData.brand}` };
+        }
+        // Check title keywords
+        if (NON_FOOD_KEYWORDS.some(nfk => title.includes(nfk))) {
+            console.log(`Skipping non-food product: ${productData.title} (title keyword match)`);
+            return { product: null, error: `Non-food keyword in title` };
         }
         // Parse nutrition
         const nutrition = {};
@@ -316,6 +357,16 @@ async function getProductDetails(productId) {
         if (!servingSize) {
             servingSize = '100g';
             console.log(`No serving size found for ${productId}, defaulting to 100g`);
+        }
+        // CRITICAL: Skip products without ingredients AND without nutrition
+        // Real food products ALWAYS have either ingredients or nutritional info
+        // Non-food items (batteries, toiletries) have neither
+        const hasIngredients = details.ingredients &&
+            (Array.isArray(details.ingredients) ? details.ingredients.length > 0 : details.ingredients.trim().length > 0);
+        const hasNutritionData = hasValidNutrition(nutrition);
+        if (!hasIngredients && !hasNutritionData) {
+            console.log(`Skipping non-food product: ${productData.title} (no ingredients and no nutrition data)`);
+            return { product: null, error: 'Non-food item: no ingredients or nutrition' };
         }
         // Build product object
         const product = {
