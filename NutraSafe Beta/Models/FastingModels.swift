@@ -48,29 +48,25 @@ enum FastingPlanDuration: Int, CaseIterable, Codable {
 enum AllowedDrinksPhilosophy: String, CaseIterable, Codable {
     case strict = "strict"
     case practical = "practical"
-    case lenient = "lenient"
-    
+
     var displayName: String {
         switch self {
         case .strict: return "Strict Clean"
         case .practical: return "Practical"
-        case .lenient: return "Lenient"
         }
     }
-    
+
     var description: String {
         switch self {
         case .strict: return "Water, plain tea, black coffee, electrolytes only"
         case .practical: return "Sugar-free drinks allowed"
-        case .lenient: return "<20–30 kcal tolerance"
         }
     }
-    
+
     var tone: String {
         switch self {
         case .strict: return "scientific"
         case .practical: return "lifestyle"
-        case .lenient: return "beginner friendly"
         }
     }
 }

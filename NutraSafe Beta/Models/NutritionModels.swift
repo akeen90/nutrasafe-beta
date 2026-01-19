@@ -432,6 +432,38 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         }
     }
 
+    // MARK: - Fasting Philosophy Helpers
+
+    /// Determines if this food is allowed during a fast based on the user's drinks philosophy
+    /// Returns true if the food should bypass the fasting prompt (i.e., allowed during fast)
+    func isAllowedDuringFast(philosophy: AllowedDrinksPhilosophy) -> Bool {
+        switch philosophy {
+        case .strict:
+            // Strict: Only water, plain tea, black coffee (essentially 0 cal, 0 sugar)
+            // Water is always allowed
+            if detectedCategory == .water && calories <= 5 {
+                return true
+            }
+            // Plain black coffee or tea with negligible calories
+            if detectedCategory == .hotDrink && calories <= 5 && sugar <= 0.5 {
+                return true
+            }
+            return false
+
+        case .practical:
+            // Practical: Sugar-free drinks allowed (low/no sugar, low/no calories)
+            // This includes diet sodas, Coke Zero, sugar-free energy drinks, etc.
+            guard isLiquidCategory else { return false }
+
+            // Allow drinks with low sugar (<1g per 100ml) and low calories (<10 per 100ml)
+            // This covers diet/zero drinks which typically have 0-1 cal and 0 sugar
+            let isSugarFree = sugar < 1.0
+            let isLowCalorie = calories < 10.0
+
+            return isSugarFree && isLowCalorie
+        }
+    }
+
     /// Fast food restaurant brands that shouldn't show generic preset portions
     /// These items are inherently per-unit (burger, meal, etc.) even if not marked as such
     private static let fastFoodBrandsNoPresets: Set<String> = [

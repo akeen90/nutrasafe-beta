@@ -171,8 +171,6 @@ struct PhilosophyInfoCard: View {
             return "drop.fill"
         case .practical:
             return "leaf.fill"
-        case .lenient:
-            return "heart.fill"
         }
     }
 
@@ -182,8 +180,6 @@ struct PhilosophyInfoCard: View {
             return .blue
         case .practical:
             return .green
-        case .lenient:
-            return .pink
         }
     }
 
@@ -204,14 +200,6 @@ struct PhilosophyInfoCard: View {
                 "Diet sodas (occasionally)",
                 "Zero-calorie flavoured water",
                 "Black coffee with zero-cal sweeteners"
-            ]
-        case .lenient:
-            return [
-                "All practical items",
-                "Coffee with splash of milk (<30 cal)",
-                "Tea with honey (<30 cal)",
-                "Bone broth (<30 cal)",
-                "Small amounts of creamer"
             ]
         }
     }
@@ -302,22 +290,18 @@ struct PhilosophyCard: View {
             return "drop.fill"
         case .practical:
             return "leaf.fill"
-        case .lenient:
-            return "heart.fill"
         }
     }
-    
+
     private var colorForMode: Color {
         switch mode {
         case .strict:
             return .blue
         case .practical:
             return .green
-        case .lenient:
-            return .pink
         }
     }
-    
+
     private var backgroundColor: Color {
         if isSelected {
             return colorForMode.opacity(0.1)
@@ -325,7 +309,7 @@ struct PhilosophyCard: View {
             return Color.gray.opacity(0.05)
         }
     }
-    
+
     private var borderColor: Color {
         if isSelected {
             return colorForMode.opacity(0.5)
@@ -333,7 +317,7 @@ struct PhilosophyCard: View {
             return Color.gray.opacity(0.2)
         }
     }
-    
+
     private var allowedItems: [String] {
         switch mode {
         case .strict:
@@ -351,14 +335,6 @@ struct PhilosophyCard: View {
                 "Diet sodas (occasionally)",
                 "Zero-calorie flavored water",
                 "Black coffee with zero-cal sweeteners"
-            ]
-        case .lenient:
-            return [
-                "All practical items",
-                "Coffee with splash of milk (<30 cal)",
-                "Tea with honey (<30 cal)",
-                "Bone broth (<30 cal)",
-                "Small amounts of creamer"
             ]
         }
     }

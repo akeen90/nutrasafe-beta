@@ -2023,8 +2023,18 @@ private var nutritionFactsSection: some View {
     
     // MARK: - Add to Food Log Functionality
     private func addToFoodLog() {
-        // Check if user is currently fasting - if so, prompt to end fast
+        // Check if user is currently fasting - if so, check drinks philosophy
         if isCurrentlyFasting {
+            // Check if this food is allowed during the fast based on user's drinks philosophy
+            if let plan = fastingViewModel?.activePlan {
+                if food.isAllowedDuringFast(philosophy: plan.allowedDrinks) {
+                    // Food is allowed during fast (e.g., sugar-free drink in practical mode)
+                    // Log without prompting to end fast
+                    performFoodLog(endFast: false)
+                    return
+                }
+            }
+            // Not allowed during fast - prompt user
             showingFastingPrompt = true
             return  // Don't log yet - wait for user decision in the alert
         }
