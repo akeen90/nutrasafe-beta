@@ -213,12 +213,198 @@ struct FoodReactionsView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
     @State private var showingPaywall = false
+    @State private var selectedSubTab: ReactionSubTab = .overview
+    @State private var selectedSymptomFilter: String? = nil
+
+    enum ReactionSubTab: String, CaseIterable {
+        case overview = "Overview"
+        case timeline = "Timeline"
+    }
 
     var body: some View {
         GeometryReader { geometry in
-            foodBasedReactionsView
-                .frame(width: geometry.size.width, height: geometry.size.height)
-                .clipped()
+            VStack(spacing: 0) {
+                // Sub-tab picker
+                reactionSubTabPicker
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
+                // Content based on selected sub-tab
+                Group {
+                    switch selectedSubTab {
+                    case .overview:
+                        foodBasedReactionsView
+                    case .timeline:
+                        reactionTimelineView
+                    }
+                }
+                .frame(width: geometry.size.width)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipped()
+        }
+    }
+
+    // MARK: - Sub-Tab Picker
+    private var reactionSubTabPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(ReactionSubTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedSubTab = tab
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }) {
+                    Text(tab.rawValue)
+                        .font(.system(size: 14, weight: selectedSubTab == tab ? .semibold : .medium))
+                        .foregroundColor(selectedSubTab == tab ? .white : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            selectedSubTab == tab ?
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.3, green: 0.5, blue: 1.0),
+                                    Color(red: 0.5, green: 0.3, blue: 0.9)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            : LinearGradient(colors: [Color.clear], startPoint: .leading, endPoint: .trailing)
+                        )
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+    }
+
+    // MARK: - Timeline View
+    private var reactionTimelineView: some View {
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(spacing: 16) {
+                // Symptom filter
+                symptomFilterSection
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+
+                // Filtered reactions
+                let filteredReactions = filteredTimelineReactions
+
+                if filteredReactions.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.badge.questionmark")
+                            .font(.system(size: 50))
+                            .foregroundColor(.secondary.opacity(0.4))
+
+                        Text(selectedSymptomFilter == nil ? "No reactions logged yet" : "No \(selectedSymptomFilter!) reactions")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 60)
+                } else {
+                    // Count
+                    Text("\(filteredReactions.count) \(filteredReactions.count == 1 ? "reaction" : "reactions")")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+
+                    // Reaction cards
+                    ForEach(filteredReactions) { reaction in
+                        FoodReactionRow(reaction: reaction)
+                            .environmentObject(reactionManager)
+                    }
+                    .padding(.horizontal, 16)
+                }
+
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(height: 100)
+            }
+        }
+    }
+
+    // MARK: - Symptom Filter Section
+    private var symptomFilterSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Filter by Symptom")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // All option
+                    symptomChip(symptom: nil, label: "All", icon: "list.bullet")
+
+                    // Unique symptoms from reactions
+                    ForEach(uniqueSymptoms, id: \.self) { symptom in
+                        symptomChip(symptom: symptom, label: symptom, icon: symptomIcon(for: symptom))
+                    }
+                }
+            }
+        }
+    }
+
+    private func symptomChip(symptom: String?, label: String, icon: String) -> some View {
+        let isSelected = selectedSymptomFilter == symptom
+
+        return Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedSymptomFilter = symptom
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                Text(label)
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? Color.blue : Color(.systemGray5))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var uniqueSymptoms: [String] {
+        var symptomCounts: [String: Int] = [:]
+        for reaction in reactionManager.reactions {
+            for symptom in reaction.symptoms {
+                symptomCounts[symptom, default: 0] += 1
+            }
+        }
+        // Sort by frequency
+        return symptomCounts.sorted { $0.value > $1.value }.map { $0.key }
+    }
+
+    private var filteredTimelineReactions: [FoodReaction] {
+        guard let symptom = selectedSymptomFilter else {
+            return reactionManager.reactions
+        }
+        return reactionManager.reactions.filter { $0.symptoms.contains(symptom) }
+    }
+
+    private func symptomIcon(for symptom: String) -> String {
+        // Map common symptoms to icons
+        switch symptom.lowercased() {
+        case "nausea": return "face.dashed"
+        case "bloating": return "stomach"
+        case "fatigue": return "bed.double.fill"
+        case "headache": return "brain.head.profile"
+        case "diarrhea": return "toilet.fill"
+        case "rash", "hives", "itching": return "allergens"
+        case "stomach pain": return "figure.walk.motion"
+        default: return "exclamationmark.circle"
         }
     }
 
@@ -483,113 +669,232 @@ struct FoodReactionSummaryCard: View {
         return (thisWeekCount, lastWeekCount, trend)
     }
 
-    /// Top suspected ingredient from reactions
-    private var topSuspectedIngredient: (name: String, count: Int)? {
-        var ingredientCounts: [String: Int] = [:]
+    /// Top allergen trigger(s) from reactions - UK 14 major allergens only
+    /// Returns multiple allergens if there's a tie
+    private var topAllergenTriggers: [(name: String, count: Int)]? {
+        var allergenCounts: [String: Int] = [:]
 
         for reaction in reactionManager.reactions {
             for ingredient in reaction.suspectedIngredients {
-                ingredientCounts[ingredient, default: 0] += 1
+                // Only count UK 14 major allergens
+                if let baseAllergen = getBaseAllergenForSummary(for: ingredient) {
+                    allergenCounts[baseAllergen, default: 0] += 1
+                }
             }
         }
 
-        guard let (name, count) = ingredientCounts.max(by: { $0.value < $1.value }),
-              count >= 2 else { return nil }
+        guard !allergenCounts.isEmpty else { return nil }
 
-        return (name, count)
+        // Find the maximum count
+        let maxCount = allergenCounts.values.max() ?? 0
+        guard maxCount >= 2 else { return nil }
+
+        // Get all allergens with the max count (handles ties)
+        let topAllergens = allergenCounts
+            .filter { $0.value == maxCount }
+            .map { (name: $0.key, count: $0.value) }
+            .sorted { $0.name < $1.name } // Alphabetical for consistency
+
+        return topAllergens.isEmpty ? nil : topAllergens
+    }
+
+    // UK's 14 Major Allergens detection for summary card
+    private func getBaseAllergenForSummary(for ingredient: String) -> String? {
+        let lower = ingredient.lowercased()
+
+        // Milk and dairy
+        let dairyKeywords = ["milk", "dairy", "cream", "butter", "cheese", "yogurt", "yoghurt", "whey", "casein", "lactose", "ghee"]
+        if dairyKeywords.contains(where: { lower.contains($0) }) { return "Dairy" }
+
+        // Eggs
+        let eggKeywords = ["egg", "albumin", "mayonnaise", "meringue"]
+        if eggKeywords.contains(where: { lower.contains($0) }) { return "Eggs" }
+
+        // Peanuts
+        if lower.contains("peanut") || lower.contains("groundnut") { return "Peanuts" }
+
+        // Tree nuts
+        let nutKeywords = ["almond", "hazelnut", "walnut", "cashew", "pistachio", "pecan", "brazil nut", "macadamia", "pine nut", "chestnut"]
+        if nutKeywords.contains(where: { lower.contains($0) }) { return "Tree Nuts" }
+
+        // Gluten
+        let glutenKeywords = ["wheat", "gluten", "barley", "rye", "oats", "spelt", "semolina", "flour", "bread"]
+        if glutenKeywords.contains(where: { lower.contains($0) }) { return "Gluten" }
+
+        // Soya
+        let soyKeywords = ["soy", "soya", "tofu", "tempeh", "edamame"]
+        if soyKeywords.contains(where: { lower.contains($0) }) { return "Soya" }
+
+        // Fish
+        let fishKeywords = ["fish", "salmon", "tuna", "cod", "anchovy", "sardine", "mackerel", "haddock"]
+        if fishKeywords.contains(where: { lower.contains($0) }) { return "Fish" }
+
+        // Crustaceans
+        let crustaceanKeywords = ["shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish"]
+        if crustaceanKeywords.contains(where: { lower.contains($0) }) { return "Shellfish" }
+
+        // Molluscs
+        let molluscKeywords = ["mollusc", "clam", "mussel", "oyster", "scallop", "squid", "octopus"]
+        if molluscKeywords.contains(where: { lower.contains($0) }) { return "Molluscs" }
+
+        // Sesame
+        if lower.contains("sesame") || lower.contains("tahini") { return "Sesame" }
+
+        // Mustard
+        if lower.contains("mustard") { return "Mustard" }
+
+        // Celery
+        if lower.contains("celery") || lower.contains("celeriac") { return "Celery" }
+
+        // Lupin
+        if lower.contains("lupin") { return "Lupin" }
+
+        // Sulphites
+        let sulphiteKeywords = ["sulphite", "sulfite", "sulphur dioxide", "sulfur dioxide"]
+        if sulphiteKeywords.contains(where: { lower.contains($0) }) { return "Sulphites" }
+
+        return nil
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundColor(.yellow)
-                Text("Your Insights")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
+        VStack(spacing: 0) {
+            // Header with gradient background
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.yellow.opacity(0.3), Color.orange.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 36, height: 36)
 
-            // Smart Insights (show if 3+ reactions, otherwise show simple counts)
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.orange)
+                }
+
+                Text("Your Insights")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Text("\(reactionManager.reactions.count) logged")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                    )
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            // Divider
+            Rectangle()
+                .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray5).opacity(0.5))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+
+            // Smart Insights (show if 3+ reactions, otherwise show simple message)
             if reactionManager.reactions.count >= 3 {
-                VStack(spacing: 10) {
+                // 2x2 Grid of insights
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     // Most common symptom
                     if let symptom = mostCommonSymptom {
-                        insightRow(
+                        insightCell(
                             icon: "chart.bar.fill",
                             iconColor: .blue,
-                            label: "Most common",
+                            label: "Top Symptom",
                             value: symptom.symptom,
-                            badge: "\(symptom.percentage)%"
+                            badge: "\(symptom.percentage)%",
+                            badgeColor: .blue
                         )
                     }
 
                     // Peak timing
                     if let timing = peakTiming {
-                        insightRow(
+                        insightCell(
                             icon: "clock.fill",
                             iconColor: .orange,
-                            label: "Peak timing",
+                            label: "Peak Time",
                             value: timing,
-                            badge: nil
+                            badge: nil,
+                            badgeColor: .orange
                         )
                     }
 
                     // Weekly trend
                     if let trend = weeklyTrend {
                         let trendColor: Color = trend.trend == "down" ? .green : (trend.trend == "up" ? .red : .secondary)
-                        let trendText = trend.trend == "down" ? "↓ from \(trend.lastWeek)" : (trend.trend == "up" ? "↑ from \(trend.lastWeek)" : "same")
+                        let trendIcon = trend.trend == "down" ? "arrow.down.right" : (trend.trend == "up" ? "arrow.up.right" : "minus")
+                        let trendText = trend.trend == "same" ? "same" : "vs \(trend.lastWeek)"
 
-                        insightRow(
+                        insightCell(
                             icon: "calendar",
                             iconColor: .purple,
-                            label: "This week",
-                            value: "\(trend.thisWeek) \(trend.thisWeek == 1 ? "reaction" : "reactions")",
+                            label: "This Week",
+                            value: "\(trend.thisWeek)",
                             badge: trendText,
-                            badgeColor: trendColor
+                            badgeColor: trendColor,
+                            trendIcon: trendIcon
                         )
                     }
 
-                    // Top suspected ingredient
-                    if let ingredient = topSuspectedIngredient {
-                        insightRow(
+                    // Top allergen triggers (UK 14 only)
+                    if let allergens = topAllergenTriggers {
+                        let allergenText = allergens.count > 1
+                            ? allergens.prefix(2).map { $0.name }.joined(separator: ", ")
+                            : allergens.first?.name ?? ""
+                        let count = allergens.first?.count ?? 0
+
+                        insightCell(
                             icon: "exclamationmark.triangle.fill",
                             iconColor: .red,
-                            label: "Watch for",
-                            value: ingredient.name,
-                            badge: "\(ingredient.count) times"
+                            label: "Top Allergen",
+                            value: allergenText,
+                            badge: "\(count)×",
+                            badgeColor: .red
                         )
                     }
                 }
+                .padding(16)
             } else {
                 // Simple message for new users
-                VStack(spacing: 8) {
-                    Text("Log \(3 - reactionManager.reactions.count) more \(3 - reactionManager.reactions.count == 1 ? "reaction" : "reactions") to unlock insights")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                VStack(spacing: 12) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 32))
+                        .foregroundColor(.blue.opacity(0.6))
 
-                    if reactionManager.reactions.count > 0 {
-                        Text("\(reactionManager.reactions.count) logged so far")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.blue)
-                    }
+                    Text("Log \(3 - reactionManager.reactions.count) more \(3 - reactionManager.reactions.count == 1 ? "reaction" : "reactions")")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.primary)
+
+                    Text("to unlock personalised insights")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, 24)
             }
 
+            // Log Reaction Button
             Button(action: { showingLogReaction = true }) {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 18))
+                        .font(.system(size: 16))
                     Text("Log Reaction")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .padding(.vertical, 13)
                 .background(
                     LinearGradient(
                         colors: [
@@ -600,54 +905,66 @@ struct FoodReactionSummaryCard: View {
                         endPoint: .trailing
                     )
                 )
-                .cornerRadius(18)
+                .cornerRadius(14)
             }
             .buttonStyle(SpringyButtonStyle())
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
-        .padding(AppSpacing.large)
         .background(
-            RoundedRectangle(cornerRadius: 22)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.75))
+            RoundedRectangle(cornerRadius: 20)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.85))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(colorScheme == .dark ? Color(.systemGray4) : Color.white.opacity(0.6), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(colorScheme == .dark ? Color(.systemGray5) : Color.white.opacity(0.8), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
         .fullScreenCover(isPresented: $showingLogReaction) {
             LogReactionSheet(selectedDayRange: .threeDays)
         }
     }
 
-    private func insightRow(icon: String, iconColor: Color, label: String, value: String, badge: String?, badgeColor: Color = .secondary) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(iconColor)
-                .frame(width: 20)
+    private func insightCell(icon: String, iconColor: Color, label: String, value: String, badge: String?, badgeColor: Color, trendIcon: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Icon and label
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(iconColor)
 
-            Text(label)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+            }
 
-            Spacer()
-
+            // Value
             Text(value)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
+            // Badge (if any)
             if let badge = badge {
-                Text(badge)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(badgeColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(badgeColor.opacity(0.15))
-                    .cornerRadius(4)
+                HStack(spacing: 4) {
+                    if let trendIcon = trendIcon {
+                        Image(systemName: trendIcon)
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    Text(badge)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(badgeColor)
             }
         }
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6).opacity(0.5))
+        )
     }
 }
 
@@ -1033,15 +1350,59 @@ struct FoodPatternAnalysisCard: View {
         return nil
     }
 
+    /// Checks if an ingredient string is valid (not garbage data from OCR)
+    private func isValidIngredient(_ ingredient: String) -> Bool {
+        let trimmed = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Too short or too long
+        if trimmed.count < 2 || trimmed.count > 50 { return false }
+
+        // Contains URLs
+        if trimmed.contains("www.") || trimmed.contains("http") || trimmed.contains(".co.uk") || trimmed.contains(".com") { return false }
+
+        // Contains phone numbers (sequences of 5+ digits)
+        let digitCount = trimmed.filter { $0.isNumber }.count
+        if digitCount >= 5 { return false }
+
+        // Contains nutrition data patterns (percentages like "28G 11% 26G")
+        let nutritionPattern = #"\d+[gG]\s+\d+%"#
+        if trimmed.range(of: nutritionPattern, options: .regularExpression) != nil { return false }
+
+        // Contains date patterns
+        let datePattern = #"\d{2}/\d{2}/\d{2}"#
+        if trimmed.range(of: datePattern, options: .regularExpression) != nil { return false }
+
+        // Contains mostly uppercase letters with numbers (batch codes like "F 1 #1 Slo00")
+        let uppercaseCount = trimmed.filter { $0.isUppercase }.count
+        if uppercaseCount > trimmed.count / 2 && digitCount > 2 { return false }
+
+        // Contains duplicate words (like "Wheat Flour Wheat Flour")
+        let words = trimmed.lowercased().split(separator: " ").map { String($0) }
+        if words.count >= 4 {
+            let uniqueWords = Set(words)
+            if Double(uniqueWords.count) / Double(words.count) < 0.6 { return false }
+        }
+
+        // Starts with connecting words (incomplete ingredient fragments)
+        let invalidStarts = ["contains", "in addition to", "check out", "minimum", "age adult"]
+        if invalidStarts.contains(where: { trimmed.lowercased().hasPrefix($0) }) { return false }
+
+        return true
+    }
+
     private var allTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
         // Require at least 3 reactions before showing patterns
         guard reactionManager.reactions.count >= 3 else { return [] }
 
-        // Count ingredient frequencies
+        // Count ingredient frequencies (filtering out garbage)
         var ingredientCounts: [String: Int] = [:]
         for reaction in reactionManager.reactions {
             for ingredient in reaction.suspectedIngredients {
                 let normalized = ingredient.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // Skip garbage data
+                guard isValidIngredient(normalized) else { continue }
+
                 ingredientCounts[normalized, default: 0] += 1
             }
         }
