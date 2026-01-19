@@ -94,7 +94,22 @@ class FastingViewModel: ObservableObject {
 
     // MARK: - Regime State Tracking
     private var previousRegimeState: FastingPlan.RegimeState?
-    private var lastRecordedFastWindowEnd: Date?
+
+    // Persisted storage for recorded fast windows (prevents duplicate recordings on app restart)
+    private static let recordedWindowKey = "lastRecordedFastingWindowEnd"
+
+    private var lastRecordedFastWindowEnd: Date? {
+        get {
+            return UserDefaults.standard.object(forKey: Self.recordedWindowKey) as? Date
+        }
+        set {
+            if let date = newValue {
+                UserDefaults.standard.set(date, forKey: Self.recordedWindowKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.recordedWindowKey)
+            }
+        }
+    }
 
     // PERFORMANCE: Use cached snooze state instead of reading UserDefaults every second
     var isRegimeSnoozed: Bool {
@@ -607,13 +622,15 @@ class FastingViewModel: ObservableObject {
 
     /// Record a completed fasting session from regime mode
     private func recordCompletedRegimeFast(windowStart: Date, windowEnd: Date) {
-        // Prevent duplicate recordings for the same window (in-memory check)
+        // Prevent duplicate recordings for the same window (persisted check)
         if let lastRecorded = lastRecordedFastWindowEnd,
            abs(lastRecorded.timeIntervalSince(windowEnd)) < 60 {
-                        return
+            return
         }
 
         guard let plan = activePlan else { return }
+
+        let calendar = Calendar.current
 
         // Check if a session with similar start/end time already exists in allSessions
         // This prevents duplicates when app restarts or view reloads
@@ -631,7 +648,21 @@ class FastingViewModel: ObservableObject {
         }
 
         if hasDuplicate {
-                        lastRecordedFastWindowEnd = windowEnd
+            lastRecordedFastWindowEnd = windowEnd
+            return
+        }
+
+        // Additional check: Prevent multiple completed fasts ending on the same day
+        // A 16-hour fast can only complete once per day
+        let hasCompletedFastToday = allSessions.contains { existingSession in
+            guard existingSession.completionStatus == .completed,
+                  let existingEnd = existingSession.endTime else { return false }
+            // Check if there's already a completed fast ending on the same day
+            return calendar.isDate(existingEnd, inSameDayAs: windowEnd)
+        }
+
+        if hasCompletedFastToday {
+            lastRecordedFastWindowEnd = windowEnd
             return
         }
 
