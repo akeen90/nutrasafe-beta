@@ -41,6 +41,9 @@ struct SettingsView: View {
                         onSignOut: { showingSignOutAlert = true }
                     )
 
+                    // Profile Section (Gender & Birthday)
+                    ProfileSection()
+
                     // PHASE 2: Nutrition Goals Section
                     NutritionGoalsSection()
 
@@ -247,6 +250,202 @@ struct AccountSection: View {
 
 
         }
+    }
+}
+
+// MARK: - Profile Section (Gender & Birthday)
+
+struct ProfileSection: View {
+    @StateObject private var onboardingManager = OnboardingManager.shared
+    @State private var showingGenderPicker = false
+    @State private var showingBirthdayPicker = false
+
+    var body: some View {
+        SettingsSection(title: "Profile") {
+            // Gender
+            Button(action: { showingGenderPicker = true }) {
+                HStack(spacing: 12) {
+                    Image(systemName: onboardingManager.userGender.icon)
+                        .font(.system(size: 16))
+                        .foregroundColor(.purple)
+                        .frame(width: 24)
+
+                    Text("Gender")
+                        .font(.system(size: 16))
+                        .foregroundColor(.primary)
+
+                    Spacer()
+
+                    Text(onboardingManager.userGender.displayName)
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            Divider()
+                .padding(.leading, 52)
+
+            // Birthday/Age
+            Button(action: { showingBirthdayPicker = true }) {
+                HStack(spacing: 12) {
+                    Image(systemName: "birthday.cake.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.orange)
+                        .frame(width: 24)
+
+                    Text("Birthday")
+                        .font(.system(size: 16))
+                        .foregroundColor(.primary)
+
+                    Spacer()
+
+                    if let age = onboardingManager.userAge {
+                        Text("\(age) years old")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Not set")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .sheet(isPresented: $showingGenderPicker) {
+            GenderPickerSheet()
+        }
+        .sheet(isPresented: $showingBirthdayPicker) {
+            BirthdayPickerSheet()
+        }
+    }
+}
+
+// MARK: - Gender Picker Sheet
+
+struct GenderPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var onboardingManager = OnboardingManager.shared
+    @State private var selectedGender: UserGender = OnboardingManager.shared.userGender
+
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach([UserGender.male, .female, .other], id: \.self) { gender in
+                    Button(action: {
+                        selectedGender = gender
+                    }) {
+                        HStack {
+                            Image(systemName: gender.icon)
+                                .font(.system(size: 20))
+                                .foregroundColor(.purple)
+                                .frame(width: 30)
+
+                            Text(gender.displayName)
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            if selectedGender == gender {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .navigationTitle("Gender")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onboardingManager.saveGender(selectedGender)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Birthday Picker Sheet
+
+struct BirthdayPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var onboardingManager = OnboardingManager.shared
+    @State private var selectedDate: Date
+
+    // Date range for birthday picker (ages 13 to 120)
+    private var dateRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let minAge = calendar.date(byAdding: .year, value: -120, to: Date())!
+        let maxAge = calendar.date(byAdding: .year, value: -13, to: Date())!
+        return minAge...maxAge
+    }
+
+    init() {
+        let defaultDate = OnboardingManager.shared.userBirthday ?? Calendar.current.date(byAdding: .year, value: -30, to: Date())!
+        _selectedDate = State(initialValue: defaultDate)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                DatePicker(
+                    "Birthday",
+                    selection: $selectedDate,
+                    in: dateRange,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .padding()
+
+                // Show calculated age
+                let age = calculateAge(from: selectedDate)
+                Text("\(age) years old")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+            }
+            .navigationTitle("Birthday")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onboardingManager.saveBirthday(selectedDate)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func calculateAge(from date: Date) -> Int {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: date, to: Date())
+        return ageComponents.year ?? 0
     }
 }
 
@@ -3360,26 +3559,27 @@ struct BMRCalculatorSheet: View {
                         HStack {
                             Text("Age")
                                 .foregroundColor(.secondary)
+                                .frame(width: 60, alignment: .leading)
                             Spacer()
-                            HStack(spacing: 8) {
+                            HStack(spacing: 10) {
                                 Button {
                                     if userAge > 15 { userAge -= 1; ageText = "\(userAge)" }
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 } label: {
                                     Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 24))
+                                        .font(.system(size: 28))
                                         .foregroundColor(userAge > 15 ? .red : Color(.systemGray4))
                                 }
                                 .disabled(userAge <= 15)
+                                .frame(width: 32)
 
                                 TextField("Age", text: $ageText)
                                     .keyboardType(.numberPad)
                                     .multilineTextAlignment(.center)
-                                    .frame(width: 50)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 6)
+                                    .frame(width: 70)
+                                    .padding(.vertical, 10)
                                     .background(Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    .cornerRadius(10)
                                     .focused($focusedField, equals: .age)
                                     .onChange(of: ageText) { _, newValue in
                                         if let age = Int(newValue), age >= 15 && age <= 100 {
@@ -3388,18 +3588,20 @@ struct BMRCalculatorSheet: View {
                                     }
 
                                 Text("yrs")
+                                    .font(.system(size: 14))
                                     .foregroundColor(.secondary)
-                                    .fixedSize()
+                                    .frame(width: 28, alignment: .leading)
 
                                 Button {
                                     if userAge < 100 { userAge += 1; ageText = "\(userAge)" }
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 } label: {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 24))
+                                        .font(.system(size: 28))
                                         .foregroundColor(userAge < 100 ? .green : Color(.systemGray4))
                                 }
                                 .disabled(userAge >= 100)
+                                .frame(width: 32)
                             }
                         }
 
@@ -3409,26 +3611,27 @@ struct BMRCalculatorSheet: View {
                         HStack {
                             Text("Height")
                                 .foregroundColor(.secondary)
+                                .frame(width: 60, alignment: .leading)
                             Spacer()
-                            HStack(spacing: 8) {
+                            HStack(spacing: 10) {
                                 Button {
                                     if userHeightCm > 100 { userHeightCm -= 1; heightText = "\(Int(userHeightCm))" }
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 } label: {
                                     Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 24))
+                                        .font(.system(size: 28))
                                         .foregroundColor(userHeightCm > 100 ? .red : Color(.systemGray4))
                                 }
                                 .disabled(userHeightCm <= 100)
+                                .frame(width: 32)
 
                                 TextField("Height", text: $heightText)
                                     .keyboardType(.numberPad)
                                     .multilineTextAlignment(.center)
-                                    .frame(width: 50)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 6)
+                                    .frame(width: 70)
+                                    .padding(.vertical, 10)
                                     .background(Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    .cornerRadius(10)
                                     .focused($focusedField, equals: .height)
                                     .onChange(of: heightText) { _, newValue in
                                         if let height = Double(newValue), height >= 100 && height <= 250 {
@@ -3437,18 +3640,20 @@ struct BMRCalculatorSheet: View {
                                     }
 
                                 Text("cm")
+                                    .font(.system(size: 14))
                                     .foregroundColor(.secondary)
-                                    .frame(width: 40)
+                                    .frame(width: 28, alignment: .leading)
 
                                 Button {
                                     if userHeightCm < 250 { userHeightCm += 1; heightText = "\(Int(userHeightCm))" }
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 } label: {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 24))
+                                        .font(.system(size: 28))
                                         .foregroundColor(userHeightCm < 250 ? .green : Color(.systemGray4))
                                 }
                                 .disabled(userHeightCm >= 250)
+                                .frame(width: 32)
                             }
                         }
 
@@ -3458,26 +3663,27 @@ struct BMRCalculatorSheet: View {
                         HStack {
                             Text("Weight")
                                 .foregroundColor(.secondary)
+                                .frame(width: 60, alignment: .leading)
                             Spacer()
-                            HStack(spacing: 8) {
+                            HStack(spacing: 10) {
                                 Button {
                                     if userWeightKg > 30 { userWeightKg -= 0.5; weightText = String(format: "%.1f", userWeightKg) }
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 } label: {
                                     Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 24))
+                                        .font(.system(size: 28))
                                         .foregroundColor(userWeightKg > 30 ? .red : Color(.systemGray4))
                                 }
                                 .disabled(userWeightKg <= 30)
+                                .frame(width: 32)
 
                                 TextField("Weight", text: $weightText)
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.center)
-                                    .frame(width: 60)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 6)
+                                    .frame(width: 70)
+                                    .padding(.vertical, 10)
                                     .background(Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    .cornerRadius(10)
                                     .focused($focusedField, equals: .weight)
                                     .onChange(of: weightText) { _, newValue in
                                         if let weight = Double(newValue), weight >= 30 && weight <= 300 {
@@ -3486,18 +3692,20 @@ struct BMRCalculatorSheet: View {
                                     }
 
                                 Text("kg")
+                                    .font(.system(size: 14))
                                     .foregroundColor(.secondary)
-                                    .frame(width: 40)
+                                    .frame(width: 28, alignment: .leading)
 
                                 Button {
                                     if userWeightKg < 300 { userWeightKg += 0.5; weightText = String(format: "%.1f", userWeightKg) }
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 } label: {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 24))
+                                        .font(.system(size: 28))
                                         .foregroundColor(userWeightKg < 300 ? .green : Color(.systemGray4))
                                 }
                                 .disabled(userWeightKg >= 300)
+                                .frame(width: 32)
                             }
                         }
                     }
@@ -3657,6 +3865,20 @@ struct BMRCalculatorSheet: View {
                 }
             }
             .onAppear {
+                // Sync gender from OnboardingManager if set
+                let profileGender = OnboardingManager.shared.userGender
+                if profileGender == .male {
+                    userSex = "male"
+                } else if profileGender == .female {
+                    userSex = "female"
+                }
+                // If other/notSet, keep the existing userSex value
+
+                // Sync age from OnboardingManager if set
+                if let profileAge = OnboardingManager.shared.userAge, profileAge >= 15 && profileAge <= 100 {
+                    userAge = profileAge
+                }
+
                 // Initialize text fields
                 ageText = "\(userAge)"
                 heightText = "\(Int(userHeightCm))"

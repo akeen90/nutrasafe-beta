@@ -5589,6 +5589,7 @@
             filteredScanResults: [],
             pendingEdits: {},
             pendingDeletes: new Set(),
+            pendingFixes: {}, // { 'html-code': ['objectID1', 'objectID2'], 'simple-ingredients': ['objectID3'] }
             scanInProgress: false,
             currentScanIndex: '',
             currentIssueFilter: 'all',
@@ -9137,10 +9138,27 @@
                 const editCount = Object.keys(state.pendingEdits).length;
                 const deleteCount = state.pendingDeletes.size;
 
-                document.getElementById('pending-edits').textContent = `${editCount} edit${editCount !== 1 ? 's' : ''}`;
+                // Count pending bulk fixes
+                const htmlFixCount = (state.pendingFixes['html-code'] || []).length;
+                const ingredientFixCount = (state.pendingFixes['simple-ingredients'] || []).length;
+                const totalFixCount = htmlFixCount + ingredientFixCount;
+
+                console.log('[updatePendingStatus] edits:', editCount, 'deletes:', deleteCount, 'htmlFixes:', htmlFixCount, 'ingredientFixes:', ingredientFixCount);
+
+                // Build status text
+                let statusParts = [];
+                if (editCount > 0) statusParts.push(`${editCount} edit${editCount !== 1 ? 's' : ''}`);
+                if (totalFixCount > 0) {
+                    let fixParts = [];
+                    if (htmlFixCount > 0) fixParts.push(`${htmlFixCount} HTML`);
+                    if (ingredientFixCount > 0) fixParts.push(`${ingredientFixCount} ingredients`);
+                    statusParts.push(`${totalFixCount} fix${totalFixCount !== 1 ? 'es' : ''} (${fixParts.join(', ')})`);
+                }
+
+                document.getElementById('pending-edits').textContent = statusParts.length > 0 ? statusParts.join(' | ') : '0 edits';
                 document.getElementById('pending-deletes').textContent = `${deleteCount} deletion${deleteCount !== 1 ? 's' : ''}`;
 
-                const hasChanges = editCount > 0 || deleteCount > 0;
+                const hasChanges = editCount > 0 || deleteCount > 0 || totalFixCount > 0;
                 document.getElementById('apply-changes-btn').disabled = !hasChanges;
                 document.getElementById('clear-queue-btn').disabled = !hasChanges;
             },
@@ -9148,18 +9166,25 @@
             clearQueue() {
                 state.pendingEdits = {};
                 state.pendingDeletes = new Set();
+                state.pendingFixes = {}; // Clear pending fixes too
                 this.updatePendingStatus();
                 this.renderIssuesList();
                 this.showToast('Queue cleared', 'info');
             },
 
             async applyAllChanges() {
-                const indexName = state.currentScanIndex;
+                const indexName = state.currentScanIndex || state.currentIndex || 'tesco_products';
                 const updates = Object.entries(state.pendingEdits).map(([objectID, changes]) => ({
                     objectID,
                     changes
                 }));
                 const deletes = Array.from(state.pendingDeletes);
+
+                // Get pending bulk fixes
+                const htmlFixIds = state.pendingFixes['html-code'] || [];
+                const ingredientFixIds = state.pendingFixes['simple-ingredients'] || [];
+                const hasEdits = updates.length > 0 || deletes.length > 0;
+                const hasFixes = htmlFixIds.length > 0 || ingredientFixIds.length > 0;
 
                 // DEBUG: Log what we're about to send
                 console.log('=== APPLY ALL CHANGES DEBUG ===');
@@ -9169,89 +9194,198 @@
                 console.log('Deletes array:', deletes);
                 console.log('Updates count:', updates.length);
                 console.log('Deletes count:', deletes.length);
+                console.log('HTML Fix IDs:', htmlFixIds.length);
+                console.log('Ingredient Fix IDs:', ingredientFixIds.length);
 
-                if (updates.length === 0 && deletes.length === 0) {
+                if (!hasEdits && !hasFixes) {
                     this.showToast('No changes to apply', 'info');
                     return;
                 }
 
-                const confirmMsg = `Apply ${updates.length} edit(s) and ${deletes.length} deletion(s)?`;
+                // Build confirmation message
+                let confirmParts = [];
+                if (updates.length > 0) confirmParts.push(`${updates.length} edit(s)`);
+                if (deletes.length > 0) confirmParts.push(`${deletes.length} deletion(s)`);
+                if (htmlFixIds.length > 0) confirmParts.push(`${htmlFixIds.length} HTML code fix(es)`);
+                if (ingredientFixIds.length > 0) confirmParts.push(`${ingredientFixIds.length} ingredient fix(es)`);
+                const confirmMsg = `Apply ${confirmParts.join(', ')}?`;
                 if (!confirm(confirmMsg)) return;
 
                 document.getElementById('apply-changes-btn').disabled = true;
                 document.getElementById('apply-changes-btn').textContent = 'Applying...';
 
+                let totalSuccess = 0;
+                let totalErrors = 0;
+
                 try {
-                    const requestBody = { indexName, updates, deletes };
-                    console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
+                    // 1. Process regular edits and deletes
+                    if (hasEdits) {
+                        const requestBody = { indexName, updates, deletes };
+                        console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
 
-                    const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoods`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody)
-                    });
+                        const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoods`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestBody)
+                        });
 
-                    console.log('Response status:', response.status);
-                    const result = await response.json();
-                    console.log('Response body:', JSON.stringify(result, null, 2));
+                        console.log('Response status:', response.status);
+                        const result = await response.json();
+                        console.log('Response body:', JSON.stringify(result, null, 2));
 
-                    if (result.success) {
-                        this.showToast(`Applied ${result.updated} updates and ${result.deleted} deletions`, 'success');
+                        if (result.success) {
+                            totalSuccess += (result.updated || 0) + (result.deleted || 0);
+                            this.addActivityLog(`Applied ${result.updated} updates and ${result.deleted} deletions`, 'success');
 
-                        // Mark issues as resolved in the ledger (keep them for before/after)
-                        const processedIds = new Set([...deletes, ...updates.map(u => u.objectID)]);
+                            // Mark issues as resolved in the ledger (keep them for before/after)
+                            const processedIds = new Set([...deletes, ...updates.map(u => u.objectID)]);
 
-                        // For each processed item, mark as resolved in ledger
-                        for (const objectId of processedIds) {
-                            const changes = state.pendingEdits[objectId];
-                            if (changes) {
-                                // Capture the after state before marking resolved
-                                const item = state.scanResults.find(f => f.objectID === objectId);
-                                if (item) {
-                                    // Apply the pending changes to the item so afterState is correct
-                                    Object.assign(item, changes);
+                            // For each processed item, mark as resolved in ledger
+                            for (const objectId of processedIds) {
+                                const changes = state.pendingEdits[objectId];
+                                if (changes) {
+                                    // Capture the after state before marking resolved
+                                    const item = state.scanResults.find(f => f.objectID === objectId);
+                                    if (item) {
+                                        // Apply the pending changes to the item so afterState is correct
+                                        Object.assign(item, changes);
+                                    }
+                                    // Mark as resolved
+                                    this.resolveIssue(objectId, Object.entries(changes).map(([field, value]) => ({
+                                        field,
+                                        oldValue: null, // Not tracked in simple mode
+                                        newValue: value,
+                                        reason: 'Applied from edit queue'
+                                    })), 'manual_edit', {});
+                                } else if (deletes.includes(objectId)) {
+                                    // For deletes, mark as resolved with deletion reason
+                                    this.resolveIssue(objectId, [{
+                                        field: 'deleted',
+                                        oldValue: 'exists',
+                                        newValue: 'deleted',
+                                        reason: 'Item deleted from database'
+                                    }], 'manual_delete', {});
                                 }
-                                // Mark as resolved
-                                this.resolveIssue(objectId, Object.entries(changes).map(([field, value]) => ({
-                                    field,
-                                    oldValue: null, // Not tracked in simple mode
-                                    newValue: value,
-                                    reason: 'Applied from edit queue'
-                                })), 'manual_edit', {});
-                            } else if (deletes.includes(objectId)) {
-                                // For deletes, mark as resolved with deletion reason
-                                this.resolveIssue(objectId, [{
-                                    field: 'deleted',
-                                    oldValue: 'exists',
-                                    newValue: 'deleted',
-                                    reason: 'Item deleted from database'
-                                }], 'manual_delete', {});
+                            }
+
+                            // Remove deleted items from scanResults (updates stay for before/after)
+                            state.scanResults = state.scanResults.filter(f => !deletes.includes(f.objectID));
+                        } else {
+                            totalErrors++;
+                            // Mark affected items as error
+                            const processedIds = [...deletes, ...updates.map(u => u.objectID)];
+                            processedIds.forEach(id => this.markIssueError(id, result.error || 'Batch update failed'));
+                            this.addActivityLog('Batch update failed: ' + (result.error || 'Unknown error'), 'error');
+                        }
+                    }
+
+                    // 2. Process HTML code fixes
+                    if (htmlFixIds.length > 0) {
+                        document.getElementById('apply-changes-btn').textContent = `Fixing HTML (${htmlFixIds.length})...`;
+                        this.addActivityLog(`Processing ${htmlFixIds.length} HTML code fixes...`, 'info');
+
+                        const MAX_BATCH = 500;
+                        let htmlFixed = 0;
+
+                        for (let i = 0; i < htmlFixIds.length; i += MAX_BATCH) {
+                            const batch = htmlFixIds.slice(i, i + MAX_BATCH);
+                            if (htmlFixIds.length > MAX_BATCH) {
+                                document.getElementById('apply-changes-btn').textContent = `HTML batch ${Math.floor(i/MAX_BATCH) + 1}/${Math.ceil(htmlFixIds.length/MAX_BATCH)}...`;
+                            }
+
+                            try {
+                                const fixFunc = firebase.functions().httpsCallable('fixHtmlCode', { timeout: 300000 });
+                                const result = await fixFunc({ indexName, objectIDs: batch });
+                                if (result.data?.success) {
+                                    htmlFixed += result.data.itemsFixed || 0;
+
+                                    // Mark fixed items as resolved and remove from scan results
+                                    if (result.data.items) {
+                                        result.data.items.forEach(item => {
+                                            this.resolveIssue(item.objectID, [{
+                                                field: 'html-code',
+                                                oldValue: 'had HTML',
+                                                newValue: 'cleaned',
+                                                reason: 'HTML code removed'
+                                            }], 'bulk_fix', {});
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                console.error('HTML fix batch error:', err);
+                                totalErrors++;
                             }
                         }
 
-                        // Remove deleted items from scanResults (updates stay for before/after)
-                        state.scanResults = state.scanResults.filter(f => !deletes.includes(f.objectID));
-
-                        // Clear the queue
-                        state.pendingEdits = {};
-                        state.pendingDeletes = new Set();
-
-                        // Update UI
-                        this.updateLedgerUI();
-                        this.filterByIssueType(state.currentIssueFilter);
-                        this.updatePendingStatus();
-
-                        // Update the saved session
-                        this.updateActiveSession();
-                    } else {
-                        // Mark affected items as error
-                        const processedIds = [...deletes, ...updates.map(u => u.objectID)];
-                        processedIds.forEach(id => this.markIssueError(id, result.error || 'Batch update failed'));
-                        this.showToast('Batch update failed: ' + (result.error || 'Unknown error'), 'error');
+                        totalSuccess += htmlFixed;
+                        this.addActivityLog(`Fixed ${htmlFixed} items with HTML code`, 'success');
                     }
+
+                    // 3. Process simple ingredient fixes
+                    if (ingredientFixIds.length > 0) {
+                        document.getElementById('apply-changes-btn').textContent = `Fixing ingredients (${ingredientFixIds.length})...`;
+                        this.addActivityLog(`Processing ${ingredientFixIds.length} simple ingredient fixes...`, 'info');
+
+                        const MAX_BATCH = 500;
+                        let ingredientsFixed = 0;
+
+                        for (let i = 0; i < ingredientFixIds.length; i += MAX_BATCH) {
+                            const batch = ingredientFixIds.slice(i, i + MAX_BATCH);
+                            if (ingredientFixIds.length > MAX_BATCH) {
+                                document.getElementById('apply-changes-btn').textContent = `Ingredients batch ${Math.floor(i/MAX_BATCH) + 1}/${Math.ceil(ingredientFixIds.length/MAX_BATCH)}...`;
+                            }
+
+                            try {
+                                const fixFunc = firebase.functions().httpsCallable('fixSimpleIngredients', { timeout: 300000 });
+                                const result = await fixFunc({ indexName, objectIDs: batch });
+                                if (result.data?.success) {
+                                    ingredientsFixed += result.data.itemsFixed || 0;
+
+                                    // Mark fixed items as resolved
+                                    if (result.data.items) {
+                                        result.data.items.forEach(item => {
+                                            this.resolveIssue(item.objectID, [{
+                                                field: 'ingredients',
+                                                oldValue: 'missing',
+                                                newValue: item.addedIngredients || 'added',
+                                                reason: 'Simple ingredients auto-populated'
+                                            }], 'bulk_fix', {});
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                console.error('Ingredient fix batch error:', err);
+                                totalErrors++;
+                            }
+                        }
+
+                        totalSuccess += ingredientsFixed;
+                        this.addActivityLog(`Fixed ${ingredientsFixed} simple ingredient foods`, 'success');
+                    }
+
+                    // Clear all queues
+                    state.pendingEdits = {};
+                    state.pendingDeletes = new Set();
+                    state.pendingFixes = {};
+
+                    // Final success message
+                    if (totalErrors === 0) {
+                        this.showToast(`Successfully applied all changes (${totalSuccess} items processed)`, 'success');
+                    } else {
+                        this.showToast(`Applied changes with ${totalErrors} error(s). Check activity log.`, 'warning');
+                    }
+
+                    // Update UI
+                    this.updateLedgerUI();
+                    this.filterByIssueType(state.currentIssueFilter);
+                    this.updatePendingStatus();
+
+                    // Update the saved session
+                    this.updateActiveSession();
+
                 } catch (error) {
-                    console.error('Batch update error:', error);
-                    this.showToast('Batch update failed: ' + error.message, 'error');
+                    console.error('Apply all changes error:', error);
+                    this.showToast('Apply changes failed: ' + error.message, 'error');
                 }
 
                 document.getElementById('apply-changes-btn').disabled = false;
@@ -10083,109 +10217,96 @@
                 }
             },
 
-            // Fix simple ingredient foods (olive oil, honey, etc.)
-            async fixSimpleIngredients() {
-                const indexName = state.currentIndex || 'tesco_products';
+            // Fix simple ingredient foods (olive oil, honey, etc.) - EARMARK for Apply All Changes
+            fixSimpleIngredients() {
+                console.log('[fixSimpleIngredients] Called');
+                console.log('[fixSimpleIngredients] state.scanResults length:', (state.scanResults || []).length);
 
-                if (!confirm(`This will scan the "${indexName}" index for foods with missing ingredients that are simple single-ingredient products (like olive oil, honey, butter, etc.) and auto-populate their ingredients.\n\nThis may update many records. Continue?`)) {
+                // Check if we have scan results with missing-ingredients issues
+                const missingIngredientsItems = (state.scanResults || []).filter(item =>
+                    item.issues && item.issues.some(issue => issue.type === 'missing-ingredients')
+                );
+
+                console.log('[fixSimpleIngredients] Found items with missing-ingredients:', missingIngredientsItems.length);
+                if (missingIngredientsItems.length > 0) {
+                    console.log('[fixSimpleIngredients] First item issues:', JSON.stringify(missingIngredientsItems[0].issues));
+                }
+
+                if (missingIngredientsItems.length === 0) {
+                    // Debug: Show what issue types ARE in the scan results
+                    const allIssueTypes = new Set();
+                    (state.scanResults || []).forEach(item => {
+                        (item.issues || []).forEach(issue => allIssueTypes.add(issue.type));
+                    });
+                    console.log('[fixSimpleIngredients] All issue types in scan results:', Array.from(allIssueTypes));
+                    this.showToast('No items with missing ingredients found. Run a scan first.', 'info');
                     return;
                 }
 
-                this.showToast('Scanning for simple ingredient foods... This may take several minutes.', 'info');
-                this.addActivityLog(`Starting simple ingredients fix for ${indexName} (may take up to 9 minutes)...`, 'info');
+                const objectIDs = missingIngredientsItems.map(item => item.objectID);
 
-                try {
-                    console.log('[fixSimpleIngredients] Calling function with indexName:', indexName);
-                    const fixSimpleIngredientsFunc = firebase.functions().httpsCallable('fixSimpleIngredients', { timeout: 540000 });
-                    const result = await fixSimpleIngredientsFunc({ indexName });
-                    console.log('[fixSimpleIngredients] Got result:', result);
-                    const fixResult = result.data;
-                    console.log('[fixSimpleIngredients] Result data:', fixResult);
+                // Check if already earmarked
+                const alreadyEarmarked = state.pendingFixes['simple-ingredients'] || [];
+                const newCount = objectIDs.filter(id => !alreadyEarmarked.includes(id)).length;
 
-                    if (fixResult && fixResult.success) {
-                        this.showToast(`Fixed ${fixResult.itemsFixed} simple ingredient foods!`, 'success');
-                        this.addActivityLog(`Fixed ${fixResult.itemsFixed} simple ingredient foods (scanned ${fixResult.itemsScanned}, detected ${fixResult.itemsDetected})`, 'success');
-
-                        // Show category breakdown
-                        if (fixResult.byCategory) {
-                            console.log('Fixed by category:', fixResult.byCategory);
-                            const categories = Object.entries(fixResult.byCategory).map(([k, v]) => `${k}: ${v}`).join(', ');
-                            this.addActivityLog(`Categories: ${categories}`, 'info');
-                        }
-
-                        // Show some examples if available
-                        if (fixResult.items && fixResult.items.length > 0) {
-                            console.log('Examples of fixed items:', fixResult.items.slice(0, 5));
-                            const exampleNames = fixResult.items.slice(0, 3).map(e => e.foodName || e.name).join(', ');
-                            this.addActivityLog(`Examples: ${exampleNames}`, 'info');
-                        }
-                    } else {
-                        const errorMsg = fixResult?.error || fixResult?.message || 'Unknown error - check console';
-                        this.showToast(`Error: ${errorMsg}`, 'error');
-                        this.addActivityLog(`Error: ${errorMsg}`, 'error');
-                    }
-
-                } catch (error) {
-                    console.error('[fixSimpleIngredients] Error:', error);
-                    // Firebase callable errors have code, message, and details
-                    const errorMsg = error.message || error.code || 'Unknown error';
-                    const errorDetails = error.details ? ` (${error.details})` : '';
-                    this.showToast(`Error: ${errorMsg}${errorDetails}`, 'error');
-                    this.addActivityLog(`Error: ${errorMsg}${errorDetails}`, 'error');
+                if (newCount === 0) {
+                    this.showToast(`${objectIDs.length} items already earmarked for simple ingredients fix`, 'info');
+                    return;
                 }
+
+                // Add to pending fixes (merge with existing)
+                state.pendingFixes['simple-ingredients'] = [...new Set([...alreadyEarmarked, ...objectIDs])];
+
+                this.showToast(`Earmarked ${newCount} item(s) for simple ingredients fix. Click "Apply All Changes" to execute.`, 'success');
+                this.addActivityLog(`Earmarked ${newCount} items for simple ingredients fix (total: ${state.pendingFixes['simple-ingredients'].length})`, 'info');
+                this.updatePendingStatus();
+                this.renderIssuesList(); // Re-render to show earmarked state
             },
 
-            // Fix HTML code in food records
-            async fixHtmlCode() {
-                const indexName = state.currentIndex || 'tesco_products';
+            // Fix HTML code in food records - EARMARK for Apply All Changes
+            fixHtmlCode() {
+                console.log('[fixHtmlCode] Called');
+                console.log('[fixHtmlCode] state.scanResults length:', (state.scanResults || []).length);
 
-                if (!confirm(`This will scan the "${indexName}" index for HTML code (tags like <b>, entities like &amp;) in food names, brands, and ingredients, then remove them.\n\nThis may update many records. Continue?`)) {
+                // Check if we have scan results with html-code issues
+                const htmlCodeItems = (state.scanResults || []).filter(item =>
+                    item.issues && item.issues.some(issue => issue.type === 'html-code')
+                );
+
+                console.log('[fixHtmlCode] Found items with html-code:', htmlCodeItems.length);
+                if (htmlCodeItems.length > 0) {
+                    console.log('[fixHtmlCode] First item issues:', JSON.stringify(htmlCodeItems[0].issues));
+                }
+
+                if (htmlCodeItems.length === 0) {
+                    // Debug: Show what issue types ARE in the scan results
+                    const allIssueTypes = new Set();
+                    (state.scanResults || []).forEach(item => {
+                        (item.issues || []).forEach(issue => allIssueTypes.add(issue.type));
+                    });
+                    console.log('[fixHtmlCode] All issue types in scan results:', Array.from(allIssueTypes));
+                    this.showToast('No items with HTML code issues found. Run a scan first.', 'info');
                     return;
                 }
 
-                this.showToast('Scanning for HTML code... This may take several minutes.', 'info');
-                this.addActivityLog(`Starting HTML code fix for ${indexName} (may take up to 9 minutes)...`, 'info');
+                const objectIDs = htmlCodeItems.map(item => item.objectID);
 
-                try {
-                    console.log('[fixHtmlCode] Calling function with indexName:', indexName);
-                    const fixHtmlCodeFunc = firebase.functions().httpsCallable('fixHtmlCode', { timeout: 540000 });
-                    const result = await fixHtmlCodeFunc({ indexName });
-                    console.log('[fixHtmlCode] Got result:', result);
-                    const fixResult = result.data;
-                    console.log('[fixHtmlCode] Result data:', fixResult);
+                // Check if already earmarked
+                const alreadyEarmarked = state.pendingFixes['html-code'] || [];
+                const newCount = objectIDs.filter(id => !alreadyEarmarked.includes(id)).length;
 
-                    if (fixResult && fixResult.success) {
-                        this.showToast(`Fixed ${fixResult.itemsFixed} items with HTML code!`, 'success');
-                        this.addActivityLog(`Fixed ${fixResult.itemsFixed} items with HTML code (scanned ${fixResult.itemsScanned}, detected ${fixResult.itemsDetected})`, 'success');
-
-                        // Show field breakdown
-                        if (fixResult.byField) {
-                            console.log('Fixed by field:', fixResult.byField);
-                            const fields = Object.entries(fixResult.byField).filter(([k, v]) => v > 0).map(([k, v]) => `${k}: ${v}`).join(', ');
-                            if (fields) {
-                                this.addActivityLog(`Fields affected: ${fields}`, 'info');
-                            }
-                        }
-
-                        // Show some examples if available
-                        if (fixResult.items && fixResult.items.length > 0) {
-                            console.log('Examples of fixed items:', fixResult.items.slice(0, 5));
-                            const exampleNames = fixResult.items.slice(0, 3).map(e => e.foodName || e.name).join(', ');
-                            this.addActivityLog(`Examples: ${exampleNames}`, 'info');
-                        }
-                    } else {
-                        const errorMsg = fixResult?.error || fixResult?.message || 'Unknown error - check console';
-                        this.showToast(`Error: ${errorMsg}`, 'error');
-                        this.addActivityLog(`Error: ${errorMsg}`, 'error');
-                    }
-
-                } catch (error) {
-                    console.error('[fixHtmlCode] Error:', error);
-                    const errorMsg = error.message || error.code || 'Unknown error';
-                    const errorDetails = error.details ? ` (${error.details})` : '';
-                    this.showToast(`Error: ${errorMsg}${errorDetails}`, 'error');
-                    this.addActivityLog(`Error: ${errorMsg}${errorDetails}`, 'error');
+                if (newCount === 0) {
+                    this.showToast(`${objectIDs.length} items already earmarked for HTML code fix`, 'info');
+                    return;
                 }
+
+                // Add to pending fixes (merge with existing)
+                state.pendingFixes['html-code'] = [...new Set([...alreadyEarmarked, ...objectIDs])];
+
+                this.showToast(`Earmarked ${newCount} item(s) for HTML code fix. Click "Apply All Changes" to execute.`, 'success');
+                this.addActivityLog(`Earmarked ${newCount} items for HTML code fix (total: ${state.pendingFixes['html-code'].length})`, 'info');
+                this.updatePendingStatus();
+                this.renderIssuesList(); // Re-render to show earmarked state
             },
 
             // Main batch verification runner
@@ -10989,7 +11110,8 @@
                     'min': 'missing-ingredients',
                     'wsp': 'weird-spacing',
                     'nwd': 'non-word',
-                    'sus': 'suspect-value'
+                    'sus': 'suspect-value',
+                    'htm': 'html-code'
                 };
                 return code.split(',').filter(c => c).map(c => ({
                     type: reverseMap[c] || c,

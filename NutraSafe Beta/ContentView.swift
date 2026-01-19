@@ -435,7 +435,6 @@ struct ContentView: View {
     @State private var showingAddMenu = false
     @State private var showingDiaryAdd = false
     @State private var diaryAddInitialOption: AddFoodMainView.AddOption? = nil
-    @State private var showingUseByAdd = false
     @State private var showingReactionLog = false
     @State private var showingWeightAdd = false
     @State private var showingMealScan = false
@@ -600,8 +599,8 @@ struct ContentView: View {
                     showingDiaryAdd = true
                 },
                 onSelectUseBy: {
-                    previousTabBeforeAdd = selectedTab
-                    showingUseByAdd = true
+                    // Navigate directly to Use By tab instead of showing redundant sheet
+                    selectedTab = .useBy
                 },
                 onSelectReaction: {
                     previousTabBeforeAdd = selectedTab
@@ -702,15 +701,6 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
             .environmentObject(sharedFastingViewModelWrapper)
-        }
-        .fullScreenCover(isPresented: $showingUseByAdd) {
-            AddUseByItemSheet(onComplete: {
-                showingUseByAdd = false
-                selectedTab = .useBy
-            })
-            .onDisappear {
-                showingUseByAdd = false
-            }
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
             LogReactionSheet(selectedDayRange: .threeDays)
@@ -2004,51 +1994,57 @@ struct DietManagementTabContent: View {
 
                 Divider()
 
-                // UK Recommendations
+                // UK Recommendations - show based on user's gender
                 VStack(alignment: .leading, spacing: 8) {
                     Text("UK Recommended Daily Intake")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
 
                     HStack(spacing: 12) {
-                        Button {
-                            calorieGoal = 2000
-                            saveCalorieGoal()
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "figure.stand.dress")
-                                    .font(.system(size: 14))
-                                Text("Women: 2,000")
-                                    .font(.system(size: 14, weight: .medium))
+                        // Show female option if gender is female, other/notSet, or not set
+                        if OnboardingManager.shared.userGender != .male {
+                            Button {
+                                calorieGoal = 2000
+                                saveCalorieGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "figure.stand.dress")
+                                        .font(.system(size: 14))
+                                    Text(OnboardingManager.shared.userGender == .female ? "Recommended: 2,000" : "Women: 2,000")
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                .foregroundColor(calorieGoal == 2000 ? .white : .pink)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(calorieGoal == 2000 ? Color.pink : Color.pink.opacity(0.15))
+                                )
                             }
-                            .foregroundColor(calorieGoal == 2000 ? .white : .pink)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(calorieGoal == 2000 ? Color.pink : Color.pink.opacity(0.15))
-                            )
                         }
 
-                        Button {
-                            calorieGoal = 2500
-                            saveCalorieGoal()
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "figure.stand")
-                                    .font(.system(size: 14))
-                                Text("Men: 2,500")
-                                    .font(.system(size: 14, weight: .medium))
+                        // Show male option if gender is male, other/notSet, or not set
+                        if OnboardingManager.shared.userGender != .female {
+                            Button {
+                                calorieGoal = 2500
+                                saveCalorieGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "figure.stand")
+                                        .font(.system(size: 14))
+                                    Text(OnboardingManager.shared.userGender == .male ? "Recommended: 2,500" : "Men: 2,500")
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                .foregroundColor(calorieGoal == 2500 ? .white : .blue)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(calorieGoal == 2500 ? Color.blue : Color.blue.opacity(0.15))
+                                )
                             }
-                            .foregroundColor(calorieGoal == 2500 ? .white : .blue)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(calorieGoal == 2500 ? Color.blue : Color.blue.opacity(0.15))
-                            )
                         }
                     }
                 }
@@ -2953,15 +2949,39 @@ struct WeightLineChart: View {
         }
     }
 
-    // Weight bounds based on all weights for proper scaling
+    // Weight bounds based on actual entry weights for meaningful scaling
+    // This makes small changes look significant when you only have a few entries
     private var weightBounds: (min: Double, max: Double, range: Double) {
         let weights = entries.map { $0.weight }
-        let allWeights = weights + [goalWeight, startWeight].filter { $0 > 0 }
+        guard !weights.isEmpty else {
+            return (0, 100, 100)
+        }
 
-        let minW = min(allWeights.min() ?? 0, goalWeight > 0 ? goalWeight : (allWeights.min() ?? 0)) - 1
-        let maxW = max(allWeights.max() ?? 0, startWeight) + 1
+        let dataMin = weights.min() ?? 0
+        let dataMax = weights.max() ?? 0
+        let dataRange = dataMax - dataMin
 
-        return (minW, maxW, max(maxW - minW, 1))
+        // Calculate padding - use at least 20% of the data range, or 2kg minimum
+        // This ensures small changes are visually significant
+        let padding = max(dataRange * 0.3, 2.0)
+
+        var minW = dataMin - padding
+        var maxW = dataMax + padding
+
+        // Only include goal weight if it's reasonably close to the data
+        // (within 10kg of the data range) - otherwise it compresses the chart too much
+        if goalWeight > 0 {
+            let distanceFromData = min(abs(goalWeight - dataMin), abs(goalWeight - dataMax))
+            if distanceFromData <= 10 {
+                minW = min(minW, goalWeight - 1)
+                maxW = max(maxW, goalWeight + 1)
+            }
+        }
+
+        // Ensure minimum range for visual impact
+        let range = max(maxW - minW, 5.0)
+
+        return (minW, maxW, range)
     }
 
     // Line color based on trend

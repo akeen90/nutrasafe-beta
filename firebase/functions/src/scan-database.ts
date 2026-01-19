@@ -437,7 +437,14 @@ function detectIssues(food: Record<string, unknown>): Issue[] {
   }
 
   // Also check ingredients for misspellings
-  const ingredients = (food.extractedIngredients || food.ingredients || []) as string[];
+  // Handle ingredients as array or string (some records have string instead of array)
+  let ingredients: string[] = [];
+  const rawIngredients = food.extractedIngredients || food.ingredients;
+  if (Array.isArray(rawIngredients)) {
+    ingredients = rawIngredients;
+  } else if (typeof rawIngredients === 'string' && rawIngredients.length > 0) {
+    ingredients = [rawIngredients];
+  }
   if (Array.isArray(ingredients)) {
     const ingredientText = ingredients.join(' ').toLowerCase();
     for (const [wrong, correct] of Object.entries(MISSPELLINGS)) {
@@ -1528,13 +1535,14 @@ function detectSimpleIngredient(foodName: string): { match: boolean; ingredients
 
 /**
  * Fix missing ingredients for simple/single ingredient foods
- * Detects foods like "Olive Oil", "Honey", "Eggs" and auto-populates ingredients
+ * When objectIDs are provided, only fixes those specific items (fast mode from scan results)
+ * When objectIDs are not provided, scans the entire index (slow mode)
  */
 export const fixSimpleIngredients = functions
   .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .https.onCall(async (data, context) => {
   try {
-    const { indexName, dryRun = false } = data || {};
+    const { indexName, dryRun = false, objectIDs } = data || {};
 
     if (!indexName) {
       throw new functions.https.HttpsError('invalid-argument', 'Index name is required');
@@ -1545,7 +1553,11 @@ export const fixSimpleIngredients = functions
       throw new functions.https.HttpsError('failed-precondition', 'Algolia admin key not configured');
     }
 
-    console.log(`🥗 ${dryRun ? '[DRY RUN] ' : ''}Fixing simple ingredients in index: ${indexName}`);
+    const useQuickMode = objectIDs && Array.isArray(objectIDs) && objectIDs.length > 0;
+    console.log(`🥗 ${dryRun ? '[DRY RUN] ' : ''}${useQuickMode ? '[QUICK MODE] ' : ''}Fixing simple ingredients in index: ${indexName}`);
+    if (useQuickMode) {
+      console.log(`   Processing ${objectIDs.length} specific items from scan results`);
+    }
 
     const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
 
@@ -1558,56 +1570,103 @@ export const fixSimpleIngredients = functions
     }> = [];
     let totalScanned = 0;
     let totalMissingIngredients = 0;
-    let cursor: string | undefined;
-    let batchNumber = 0;
 
-    do {
-      batchNumber++;
-      const browseParams: Record<string, unknown> = {
-        attributesToRetrieve: ['objectID', 'foodName', 'name', 'ingredients', 'extractedIngredients'],
-        hitsPerPage: 1000,
-      };
+    if (useQuickMode) {
+      // QUICK MODE: Fetch only the specific objectIDs provided
+      console.log(`📊 Quick mode: Fetching ${objectIDs.length} specific objects`);
 
-      if (cursor) {
-        browseParams.cursor = cursor;
-      }
+      // Fetch objects in batches of 1000
+      const batchSize = 1000;
+      for (let i = 0; i < objectIDs.length; i += batchSize) {
+        const batchIds = objectIDs.slice(i, i + batchSize);
+        const objects = await client.getObjects({
+          requests: batchIds.map((id: string) => ({
+            indexName,
+            objectID: id,
+            attributesToRetrieve: ['objectID', 'foodName', 'name', 'ingredients', 'extractedIngredients'],
+          })),
+        });
 
-      const result = await client.browse({ indexName, browseParams });
-      const hits = (result.hits || []) as Record<string, unknown>[];
-      totalScanned += hits.length;
+        for (const food of objects.results as Record<string, unknown>[]) {
+          if (!food) continue;
+          totalScanned++;
 
-      console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records`);
+          const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
 
-      for (const food of hits) {
-        const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
+          // Only process items with missing ingredients
+          if (ingredients.length > 0) continue;
 
-        // Only process items with missing ingredients
-        if (ingredients.length > 0) continue;
+          totalMissingIngredients++;
 
-        totalMissingIngredients++;
+          const foodName = (food.foodName as string) || (food.name as string) || '';
+          if (!foodName) continue;
 
-        const foodName = (food.foodName as string) || (food.name as string) || '';
-        if (!foodName) continue;
+          const detection = detectSimpleIngredient(foodName);
 
-        const detection = detectSimpleIngredient(foodName);
-
-        if (detection && detection.match) {
-          itemsToFix.push({
-            objectID: food.objectID as string,
-            foodName,
-            ingredients: detection.ingredients,
-            category: detection.category,
-          });
+          if (detection && detection.match) {
+            itemsToFix.push({
+              objectID: food.objectID as string,
+              foodName,
+              ingredients: detection.ingredients,
+              category: detection.category,
+            });
+          }
         }
       }
+      console.log(`📊 Quick mode: Processed ${totalScanned} objects, found ${itemsToFix.length} simple ingredient items`);
+    } else {
+      // FULL SCAN MODE: Browse entire index
+      let cursor: string | undefined;
+      let batchNumber = 0;
 
-      cursor = result.cursor;
+      do {
+        batchNumber++;
+        const browseParams: Record<string, unknown> = {
+          attributesToRetrieve: ['objectID', 'foodName', 'name', 'ingredients', 'extractedIngredients'],
+          hitsPerPage: 1000,
+        };
 
-      if (batchNumber > 100) {
-        console.log('⚠️ Reached batch limit, stopping scan');
-        break;
-      }
-    } while (cursor);
+        if (cursor) {
+          browseParams.cursor = cursor;
+        }
+
+        const result = await client.browse({ indexName, browseParams });
+        const hits = (result.hits || []) as Record<string, unknown>[];
+        totalScanned += hits.length;
+
+        console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records`);
+
+        for (const food of hits) {
+          const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
+
+          // Only process items with missing ingredients
+          if (ingredients.length > 0) continue;
+
+          totalMissingIngredients++;
+
+          const foodName = (food.foodName as string) || (food.name as string) || '';
+          if (!foodName) continue;
+
+          const detection = detectSimpleIngredient(foodName);
+
+          if (detection && detection.match) {
+            itemsToFix.push({
+              objectID: food.objectID as string,
+              foodName,
+              ingredients: detection.ingredients,
+              category: detection.category,
+            });
+          }
+        }
+
+        cursor = result.cursor;
+
+        if (batchNumber > 100) {
+          console.log('⚠️ Reached batch limit, stopping scan');
+          break;
+        }
+      } while (cursor);
+    }
 
     console.log(`📊 Found ${itemsToFix.length} simple ingredient items to fix out of ${totalMissingIngredients} with missing ingredients`);
 
@@ -1724,14 +1783,14 @@ function containsHtml(text: string): boolean {
 
 /**
  * Fix HTML code in food records
- * Scans for HTML tags and entities in food names, brands, and ingredients,
- * then strips them to clean text
+ * When objectIDs are provided, only fixes those specific items (fast mode from scan results)
+ * When objectIDs are not provided, scans the entire index for HTML issues (slow mode)
  */
 export const fixHtmlCode = functions
   .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .https.onCall(async (data, context) => {
   try {
-    const { indexName, dryRun = false } = data || {};
+    const { indexName, dryRun = false, objectIDs } = data || {};
 
     if (!indexName) {
       throw new functions.https.HttpsError('invalid-argument', 'Index name is required');
@@ -1742,7 +1801,11 @@ export const fixHtmlCode = functions
       throw new functions.https.HttpsError('failed-precondition', 'Algolia admin key not configured');
     }
 
-    console.log(`🧹 ${dryRun ? '[DRY RUN] ' : ''}Fixing HTML code in index: ${indexName}`);
+    const useQuickMode = objectIDs && Array.isArray(objectIDs) && objectIDs.length > 0;
+    console.log(`🧹 ${dryRun ? '[DRY RUN] ' : ''}${useQuickMode ? '[QUICK MODE] ' : ''}Fixing HTML code in index: ${indexName}`);
+    if (useQuickMode) {
+      console.log(`   Processing ${objectIDs.length} specific items from scan results`);
+    }
 
     const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
 
@@ -1756,76 +1819,143 @@ export const fixHtmlCode = functions
       htmlFound: string[];
     }> = [];
     let totalScanned = 0;
-    let cursor: string | undefined;
-    let batchNumber = 0;
 
-    do {
-      batchNumber++;
-      const browseParams: Record<string, unknown> = {
-        attributesToRetrieve: ['objectID', 'foodName', 'name', 'brandName', 'brand', 'ingredients', 'extractedIngredients'],
-        hitsPerPage: 1000,
-      };
+    if (useQuickMode) {
+      // QUICK MODE: Fetch only the specific objectIDs provided
+      console.log(`📊 Quick mode: Fetching ${objectIDs.length} specific objects`);
 
-      if (cursor) {
-        browseParams.cursor = cursor;
-      }
+      // Fetch objects in batches of 1000
+      const batchSize = 1000;
+      for (let i = 0; i < objectIDs.length; i += batchSize) {
+        const batchIds = objectIDs.slice(i, i + batchSize);
+        const objects = await client.getObjects({
+          requests: batchIds.map((id: string) => ({
+            indexName,
+            objectID: id,
+            attributesToRetrieve: ['objectID', 'foodName', 'name', 'brandName', 'brand', 'ingredients', 'extractedIngredients'],
+          })),
+        });
 
-      const result = await client.browse({ indexName, browseParams });
-      const hits = (result.hits || []) as Record<string, unknown>[];
-      totalScanned += hits.length;
+        for (const food of objects.results as Record<string, unknown>[]) {
+          if (!food) continue;
+          totalScanned++;
 
-      console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records`);
+          const foodName = (food.foodName as string) || (food.name as string) || '';
+          const brandName = (food.brandName as string) || (food.brand as string) || '';
+          const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
+          const ingredientText = ingredients.join(' ');
 
-      for (const food of hits) {
-        const foodName = (food.foodName as string) || (food.name as string) || '';
-        const brandName = (food.brandName as string) || (food.brand as string) || '';
-        const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
-        const ingredientText = ingredients.join(' ');
+          const hasHtmlInName = containsHtml(foodName);
+          const hasHtmlInBrand = containsHtml(brandName);
+          const hasHtmlInIngredients = containsHtml(ingredientText);
 
-        const hasHtmlInName = containsHtml(foodName);
-        const hasHtmlInBrand = containsHtml(brandName);
-        const hasHtmlInIngredients = containsHtml(ingredientText);
+          if (hasHtmlInName || hasHtmlInBrand || hasHtmlInIngredients) {
+            const htmlFound: string[] = [];
+            if (hasHtmlInName) htmlFound.push('name');
+            if (hasHtmlInBrand) htmlFound.push('brand');
+            if (hasHtmlInIngredients) htmlFound.push('ingredients');
 
-        if (hasHtmlInName || hasHtmlInBrand || hasHtmlInIngredients) {
-          const htmlFound: string[] = [];
-          if (hasHtmlInName) htmlFound.push('name');
-          if (hasHtmlInBrand) htmlFound.push('brand');
-          if (hasHtmlInIngredients) htmlFound.push('ingredients');
+            const item: {
+              objectID: string;
+              foodName: string;
+              cleanedName?: string;
+              cleanedBrand?: string;
+              cleanedIngredients?: string[];
+              htmlFound: string[];
+            } = {
+              objectID: food.objectID as string,
+              foodName,
+              htmlFound,
+            };
 
-          const item: {
-            objectID: string;
-            foodName: string;
-            cleanedName?: string;
-            cleanedBrand?: string;
-            cleanedIngredients?: string[];
-            htmlFound: string[];
-          } = {
-            objectID: food.objectID as string,
-            foodName,
-            htmlFound,
-          };
+            if (hasHtmlInName) {
+              item.cleanedName = stripHtml(foodName);
+            }
+            if (hasHtmlInBrand) {
+              item.cleanedBrand = stripHtml(brandName);
+            }
+            if (hasHtmlInIngredients) {
+              item.cleanedIngredients = ingredients.map(ing => stripHtml(ing));
+            }
 
-          if (hasHtmlInName) {
-            item.cleanedName = stripHtml(foodName);
+            itemsToFix.push(item);
           }
-          if (hasHtmlInBrand) {
-            item.cleanedBrand = stripHtml(brandName);
-          }
-          if (hasHtmlInIngredients) {
-            item.cleanedIngredients = ingredients.map(ing => stripHtml(ing));
-          }
-
-          itemsToFix.push(item);
         }
       }
+      console.log(`📊 Quick mode: Processed ${totalScanned} objects, found ${itemsToFix.length} with HTML`);
+    } else {
+      // FULL SCAN MODE: Browse entire index
+      let cursor: string | undefined;
+      let batchNumber = 0;
 
-      cursor = result.cursor;
+      do {
+        batchNumber++;
+        const browseParams: Record<string, unknown> = {
+          attributesToRetrieve: ['objectID', 'foodName', 'name', 'brandName', 'brand', 'ingredients', 'extractedIngredients'],
+          hitsPerPage: 1000,
+        };
 
-      if (batchNumber > 100) {
-        console.log('⚠️ Reached batch limit, stopping scan');
-        break;
-      }
-    } while (cursor);
+        if (cursor) {
+          browseParams.cursor = cursor;
+        }
+
+        const result = await client.browse({ indexName, browseParams });
+        const hits = (result.hits || []) as Record<string, unknown>[];
+        totalScanned += hits.length;
+
+        console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records`);
+
+        for (const food of hits) {
+          const foodName = (food.foodName as string) || (food.name as string) || '';
+          const brandName = (food.brandName as string) || (food.brand as string) || '';
+          const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
+          const ingredientText = ingredients.join(' ');
+
+          const hasHtmlInName = containsHtml(foodName);
+          const hasHtmlInBrand = containsHtml(brandName);
+          const hasHtmlInIngredients = containsHtml(ingredientText);
+
+          if (hasHtmlInName || hasHtmlInBrand || hasHtmlInIngredients) {
+            const htmlFound: string[] = [];
+            if (hasHtmlInName) htmlFound.push('name');
+            if (hasHtmlInBrand) htmlFound.push('brand');
+            if (hasHtmlInIngredients) htmlFound.push('ingredients');
+
+            const item: {
+              objectID: string;
+              foodName: string;
+              cleanedName?: string;
+              cleanedBrand?: string;
+              cleanedIngredients?: string[];
+              htmlFound: string[];
+            } = {
+              objectID: food.objectID as string,
+              foodName,
+              htmlFound,
+            };
+
+            if (hasHtmlInName) {
+              item.cleanedName = stripHtml(foodName);
+            }
+            if (hasHtmlInBrand) {
+              item.cleanedBrand = stripHtml(brandName);
+            }
+            if (hasHtmlInIngredients) {
+              item.cleanedIngredients = ingredients.map(ing => stripHtml(ing));
+            }
+
+            itemsToFix.push(item);
+          }
+        }
+
+        cursor = result.cursor;
+
+        if (batchNumber > 100) {
+          console.log('⚠️ Reached batch limit, stopping scan');
+          break;
+        }
+      } while (cursor);
+    }
 
     console.log(`📊 Found ${itemsToFix.length} items with HTML code out of ${totalScanned} scanned`);
 

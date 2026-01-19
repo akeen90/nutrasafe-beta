@@ -2,7 +2,7 @@
 //  OnboardingView.swift
 //  NutraSafe Beta
 //
-//  Lean 3-page onboarding: Welcome → Permissions → Disclaimer/Email
+//  Lean 4-page onboarding: Welcome → Profile → Permissions → Disclaimer/Email
 //
 
 import SwiftUI
@@ -13,7 +13,7 @@ struct OnboardingView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var currentPage = 0
     @State private var emailMarketingConsent = false
-    let totalPages = 3
+    let totalPages = 4
     let onComplete: (Bool) -> Void
 
     var body: some View {
@@ -31,14 +31,19 @@ struct OnboardingView: View {
                             onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } }
                         )
                     case 1:
-                        LeanPermissionsPage(
+                        LeanProfilePage(
                             onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 0 } },
                             onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 2 } }
                         )
                     case 2:
+                        LeanPermissionsPage(
+                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } },
+                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 3 } }
+                        )
+                    case 3:
                         LeanDisclaimerPage(
                             emailMarketingConsent: $emailMarketingConsent,
-                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } },
+                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 2 } },
                             onComplete: {
                                 OnboardingManager.shared.acceptDisclaimer()
                                 OnboardingManager.shared.completeOnboarding()
@@ -76,8 +81,9 @@ struct OnboardingView: View {
     private func onboardingStepName(_ page: Int) -> String {
         switch page {
         case 0: return "Welcome"
-        case 1: return "Permissions"
-        case 2: return "Disclaimer"
+        case 1: return "Profile"
+        case 2: return "Permissions"
+        case 3: return "Disclaimer"
         default: return "Unknown"
         }
     }
@@ -193,6 +199,226 @@ struct FeatureRow: View {
         .padding(14)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(14)
+    }
+}
+
+// MARK: - Page 2: Profile (Gender & Birthday)
+struct LeanProfilePage: View {
+    @Environment(\.colorScheme) var colorScheme
+    let onBack: () -> Void
+    let onContinue: () -> Void
+
+    @State private var selectedGender: UserGender = OnboardingManager.shared.userGender
+    @State private var selectedBirthday: Date = OnboardingManager.shared.userBirthday ?? Calendar.current.date(byAdding: .year, value: -30, to: Date())!
+    @State private var hasBirthdayBeenSet = OnboardingManager.shared.userBirthday != nil
+
+    // Date range for birthday picker (ages 13 to 120)
+    private var dateRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let minAge = calendar.date(byAdding: .year, value: -120, to: Date())!
+        let maxAge = calendar.date(byAdding: .year, value: -13, to: Date())!
+        return minAge...maxAge
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 30)
+
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.purple)
+                            .padding(.bottom, 8)
+
+                        Text("About You")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("Help us personalise your nutrition goals")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                    }
+
+                    // Gender Selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "figure.stand.dress.line.vertical.figure")
+                                .font(.system(size: 16))
+                                .foregroundColor(.purple)
+                            Text("Gender")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.horizontal, 4)
+
+                        VStack(spacing: 8) {
+                            ForEach([UserGender.male, .female, .other], id: \.self) { gender in
+                                GenderSelectionButton(
+                                    gender: gender,
+                                    isSelected: selectedGender == gender,
+                                    onSelect: { selectedGender = gender }
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+
+                    // Birthday Selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "birthday.cake.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+                            Text("Birthday")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.horizontal, 4)
+
+                        VStack(spacing: 8) {
+                            DatePicker(
+                                "Select your birthday",
+                                selection: $selectedBirthday,
+                                in: dateRange,
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(12)
+                            .onChange(of: selectedBirthday) { _, _ in
+                                hasBirthdayBeenSet = true
+                            }
+
+                            // Show calculated age
+                            if hasBirthdayBeenSet {
+                                let age = calculateAge(from: selectedBirthday)
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.green)
+                                    Text("\(age) years old")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+
+                    // Why we need this info
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+
+                        Text("Used for personalised nutrition recommendations. You can change this in Settings.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+
+                    Spacer().frame(height: 20)
+                }
+            }
+
+            // Navigation
+            HStack(spacing: 12) {
+                Button(action: onBack) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                }
+
+                Button(action: {
+                    // Save selections
+                    OnboardingManager.shared.saveGender(selectedGender)
+                    if hasBirthdayBeenSet {
+                        OnboardingManager.shared.saveBirthday(selectedBirthday)
+                    }
+                    onContinue()
+                }) {
+                    Text("Continue")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
+        }
+    }
+
+    private func calculateAge(from date: Date) -> Int {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: date, to: Date())
+        return ageComponents.year ?? 0
+    }
+}
+
+// MARK: - Gender Selection Button
+struct GenderSelectionButton: View {
+    @Environment(\.colorScheme) var colorScheme
+    let gender: UserGender
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 14) {
+                Image(systemName: gender.icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(isSelected ? .white : .purple)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        isSelected
+                            ? Color.purple
+                            : Color.purple.opacity(colorScheme == .dark ? 0.2 : 0.12)
+                    )
+                    .cornerRadius(12)
+
+                Text(gender.displayName)
+                    .font(.system(size: 16, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.purple)
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(.secondarySystemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

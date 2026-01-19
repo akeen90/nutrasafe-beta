@@ -92,6 +92,7 @@ struct UseByTabView: View {
     @State private var showingScanner = false
     @State private var showingCamera = false
     @State private var showingAddSheet = false
+    @State private var showingManualAddDirect = false  // Direct manual add (bypasses search sheet)
     @State private var showingPaywall = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
 
@@ -167,8 +168,8 @@ struct UseByTabView: View {
                     .strokeBorder(isSearchFieldFocused ? Color.orange.opacity(0.5) : Color(.systemGray4), lineWidth: 1)
             )
 
-            // Manual add option - show when focused or has search query
-            if isSearchExpanded || !searchQuery.isEmpty {
+            // Manual add option - show when focused (tapped into search) or has search query
+            if isSearchFieldFocused || isSearchExpanded || !searchQuery.isEmpty {
                 manualAddButton
             }
         }
@@ -269,6 +270,13 @@ struct UseByTabView: View {
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddUseByItemSheet(onComplete: {
                 showingAddSheet = false
+            })
+        }
+        .fullScreenCover(isPresented: $showingManualAddDirect) {
+            // Direct manual add - skip the search/manual tab sheet
+            // Note: UseByItemDetailView already has its own NavigationView, don't wrap again
+            UseByItemDetailView(item: nil, onComplete: {
+                showingManualAddDirect = false
             })
         }
         .fullScreenCover(isPresented: $showingPaywall) {
@@ -403,13 +411,13 @@ struct UseByTabView: View {
 
     private var manualAddButton: some View {
         Button(action: {
-            // Close search and open manual add sheet
+            // Close search and open manual add directly (no intermediate sheet)
             withAnimation(.easeInOut(duration: 0.2)) {
                 isSearchExpanded = false
                 searchQuery = ""
                 searchResults = []
             }
-            showingAddSheet = true
+            showingManualAddDirect = true
         }) {
             HStack(spacing: 10) {
                 Image(systemName: "square.and.pencil")
@@ -455,7 +463,8 @@ struct UseByTabView: View {
         isSearching = true
 
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+            // Reduced debounce for faster response (150ms instead of 300ms)
+            try? await Task.sleep(nanoseconds: 150_000_000)
 
             guard !Task.isCancelled else { return }
 
@@ -781,16 +790,40 @@ struct AddFoundFoodToUseBySheet: View {
     private func save() async {
         guard !isSaving else { return }
 
-        // Generate ID for new item
         let itemId = UUID().uuidString
-
-        // Capture data for background task
         let foodName = food.name
         let foodBrand = food.brand
         let expiry = expiryDate
         let image = capturedImage
 
-        // Dismiss immediately for instant UX - disable animation for seamless transition
+        // ✅ STEP 1: Save image to LOCAL CACHE FIRST (before anything else)
+        if let image = image {
+            do {
+                try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
+                print("📸 [AddFoundFood] Image cached locally for item: \(itemId)")
+            } catch {
+                print("📸 [AddFoundFood] Failed to cache image: \(error)")
+            }
+        }
+
+        // ✅ STEP 2: Create item and add to local data manager
+        let item = UseByInventoryItem(
+            id: itemId,
+            name: foodName,
+            brand: foodBrand,
+            quantity: "1",
+            expiryDate: expiry,
+            addedDate: Date(),
+            imageURL: nil  // Will be updated after Firebase upload
+        )
+
+        await MainActor.run {
+            UseByDataManager.shared.items.append(item)
+            UseByDataManager.shared.items.sort { $0.expiryDate < $1.expiryDate }
+            NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+        }
+
+        // ✅ STEP 3: Dismiss immediately (image is already in cache)
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
@@ -798,44 +831,44 @@ struct AddFoundFoodToUseBySheet: View {
         }
         onComplete?(.useBy)
 
-        // Save in background - don't block UI
+        // ✅ STEP 4: Save to Firebase in background
         Task.detached(priority: .userInitiated) {
-            // Save image locally first if we have one
-            var firebaseURL: String? = nil
-            if let image = image {
-                do {
-                    try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                } catch {
-                    // Image caching failed - continue without local cache
-                }
-
-                // Upload to Firebase in background for backup/sync
-                do {
-                    let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                    firebaseURL = url
-                } catch {
-                    // Upload failed - item will be saved without image URL
-                }
-            }
-
-            let item = UseByInventoryItem(
-                id: itemId,
-                name: foodName,
-                brand: foodBrand,
-                quantity: "1",
-                expiryDate: expiry,
-                addedDate: Date(),
-                imageURL: firebaseURL
-            )
-
+            // Save item to Firebase
             do {
                 try await FirebaseManager.shared.addUseByItem(item)
-                await MainActor.run {
-                    NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-                }
+                print("💾 [AddFoundFood] Item saved to Firebase!")
             } catch {
-                // Silent failure - item may need to be re-added
-                // Could implement retry logic or local queue here
+                print("💾 [AddFoundFood] Failed to save item: \(error)")
+            }
+
+            // Upload image to Firebase for backup/sync
+            if let image = image {
+                do {
+                    let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
+                    print("📸 [AddFoundFood] Image uploaded! URL: \(url)")
+
+                    // Update item with URL
+                    let updatedItem = UseByInventoryItem(
+                        id: itemId,
+                        name: foodName,
+                        brand: foodBrand,
+                        quantity: "1",
+                        expiryDate: expiry,
+                        addedDate: Date(),
+                        imageURL: url
+                    )
+
+                    try await FirebaseManager.shared.updateUseByItem(updatedItem)
+
+                    // Update local data
+                    await MainActor.run {
+                        if let index = UseByDataManager.shared.items.firstIndex(where: { $0.id == itemId }) {
+                            UseByDataManager.shared.items[index] = updatedItem
+                        }
+                    }
+                } catch {
+                    print("📸 [AddFoundFood] Failed to upload image: \(error)")
+                }
             }
         }
     }
@@ -980,54 +1013,55 @@ struct UseByExpiryView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        // Empty state without full-frame expansion so it works in ScrollView
+        VStack(spacing: 24) {
+            AnimatedFridgeIcon()
+                .frame(width: 160, height: 160)
+                .padding(.top, 40)
 
-            VStack(spacing: 24) {
-                AnimatedFridgeIcon()
-                    .frame(width: 200, height: 200)
+            VStack(spacing: 12) {
+                Text("No items yet")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.primary)
 
-                VStack(spacing: 12) {
-                    Text("No items yet")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    Text("Never forget your food again. Add items to keep track of use-by dates.")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(4)
-                        .padding(.horizontal, 40)
-                }
+                Text("Use the search bar above to find foods, or add items manually.")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 32)
             }
-
-            Spacer()
 
             Button(action: {
                 showingAddSheet = true
             }) {
-                Text("Add Your First Item")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 1.0, green: 0.7, blue: 0.5),
-                                Color(red: 1.0, green: 0.6, blue: 0.7),
-                                Color(red: 0.7, green: 0.6, blue: 1.0)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                HStack(spacing: 10) {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("Add Manually")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.7, blue: 0.5),
+                            Color(red: 1.0, green: 0.6, blue: 0.7),
+                            Color(red: 0.7, green: 0.6, blue: 1.0)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
                     )
-                    .cornerRadius(28)
+                )
+                .cornerRadius(24)
             }
             .padding(.horizontal, 32)
-            .padding(.bottom, 60)
+            .padding(.bottom, 20)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
     }
 
     var body: some View {
@@ -3327,244 +3361,312 @@ struct UseByFoodDetailSheet: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    // Top Product Card with Freshness Indicator
-                    HStack(spacing: 16) {
-                        // Freshness Indicator
-                        FreshnessIndicatorView(
-                            freshnessScore: freshnessScore,
-                            freshnessColor: freshnessColor,
-                            freshnessEmoji: freshnessEmoji,
-                            freshnessLabel: freshnessLabel,
-                            daysLeft: daysLeft,
-                            pulseAnimation: .constant(false)
-                        )
+            ZStack {
+                // Background
+                (colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
+                    .ignoresSafeArea()
 
-                        // Product Info
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(food.name)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.primary)
+                VStack(spacing: 0) {
+                    // Scrollable content
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            // Compact Header Card with Freshness + Name
+                            VStack(spacing: 0) {
+                                // Freshness bar at top
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(Color.gray.opacity(0.2))
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(
+                                                LinearGradient(
+                                                    colors: [freshnessColor, freshnessColor.opacity(0.7)],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                )
+                                            )
+                                            .frame(width: geo.size.width * CGFloat(freshnessScore))
+                                    }
+                                }
+                                .frame(height: 6)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
 
-                            if let brand = food.brand, !brand.isEmpty {
-                                Text(brand)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                            }
+                                HStack(spacing: 14) {
+                                    // Compact freshness circle
+                                    ZStack {
+                                        Circle()
+                                            .fill(freshnessColor.opacity(0.15))
+                                            .frame(width: 56, height: 56)
+                                        Text(freshnessEmoji)
+                                            .font(.system(size: 24))
+                                    }
 
-                            HStack(spacing: 12) {
-                                Label(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day" : "\(daysLeft) days"), systemImage: "calendar")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(freshnessColor)
-                            }
-                            .padding(.top, 4)
-                        }
+                                    // Name and info
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(food.name)
+                                            .font(.system(size: 18, weight: .bold))
+                                            .foregroundColor(.primary)
+                                            .lineLimit(2)
 
-                        Spacer()
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
-                    )
-
-                    // Smart Recommendation Card
-                    HStack {
-                        Image(systemName: "lightbulb.fill")
-                            .foregroundColor(.yellow)
-                            .font(.system(size: 16))
-                        Text(smartRecommendation)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.primary)
-                        Spacer()
-                    }
-                    .padding(16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.yellow.opacity(0.1))
-                    )
-
-                    // Expiry Date Section
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("EXPIRY DATE", systemImage: "calendar.badge.clock")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        // Mode Selector
-                        SegmentedContainer {
-                            Picker("", selection: $expiryMode) {
-                                Text("Calendar").tag(ExpiryMode.calendar)
-                                Text("Select").tag(ExpiryMode.selector)
-                            }
-                            .pickerStyle(.segmented)
-                        }
-
-                        if expiryMode == .calendar {
-                            DatePicker("", selection: $expiryDate, displayedComponents: .date)
-                                .datePickerStyle(.graphical)
-                                .labelsHidden()
-                        } else {
-                            // Selector Mode
-                            HStack(spacing: 12) {
-                                // Amount stepper
-                                HStack {
-                                    Button(action: {
-                                        if expiryAmount > 1 {
-                                            expiryAmount -= 1
+                                        if let brand = food.brand, !brand.isEmpty {
+                                            Text(brand)
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.secondary)
                                         }
-                                    }) {
-                                        Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 32))
-                                            .foregroundColor(.blue)
+
+                                        // Days badge
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "clock.fill")
+                                                .font(.system(size: 10))
+                                            Text(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day!" : "\(daysLeft) days left"))
+                                                .font(.system(size: 12, weight: .semibold))
+                                        }
+                                        .foregroundColor(freshnessColor)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(freshnessColor.opacity(0.12))
+                                        .cornerRadius(6)
                                     }
 
-                                    Text("\(expiryAmount)")
-                                        .font(.system(size: 28, weight: .bold))
-                                        .frame(minWidth: 50)
-
-                                    Button(action: {
-                                        expiryAmount += 1
-                                    }) {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 32))
-                                            .foregroundColor(.blue)
-                                    }
+                                    Spacer()
                                 }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
 
-                                // Unit picker
-                                Picker("", selection: $expiryUnit) {
-                                    ForEach(ExpiryUnit.allCases, id: \.self) { unit in
-                                        Text(unit.rawValue).tag(unit)
-                                    }
+                                // Smart tip
+                                HStack(spacing: 8) {
+                                    Image(systemName: "lightbulb.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.yellow)
+                                    Text(smartRecommendation)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
                                 }
-                                .pickerStyle(.segmented)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 12)
                             }
-                            .padding(.vertical, 8)
-
-                            Text("Expires: \(calculatedExpiryDate, style: .date)")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                        }
-                    }
-                    .padding(16)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
-
-                    // Notes Section
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("NOTES", systemImage: "note.text")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        TextEditor(text: $notes)
-                            .frame(height: 100)
-                            .padding(8)
-                            .background(Color(.tertiarySystemBackground))
-                            .cornerRadius(8)
-                            .overlay(
-                                Group {
-                                    if notes.isEmpty {
-                                        Text("Add notes about this item...")
-                                            .foregroundColor(.secondary)
-                                            .font(.system(size: 14))
-                                            .padding(.leading, 12)
-                                            .padding(.top, 16)
-                                            .allowsHitTesting(false)
-                                    }
-                                },
-                                alignment: .topLeading
-                            )
-                    }
-                    .padding(16)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
-
-                    // Photo Section
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("PHOTO", systemImage: "camera.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        if let displayImage = capturedImage {
-                            ZStack(alignment: .topTrailing) {
-                                Image(uiImage: displayImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(height: 200)
-                                    .clipped()
-                                    .cornerRadius(12)
-
-                                Button(action: {
-                                    capturedImage = nil
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.white)
-                                        .background(Circle().fill(Color.black.opacity(0.6)))
-                                }
-                                .padding(8)
-                            }
-                        }
-
-                        Button(action: { showPhotoActionSheet = true }) {
-                            HStack {
-                                if isUploadingPhoto {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Image(systemName: capturedImage != nil ? "camera.fill" : "camera")
-                                    Text(capturedImage != nil ? "Change Photo" : "Add Photo")
-                                }
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.blue)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
                             .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.blue.opacity(0.1))
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                             )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .disabled(isUploadingPhoto)
-                    }
-                    .padding(16)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
 
-                    // Save Button
-                    Button(action: saveToUseBy) {
-                        HStack {
-                            if isSaving {
-                                ProgressView()
-                                    .progressViewStyle(.circular)
-                                    .tint(.white)
-                            } else {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 16))
-                                Text("Add to Use By")
-                                    .font(.system(size: 16, weight: .semibold))
+                            // Expiry Date Section - Compact
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.orange)
+                                    Text("Expiry Date")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+
+                                // Mode toggle
+                                HStack(spacing: 8) {
+                                    ForEach([("calendar", "Date", ExpiryMode.calendar), ("slider.horizontal.3", "Quick", ExpiryMode.selector)], id: \.1) { icon, label, mode in
+                                        Button(action: { expiryMode = mode }) {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: icon)
+                                                    .font(.system(size: 12))
+                                                Text(label)
+                                                    .font(.system(size: 12, weight: .medium))
+                                            }
+                                            .foregroundColor(expiryMode == mode ? .white : .primary)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(
+                                                Capsule()
+                                                    .fill(expiryMode == mode ? Color.orange : Color.gray.opacity(0.15))
+                                            )
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                    Spacer()
+                                }
+
+                                if expiryMode == .calendar {
+                                    DatePicker("", selection: $expiryDate, displayedComponents: .date)
+                                        .datePickerStyle(.compact)
+                                        .labelsHidden()
+                                        .padding(8)
+                                        .background(Color.gray.opacity(0.1))
+                                        .cornerRadius(10)
+                                } else {
+                                    // Quick selector
+                                    HStack(spacing: 8) {
+                                        HStack(spacing: 0) {
+                                            Button(action: { if expiryAmount > 1 { expiryAmount -= 1 } }) {
+                                                Image(systemName: "minus")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundColor(.orange)
+                                                    .frame(width: 36, height: 36)
+                                            }
+                                            Text("\(expiryAmount)")
+                                                .font(.system(size: 18, weight: .bold))
+                                                .frame(minWidth: 36)
+                                            Button(action: { expiryAmount += 1 }) {
+                                                Image(systemName: "plus")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundColor(.orange)
+                                                    .frame(width: 36, height: 36)
+                                            }
+                                        }
+                                        .background(Color.gray.opacity(0.1))
+                                        .cornerRadius(10)
+
+                                        ForEach(ExpiryUnit.allCases, id: \.self) { unit in
+                                            Button(action: { expiryUnit = unit }) {
+                                                Text(unit.rawValue)
+                                                    .font(.system(size: 13, weight: .medium))
+                                                    .foregroundColor(expiryUnit == unit ? .white : .primary)
+                                                    .padding(.horizontal, 14)
+                                                    .padding(.vertical, 10)
+                                                    .background(
+                                                        Capsule()
+                                                            .fill(expiryUnit == unit ? Color.orange : Color.gray.opacity(0.15))
+                                                    )
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        }
+                                        Spacer()
+                                    }
+
+                                    Text("Expires: \(calculatedExpiryDate, style: .date)")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                }
                             }
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.blue, Color.purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                             )
-                        )
-                        .cornerRadius(12)
+
+                            // Notes + Photo side by side
+                            HStack(spacing: 10) {
+                                // Notes (compact)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Image(systemName: "note.text")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.blue)
+                                        Text("Notes")
+                                            .font(.system(size: 13, weight: .semibold))
+                                    }
+
+                                    ZStack(alignment: .topLeading) {
+                                        TextEditor(text: $notes)
+                                            .font(.system(size: 13))
+                                            .frame(height: 60)
+                                            .scrollContentBackground(.hidden)
+                                            .background(Color.gray.opacity(0.1))
+                                            .cornerRadius(8)
+
+                                        if notes.isEmpty {
+                                            Text("Add notes...")
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 6)
+                                                .padding(.top, 8)
+                                                .allowsHitTesting(false)
+                                        }
+                                    }
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+                                )
+
+                                // Photo (compact)
+                                VStack(spacing: 6) {
+                                    if let displayImage = capturedImage {
+                                        ZStack(alignment: .topTrailing) {
+                                            Image(uiImage: displayImage)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 80, height: 80)
+                                                .clipped()
+                                                .cornerRadius(10)
+
+                                            Button(action: { capturedImage = nil }) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.system(size: 18))
+                                                    .foregroundColor(.white)
+                                                    .background(Circle().fill(Color.black.opacity(0.5)))
+                                            }
+                                            .offset(x: 4, y: -4)
+                                        }
+                                    } else {
+                                        Button(action: { showPhotoActionSheet = true }) {
+                                            VStack(spacing: 6) {
+                                                Image(systemName: "camera.fill")
+                                                    .font(.system(size: 20))
+                                                    .foregroundColor(.blue)
+                                                Text("Photo")
+                                                    .font(.system(size: 11, weight: .medium))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .frame(width: 80, height: 80)
+                                            .background(Color.gray.opacity(0.1))
+                                            .cornerRadius(10)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+                                )
+                            }
+
+                            // Bottom spacer for fixed button
+                            Spacer().frame(height: 80)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
                     }
-                    .disabled(isSaving || food.name.isEmpty)
-                    .opacity((isSaving || food.name.isEmpty) ? 0.6 : 1.0)
+
+                    // Fixed bottom button
+                    VStack(spacing: 0) {
+                        Divider()
+                        Button(action: saveToUseBy) {
+                            HStack(spacing: 8) {
+                                if isSaving {
+                                    ProgressView()
+                                        .progressViewStyle(.circular)
+                                        .tint(.white)
+                                        .scaleEffect(0.9)
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 16))
+                                    Text("Add to Use By")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(14)
+                        }
+                        .disabled(isSaving || food.name.isEmpty)
+                        .opacity((isSaving || food.name.isEmpty) ? 0.6 : 1.0)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3575,7 +3677,6 @@ struct UseByFoodDetailSheet: View {
                 }
             }
         }
-        .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
             Button("Take Photo") {
                 showCameraPicker = true
@@ -3613,61 +3714,106 @@ struct UseByFoodDetailSheet: View {
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
 
+        let finalExpiryDate = expiryMode == .selector ? calculatedExpiryDate : expiryDate
+        let itemId = UUID().uuidString
+        let imageToUpload = capturedImage
+        let notesText = notes.isEmpty ? nil : notes
+        let foodName = food.name
+        let foodBrand = food.brand
+        let foodQuantity = quantity
+
+        // Create item immediately without waiting for photo upload
+        let newItem = UseByInventoryItem(
+            id: itemId,
+            name: foodName,
+            brand: foodBrand,
+            quantity: foodQuantity,
+            expiryDate: finalExpiryDate,
+            addedDate: Date(),
+            barcode: nil,
+            category: nil,
+            imageURL: nil,  // Will be updated in background
+            notes: notesText
+        )
+
+        // Main save task
         Task {
+            // ✅ STEP 1: Save photo to LOCAL CACHE FIRST (before adding to list)
+            // This ensures CachedUseByImage will find the image immediately
+            if let image = imageToUpload {
+                print("📸 [UseBy] Saving image to local cache FIRST for item: \(itemId)")
+                do {
+                    try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
+                    print("📸 [UseBy] Image cached locally - will be visible immediately!")
+                } catch {
+                    print("📸 [UseBy] Failed to cache image: \(error)")
+                }
+            }
+
+            // ✅ STEP 2: Add to local data manager (image is now in cache)
+            await MainActor.run {
+                UseByDataManager.shared.items.append(newItem)
+                UseByDataManager.shared.items.sort { $0.expiryDate < $1.expiryDate }
+                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+            }
+
+            // ✅ STEP 3: Success feedback and dismiss immediately
+            await MainActor.run {
+                isSaving = false
+                let successFeedback = UINotificationFeedbackGenerator()
+                successFeedback.notificationOccurred(.success)
+                dismiss()
+                onComplete?()
+            }
+
+            // ✅ STEP 4: Save to Firebase in background (item first, then photo)
             do {
-                let finalExpiryDate = expiryMode == .selector ? calculatedExpiryDate : expiryDate
-                let itemId = UUID().uuidString
-
-                // Handle image caching and upload
-                var firebaseURL: String? = nil
-                if let image = capturedImage {
-                    // Save to local cache
-                    do {
-                        try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                    } catch {
-                        // Continue without caching
-                    }
-
-                    // Upload to Firebase for backup/sync
-                    do {
-                        let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                        firebaseURL = url
-                    } catch {
-                        // Continue without upload
-                    }
-                }
-
-                let newItem = UseByInventoryItem(
-                    id: itemId,
-                    name: food.name,
-                    brand: food.brand,
-                    quantity: quantity,
-                    expiryDate: finalExpiryDate,
-                    addedDate: Date(),
-                    barcode: nil,
-                    category: nil,
-                    imageURL: firebaseURL,
-                    notes: notes.isEmpty ? nil : notes
-                )
-
+                print("💾 [UseBy] Saving item to Firebase: \(itemId)")
                 try await FirebaseManager.shared.addUseByItem(newItem)
-                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
-
-                await MainActor.run {
-                    // Notify Use By tab to refresh
-                    NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-                    isSaving = false
-
-                    // Success haptic
-                    let successFeedback = UINotificationFeedbackGenerator()
-                    successFeedback.notificationOccurred(.success)
-
-                    dismiss()
-                    onComplete?()
-                }
+                print("💾 [UseBy] Item saved to Firebase!")
             } catch {
-                await MainActor.run {
-                    isSaving = false
+                print("💾 [UseBy] Failed to save item to Firebase: \(error)")
+            }
+
+            // Schedule notifications in background
+            Task.detached(priority: .background) {
+                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
+            }
+
+            // ✅ STEP 5: Upload photo to Firebase in background (truly background now)
+            if let image = imageToUpload {
+                Task.detached(priority: .utility) {
+                    do {
+                        print("📸 [UseBy] Uploading image to Firebase...")
+                        let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
+                        print("📸 [UseBy] Image uploaded! URL: \(url)")
+
+                        // Update item with image URL
+                        let updatedItem = UseByInventoryItem(
+                            id: itemId,
+                            name: foodName,
+                            brand: foodBrand,
+                            quantity: foodQuantity,
+                            expiryDate: finalExpiryDate,
+                            addedDate: Date(),
+                            barcode: nil,
+                            category: nil,
+                            imageURL: url,
+                            notes: notesText
+                        )
+
+                        try await FirebaseManager.shared.updateUseByItem(updatedItem)
+                        print("📸 [UseBy] Firebase updated with image URL!")
+
+                        // Update local data manager for future sessions
+                        await MainActor.run {
+                            if let index = UseByDataManager.shared.items.firstIndex(where: { $0.id == itemId }) {
+                                UseByDataManager.shared.items[index] = updatedItem
+                            }
+                        }
+                    } catch {
+                        print("📸 [UseBy] Failed to upload image to Firebase: \(error)")
+                    }
                 }
             }
         }
@@ -3811,329 +3957,382 @@ struct UseByItemDetailView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    // Top Product Card - Horizontal Layout
-                    HStack(spacing: 16) {
-                        // Freshness Indicator
-                        FreshnessIndicatorView(
-                            freshnessScore: freshnessScore,
-                            freshnessColor: freshnessColor,
-                            freshnessEmoji: freshnessEmoji,
-                            freshnessLabel: freshnessLabel,
-                            daysLeft: daysLeft,
-                            pulseAnimation: $pulseAnimation
-                        )
+            ZStack {
+                // Background
+                (colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
+                    .ignoresSafeArea()
 
-                        // Product Info
-                        VStack(alignment: .leading, spacing: 6) {
-                            if isAddMode {
-                                TextField("Item name", text: $editedName)
-                                    .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(.primary)
-
-                                TextField("Brand (optional)", text: $editedBrand)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                            } else {
-                                Text(itemName)
-                                    .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(.primary)
-
-                                if let brand = brand, !brand.isEmpty {
-                                    Text(brand)
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-
-                            HStack(spacing: 12) {
-                                Label(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day" : "\(daysLeft) days"), systemImage: "calendar")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(freshnessColor)
-                            }
-                            .padding(.top, 4)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                    )
-                    .scaleEffect(animateIn ? 1 : 0.95)
-                    .opacity(animateIn ? 1 : 0)
-
-                    // Smart Recommendation Card
-                    HStack {
-                        Image(systemName: "lightbulb.fill")
-                            .foregroundColor(.yellow)
-                            .font(.system(size: 16))
-                        Text(smartRecommendation)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.primary)
-                        Spacer()
-                    }
-                    .padding(16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.yellow.opacity(0.1))
-                    )
-                    .scaleEffect(animateIn ? 1 : 0.95)
-                    .opacity(animateIn ? 1 : 0)
-                    .animation(.spring(response: 0.5).delay(0.05), value: animateIn)
-
-                    // Expiry Management Section
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("EXPIRY DATE", systemImage: "calendar.badge.clock")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        if isAddMode {
-                            // Full selector interface for new items
-                            // Mode Selector
-                            SegmentedContainer {
-                                Picker("", selection: $expiryMode) {
-                                    Text("Calendar").tag(ExpiryMode.calendar)
-                                    Text("Select").tag(ExpiryMode.selector)
-                                }
-                                .pickerStyle(.segmented)
-                            }
-
-                            if expiryMode == .calendar {
-                                Button(action: { showDatePicker.toggle() }) {
-                                    HStack {
-                                        Text(editedExpiryDate, style: .date)
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.secondary)
+                VStack(spacing: 0) {
+                    // Scrollable content
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            // Compact Header Card with Freshness + Name
+                            VStack(spacing: 0) {
+                                // Freshness bar at top
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(Color.gray.opacity(0.2))
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(
+                                                LinearGradient(
+                                                    colors: [freshnessColor, freshnessColor.opacity(0.7)],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                )
+                                            )
+                                            .frame(width: geo.size.width * CGFloat(freshnessScore))
                                     }
-                                    .padding()
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
-                                    )
                                 }
-                                .buttonStyle(PlainButtonStyle())
-                            } else {
-                                // Days/Weeks Selector
-                                HStack(spacing: 6) {
-                                    // Amount picker
-                                    HStack {
-                                        Button(action: { if expiryAmount > 0 { expiryAmount -= 1 } }) {
-                                            Image(systemName: "minus.circle.fill")
-                                                .font(.system(size: 24))
-                                                .foregroundColor(.blue)
-                                        }
+                                .frame(height: 6)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
 
-                                        Text("\(expiryAmount)")
-                                            .font(.system(size: 20, weight: .semibold))
-                                            .frame(minWidth: 40)
-
-                                        Button(action: { if expiryAmount < 365 { expiryAmount += 1 } }) {
-                                            Image(systemName: "plus.circle.fill")
-                                                .font(.system(size: 24))
-                                                .foregroundColor(.blue)
-                                        }
+                                HStack(spacing: 14) {
+                                    // Compact freshness circle
+                                    ZStack {
+                                        Circle()
+                                            .fill(freshnessColor.opacity(0.15))
+                                            .frame(width: 56, height: 56)
+                                        Text(freshnessEmoji)
+                                            .font(.system(size: 24))
                                     }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
-                                    )
 
-                                    // Unit picker wrapped for consistency
-                                    SegmentedContainer {
-                                        Picker("", selection: $expiryUnit) {
-                                            ForEach(ExpiryUnit.allCases, id: \.self) { unit in
-                                                Text(unit.rawValue).tag(unit)
+                                    // Name and info
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        if isAddMode {
+                                            TextField("Item name", text: $editedName)
+                                                .font(.system(size: 18, weight: .bold))
+                                                .foregroundColor(.primary)
+                                            TextField("Brand (optional)", text: $editedBrand)
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.secondary)
+                                        } else {
+                                            Text(itemName)
+                                                .font(.system(size: 18, weight: .bold))
+                                                .foregroundColor(.primary)
+                                                .lineLimit(2)
+                                            if let brand = brand, !brand.isEmpty {
+                                                Text(brand)
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
                                             }
                                         }
-                                        .pickerStyle(.segmented)
-                                    }
-                                }
-                            }
-                        } else {
-                            // Simple display for existing items - tap to change via calendar
-                            Button(action: { showDatePicker.toggle() }) {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Text("Expiring on")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        Image(systemName: "calendar")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.blue)
+
+                                        // Days badge
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "clock.fill")
+                                                .font(.system(size: 10))
+                                            Text(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day!" : "\(daysLeft) days left"))
+                                                .font(.system(size: 12, weight: .semibold))
+                                        }
+                                        .foregroundColor(freshnessColor)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(freshnessColor.opacity(0.12))
+                                        .cornerRadius(6)
                                     }
 
-                                    Text(editedExpiryDate, style: .date)
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Spacer()
                                 }
-                                .padding()
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+
+                                // Smart tip
+                                HStack(spacing: 8) {
+                                    Image(systemName: "lightbulb.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.yellow)
+                                    Text(smartRecommendation)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 12)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+                            )
+                            .scaleEffect(animateIn ? 1 : 0.97)
+                            .opacity(animateIn ? 1 : 0)
+
+                            // Expiry Date Section - Compact
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.orange)
+                                    Text("Expiry Date")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+
+                                if isAddMode {
+                                    // Mode toggle
+                                    HStack(spacing: 8) {
+                                        ForEach([("calendar", "Date", ExpiryMode.calendar), ("slider.horizontal.3", "Quick", ExpiryMode.selector)], id: \.1) { icon, label, mode in
+                                            Button(action: { expiryMode = mode }) {
+                                                HStack(spacing: 4) {
+                                                    Image(systemName: icon)
+                                                        .font(.system(size: 12))
+                                                    Text(label)
+                                                        .font(.system(size: 12, weight: .medium))
+                                                }
+                                                .foregroundColor(expiryMode == mode ? .white : .primary)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 8)
+                                                .background(
+                                                    Capsule()
+                                                        .fill(expiryMode == mode ? Color.orange : Color.gray.opacity(0.15))
+                                                )
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        }
+                                        Spacer()
+                                    }
+
+                                    if expiryMode == .calendar {
+                                        Button(action: { showDatePicker.toggle() }) {
+                                            HStack {
+                                                Text(editedExpiryDate, style: .date)
+                                                    .font(.system(size: 15, weight: .medium))
+                                                    .foregroundColor(.primary)
+                                                Spacer()
+                                                Image(systemName: "chevron.right")
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(12)
+                                            .background(Color.gray.opacity(0.1))
+                                            .cornerRadius(10)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    } else {
+                                        // Quick selector
+                                        HStack(spacing: 8) {
+                                            HStack(spacing: 0) {
+                                                Button(action: { if expiryAmount > 0 { expiryAmount -= 1 } }) {
+                                                    Image(systemName: "minus")
+                                                        .font(.system(size: 14, weight: .bold))
+                                                        .foregroundColor(.orange)
+                                                        .frame(width: 36, height: 36)
+                                                }
+                                                Text("\(expiryAmount)")
+                                                    .font(.system(size: 18, weight: .bold))
+                                                    .frame(minWidth: 36)
+                                                Button(action: { if expiryAmount < 365 { expiryAmount += 1 } }) {
+                                                    Image(systemName: "plus")
+                                                        .font(.system(size: 14, weight: .bold))
+                                                        .foregroundColor(.orange)
+                                                        .frame(width: 36, height: 36)
+                                                }
+                                            }
+                                            .background(Color.gray.opacity(0.1))
+                                            .cornerRadius(10)
+
+                                            ForEach(ExpiryUnit.allCases, id: \.self) { unit in
+                                                Button(action: { expiryUnit = unit }) {
+                                                    Text(unit.rawValue)
+                                                        .font(.system(size: 13, weight: .medium))
+                                                        .foregroundColor(expiryUnit == unit ? .white : .primary)
+                                                        .padding(.horizontal, 14)
+                                                        .padding(.vertical, 10)
+                                                        .background(
+                                                            Capsule()
+                                                                .fill(expiryUnit == unit ? Color.orange : Color.gray.opacity(0.15))
+                                                        )
+                                                }
+                                                .buttonStyle(PlainButtonStyle())
+                                            }
+                                            Spacer()
+                                        }
+                                    }
+                                } else {
+                                    // Edit mode - simple date display
+                                    Button(action: { showDatePicker.toggle() }) {
+                                        HStack {
+                                            Text(editedExpiryDate, style: .date)
+                                                .font(.system(size: 15, weight: .medium))
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                            Text("Change")
+                                                .font(.system(size: 13, weight: .medium))
+                                                .foregroundColor(.orange)
+                                        }
+                                        .padding(12)
+                                        .background(Color.gray.opacity(0.1))
+                                        .cornerRadius(10)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+                            )
+                            .scaleEffect(animateIn ? 1 : 0.97)
+                            .opacity(animateIn ? 1 : 0)
+                            .animation(.spring(response: 0.5).delay(0.05), value: animateIn)
+
+                            // Notes + Photo in a row
+                            HStack(spacing: 10) {
+                                // Notes (compact)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Image(systemName: "note.text")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.blue)
+                                        Text("Notes")
+                                            .font(.system(size: 13, weight: .semibold))
+                                    }
+
+                                    ZStack(alignment: .topLeading) {
+                                        TextEditor(text: $notes)
+                                            .font(.system(size: 13))
+                                            .frame(height: 60)
+                                            .scrollContentBackground(.hidden)
+                                            .background(Color.gray.opacity(0.1))
+                                            .cornerRadius(8)
+
+                                        if notes.isEmpty {
+                                            Text("Add notes...")
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 6)
+                                                .padding(.top, 8)
+                                                .allowsHitTesting(false)
+                                        }
+                                    }
+                                }
+                                .padding(12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
+                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                                 )
+
+                                // Photo (compact)
+                                VStack(spacing: 6) {
+                                    if let displayImage = capturedImage ?? loadImageFromURL() {
+                                        ZStack(alignment: .topTrailing) {
+                                            Image(uiImage: displayImage)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 80, height: 80)
+                                                .clipped()
+                                                .cornerRadius(10)
+
+                                            Button(action: {
+                                                capturedImage = nil
+                                                uploadedImageURL = nil
+                                                Task { await deletePhotoOnly() }
+                                            }) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.system(size: 18))
+                                                    .foregroundColor(.white)
+                                                    .shadow(radius: 2)
+                                            }
+                                            .offset(x: 6, y: -6)
+                                        }
+                                    } else {
+                                        Button(action: { showPhotoActionSheet = true }) {
+                                            VStack(spacing: 6) {
+                                                Image(systemName: "camera.fill")
+                                                    .font(.system(size: 20))
+                                                    .foregroundColor(.blue)
+                                                Text("Photo")
+                                                    .font(.system(size: 11, weight: .medium))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .frame(width: 80, height: 80)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(10)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+                                )
+                            }
+                            .scaleEffect(animateIn ? 1 : 0.97)
+                            .opacity(animateIn ? 1 : 0)
+                            .animation(.spring(response: 0.5).delay(0.1), value: animateIn)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 100) // Space for fixed button
+                    }
+
+                    Spacer(minLength: 0)
+
+                    // Fixed bottom action button
+                    VStack(spacing: 0) {
+                        Divider()
+                        VStack(spacing: 10) {
+                            Button(action: { Task { await saveChanges() } }) {
+                                HStack(spacing: 8) {
+                                    if isSaving {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    } else {
+                                        Image(systemName: isAddMode ? "plus.circle.fill" : "checkmark.circle.fill")
+                                            .font(.system(size: 18))
+                                        Text(isAddMode ? "Add Item" : "Save Changes")
+                                            .font(.system(size: 16, weight: .semibold))
+                                    }
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    LinearGradient(
+                                        colors: (isAddMode && editedName.isEmpty) || isSaving
+                                            ? [Color.gray, Color.gray]
+                                            : [Color.orange, Color.orange.opacity(0.85)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(14)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .disabled(isSaving || (isAddMode && editedName.isEmpty))
+
+                            Button(action: { dismiss() }) {
+                                Text("Cancel")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                        .background(
+                            (colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
+                                .ignoresSafeArea(edges: .bottom)
+                        )
                     }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                    )
-                    .scaleEffect(animateIn ? 1 : 0.95)
-                    .opacity(animateIn ? 1 : 0)
-                    .animation(.spring(response: 0.5).delay(0.1), value: animateIn)
-
-
-                    // Notes Field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("NOTES", systemImage: "note.text")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        ZStack(alignment: .topLeading) {
-                            TextEditor(text: $notes)
-                                .font(.system(size: 14))
-                                .frame(minHeight: 80)
-                                .padding(4)
-                                .scrollContentBackground(.hidden)
-                                .background(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
-                                .cornerRadius(12)
-
-                            if notes.isEmpty {
-                                Text("Add notes about this item...")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 12)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                    )
-                    .scaleEffect(animateIn ? 1 : 0.95)
-                    .opacity(animateIn ? 1 : 0)
-                    .animation(.spring(response: 0.5).delay(0.2), value: animateIn)
-
-                    // Photo Section
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("PHOTO", systemImage: "camera.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        if let displayImage = capturedImage ?? loadImageFromURL() {
-                            ZStack(alignment: .topTrailing) {
-                                Image(uiImage: displayImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(height: 200)
-                                    .clipped()
-                                    .cornerRadius(12)
-
-                                Button(action: {
-                                    capturedImage = nil
-                                    uploadedImageURL = nil
-                                    Task { await deletePhotoOnly() }
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.white)
-                                        .background(Circle().fill(Color.black.opacity(0.6)))
-                                }
-                                .padding(8)
-                            }
-                        }
-
-                        Button(action: { showPhotoActionSheet = true }) {
-                            HStack {
-                                if isUploadingPhoto {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Image(systemName: capturedImage != nil || uploadedImageURL != nil ? "camera.fill" : "camera")
-                                    Text(capturedImage != nil || uploadedImageURL != nil ? "Change Photo" : "Add Photo")
-                                }
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.blue)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.blue.opacity(0.1))
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .disabled(isUploadingPhoto)
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                    )
-                    .scaleEffect(animateIn ? 1 : 0.95)
-                    .opacity(animateIn ? 1 : 0)
-                    .animation(.spring(response: 0.5).delay(0.225), value: animateIn)
-
-                    // Action Buttons
-                    VStack(spacing: 12) {
-                        Button(action: { Task { await saveChanges() } }) {
-                            HStack {
-                                if isSaving {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                    Text(isAddMode ? "Add Item" : "Save Changes")
-                                }
-                            }
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.blue)
-                            .cornerRadius(14)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .disabled(isSaving || (isAddMode && editedName.isEmpty))
-
-                        Button(action: { dismiss() }) {
-                            Text("Cancel")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.tertiarySystemBackground))
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .scaleEffect(animateIn ? 1 : 0.95)
-                    .opacity(animateIn ? 1 : 0)
-                    .animation(.spring(response: 0.5).delay(0.25), value: animateIn)
                 }
-                .padding()
             }
             .navigationTitle(isAddMode ? "Add Item" : "Manage Item")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .fullScreenCover(isPresented: $showDatePicker) {
@@ -4285,32 +4484,17 @@ struct UseByItemDetailView: View {
     private func saveChanges() async {
         isSaving = true
 
-        // Haptic feedback
+        // Haptic feedback immediately
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
 
         if isAddMode {
-            // Add mode: Create new item
-                        let itemId = UUID().uuidString
+            // Add mode: Create new item - FAST PATH
+            let itemId = UUID().uuidString
+            let imageToUpload = capturedImage
 
-            // Handle image caching and upload
-            var firebaseURL: String? = uploadedImageURL
-            if let image = capturedImage, uploadedImageURL == nil {
-                // Save to local cache
-                do {
-                    try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                                    } catch {
-                                    }
-
-                // Upload to Firebase for backup/sync
-                do {
-                    let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                                        firebaseURL = url
-                } catch {
-                                    }
-            }
-
+            // Create item immediately without waiting for photo upload
             let newItem = UseByInventoryItem(
                 id: itemId,
                 name: editedName,
@@ -4320,59 +4504,73 @@ struct UseByItemDetailView: View {
                 addedDate: Date(),
                 barcode: nil,
                 category: nil,
-                imageURL: firebaseURL,
+                imageURL: nil, // Will be updated in background if photo exists
                 notes: notes.isEmpty ? nil : notes
             )
 
             do {
+                // Save item to Firebase first (fast)
                 try await FirebaseManager.shared.addUseByItem(newItem)
-                                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
-                                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
 
+                // Update local data manager immediately
+                await MainActor.run {
+                    UseByDataManager.shared.items.append(newItem)
+                    UseByDataManager.shared.items.sort { $0.expiryDate < $1.expiryDate }
+                }
+
+                // Schedule notifications in background
+                Task.detached(priority: .background) {
+                    await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
+                }
+
+                // Post update notification
+                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+
+                // Success feedback and dismiss immediately
                 await MainActor.run {
                     isSaving = false
-
-                    // Success haptic
                     let successFeedback = UINotificationFeedbackGenerator()
                     successFeedback.notificationOccurred(.success)
-
                     dismiss()
                     onComplete?()
                 }
+
+                // Handle photo upload in background AFTER dismissing
+                if let image = imageToUpload {
+                    Task.detached(priority: .background) {
+                        // Save to local cache
+                        try? await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
+
+                        // Upload to Firebase and update item with URL
+                        if let url = try? await FirebaseManager.shared.uploadUseByItemPhoto(image) {
+                            var updatedItem = newItem
+                            updatedItem = UseByInventoryItem(
+                                id: itemId,
+                                name: newItem.name,
+                                brand: newItem.brand,
+                                quantity: newItem.quantity,
+                                expiryDate: newItem.expiryDate,
+                                addedDate: newItem.addedDate,
+                                barcode: newItem.barcode,
+                                category: newItem.category,
+                                imageURL: url,
+                                notes: newItem.notes
+                            )
+                            try? await FirebaseManager.shared.updateUseByItem(updatedItem)
+                        }
+                    }
+                }
             } catch {
-                                await MainActor.run {
+                await MainActor.run {
                     isSaving = false
                 }
             }
         } else {
             // Edit mode: Update existing item
             guard let item = item else { return }
+            let imageToUpload = capturedImage
 
-                        var firebaseURL: String? = uploadedImageURL ?? item.imageURL
-            if let image = capturedImage {
-                // Check if this is a new image (not previously cached)
-                let hasExistingCache = ImageCacheManager.shared.hasUseByImage(for: item.id)
-                let isNewImage = !hasExistingCache || uploadedImageURL == nil
-
-                if isNewImage {
-                    // Save to local cache
-                    do {
-                        try await ImageCacheManager.shared.saveUseByImageAsync(image, for: item.id)
-                                            } catch {
-                                            }
-
-                    // Upload to Firebase for backup/sync
-                    if uploadedImageURL == nil {
-                        do {
-                            let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                                                        firebaseURL = url
-                        } catch {
-                                                    }
-                    }
-                }
-            }
-
-            // Create updated item with edits
+            // Create updated item immediately (without photo URL change if uploading)
             let updatedItem = UseByInventoryItem(
                 id: item.id,
                 name: item.name,
@@ -4382,25 +4580,51 @@ struct UseByItemDetailView: View {
                 addedDate: item.addedDate,
                 barcode: item.barcode,
                 category: item.category,
-                imageURL: firebaseURL,
+                imageURL: uploadedImageURL ?? item.imageURL,
                 notes: notes.isEmpty ? nil : notes
             )
 
-            // Save to Firebase
             do {
-                                try await FirebaseManager.shared.updateUseByItem(updatedItem)
-                                UseByNotificationManager.shared.cancelNotifications(for: item.id)
-                await UseByNotificationManager.shared.scheduleNotifications(for: updatedItem)
-                                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+                // Save to Firebase (fast)
+                try await FirebaseManager.shared.updateUseByItem(updatedItem)
 
+                // Update notifications in background
+                Task.detached(priority: .background) {
+                    UseByNotificationManager.shared.cancelNotifications(for: item.id)
+                    await UseByNotificationManager.shared.scheduleNotifications(for: updatedItem)
+                }
+
+                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+
+                // Success feedback and dismiss immediately
                 await MainActor.run {
                     isSaving = false
-
-                    // Success haptic
                     let successFeedback = UINotificationFeedbackGenerator()
                     successFeedback.notificationOccurred(.success)
-
                     dismiss()
+                }
+
+                // Handle photo upload in background if needed
+                if let image = imageToUpload, uploadedImageURL == nil {
+                    Task.detached(priority: .background) {
+                        try? await ImageCacheManager.shared.saveUseByImageAsync(image, for: item.id)
+                        if let url = try? await FirebaseManager.shared.uploadUseByItemPhoto(image) {
+                            var itemWithPhoto = updatedItem
+                            itemWithPhoto = UseByInventoryItem(
+                                id: item.id,
+                                name: item.name,
+                                brand: item.brand,
+                                quantity: updatedItem.quantity,
+                                expiryDate: updatedItem.expiryDate,
+                                addedDate: item.addedDate,
+                                barcode: item.barcode,
+                                category: item.category,
+                                imageURL: url,
+                                notes: updatedItem.notes
+                            )
+                            try? await FirebaseManager.shared.updateUseByItem(itemWithPhoto)
+                        }
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -4726,19 +4950,15 @@ struct CleanUseByRow: View {
                         .frame(width: 58, height: 58)
                         .blur(radius: 6)
 
-                    Group {
-                        if item.imageURL != nil {
-                            CachedUseByImage(
-                                itemId: item.id,
-                                imageURL: item.imageURL,
-                                width: 52,
-                                height: 52,
-                                cornerRadius: 10
-                            )
-                        } else {
-                            PlaceholderImageView()
-                        }
-                    }
+                    // Always use CachedUseByImage - it checks local cache first
+                    // (image may be cached locally before Firebase URL is set)
+                    CachedUseByImage(
+                        itemId: item.id,
+                        imageURL: item.imageURL,
+                        width: 52,
+                        height: 52,
+                        cornerRadius: 10
+                    )
                     .frame(width: 52, height: 52)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
@@ -5217,6 +5437,7 @@ struct CachedUseByImage: View {
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
+    @State private var refreshTrigger = UUID()  // Used to force refresh
 
     var body: some View {
         Group {
@@ -5245,14 +5466,27 @@ struct CachedUseByImage: View {
                     )
             }
         }
-        .task {
+        .id(refreshTrigger)  // Force view recreation on refresh
+        .task(id: refreshTrigger) {
             await loadImage()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .useByInventoryUpdated)) { _ in
+            // Only refresh if we don't have an image yet (image was just uploaded)
+            if loadedImage == nil {
+                refreshTrigger = UUID()
+            }
+        }
+        .onChange(of: imageURL) { _, newURL in
+            // If imageURL changed from nil to something, reload
+            if newURL != nil && loadedImage == nil {
+                refreshTrigger = UUID()
+            }
         }
     }
 
     @MainActor
     private func loadImage() async {
-        // Check if already loaded
+        // Don't reload if already have an image
         guard loadedImage == nil else { return }
 
         isLoading = true
@@ -5261,7 +5495,7 @@ struct CachedUseByImage: View {
         if let cachedImage = await ImageCacheManager.shared.loadUseByImageAsync(for: itemId) {
             loadedImage = cachedImage
             isLoading = false
-                        return
+            return
         }
 
         // 2. Load from Firebase URL if not cached
@@ -5278,11 +5512,13 @@ struct CachedUseByImage: View {
                 // Cache for next time
                 do {
                     try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                                    } catch {
-                                    }
+                } catch {
+                    // Silent failure - cache is optimization only
+                }
             }
         } catch {
-                    }
+            // Silent failure - image just won't show
+        }
 
         isLoading = false
     }

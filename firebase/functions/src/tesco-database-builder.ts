@@ -446,8 +446,95 @@ function cleanIngredients(text: string | string[] | undefined): string {
 // Helper: Sleep function
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// OPTIMIZED: Rate limit delay - 250ms = 4 requests/second (safely under 5 req/s limit)
-const API_DELAY_MS = 250;
+/**
+ * Token Bucket Rate Limiter - allows burst while maintaining average rate
+ * Much more efficient than fixed delays - only waits when actually needed
+ */
+class RateLimiter {
+    private tokens: number;
+    private lastRefill: number;
+    private readonly maxTokens: number;
+    private readonly refillRate: number; // tokens per millisecond
+
+    constructor(requestsPerSecond: number, burstCapacity: number = requestsPerSecond) {
+        this.maxTokens = burstCapacity;
+        this.tokens = burstCapacity;
+        this.refillRate = requestsPerSecond / 1000;
+        this.lastRefill = Date.now();
+    }
+
+    private refillTokens(): void {
+        const now = Date.now();
+        const elapsed = now - this.lastRefill;
+        this.tokens = Math.min(this.maxTokens, this.tokens + elapsed * this.refillRate);
+        this.lastRefill = now;
+    }
+
+    async acquire(): Promise<void> {
+        this.refillTokens();
+        if (this.tokens >= 1) {
+            this.tokens -= 1;
+            return;
+        }
+        // Calculate wait time needed to get 1 token
+        const waitTime = Math.ceil((1 - this.tokens) / this.refillRate);
+        await sleep(waitTime);
+        return this.acquire();
+    }
+
+    async execute<T>(fn: () => Promise<T>): Promise<T> {
+        await this.acquire();
+        return fn();
+    }
+}
+
+// 4.5 req/s with burst of 5 (safety margin under 5 req/s limit)
+const apiRateLimiter = new RateLimiter(4.5, 5);
+
+// Parallel batch processing constants
+const PARALLEL_BATCH_SIZE = 4; // Process 4 products concurrently
+
+interface BatchResult {
+    productId: string;
+    product: TescoProduct | null;
+    error?: string;
+}
+
+/**
+ * Process product IDs in parallel batches with rate limiting
+ * Returns results for all products (success or error)
+ */
+async function processProductBatch(productIds: string[]): Promise<BatchResult[]> {
+    const results: BatchResult[] = [];
+
+    for (let i = 0; i < productIds.length; i += PARALLEL_BATCH_SIZE) {
+        const batch = productIds.slice(i, i + PARALLEL_BATCH_SIZE);
+
+        const batchPromises = batch.map(async (productId): Promise<BatchResult> => {
+            try {
+                const { product, error } = await apiRateLimiter.execute(
+                    () => getProductDetails(productId)
+                );
+                return { productId, product, error };
+            } catch (err: any) {
+                return { productId, product: null, error: err.message };
+            }
+        });
+
+        const batchResults = await Promise.allSettled(batchPromises);
+
+        for (const result of batchResults) {
+            if (result.status === 'fulfilled') {
+                results.push(result.value);
+            } else {
+                // Promise rejected - shouldn't happen but handle it
+                results.push({ productId: 'unknown', product: null, error: result.reason?.message || 'Unknown error' });
+            }
+        }
+    }
+
+    return results;
+}
 
 // OPTIMIZED: Batch check which product IDs already exist in Firestore
 async function batchCheckExisting(
@@ -1080,37 +1167,40 @@ export const startTescoBuild = functions
                     // Batch read existing documents
                     const existingMap = await batchCheckExisting(tescoCollection, newProductIds);
 
-                    // Process each product
-                    for (const searchResult of products) {
-                        if (!newProductIds.includes(searchResult.id)) {
-                            continue; // Already seen
-                        }
+                    // OPTIMIZED: Fetch product details in parallel batches with rate limiting
+                    // Filter to only IDs that need fetching (not in existingMap or need update check)
+                    const idsToFetch = newProductIds.filter(id => {
+                        const existing = existingMap.get(id);
+                        // Fetch if not existing, or if we need to check for more complete data
+                        return !existing || true; // Always fetch to check for completeness
+                    });
 
-                        const existingData = existingMap.get(searchResult.id);
+                    console.log(`[BATCH] Fetching ${idsToFetch.length} products in parallel batches`);
+                    const batchResults = await processProductBatch(idsToFetch);
 
-                        // Get full details (rate limited by Tesco API)
-                        const { product, error: detailsError } = await getProductDetails(searchResult.id);
-
+                    // Process batch results
+                    for (const { productId, product, error: detailsError } of batchResults) {
                         if (detailsError) {
                             progress.errors++;
                             progress.errorMessages.push(`Details fetch failed: ${detailsError}`);
                             if (progress.errorMessages.length > 50) {
                                 progress.errorMessages = progress.errorMessages.slice(-50);
                             }
+                            continue;
                         }
+
+                        const existingData = existingMap.get(productId);
 
                         // Check if existing and if new data is more complete
                         if (existingData && product) {
                             if (!isMoreComplete(product, existingData)) {
                                 progress.duplicatesSkipped++;
-                                await sleep(API_DELAY_MS); // Rate limit
                                 continue;
                             }
                             // New data is more complete - will update below
                             console.log(`Updating ${product.id} with more complete data`);
                         } else if (existingData) {
                             progress.duplicatesSkipped++;
-                            await sleep(API_DELAY_MS); // Rate limit
                             continue;
                         }
 
@@ -1167,48 +1257,49 @@ export const startTescoBuild = functions
                                 await flushAlgoliaBatch();
                             }
                         }
-
-                        // Rate limiting - 250ms = 4 req/s (safely under 5 req/s limit)
-                        await sleep(API_DELAY_MS);
                     }
+                    // No sleep() needed - rate limiter handles timing
 
-                    // OPTIMIZED: Process additional pages with batching
+                    // OPTIMIZED: Process additional pages with parallel batch processing
                     const maxPages = Math.min(totalPages, 5);
                     for (let page = 1; page < maxPages; page++) {
-                        await sleep(API_DELAY_MS); // Rate limit between pages
-
-                        const { products: pageProducts } = await searchTescoProducts(term, page);
+                        // Rate limit the search call itself
+                        const { products: pageProducts } = await apiRateLimiter.execute(
+                            () => searchTescoProducts(term, page)
+                        );
 
                         // Batch check existing for this page
                         const pageNewIds = pageProducts.filter(p => !seenProductIds.has(p.id)).map(p => p.id);
                         pageNewIds.forEach(id => seenProductIds.add(id));
                         progress.productsFound += pageNewIds.length;
 
+                        if (pageNewIds.length === 0) continue;
+
                         const pageExistingMap = await batchCheckExisting(tescoCollection, pageNewIds);
 
-                        for (const searchResult of pageProducts) {
-                            if (!pageNewIds.includes(searchResult.id)) continue;
+                        // OPTIMIZED: Fetch in parallel batches
+                        console.log(`[BATCH] Page ${page}: Fetching ${pageNewIds.length} products in parallel`);
+                        const pageBatchResults = await processProductBatch(pageNewIds);
 
-                            const pageExistingData = pageExistingMap.get(searchResult.id);
-                            const { product, error: detailsError } = await getProductDetails(searchResult.id);
-
+                        for (const { productId, product, error: detailsError } of pageBatchResults) {
                             if (detailsError) {
                                 progress.errors++;
                                 if (progress.errorMessages.length < 50) {
                                     progress.errorMessages.push(`Details: ${detailsError}`);
                                 }
+                                continue;
                             }
+
+                            const pageExistingData = pageExistingMap.get(productId);
 
                             // Check if existing and if new data is more complete
                             if (pageExistingData && product) {
                                 if (!isMoreComplete(product, pageExistingData)) {
                                     progress.duplicatesSkipped++;
-                                    await sleep(API_DELAY_MS);
                                     continue;
                                 }
                             } else if (pageExistingData) {
                                 progress.duplicatesSkipped++;
-                                await sleep(API_DELAY_MS);
                                 continue;
                             }
 
@@ -1244,9 +1335,8 @@ export const startTescoBuild = functions
                                     console.error(`Firestore error: ${firestoreError.message}`);
                                 }
                             }
-
-                            await sleep(API_DELAY_MS);
                         }
+                        // No sleep() needed - rate limiter handles timing
                     }
 
                     // Flush Algolia batch after each term
@@ -1482,70 +1572,74 @@ export const scheduledTescoBuild = functions.pubsub
                     const newProductIds = newProducts.map(p => p.id);
                     const existingMap = await batchCheckExisting(tescoCollection, newProductIds);
 
-                    // Process first page with batched operations
-                    for (const searchResult of newProducts) {
-                        // Get full details with rate limiting
-                        const { product, error: detailsError } = await getProductDetails(searchResult.id);
-                        await sleep(API_DELAY_MS);
+                    // OPTIMIZED: Fetch product details in parallel batches with rate limiting
+                    if (newProductIds.length > 0) {
+                        console.log(`[SCHEDULED] Fetching ${newProductIds.length} products in parallel batches`);
+                        const batchResults = await processProductBatch(newProductIds);
 
-                        if (detailsError) {
-                            progress.errors++;
-                            progress.errorMessages.push(`Details: ${detailsError}`);
-                            if (progress.errorMessages.length > 50) {
-                                progress.errorMessages = progress.errorMessages.slice(-50);
+                        for (const { productId, product, error: detailsError } of batchResults) {
+                            if (detailsError) {
+                                progress.errors++;
+                                progress.errorMessages.push(`Details: ${detailsError}`);
+                                if (progress.errorMessages.length > 50) {
+                                    progress.errorMessages = progress.errorMessages.slice(-50);
+                                }
+                                continue;
                             }
-                            continue;
-                        }
 
-                        // Check if existing and if new data is more complete
-                        const existingData = existingMap.get(searchResult.id);
-                        if (existingData && product) {
-                            if (!isMoreComplete(product, existingData)) {
+                            // Check if existing and if new data is more complete
+                            const existingData = existingMap.get(productId);
+                            if (existingData && product) {
+                                if (!isMoreComplete(product, existingData)) {
+                                    progress.duplicatesSkipped++;
+                                    continue;
+                                }
+                                console.log(`[SCHEDULED] Updating ${product.id} with more complete data`);
+                            } else if (existingData) {
                                 progress.duplicatesSkipped++;
                                 continue;
                             }
-                            console.log(`[SCHEDULED] Updating ${product.id} with more complete data`);
-                        } else if (existingData) {
-                            progress.duplicatesSkipped++;
-                            continue;
-                        }
 
-                        if (product) {
-                            // STRICT VALIDATION: Must have title, ID, and valid calories
-                            const validation = isValidProduct(product);
-                            if (!validation.valid) {
-                                console.log(`[SCHEDULED] Skipping invalid: ${product.title?.substring(0, 30)} - ${validation.reason}`);
-                                continue;
-                            }
-
-                            progress.productsWithNutrition++;
-
-                            try {
-                                await tescoCollection.doc(product.id).set(removeUndefined(product));
-                                progress.productsSaved++;
-                                progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
-                                console.log(`[SCHEDULED] Saved: ${product.title?.substring(0, 30)} (${product.nutrition?.energyKcal} kcal)`);
-
-                                // OPTIMIZED: Add to Algolia batch instead of individual writes
-                                algoliaBatch.push(prepareAlgoliaObject(product));
-                                if (algoliaBatch.length >= ALGOLIA_BATCH_SIZE) {
-                                    await flushAlgoliaBatch();
+                            if (product) {
+                                // STRICT VALIDATION: Must have title, ID, and valid calories
+                                const validation = isValidProduct(product);
+                                if (!validation.valid) {
+                                    console.log(`[SCHEDULED] Skipping invalid: ${product.title?.substring(0, 30)} - ${validation.reason}`);
+                                    continue;
                                 }
-                            } catch (e: any) {
-                                progress.errors++;
+
+                                progress.productsWithNutrition++;
+
+                                try {
+                                    await tescoCollection.doc(product.id).set(removeUndefined(product));
+                                    progress.productsSaved++;
+                                    progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
+                                    console.log(`[SCHEDULED] Saved: ${product.title?.substring(0, 30)} (${product.nutrition?.energyKcal} kcal)`);
+
+                                    // OPTIMIZED: Add to Algolia batch instead of individual writes
+                                    algoliaBatch.push(prepareAlgoliaObject(product));
+                                    if (algoliaBatch.length >= ALGOLIA_BATCH_SIZE) {
+                                        await flushAlgoliaBatch();
+                                    }
+                                } catch (e: any) {
+                                    progress.errors++;
+                                }
                             }
                         }
                     }
+                    // No sleep() needed - rate limiter handles timing
 
                     // Update progress after first page
                     progress.lastUpdated = new Date().toISOString();
                     await progressRef.update({...progress});
 
-                    // Process additional pages (up to 3 per term)
+                    // OPTIMIZED: Process additional pages with parallel batch processing
                     const maxPages = Math.min(totalPages, 3);
                     for (let page = 1; page < maxPages; page++) {
-                        await sleep(API_DELAY_MS);
-                        const { products: pageProducts } = await searchTescoProducts(term, page);
+                        // Rate limit the search call itself
+                        const { products: pageProducts } = await apiRateLimiter.execute(
+                            () => searchTescoProducts(term, page)
+                        );
 
                         // OPTIMIZED: Filter out already seen products first
                         const pageNewProducts = pageProducts.filter(p => {
@@ -1555,16 +1649,20 @@ export const scheduledTescoBuild = functions.pubsub
                             return true;
                         });
 
+                        // Skip if no new products on this page
+                        if (pageNewProducts.length === 0) continue;
+
                         // OPTIMIZED: Batch check which products already exist
                         const pageNewIds = pageNewProducts.map(p => p.id);
                         const pageExistingMap = await batchCheckExisting(tescoCollection, pageNewIds);
 
-                        for (const searchResult of pageNewProducts) {
-                            const { product } = await getProductDetails(searchResult.id);
-                            await sleep(API_DELAY_MS);
+                        // OPTIMIZED: Fetch in parallel batches
+                        console.log(`[SCHEDULED] Page ${page}: Fetching ${pageNewIds.length} products in parallel`);
+                        const pageBatchResults = await processProductBatch(pageNewIds);
 
+                        for (const { productId, product } of pageBatchResults) {
                             // Check if existing and if new data is more complete
-                            const existingData = pageExistingMap.get(searchResult.id);
+                            const existingData = pageExistingMap.get(productId);
                             if (existingData && product) {
                                 if (!isMoreComplete(product, existingData)) continue;
                             } else if (existingData) {
@@ -1590,6 +1688,7 @@ export const scheduledTescoBuild = functions.pubsub
                                 } catch (e) {}
                             }
                         }
+                        // No sleep() needed - rate limiter handles timing
                     }
 
                     // Flush any remaining Algolia items after processing term
