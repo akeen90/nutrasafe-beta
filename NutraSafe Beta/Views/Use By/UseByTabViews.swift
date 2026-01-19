@@ -4362,10 +4362,18 @@ struct UseByItemDetailView: View {
             }
         }
         .onAppear {
-            // Load existing photo from URL if available (edit mode only)
-            if let item = item, let imageURL = item.imageURL, capturedImage == nil {
+            // Load existing photo - check local cache first, then URL (edit mode only)
+            if let item = item, capturedImage == nil {
                 Task {
-                    await loadExistingPhoto(from: imageURL)
+                    // Always try local cache first (image may be cached before URL is set)
+                    if let cachedImage = await ImageCacheManager.shared.loadUseByImageAsync(for: item.id) {
+                        await MainActor.run {
+                            capturedImage = cachedImage
+                        }
+                    } else if let imageURL = item.imageURL {
+                        // Fallback to loading from URL
+                        await loadExistingPhoto(from: imageURL)
+                    }
                 }
             }
 
