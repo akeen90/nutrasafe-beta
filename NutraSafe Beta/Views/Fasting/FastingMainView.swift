@@ -599,9 +599,11 @@ struct PlanDashboardView: View {
                     // Countdown to next fast
                     VStack(spacing: 4) {
                         Text(viewModel.timeUntilNextFast)
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .font(.system(size: 44, weight: .bold, design: .rounded))
                             .monospacedDigit()
                             .foregroundColor(.green)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
 
                         Text("until next fast")
                             .font(.subheadline)
@@ -749,43 +751,73 @@ struct PlanDashboardView: View {
     // MARK: - Plan Settings Card
     @ViewBuilder
     private var planSettingsCard: some View {
-        Button {
-            showFastSettings = true
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(0.12))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.blue)
-                }
+        HStack(spacing: 12) {
+            // Main settings button
+            Button {
+                showFastSettings = true
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.blue.opacity(0.12))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.blue)
+                    }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Fasting Plan Settings")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Fasting Plan Settings")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        Text("Tap to edit your plan")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
                         .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    Text("Tap to edit your plan")
-                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
             }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                    .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
-            )
+            .buttonStyle(.plain)
+
+            // More options menu (only show when plan is active)
+            if case .fasting = viewModel.currentRegimeState {
+                Menu {
+                    Button(role: .destructive) {
+                        showStopPlanConfirmation = true
+                    } label: {
+                        Label("Stop Fasting Plan", systemImage: "stop.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.gray.opacity(0.5))
+                }
+            } else if case .eating = viewModel.currentRegimeState {
+                Menu {
+                    Button(role: .destructive) {
+                        showStopPlanConfirmation = true
+                    } label: {
+                        Label("Stop Fasting Plan", systemImage: "stop.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.gray.opacity(0.5))
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+        )
     }
 
     // Keeping old views for backwards compatibility but they won't be used in main body

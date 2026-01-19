@@ -3786,8 +3786,8 @@ private var nutritionFactsSection: some View {
             }
             // MARK: - Add to Diary Buttons (with optional fasting integration)
             if shouldShowStartFastOption {
-                // User has fasting plan and is in eating window - show both options
-                HStack(spacing: 12) {
+                // User has fasting plan and is in eating window - show both options stacked
+                VStack(spacing: 10) {
                     // Standard add button
                     Button(action: { addToFoodLog() }) {
                         HStack {
@@ -3802,16 +3802,16 @@ private var nutritionFactsSection: some View {
                         .cornerRadius(12)
                     }
 
-                    // Log & Start Fast button
+                    // Log Last Meal & Start Fast button
                     Button(action: { addToFoodLogAndStartFast() }) {
                         HStack(spacing: 6) {
                             Image(systemName: "timer")
-                            Text("Log & Fast")
-                                .font(.headline.weight(.semibold))
+                            Text("Log Last Meal & Start Fast")
+                                .font(.subheadline.weight(.semibold))
                         }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 14)
                         .background(
                             LinearGradient(
                                 colors: [.orange, .red.opacity(0.8)],
