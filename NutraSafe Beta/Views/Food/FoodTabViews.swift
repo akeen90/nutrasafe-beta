@@ -227,7 +227,8 @@ struct FoodReactionsView: View {
                 // Sub-tab picker
                 reactionSubTabPicker
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .padding(.top, 4)
+                    .padding(.bottom, 4)
 
                 // Content based on selected sub-tab
                 Group {
@@ -314,9 +315,9 @@ struct FoodReactionsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 16)
 
-                    // Reaction cards
+                    // Reaction cards - Timeline specific layout
                     ForEach(filteredReactions) { reaction in
-                        FoodReactionRow(reaction: reaction)
+                        TimelineReactionRow(reaction: reaction)
                             .environmentObject(reactionManager)
                     }
                     .padding(.horizontal, 16)
@@ -415,7 +416,7 @@ struct FoodReactionsView: View {
                 FoodReactionSummaryCard(selectedTab: $selectedTab)
                     .environmentObject(reactionManager)
                     .padding(.horizontal, 16)
-                    .padding(.top, 16)
+                    .padding(.top, 8)
 
                 // Recent Reactions - limited for free users
                 FoodReactionListCard(
@@ -809,12 +810,12 @@ struct FoodReactionSummaryCard: View {
                     // Most common symptom
                     if let symptom = mostCommonSymptom {
                         insightCell(
-                            icon: "chart.bar.fill",
-                            iconColor: .blue,
-                            label: "Top Symptom",
+                            icon: "heart.fill",
+                            iconColor: .pink,
+                            label: "Common Symptom",
                             value: symptom.symptom,
                             badge: "\(symptom.percentage)%",
-                            badgeColor: .blue
+                            badgeColor: .pink
                         )
                     }
 
@@ -847,7 +848,7 @@ struct FoodReactionSummaryCard: View {
                         )
                     }
 
-                    // Top allergen triggers (UK 14 only)
+                    // Most common allergen (UK 14 only)
                     if let allergens = topAllergenTriggers {
                         let allergenText = allergens.count > 1
                             ? allergens.prefix(2).map { $0.name }.joined(separator: ", ")
@@ -857,7 +858,7 @@ struct FoodReactionSummaryCard: View {
                         insightCell(
                             icon: "exclamationmark.triangle.fill",
                             iconColor: .red,
-                            label: "Top Allergen",
+                            label: "Common Allergen",
                             value: allergenText,
                             badge: "\(count)×",
                             badgeColor: .red
@@ -926,44 +927,50 @@ struct FoodReactionSummaryCard: View {
     }
 
     private func insightCell(icon: String, iconColor: Color, label: String, value: String, badge: String?, badgeColor: Color, trendIcon: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Icon and label
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
+            // Icon and label row
+            HStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(iconColor)
 
-                Text(label)
-                    .font(.system(size: 11, weight: .medium))
+                Text(label.uppercased())
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .textCase(.uppercase)
+                    .tracking(0.3)
             }
+
+            Spacer(minLength: 0)
 
             // Value
             Text(value)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 17, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.75)
 
-            // Badge (if any)
-            if let badge = badge {
-                HStack(spacing: 4) {
-                    if let trendIcon = trendIcon {
-                        Image(systemName: trendIcon)
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    Text(badge)
-                        .font(.system(size: 11, weight: .semibold))
+            // Badge row - always present for consistent height
+            HStack(spacing: 4) {
+                if let trendIcon = trendIcon {
+                    Image(systemName: trendIcon)
+                        .font(.system(size: 10, weight: .bold))
                 }
-                .foregroundColor(badgeColor)
+                if let badge = badge {
+                    Text(badge)
+                        .font(.system(size: 12, weight: .semibold))
+                } else {
+                    Text(" ") // Invisible placeholder for alignment
+                        .font(.system(size: 12, weight: .semibold))
+                }
             }
+            .foregroundColor(badge != nil ? badgeColor : .clear)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6).opacity(0.5))
+                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6).opacity(0.6))
         )
     }
 }
@@ -1190,6 +1197,135 @@ struct FoodReactionRow: View {
     private func dateDisplayText(_ date: Date) -> String {
         // PERFORMANCE: Use cached static formatter
         DateHelper.mediumDateFormatter.string(from: date)
+    }
+}
+
+// MARK: - Timeline Reaction Row
+/// Specialized row for the Timeline view - shows symptoms bold on top, food below, with date/time
+struct TimelineReactionRow: View {
+    let reaction: FoodReaction
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var showingDetail = false
+
+    var body: some View {
+        Button(action: { showingDetail = true }) {
+            HStack(spacing: 14) {
+                // Date/Time column
+                VStack(alignment: .center, spacing: 2) {
+                    Text(formatDayMonth(reaction.timestamp.dateValue()))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text(formatTime(reaction.timestamp.dateValue()))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text(formatRelativeDay(reaction.timestamp.dateValue()))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(isToday(reaction.timestamp.dateValue()) ? .blue : .secondary)
+                }
+                .frame(width: 55)
+
+                // Vertical divider
+                Rectangle()
+                    .fill(severityColor(for: reaction.severity).opacity(0.5))
+                    .frame(width: 3)
+                    .cornerRadius(2)
+
+                // Main content
+                VStack(alignment: .leading, spacing: 6) {
+                    // Symptoms - BOLD on top (this is what users remember)
+                    Text(reaction.symptoms.joined(separator: ", "))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+
+                    // Food - below, not bold
+                    Text(reaction.foodName)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                // Severity indicator
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(severityText(for: reaction.severity))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(severityColor(for: reaction.severity))
+
+                    Circle()
+                        .fill(severityColor(for: reaction.severity))
+                        .frame(width: 8, height: 8)
+                }
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.9))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(severityColor(for: reaction.severity).opacity(0.2), lineWidth: 1)
+                    )
+            )
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .fullScreenCover(isPresented: $showingDetail) {
+            ReactionDetailView(reaction: reaction)
+        }
+    }
+
+    private func formatDayMonth(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        return formatter.string(from: date)
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: date)
+    }
+
+    private func formatRelativeDay(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+
+        if calendar.isDate(date, inSameDayAs: now) {
+            return "Today"
+        } else if calendar.isDate(date, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) {
+            return "Yesterday"
+        } else {
+            let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
+            if daysDiff < 7 {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "EEEE"
+                return formatter.string(from: date)
+            }
+            return ""
+        }
+    }
+
+    private func isToday(_ date: Date) -> Bool {
+        Calendar.current.isDate(date, inSameDayAs: Date())
+    }
+
+    private func severityColor(for severity: ReactionSeverity) -> Color {
+        switch severity {
+        case .mild: return .yellow
+        case .moderate: return .orange
+        case .severe: return .red
+        }
+    }
+
+    private func severityText(for severity: ReactionSeverity) -> String {
+        switch severity {
+        case .mild: return "Mild"
+        case .moderate: return "Moderate"
+        case .severe: return "Severe"
+        }
     }
 }
 
