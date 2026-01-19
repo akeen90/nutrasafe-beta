@@ -304,8 +304,12 @@ struct DiaryTabView: View {
         }
     }
 
-    // Format day name (Mon, Tue, etc.)
+    // Format day name (Mon, Tue, etc.) - shows "Today" for current date
     private func formatDayName(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Today"
+        }
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE"
         return formatter.string(from: date)
