@@ -16,8 +16,10 @@ import { algoliasearch } from 'algoliasearch';
 
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
-// Database indices - new cleaned databases
-const SEARCH_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+// Database indices - UK sources first (tesco_products, uk_foods_cleaned), then others
+const SEARCH_INDICES = ['tesco_products', 'uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+// UK source indices (for prioritization)
+const UK_SOURCE_INDICES = new Set(['tesco_products', 'uk_foods_cleaned']);
 
 // Interfaces
 interface GeminiIdentifiedFood {
@@ -755,7 +757,7 @@ async function searchDatabaseForFood(
                 hit,
                 matchScore,
                 indexName,
-                isUkSource: indexName === 'uk_foods_cleaned',
+                isUkSource: UK_SOURCE_INDICES.has(indexName),
               });
             }
           }

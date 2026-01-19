@@ -1664,12 +1664,47 @@ class FastingViewModel: ObservableObject {
 
         confirmationContext = context
 
-        
-        // Show appropriate confirmation sheet
-        if fastingType == "start" {
+        // For "end" notifications, we need to ensure the active session is loaded first
+        // This handles the race condition when app launches from notification tap
+        if fastingType == "end" {
+            Task {
+                await ensureSessionLoadedThenShowEndConfirmation()
+            }
+        } else if fastingType == "start" {
             showingStartConfirmation = true
-        } else if fastingType == "end" {
-            showingEndConfirmation = true
+        }
+    }
+
+    /// Ensure active session is loaded before showing end confirmation sheet
+    /// This prevents the blank sheet issue when tapping "Fast Complete" notification
+    private func ensureSessionLoadedThenShowEndConfirmation() async {
+        // If we already have an active session, show immediately
+        if activeSession != nil {
+            await MainActor.run {
+                showingEndConfirmation = true
+            }
+            return
+        }
+
+        // Otherwise, try to load the active session from Firebase
+        do {
+            let sessions = try await firebaseManager.getFastingSessions()
+            let active = sessions.first(where: { $0.isActive })
+
+            await MainActor.run {
+                if let session = active {
+                    self.activeSession = session
+                    self.showingEndConfirmation = true
+                } else {
+                    // No active session found - the fast may have already been ended
+                    // Show a toast or silently dismiss
+                    self.confirmationContext = nil
+                }
+            }
+        } catch {
+            await MainActor.run {
+                self.confirmationContext = nil
+            }
         }
     }
 
@@ -1754,9 +1789,69 @@ class FastingViewModel: ObservableObject {
         confirmationContext = nil
     }
 
-    /// User indicated they haven't started yet
-    func confirmNotStartedYet() {
-                // Don't create a session - user will start later
+    /// User indicated they haven't started yet - snooze for 1 hour
+    func confirmNotStartedYet() async {
+        // Get plan context for snooze notification
+        guard let plan = activePlan else {
+            confirmationContext = nil
+            return
+        }
+
+        // Calculate snooze until 1 hour from now
+        let snoozeUntil = Date().addingTimeInterval(3600) // 1 hour
+
+        // If we're in regime mode, mark this fasting window as skipped for now
+        // by storing a snooze marker - the fast will auto-resume when snooze expires
+        if plan.regimeActive {
+            // Store snooze time in UserDefaults and update cache
+            UserDefaults.standard.set(snoozeUntil, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
+            cachedSnoozeUntil = snoozeUntil
+
+            // Mark current window end so auto-record doesn't create a session
+            if case .fasting(_, let ends) = currentRegimeState {
+                lastEndedWindowEnd = ends
+            }
+        }
+
+        // Schedule a snooze reminder notification for 1 hour
+        let center = UNUserNotificationCenter.current()
+        do {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+
+            if granted {
+                let content = UNMutableNotificationContent()
+                content.title = "Time to start your fast"
+                content.body = "You snoozed earlier - ready to start fasting now?"
+                content.sound = .default
+                content.categoryIdentifier = "FAST_START"
+                content.userInfo = [
+                    "type": "fasting",
+                    "fastingType": "start",
+                    "planId": plan.id ?? "",
+                    "planName": plan.name,
+                    "durationHours": plan.durationHours
+                ]
+
+                let trigger = UNTimeIntervalNotificationTrigger(
+                    timeInterval: 3600, // 1 hour
+                    repeats: false
+                )
+
+                let request = UNNotificationRequest(
+                    identifier: "fast_start_snooze_\(plan.id ?? "")_\(Date().timeIntervalSince1970)",
+                    content: content,
+                    trigger: trigger
+                )
+
+                try await center.add(request)
+            }
+        } catch {
+            // Non-critical - notification scheduling failed but continue
+        }
+
+        // Trigger UI refresh
+        objectWillChange.send()
+
         confirmationContext = nil
     }
 

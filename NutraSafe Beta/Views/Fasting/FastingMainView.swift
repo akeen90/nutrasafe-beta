@@ -150,7 +150,9 @@ struct FastingMainView: View {
                         }
                     },
                     onNotStartedYet: {
-                        viewModel.confirmNotStartedYet()
+                        Task {
+                            await viewModel.confirmNotStartedYet()
+                        }
                     },
                     onDismiss: {
                         viewModel.showingStartConfirmation = false

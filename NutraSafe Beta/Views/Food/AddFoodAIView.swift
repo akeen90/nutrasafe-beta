@@ -667,20 +667,24 @@ struct ImagePicker: UIViewControllerRepresentable {
             // Extract image
             let selectedImage = info[.originalImage] as? UIImage
 
-            // Do NOT call picker.dismiss() - let SwiftUI handle dismissal via the binding
-            // This prevents double-dismissal cascade that was causing parent views to dismiss
-            if let image = selectedImage {
-                parent.selectedImage?.wrappedValue = image
-                parent.onImageSelected(image)
-            } else {
-                // Failed to extract image - still call callback with nil to trigger error handling
-                parent.onImageSelected(nil)
+            // MUST call picker.dismiss() when used with fullScreenCover
+            // The UIKit picker needs explicit dismissal, then the callback triggers SwiftUI binding update
+            picker.dismiss(animated: true) {
+                if let image = selectedImage {
+                    self.parent.selectedImage?.wrappedValue = image
+                    self.parent.onImageSelected(image)
+                } else {
+                    // Failed to extract image - still call callback with nil to trigger error handling
+                    self.parent.onImageSelected(nil)
+                }
             }
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            // Do NOT call picker.dismiss() - let SwiftUI handle dismissal via the binding
-            parent.onImageSelected(nil)
+            // MUST call picker.dismiss() when used with fullScreenCover
+            picker.dismiss(animated: true) {
+                self.parent.onImageSelected(nil)
+            }
         }
     }
 }

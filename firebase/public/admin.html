@@ -412,6 +412,15 @@
             background: var(--border);
         }
 
+        .btn-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        }
+
         /* Pagination */
         .pagination {
             display: flex;
@@ -4382,6 +4391,7 @@
                         <span class="filter-label">Collection:</span>
                         <select id="collection-filter" class="filter-select">
                             <option value="uk_foods_cleaned" selected>UK Foods Cleaned (58,946)</option>
+                            <option value="tesco_products">Tesco Products</option>
                             <option value="foods">All Foods (25,658)</option>
                             <option value="generic_database">Generic Database (821)</option>
                             <option value="fast_foods_database">Fast Foods (427)</option>
@@ -4460,6 +4470,7 @@
                             <label>Select Index:</label>
                             <select id="scan-index" class="filter-select">
                                 <option value="uk_foods_cleaned">UK Foods Cleaned (58,946)</option>
+                                <option value="tesco_products">Tesco Products</option>
                                 <option value="foods">All Foods (25,658)</option>
                                 <option value="generic_database">Generic Database (821)</option>
                                 <option value="fast_foods_database">Fast Foods (427)</option>
@@ -4986,6 +4997,9 @@
                     <button class="btn btn-secondary" id="tesco-refresh-btn" onclick="app.refreshTescoProgress()">
                         🔄 Refresh Status
                     </button>
+                    <button class="btn btn-info" id="tesco-sync-btn" onclick="app.syncTescoToAlgolia()">
+                        🔄 Sync to Algolia
+                    </button>
                     <button class="btn btn-danger" id="tesco-reset-btn" onclick="app.resetTescoDatabase()">
                         🗑️ Reset Database
                     </button>
@@ -5007,7 +5021,7 @@
                 <div class="tesco-info">
                     <h4>ℹ️ How it works</h4>
                     <ul>
-                        <li><strong>Systematic Scan:</strong> Searches A-Z plus common food terms through Tesco's API</li>
+                        <li><strong>Systematic Scan:</strong> Searches 147 official Tesco food categories (Fresh Food, Bakery, Frozen, etc.)</li>
                         <li><strong>Full Details:</strong> Fetches complete nutrition, ingredients, allergens, and serving sizes</li>
                         <li><strong>Resume Capability:</strong> Progress is saved - you can stop and resume anytime</li>
                         <li><strong>Dual Storage:</strong> Saves to both Firestore (tescoProducts) and Algolia (tesco_products)</li>
@@ -5477,6 +5491,8 @@
 
         // Application State
         const state = {
+            // Algolia client reference for session reloading
+            searchClient: algoliaClient,
             currentView: 'foods',
             foods: [],
             filteredFoods: [],
@@ -5574,11 +5590,13 @@
             tescoPreviousProgress: null, // Previous progress for change detection
             tescoStats: null, // Database statistics
             tescoAutoRestartEnabled: true, // Auto-restart on stall (default ON)
-            tescoAutoRestartThreshold: 90000, // 90 seconds before auto-restart
+            tescoAutoRestartThreshold: 60000, // 60 seconds before auto-restart (reduced from 90)
             tescoAutoRestartCount: 0, // Count of auto-restarts this session
             tescoLastAutoRestart: null, // Timestamp of last auto-restart
             tescoAutoRestartCooldown: 30000, // Minimum 30s between auto-restarts
             tescoAutoRestarting: false, // Currently in auto-restart process
+            tescoPeriodicRestartInterval: 300000, // 5 minutes - do proactive restart
+            tescoLastPeriodicRestart: null, // Timestamp of last periodic restart
 
             // Authentication State
             currentUser: null, // Firebase auth user
@@ -11839,7 +11857,7 @@
             },
 
             async startTescoBuild() {
-                if (!confirm('Start building the Tesco database?\n\nThis will scan Tesco products A-Z and save them to your database. You can pause at any time.')) {
+                if (!confirm('Start building the Tesco database?\n\nThis will scan 147 Tesco food categories and save products to your database. You can pause at any time.')) {
                     return;
                 }
 
@@ -11856,10 +11874,12 @@
                     if (result.data.success) {
                         this.showToast('Tesco database build started!', 'success');
 
-                        // Initialize activity log
+                        // Initialize activity log and restart timers
                         state.tescoActivityLog = [];
                         state.tescoLastUpdateTime = Date.now();
                         state.tescoPreviousProgress = null;
+                        state.tescoLastPeriodicRestart = Date.now(); // Reset periodic timer
+                        state.tescoAutoRestartCount = 0; // Reset restart count for new build
                         this.addActivityLogEntry('Build started', 'success');
 
                         // Start polling for progress
@@ -11982,6 +12002,35 @@
                 }
             },
 
+            async syncTescoToAlgolia() {
+                const syncBtn = document.getElementById('tesco-sync-btn');
+                if (syncBtn) {
+                    syncBtn.disabled = true;
+                    syncBtn.innerHTML = '<span class="spinner-small"></span> Syncing...';
+                }
+
+                try {
+                    this.showToast('Syncing Tesco products to Algolia... This may take a while.', 'info');
+
+                    const syncTescoToAlgolia = firebase.functions().httpsCallable('syncTescoToAlgolia', { timeout: 540000 });
+                    const result = await syncTescoToAlgolia({});
+
+                    if (result.data.success) {
+                        this.showToast(`Synced ${result.data.synced} Tesco products to Algolia!`, 'success');
+                    } else {
+                        throw new Error(result.data.error || 'Failed to sync');
+                    }
+                } catch (error) {
+                    console.error('Error syncing Tesco to Algolia:', error);
+                    this.showToast('Failed to sync: ' + error.message, 'error');
+                } finally {
+                    if (syncBtn) {
+                        syncBtn.disabled = false;
+                        syncBtn.innerHTML = '🔄 Sync to Algolia';
+                    }
+                }
+            },
+
             // Polling for progress updates
             tescoPollingInterval: null,
             tescoTimeSinceUpdateInterval: null,
@@ -12082,19 +12131,28 @@
                     : Infinity;
                 const cooldownMet = timeSinceLastRestart > state.tescoAutoRestartCooldown;
 
+                // Periodic restart check (every 5 minutes regardless of stall)
+                const timeSincePeriodicRestart = state.tescoLastPeriodicRestart
+                    ? (now - state.tescoLastPeriodicRestart)
+                    : Infinity;
+                const periodicRestartDue = timeSincePeriodicRestart > state.tescoPeriodicRestartInterval;
+
                 // Debug logging for auto-restart
-                if (elapsed > 60000) {
-                    console.log(`[Auto-Restart Check] elapsed=${Math.round(elapsed/1000)}s, threshold=${state.tescoAutoRestartThreshold/1000}s, enabled=${state.tescoAutoRestartEnabled}, restarting=${state.tescoAutoRestarting}, status=${buildStatus}, cooldownMet=${cooldownMet}`);
+                if (elapsed > 30000 || periodicRestartDue) {
+                    console.log(`[Auto-Restart Check] elapsed=${Math.round(elapsed/1000)}s, threshold=${state.tescoAutoRestartThreshold/1000}s, periodicDue=${periodicRestartDue}, enabled=${state.tescoAutoRestartEnabled}, restarting=${state.tescoAutoRestarting}, status=${buildStatus}`);
                 }
 
-                if (shouldAutoRestart &&
+                // Restart if stalled OR periodic restart is due
+                const shouldRestart = (shouldAutoRestart || periodicRestartDue) &&
                     state.tescoAutoRestartEnabled &&
                     !state.tescoAutoRestarting &&
                     buildStatus === 'running' &&
-                    cooldownMet) {
+                    cooldownMet;
 
-                    console.log('[Auto-Restart] Triggering auto-restart now!');
-                    this.autoRestartTescoBuild();
+                if (shouldRestart) {
+                    const reason = periodicRestartDue ? 'periodic refresh' : 'stall detected';
+                    console.log(`[Auto-Restart] Triggering auto-restart now! Reason: ${reason}`);
+                    this.autoRestartTescoBuild(reason);
                 }
             },
 
@@ -12173,16 +12231,17 @@
                 }
             },
 
-            // Auto-restart the build when stalled
-            async autoRestartTescoBuild() {
+            // Auto-restart the build when stalled or periodically
+            async autoRestartTescoBuild(reason = 'stall detected') {
                 if (state.tescoAutoRestarting) {
                     console.log('[Auto-Restart] Already restarting, skipping');
                     return;
                 }
 
-                console.log('[Auto-Restart] === Starting auto-restart process ===');
+                console.log(`[Auto-Restart] === Starting auto-restart process (${reason}) ===`);
                 state.tescoAutoRestarting = true;
                 state.tescoLastAutoRestart = Date.now();
+                state.tescoLastPeriodicRestart = Date.now(); // Reset periodic timer too
                 state.tescoAutoRestartCount++;
 
                 // Stop polling during restart to prevent interference
@@ -12203,7 +12262,7 @@
                     countValue.textContent = state.tescoAutoRestartCount;
                 }
 
-                this.addActivityLogEntry(`🔄 Auto-restart #${state.tescoAutoRestartCount} triggered (stall detected)`, 'warning');
+                this.addActivityLogEntry(`🔄 Auto-restart #${state.tescoAutoRestartCount} triggered (${reason})`, 'warning');
 
                 try {
                     // Step 1: Pause the build
@@ -12213,12 +12272,16 @@
                     console.log('[Auto-Restart] Pause result:', pauseResult.data);
                     this.addActivityLogEntry('Build paused for restart', 'info');
 
-                    // Wait for pause to take effect
-                    console.log('[Auto-Restart] Waiting 3 seconds for pause to take effect...');
-                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    // Step 2: Wait for function to stop
+                    // Simple fixed wait - the Cloud Function checks pause status between search terms
+                    // Wait 15 seconds which should be enough for any term to complete
+                    console.log('[Auto-Restart] Step 2: Waiting 15 seconds for function to stop...');
+                    this.addActivityLogEntry('Waiting 15s for function to stop...', 'info');
+                    await new Promise(resolve => setTimeout(resolve, 15000));
+                    this.addActivityLogEntry('Wait complete, resuming...', 'success');
 
-                    // Step 2: Resume the build
-                    console.log('[Auto-Restart] Step 2: Resuming build...');
+                    // Step 3: Resume the build
+                    console.log('[Auto-Restart] Step 3: Resuming build...');
                     const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
                     const result = await startTescoBuild();
                     console.log('[Auto-Restart] Resume result:', result.data);

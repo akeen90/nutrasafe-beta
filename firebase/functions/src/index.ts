@@ -40,8 +40,8 @@ export { auditMissingIngredients } from './audit-missing-ingredients';
 export { recognizeFood } from './recognize-food';
 export { scanProductComplete } from './scan-product-complete';
 
-// Algolia integration
-export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
+// Algolia integration (auto-sync on document write + manual sync functions)
+export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, syncTescoProductToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
 
 // Algolia synonyms and query rules
 export { syncSynonymsToAlgolia, getSynonymStats, clearSynonymsFromAlgolia } from './food-synonyms';
@@ -58,4 +58,4 @@ export { discoverUKProductPage, generateManualSearchLinks } from './uk-discovery
 export { extractUKProductData, extractWithPuppeteer, lookupTescoProduct } from './uk-extractor';
 
 // Tesco Database Builder - builds comprehensive UK food database from Tesco API
-export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, resetTescoDatabase, getTescoDatabaseStats } from './tesco-database-builder';
+export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, resetTescoDatabase, getTescoDatabaseStats, configureTescoAlgoliaIndex, syncTescoToAlgolia, scheduledTescoBuild, cleanupTescoDatabase } from './tesco-database-builder';

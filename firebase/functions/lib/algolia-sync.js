@@ -1,15 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchFoodsAlgolia = exports.deleteNewAlgoliaIndices = exports.syncNewDatabasesToAlgolia = exports.bulkImportFoodsToAlgolia = exports.configureAlgoliaIndices = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
-const functions = require("firebase-functions/v2");
-const firestore_1 = require("firebase-functions/v2/firestore");
-const params_1 = require("firebase-functions/params");
+exports.searchFoodsAlgolia = exports.deleteNewAlgoliaIndices = exports.syncNewDatabasesToAlgolia = exports.bulkImportFoodsToAlgolia = exports.configureAlgoliaIndices = exports.syncTescoProductToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
+const functionsV1 = require("firebase-functions");
 const admin = require("firebase-admin");
 const algoliasearch_1 = require("algoliasearch");
-// import axios from "axios"; // ⚡ Disabled: No longer used after removing OpenFoodFacts
 // Algolia configuration
 const ALGOLIA_APP_ID = "WK0TIF84M2";
-const algoliaAdminKey = (0, params_1.defineSecret)("ALGOLIA_ADMIN_API_KEY");
+// Use functions.config() for v1 triggers (more reliable than v2 secrets)
+const getAlgoliaAdminKey = () => functionsV1.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || "";
 // Index names
 const VERIFIED_FOODS_INDEX = "verified_foods";
 const FOODS_INDEX = "foods";
@@ -21,6 +19,8 @@ const AI_MANUALLY_ADDED_INDEX = "ai_manually_added";
 const NEW_MAIN_INDEX = "new_main";
 const NEW_FAST_FOOD_INDEX = "new_fast_food";
 const NEW_GENERIC_INDEX = "new_generic";
+// Tesco products index
+const TESCO_PRODUCTS_INDEX = "tesco_products";
 /**
  * Configure Algolia index settings with custom ranking rules
  * This ensures exact matches and word-start matches are prioritized
@@ -191,14 +191,19 @@ async function configureIndexSettings(client, indexName) {
 // }
 /**
  * Sync verified foods to Algolia when they're created/updated/deleted
+ * Using v1 functions for reliability
  */
-exports.syncVerifiedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
-    document: "verifiedFoods/{foodId}",
-    secrets: [algoliaAdminKey],
-}, async (event) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
-    const foodId = event.params.foodId;
-    const afterData = event.data?.after?.data();
+exports.syncVerifiedFoodToAlgolia = functionsV1.firestore
+    .document("verifiedFoods/{foodId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const afterData = change.after.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -222,13 +227,17 @@ exports.syncVerifiedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
 /**
  * Sync foods collection to Algolia
  */
-exports.syncFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
-    document: "foods/{foodId}",
-    secrets: [algoliaAdminKey],
-}, async (event) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
-    const foodId = event.params.foodId;
-    const afterData = event.data?.after?.data();
+exports.syncFoodToAlgolia = functionsV1.firestore
+    .document("foods/{foodId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const afterData = change.after.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -252,13 +261,17 @@ exports.syncFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
 /**
  * Sync manual foods to Algolia
  */
-exports.syncManualFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
-    document: "manualFoods/{foodId}",
-    secrets: [algoliaAdminKey],
-}, async (event) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
-    const foodId = event.params.foodId;
-    const afterData = event.data?.after?.data();
+exports.syncManualFoodToAlgolia = functionsV1.firestore
+    .document("manualFoods/{foodId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const afterData = change.after.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -282,13 +295,17 @@ exports.syncManualFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
 /**
  * Sync user-added foods to Algolia
  */
-exports.syncUserAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
-    document: "userAdded/{foodId}",
-    secrets: [algoliaAdminKey],
-}, async (event) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
-    const foodId = event.params.foodId;
-    const afterData = event.data?.after?.data();
+exports.syncUserAddedFoodToAlgolia = functionsV1.firestore
+    .document("userAdded/{foodId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const afterData = change.after.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -312,13 +329,17 @@ exports.syncUserAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
 /**
  * Sync AI-enhanced foods to Algolia
  */
-exports.syncAIEnhancedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
-    document: "aiEnhanced/{foodId}",
-    secrets: [algoliaAdminKey],
-}, async (event) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
-    const foodId = event.params.foodId;
-    const afterData = event.data?.after?.data();
+exports.syncAIEnhancedFoodToAlgolia = functionsV1.firestore
+    .document("aiEnhanced/{foodId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const afterData = change.after.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -347,13 +368,17 @@ exports.syncAIEnhancedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
 /**
  * Sync AI manually added foods to Algolia
  */
-exports.syncAIManuallyAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
-    document: "aiManuallyAdded/{foodId}",
-    secrets: [algoliaAdminKey],
-}, async (event) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
-    const foodId = event.params.foodId;
-    const afterData = event.data?.after?.data();
+exports.syncAIManuallyAddedFoodToAlgolia = functionsV1.firestore
+    .document("aiManuallyAdded/{foodId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const afterData = change.after.data();
     // Delete
     if (!afterData) {
         await client.deleteObject({
@@ -375,15 +400,59 @@ exports.syncAIManuallyAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     console.log(`Synced AI manually added food ${foodId} to Algolia`);
 });
 /**
+ * Sync Tesco products to Algolia when they're created/updated/deleted
+ */
+exports.syncTescoProductToAlgolia = functionsV1.firestore
+    .document("tescoProducts/{productId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const productId = context.params.productId;
+    const afterData = change.after.data();
+    // Delete
+    if (!afterData) {
+        await client.deleteObject({
+            indexName: TESCO_PRODUCTS_INDEX,
+            objectID: productId,
+        });
+        console.log(`Deleted Tesco product ${productId} from Algolia`);
+        return;
+    }
+    // Create or Update - use Tesco-specific formatting
+    const algoliaObject = {
+        objectID: productId,
+        ...prepareTescoForAlgolia(afterData),
+    };
+    await client.saveObject({
+        indexName: TESCO_PRODUCTS_INDEX,
+        body: algoliaObject,
+    });
+    console.log(`Synced Tesco product ${productId} to Algolia`);
+});
+/**
  * Configure custom ranking settings for all Algolia indices (HTTP endpoint)
  * Call this once to set up proper search ranking
  * This enables exact match prioritization and better search results
  */
-exports.configureAlgoliaIndices = functions.https.onRequest({
-    secrets: [algoliaAdminKey],
-    cors: true,
-}, async (request, response) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+exports.configureAlgoliaIndices = functionsV1.https.onRequest(async (request, response) => {
+    // Handle CORS
+    response.set("Access-Control-Allow-Origin", "*");
+    if (request.method === "OPTIONS") {
+        response.set("Access-Control-Allow-Methods", "GET, POST");
+        response.set("Access-Control-Allow-Headers", "Content-Type");
+        response.status(204).send("");
+        return;
+    }
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        response.status(500).json({ error: "Algolia admin key not configured" });
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const indices = [
         VERIFIED_FOODS_INDEX,
         FOODS_INDEX,
@@ -413,12 +482,14 @@ exports.configureAlgoliaIndices = functions.https.onRequest({
  * Bulk import all existing foods to Algolia
  * Call this once to migrate existing data
  */
-exports.bulkImportFoodsToAlgolia = functions.https.onCall({
-    secrets: [algoliaAdminKey],
-    memory: "512MiB", // Increased memory for bulk operations
-    timeoutSeconds: 300, // 5 minutes timeout for large datasets
-}, async (request) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+exports.bulkImportFoodsToAlgolia = functionsV1
+    .runWith({ memory: "512MB", timeoutSeconds: 300 })
+    .https.onCall(async (_data, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        throw new functionsV1.https.HttpsError("failed-precondition", "Algolia admin key not configured");
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const db = admin.firestore();
     const collections = [
         { name: "verifiedFoods", indexName: VERIFIED_FOODS_INDEX },
@@ -468,13 +539,23 @@ exports.bulkImportFoodsToAlgolia = functions.https.onCall({
  * Sync NEW databases to Algolia
  * Syncs: newMain -> new_main, newFastFood -> new_fast_food, newGeneric -> new_generic
  */
-exports.syncNewDatabasesToAlgolia = functions.https.onRequest({
-    secrets: [algoliaAdminKey],
-    memory: "1GiB",
-    timeoutSeconds: 540, // 9 minutes for large datasets
-    cors: true,
-}, async (request, response) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+exports.syncNewDatabasesToAlgolia = functionsV1
+    .runWith({ memory: "1GB", timeoutSeconds: 540 })
+    .https.onRequest(async (request, response) => {
+    // Handle CORS
+    response.set("Access-Control-Allow-Origin", "*");
+    if (request.method === "OPTIONS") {
+        response.set("Access-Control-Allow-Methods", "GET, POST");
+        response.set("Access-Control-Allow-Headers", "Content-Type");
+        response.status(204).send("");
+        return;
+    }
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        response.status(500).json({ error: "Algolia admin key not configured" });
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const db = admin.firestore();
     const collections = [
         { name: "newMain", indexName: NEW_MAIN_INDEX },
@@ -519,11 +600,21 @@ exports.syncNewDatabasesToAlgolia = functions.https.onRequest({
 /**
  * Delete new database indices from Algolia (cleanup function)
  */
-exports.deleteNewAlgoliaIndices = functions.https.onRequest({
-    secrets: [algoliaAdminKey],
-    cors: true,
-}, async (request, response) => {
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+exports.deleteNewAlgoliaIndices = functionsV1.https.onRequest(async (request, response) => {
+    // Handle CORS
+    response.set("Access-Control-Allow-Origin", "*");
+    if (request.method === "OPTIONS") {
+        response.set("Access-Control-Allow-Methods", "GET, POST, DELETE");
+        response.set("Access-Control-Allow-Headers", "Content-Type");
+        response.status(204).send("");
+        return;
+    }
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        response.status(500).json({ error: "Algolia admin key not configured" });
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const indicesToDelete = ["new_main", "new_fast_food", "new_generic"];
     const results = {};
     for (const indexName of indicesToDelete) {
@@ -543,10 +634,15 @@ exports.deleteNewAlgoliaIndices = functions.https.onRequest({
  * Search foods using Algolia with enhanced ranking
  * This provides a fast search endpoint for the iOS app with improved relevance
  */
-exports.searchFoodsAlgolia = functions.https.onRequest({
-    secrets: [algoliaAdminKey],
-    cors: true,
-}, async (request, response) => {
+exports.searchFoodsAlgolia = functionsV1.https.onRequest(async (request, response) => {
+    // Handle CORS
+    response.set("Access-Control-Allow-Origin", "*");
+    if (request.method === "OPTIONS") {
+        response.set("Access-Control-Allow-Methods", "GET, POST");
+        response.set("Access-Control-Allow-Headers", "Content-Type");
+        response.status(204).send("");
+        return;
+    }
     // Get query from URL parameter for GET requests
     const query = request.query.q;
     const hitsPerPage = parseInt(request.query.limit) || 20;
@@ -556,7 +652,12 @@ exports.searchFoodsAlgolia = functions.https.onRequest({
         });
         return;
     }
-    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        response.status(500).json({ error: "Algolia admin key not configured" });
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     // Determine if this is a single-word query (affects exact matching)
     const isSingleWord = query.trim().split(/\s+/).length === 1;
     // Enhanced search parameters - let index settings handle most config
@@ -691,6 +792,81 @@ function prepareForAlgolia(data) {
         // Would require porting ProcessingScorer.swift logic to TypeScript
         // Current implementation: Frontend computes on-demand with NSCache
         processingGrade: data.processingGrade || "",
+    };
+}
+/**
+ * Prepare Tesco product data for Algolia indexing
+ * Maps Tesco-specific fields to Algolia format
+ *
+ * Tesco Firestore structure:
+ * - title (product name)
+ * - brand (brand name)
+ * - nutrition.energyKcal, nutrition.protein, nutrition.carbohydrate, etc.
+ * - ingredients (string)
+ * - gtin (barcode)
+ */
+function prepareTescoForAlgolia(data) {
+    // Map Tesco field names to standard format
+    const name = data.title || data.foodName || data.name || "";
+    const brandName = data.brand || data.brandName || "Tesco";
+    // Extract nutrition from nested object
+    const nutrition = data.nutrition || {};
+    const calories = nutrition.energyKcal || data.calories || 0;
+    const protein = nutrition.protein || data.protein || 0;
+    const carbs = nutrition.carbohydrate || data.carbs || 0;
+    const fat = nutrition.fat || data.fat || 0;
+    const saturates = nutrition.saturates || data.saturatedFat || 0;
+    const fibre = nutrition.fibre || data.fiber || 0;
+    const sugars = nutrition.sugars || data.sugar || 0;
+    const salt = nutrition.salt || data.salt || 0;
+    // Custom ranking attributes
+    const nameLength = name.length;
+    const isGeneric = (brandName.toLowerCase() === "generic" || brandName === "") ? 1 : 0;
+    return {
+        // Searchable fields - use consistent naming for admin UI
+        name,
+        foodName: name, // Admin UI uses foodName
+        brandName,
+        brand: brandName,
+        ingredients: data.ingredients || "",
+        barcode: data.gtin || data.barcode || "",
+        gtin: data.gtin || data.barcode || "",
+        // Nutrition data (per 100g) - mapped from nested nutrition object
+        calories,
+        protein,
+        carbs,
+        fat,
+        saturatedFat: saturates,
+        saturates,
+        fiber: fibre,
+        fibre,
+        sugar: sugars,
+        sugars,
+        salt,
+        sodium: salt ? salt * 400 : 0, // Convert salt to sodium
+        // Tesco-specific fields
+        tpnb: data.tpnb || "",
+        tpnc: data.tpnc || "",
+        department: data.department || "",
+        superDepartment: data.superDepartment || "",
+        imageUrl: data.imageUrl || "",
+        // Metadata
+        servingSize: data.servingSize || "per 100g",
+        servingSizeG: 100,
+        category: data.category || data.department || "",
+        source: "Tesco",
+        verified: true,
+        isVerified: true,
+        // Allergen info
+        allergens: data.allergens || [],
+        additives: data.additives || [],
+        // Timestamps
+        createdAt: data.importedAt || Date.now() / 1000,
+        updatedAt: data.importedAt || Date.now() / 1000,
+        // Custom ranking attributes
+        nameLength,
+        isGeneric,
+        score: 0,
     };
 }
 //# sourceMappingURL=algolia-sync.js.map
