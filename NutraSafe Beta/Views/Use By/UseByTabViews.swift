@@ -157,8 +157,8 @@ struct UseByTabView: View {
                         .foregroundColor(.orange)
                 }
             }
+            .frame(height: 48) // Fixed height to prevent resize when typing
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 14)
                     .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
@@ -353,6 +353,8 @@ struct UseByTabView: View {
                 LazyVStack(spacing: 8) {
                     ForEach(searchResults.prefix(8), id: \.id) { food in
                         Button(action: {
+                            // Dismiss keyboard before navigating
+                            isSearchFieldFocused = false
                             showingFoodDetailForSearch = food
                         }) {
                             HStack {
@@ -575,6 +577,8 @@ struct AddFoundFoodToUseBySheet: View {
     @State private var uploadedImageURL: String?
     @State private var isUploadingPhoto = false
 
+    // Keyboard focus
+    @FocusState private var isAnyFieldFocused: Bool
 
     enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
 
@@ -594,7 +598,11 @@ struct AddFoundFoodToUseBySheet: View {
 
                 Spacer()
 
-                Button(action: { Task { await save() } }) {
+                Button(action: {
+                    // Dismiss keyboard before saving
+                    isAnyFieldFocused = false
+                    Task { await save() }
+                }) {
                     if isSaving || isUploadingPhoto {
                         HStack(spacing: 4) {
                             ProgressView()
@@ -742,24 +750,30 @@ struct AddFoundFoodToUseBySheet: View {
             }
             .fullScreenCover(isPresented: $showCameraPicker) {
                 ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                    // IMPORTANT: Set image and dismiss synchronously
+                    // The ImagePicker already called picker.dismiss() internally
                     if let image = image {
                         capturedImage = image
+                    }
+                    showCameraPicker = false
+                    // Upload in background after state is set
+                    if let image = image {
                         Task {
                             await uploadPhoto(image)
-                            await MainActor.run {
-                                showCameraPicker = false
-                            }
                         }
-                    } else {
-                        showCameraPicker = false
                     }
                 }
             }
             .fullScreenCover(isPresented: $showPhotoPicker) {
                 PhotoLibraryPicker { image in
-                    showPhotoPicker = false
+                    // IMPORTANT: Set capturedImage BEFORE dismissing picker
                     if let image = image {
                         capturedImage = image
+                    }
+                    // Dismiss picker AFTER setting the image
+                    showPhotoPicker = false
+                    // Upload in background after state is set
+                    if let image = image {
                         Task {
                             await uploadPhoto(image)
                         }
@@ -1024,40 +1038,13 @@ struct UseByExpiryView: View {
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.primary)
 
-                Text("Use the search bar above to find foods, or add items manually.")
+                Text("Use the search bar above to find foods and track their use-by dates.")
                     .font(.system(size: 15))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
                     .padding(.horizontal, 32)
             }
-
-            Button(action: {
-                showingAddSheet = true
-            }) {
-                HStack(spacing: 10) {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Add Manually")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 1.0, green: 0.7, blue: 0.5),
-                            Color(red: 1.0, green: 0.6, blue: 0.7),
-                            Color(red: 0.7, green: 0.6, blue: 1.0)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(24)
-            }
-            .padding(.horizontal, 32)
             .padding(.bottom, 20)
         }
         .frame(maxWidth: .infinity)
@@ -3287,6 +3274,9 @@ struct UseByFoodDetailSheet: View {
     @State private var showPhotoActionSheet: Bool = false
     @State private var isUploadingPhoto: Bool = false
 
+    // Keyboard focus
+    @FocusState private var isAnyFieldFocused: Bool
+
     enum ExpiryMode {
         case calendar
         case selector
@@ -3634,7 +3624,11 @@ struct UseByFoodDetailSheet: View {
                     // Fixed bottom button
                     VStack(spacing: 0) {
                         Divider()
-                        Button(action: saveToUseBy) {
+                        Button(action: {
+                            // Dismiss keyboard before saving
+                            isAnyFieldFocused = false
+                            saveToUseBy()
+                        }) {
                             HStack(spacing: 8) {
                                 if isSaving {
                                     ProgressView()
@@ -3696,10 +3690,12 @@ struct UseByFoodDetailSheet: View {
         }
         .fullScreenCover(isPresented: $showPhotoPicker) {
             PhotoLibraryPicker { image in
-                showPhotoPicker = false
+                // IMPORTANT: Set capturedImage BEFORE dismissing picker
                 if let image = image {
                     capturedImage = image
                 }
+                // Dismiss picker AFTER setting the image
+                showPhotoPicker = false
             }
         }
     }
@@ -3852,6 +3848,9 @@ struct UseByItemDetailView: View {
     @State private var showPhotoActionSheet: Bool = false
     @State private var isUploadingPhoto: Bool = false
     @State private var uploadedImageURL: String?
+
+    // Keyboard focus
+    @FocusState private var isAnyFieldFocused: Bool
 
     // Initializer to properly set initial values
     init(item: UseByInventoryItem? = nil, prefillFood: FoodSearchResult? = nil, onComplete: (() -> Void)? = nil) {
@@ -4275,7 +4274,11 @@ struct UseByItemDetailView: View {
                     VStack(spacing: 0) {
                         Divider()
                         VStack(spacing: 10) {
-                            Button(action: { Task { await saveChanges() } }) {
+                            Button(action: {
+                                // Dismiss keyboard before saving
+                                isAnyFieldFocused = false
+                                Task { await saveChanges() }
+                            }) {
                                 HStack(spacing: 8) {
                                     if isSaving {
                                         ProgressView()
@@ -4403,24 +4406,29 @@ struct UseByItemDetailView: View {
         }
         .fullScreenCover(isPresented: $showCameraPicker) {
             ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                // IMPORTANT: Set image and dismiss synchronously
                 if let image = image {
                     capturedImage = image
+                }
+                showCameraPicker = false
+                // Upload in background after state is set
+                if let image = image {
                     Task {
                         await uploadPhoto(image)
-                        await MainActor.run {
-                            showCameraPicker = false
-                        }
                     }
-                } else {
-                    showCameraPicker = false
                 }
             }
         }
         .fullScreenCover(isPresented: $showPhotoPicker) {
             PhotoLibraryPicker { image in
-                showPhotoPicker = false
+                // IMPORTANT: Set capturedImage BEFORE dismissing picker
                 if let image = image {
                     capturedImage = image
+                }
+                // Dismiss picker AFTER setting the image
+                showPhotoPicker = false
+                // Upload in background after state is set
+                if let image = image {
                     Task {
                         await uploadPhoto(image)
                     }
@@ -5401,26 +5409,83 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-                        if results.isEmpty {
-                                parent.onImageSelected(nil)
+            // NOTE: Do NOT call picker.dismiss() here - let SwiftUI handle dismissal via the binding
+            // The callback will be called AFTER the image is fully loaded
+
+            guard !results.isEmpty else {
+                DispatchQueue.main.async {
+                    self.parent.onImageSelected(nil)
+                }
                 return
             }
 
             // Only take the first photo even though we allow multiple selection
             guard let provider = results.first?.itemProvider else {
-                                parent.onImageSelected(nil)
+                DispatchQueue.main.async {
+                    self.parent.onImageSelected(nil)
+                }
                 return
             }
 
+            // Use DispatchGroup to ensure image is fully loaded before calling callback
+            // This prevents race conditions between picker dismissal and image state update
+            let group = DispatchGroup()
+            var loadedImage: UIImage?
+
+            group.enter()
+
+            // Try loadObject first (works for most images)
             if provider.canLoadObject(ofClass: UIImage.self) {
-                provider.loadObject(ofClass: UIImage.self) { image, _ in
-                    DispatchQueue.main.async {
-                        self.parent.onImageSelected(image as? UIImage)
+                provider.loadObject(ofClass: UIImage.self) { object, error in
+                    defer { group.leave() }
+                    if let image = object as? UIImage {
+                        loadedImage = image
+                    } else if error != nil {
+                        // loadObject failed - try loadDataRepresentation as fallback
+                        // This handles HEIC and other formats that may fail on real devices
+                        print("📸 [PhotoLibraryPicker] loadObject failed, will try data representation")
                     }
                 }
             } else {
-                parent.onImageSelected(nil)
+                // Can't load as UIImage directly, try data representation
+                group.leave()
             }
+
+            group.notify(queue: .main) {
+                if let image = loadedImage {
+                    self.parent.onImageSelected(image)
+                } else {
+                    // Fallback: try loading via data representation for HEIC/RAW formats
+                    self.loadImageViaDataRepresentation(provider: provider)
+                }
+            }
+        }
+
+        private func loadImageViaDataRepresentation(provider: NSItemProvider) {
+            // Fallback method for photos that fail loadObject (common on real devices with HEIC)
+            let typeIdentifiers = provider.registeredTypeIdentifiers
+
+            // Try common image types
+            let imageTypes = ["public.heic", "public.heif", "public.jpeg", "public.png", "public.image"]
+
+            for typeId in imageTypes {
+                if typeIdentifiers.contains(typeId) {
+                    provider.loadDataRepresentation(forTypeIdentifier: typeId) { data, error in
+                        DispatchQueue.main.async {
+                            if let data = data, let image = UIImage(data: data) {
+                                self.parent.onImageSelected(image)
+                            } else {
+                                // If this specific type failed, try next
+                                // If all fail, we'll fall through to the final nil callback
+                            }
+                        }
+                    }
+                    return
+                }
+            }
+
+            // No supported type found
+            self.parent.onImageSelected(nil)
         }
     }
 }
@@ -5498,29 +5563,44 @@ struct CachedUseByImage: View {
             return
         }
 
-        // 2. Load from Firebase URL if not cached
-        guard let imageURL = imageURL, let url = URL(string: imageURL) else {
-            isLoading = false
-            return
-        }
+        // 2. Load from Firebase URL if available
+        if let imageURL = imageURL, let url = URL(string: imageURL) {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let image = UIImage(data: data) {
+                    loadedImage = image
 
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let image = UIImage(data: data) {
-                loadedImage = image
-
-                // Cache for next time
-                do {
-                    try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                } catch {
-                    // Silent failure - cache is optimization only
+                    // Cache for next time
+                    do {
+                        try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
+                    } catch {
+                        // Silent failure - cache is optimization only
+                    }
+                    isLoading = false
+                    return
                 }
+            } catch {
+                // Silent failure - will retry below
             }
-        } catch {
-            // Silent failure - image just won't show
         }
 
+        // 3. If we still don't have an image, the cache might still be writing
+        // Retry a few times with short delays to handle race condition
         isLoading = false
+
+        // Retry up to 3 times with 300ms delays
+        for _ in 1...3 {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+
+            // Check if we've been loaded by another path
+            guard loadedImage == nil else { return }
+
+            // Try cache again
+            if let cachedImage = await ImageCacheManager.shared.loadUseByImageAsync(for: itemId) {
+                loadedImage = cachedImage
+                return
+            }
+        }
     }
 }
 

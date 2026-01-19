@@ -3508,11 +3508,12 @@ private var nutritionFactsSection: some View {
                     }
                 }
 
-                // Serving name - flexible, single line
+                // Serving name - allow wrapping for long names
                 Text(servingUnit.capitalized)
                     .font(.system(size: 13, weight: isSelected ? .medium : .regular))
                     .foregroundColor(.primary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Nutrition block - matches header widths exactly
@@ -3534,7 +3535,7 @@ private var nutritionFactsSection: some View {
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 8)
-            .frame(height: 48)
+            .frame(minHeight: 48)
             .background(isSelected ? Color.accentColor.opacity(0.06) : Color.clear)
             .cornerRadius(8)
         }
@@ -3617,11 +3618,12 @@ private var nutritionFactsSection: some View {
                                     }
                                     .buttonStyle(PlainButtonStyle())
 
-                                    // Serving name - flexible, single line
+                                    // Serving name - allow wrapping for long names
                                     Text(portion.name)
                                         .font(.system(size: 13, weight: isSelected ? .medium : .regular))
                                         .foregroundColor(.primary)
-                                        .lineLimit(1)
+                                        .lineLimit(2)
+                                        .minimumScaleFactor(0.85)
                                         .frame(maxWidth: .infinity, alignment: .leading)
 
                                     // Nutrition block - matches header widths exactly
@@ -3655,7 +3657,7 @@ private var nutritionFactsSection: some View {
                                 }
                                 .padding(.vertical, 10)
                                 .padding(.horizontal, 8)
-                                .frame(height: 48)
+                                .frame(minHeight: 48)
                                 .background(isSelected ? Color.accentColor.opacity(0.06) : Color.clear)
                                 .cornerRadius(8)
                             }

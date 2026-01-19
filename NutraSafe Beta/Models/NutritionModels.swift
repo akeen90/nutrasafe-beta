@@ -394,8 +394,12 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         if eggKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("aubergine") { return .egg }
         if yogurtKeywords.contains(where: { nameLower.contains($0) }) { return .yogurt }
         if cheeseKeywords.contains(where: { nameLower.contains($0) }) { return .cheese }
-        // Check milk but exclude "milk chocolate" products
-        if milkKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("milk chocolate") && !nameLower.contains("chocolate milk") { return .milk }
+        // Check milk but exclude "milk chocolate" products and butter/margarine products
+        if milkKeywords.contains(where: { nameLower.contains($0) }) &&
+           !nameLower.contains("milk chocolate") &&
+           !nameLower.contains("chocolate milk") &&
+           !nameLower.contains("buttermilk") &&
+           !butterKeywords.contains(where: { nameLower.contains($0) }) { return .milk }
         if nutKeywords.contains(where: { nameLower.contains($0) }) { return .nuts }
         if riceKeywords.contains(where: { nameLower.contains($0) }) { return .rice }
         if pastaKeywords.contains(where: { nameLower.contains($0) }) { return .pasta }
