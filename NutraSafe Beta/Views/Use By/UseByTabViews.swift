@@ -1028,26 +1028,35 @@ struct UseByExpiryView: View {
     @ViewBuilder
     private var emptyStateView: some View {
         // Empty state without full-frame expansion so it works in ScrollView
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image("useby-fridge")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(height: 180)
-                .padding(.top, 32)
+                .frame(height: 380)
+                .padding(.top, 8)
 
-            VStack(spacing: 12) {
-                Text("No items yet")
-                    .font(.system(size: 24, weight: .bold))
+            VStack(spacing: 14) {
+                Text("Your Fridge Awaits")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
-                Text("Use the search bar above to find foods and track their use-by dates.")
-                    .font(.system(size: 15))
+                Text("Never wonder \"is this still good?\" again")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 24)
+
+                // Subtle hint text
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 13))
+                    Text("Search above to add your first item")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(.blue.opacity(0.8))
+                .padding(.top, 8)
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 16)
@@ -2004,47 +2013,34 @@ struct UseByEmptyStateView: View {
     var onAddFirstItem: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image("useby-fridge")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(height: 180)
+                .frame(height: 380)
                 .accessibilityHidden(true)
 
-            VStack(spacing: 8) {
-                Text("No items yet")
-                    .font(.system(size: 20, weight: .bold))
+            VStack(spacing: 14) {
+                Text("Your Fridge Awaits")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
-                Text("Never forget your food again. Add items to keep track of use-by dates.")
-                    .font(.system(size: 16))
+                Text("Never wonder \"is this still good?\" again")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(4)
                     .padding(.horizontal, 24)
-            }
 
-            Button(action: { onAddFirstItem?() }) {
-                Text("Add Your First Item")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 1.0, green: 0.7, blue: 0.5),
-                                Color(red: 1.0, green: 0.6, blue: 0.7),
-                                Color(red: 0.7, green: 0.6, blue: 1.0)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(24)
-                    .accessibilityLabel("Add your first use-by item")
+                // Subtle hint text
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 13))
+                    Text("Search above to add your first item")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(.blue.opacity(0.8))
+                .padding(.top, 8)
             }
-            .padding(.horizontal, 16)
         }
         .frame(maxWidth: .infinity)
         .padding(24)
