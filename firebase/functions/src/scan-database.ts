@@ -8,7 +8,7 @@ const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || proces
 
 // Issue types
 interface Issue {
-  type: 'missing-nutrition' | 'impossible-nutrition' | 'misspelling' | 'non-word' | 'weird-spacing' | 'missing-barcode' | 'missing-ingredients';
+  type: 'missing-nutrition' | 'impossible-nutrition' | 'misspelling' | 'non-word' | 'weird-spacing' | 'missing-barcode' | 'missing-ingredients' | 'html-code';
   field?: string;
   value?: string;
   suggestion?: string;
@@ -523,12 +523,33 @@ function detectIssues(food: Record<string, unknown>): Issue[] {
     }
   }
 
-  // 4. Missing Barcode
+  // 4. HTML Code Detection
+  // Check for HTML tags in name, brand, and ingredients
+  const htmlTagPattern = /<[^>]+>|&[a-z]+;|&[#]\d+;|&#x[a-f0-9]+;/gi;
+  const fieldsToCheckForHtml = [
+    { field: 'name', value: originalName },
+    { field: 'brand', value: originalBrand },
+    { field: 'ingredients', value: ingredients.join(' ') },
+  ];
+
+  for (const { field, value } of fieldsToCheckForHtml) {
+    if (value && htmlTagPattern.test(value)) {
+      const htmlMatches = value.match(htmlTagPattern);
+      issues.push({
+        type: 'html-code',
+        field,
+        value: htmlMatches ? htmlMatches.slice(0, 3).join(', ') : 'HTML detected',
+        suggestion: 'Remove HTML tags and entities'
+      });
+    }
+  }
+
+  // 5. Missing Barcode
   if (!food.barcode) {
     issues.push({ type: 'missing-barcode' });
   }
 
-  // 5. Missing Ingredients
+  // 6. Missing Ingredients
   if (!ingredients || ingredients.length === 0) {
     issues.push({ type: 'missing-ingredients' });
   }
@@ -627,6 +648,7 @@ export const scanDatabaseIssues = functions
             if (checkTypes.includes('weird-spacing') && issue.type === 'weird-spacing') return true;
             if (checkTypes.includes('missing-barcode') && issue.type === 'missing-barcode') return true;
             if (checkTypes.includes('missing-ingredients') && issue.type === 'missing-ingredients') return true;
+            if (checkTypes.includes('html-code') && issue.type === 'html-code') return true;
             return false;
           });
         }
@@ -1510,29 +1532,17 @@ function detectSimpleIngredient(foodName: string): { match: boolean; ingredients
  */
 export const fixSimpleIngredients = functions
   .runWith({ timeoutSeconds: 540, memory: '1GB' })
-  .https.onRequest(async (req, res) => {
-  // CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).send();
-    return;
-  }
-
+  .https.onCall(async (data, context) => {
   try {
-    const { indexName, dryRun = true } = req.body;
+    const { indexName, dryRun = false } = data || {};
 
     if (!indexName) {
-      res.status(400).json({ success: false, error: 'Index name is required' });
-      return;
+      throw new functions.https.HttpsError('invalid-argument', 'Index name is required');
     }
 
     const adminKey = getAlgoliaAdminKey();
     if (!adminKey) {
-      res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
-      return;
+      throw new functions.https.HttpsError('failed-precondition', 'Algolia admin key not configured');
     }
 
     console.log(`🥗 ${dryRun ? '[DRY RUN] ' : ''}Fixing simple ingredients in index: ${indexName}`);
@@ -1630,26 +1640,258 @@ export const fixSimpleIngredients = functions
       byCategory[item.category] = (byCategory[item.category] || 0) + 1;
     }
 
-    res.json({
+    return {
       success: true,
       dryRun,
-      totalScanned,
-      totalMissingIngredients,
-      itemsFound: itemsToFix.length,
+      itemsScanned: totalScanned,
+      itemsDetected: itemsToFix.length,
       itemsFixed: fixedCount,
       byCategory,
       items: itemsToFix.slice(0, 100), // Return first 100 for preview
       message: dryRun
         ? `Found ${itemsToFix.length} simple ingredient items to fix. Run with dryRun=false to apply fixes.`
         : `Fixed ${fixedCount} items with simple ingredients.`,
-    });
+    };
 
   } catch (error: unknown) {
     console.error('❌ Error fixing simple ingredients:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fix simple ingredients',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to fix simple ingredients',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+  }
+});
+
+/**
+ * Helper function to strip HTML tags and decode HTML entities
+ */
+function stripHtml(text: string): string {
+  if (!text) return text;
+
+  // Remove HTML tags
+  let cleaned = text.replace(/<[^>]+>/g, '');
+
+  // Decode common HTML entities
+  const htmlEntities: Record<string, string> = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&apos;': "'",
+    '&#39;': "'",
+    '&ndash;': '–',
+    '&mdash;': '—',
+    '&copy;': '©',
+    '&reg;': '®',
+    '&trade;': '™',
+    '&euro;': '€',
+    '&pound;': '£',
+    '&yen;': '¥',
+    '&cent;': '¢',
+    '&deg;': '°',
+    '&plusmn;': '±',
+    '&times;': '×',
+    '&divide;': '÷',
+    '&frac12;': '½',
+    '&frac14;': '¼',
+    '&frac34;': '¾',
+  };
+
+  for (const [entity, char] of Object.entries(htmlEntities)) {
+    cleaned = cleaned.replace(new RegExp(entity, 'gi'), char);
+  }
+
+  // Decode numeric HTML entities (&#123; or &#x7B;)
+  cleaned = cleaned.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  cleaned = cleaned.replace(/&#x([a-fA-F0-9]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+
+  // Clean up multiple spaces left behind
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+  return cleaned;
+}
+
+/**
+ * Detect if a string contains HTML
+ */
+function containsHtml(text: string): boolean {
+  if (!text) return false;
+  const htmlPattern = /<[^>]+>|&[a-z]+;|&#\d+;|&#x[a-f0-9]+;/gi;
+  return htmlPattern.test(text);
+}
+
+/**
+ * Fix HTML code in food records
+ * Scans for HTML tags and entities in food names, brands, and ingredients,
+ * then strips them to clean text
+ */
+export const fixHtmlCode = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .https.onCall(async (data, context) => {
+  try {
+    const { indexName, dryRun = false } = data || {};
+
+    if (!indexName) {
+      throw new functions.https.HttpsError('invalid-argument', 'Index name is required');
+    }
+
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+      throw new functions.https.HttpsError('failed-precondition', 'Algolia admin key not configured');
+    }
+
+    console.log(`🧹 ${dryRun ? '[DRY RUN] ' : ''}Fixing HTML code in index: ${indexName}`);
+
+    const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+
+    // Find all records with HTML in text fields
+    const itemsToFix: Array<{
+      objectID: string;
+      foodName: string;
+      cleanedName?: string;
+      cleanedBrand?: string;
+      cleanedIngredients?: string[];
+      htmlFound: string[];
+    }> = [];
+    let totalScanned = 0;
+    let cursor: string | undefined;
+    let batchNumber = 0;
+
+    do {
+      batchNumber++;
+      const browseParams: Record<string, unknown> = {
+        attributesToRetrieve: ['objectID', 'foodName', 'name', 'brandName', 'brand', 'ingredients', 'extractedIngredients'],
+        hitsPerPage: 1000,
+      };
+
+      if (cursor) {
+        browseParams.cursor = cursor;
+      }
+
+      const result = await client.browse({ indexName, browseParams });
+      const hits = (result.hits || []) as Record<string, unknown>[];
+      totalScanned += hits.length;
+
+      console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records`);
+
+      for (const food of hits) {
+        const foodName = (food.foodName as string) || (food.name as string) || '';
+        const brandName = (food.brandName as string) || (food.brand as string) || '';
+        const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
+        const ingredientText = ingredients.join(' ');
+
+        const hasHtmlInName = containsHtml(foodName);
+        const hasHtmlInBrand = containsHtml(brandName);
+        const hasHtmlInIngredients = containsHtml(ingredientText);
+
+        if (hasHtmlInName || hasHtmlInBrand || hasHtmlInIngredients) {
+          const htmlFound: string[] = [];
+          if (hasHtmlInName) htmlFound.push('name');
+          if (hasHtmlInBrand) htmlFound.push('brand');
+          if (hasHtmlInIngredients) htmlFound.push('ingredients');
+
+          const item: {
+            objectID: string;
+            foodName: string;
+            cleanedName?: string;
+            cleanedBrand?: string;
+            cleanedIngredients?: string[];
+            htmlFound: string[];
+          } = {
+            objectID: food.objectID as string,
+            foodName,
+            htmlFound,
+          };
+
+          if (hasHtmlInName) {
+            item.cleanedName = stripHtml(foodName);
+          }
+          if (hasHtmlInBrand) {
+            item.cleanedBrand = stripHtml(brandName);
+          }
+          if (hasHtmlInIngredients) {
+            item.cleanedIngredients = ingredients.map(ing => stripHtml(ing));
+          }
+
+          itemsToFix.push(item);
+        }
+      }
+
+      cursor = result.cursor;
+
+      if (batchNumber > 100) {
+        console.log('⚠️ Reached batch limit, stopping scan');
+        break;
+      }
+    } while (cursor);
+
+    console.log(`📊 Found ${itemsToFix.length} items with HTML code out of ${totalScanned} scanned`);
+
+    // Apply fixes if not dry run
+    let fixedCount = 0;
+    if (!dryRun && itemsToFix.length > 0) {
+      const updates = itemsToFix.map(item => {
+        const update: Record<string, unknown> = { objectID: item.objectID };
+
+        if (item.cleanedName) {
+          update.foodName = item.cleanedName;
+          update.name = item.cleanedName;
+        }
+        if (item.cleanedBrand) {
+          update.brandName = item.cleanedBrand;
+          update.brand = item.cleanedBrand;
+        }
+        if (item.cleanedIngredients) {
+          update.ingredients = item.cleanedIngredients;
+          update.extractedIngredients = item.cleanedIngredients;
+        }
+
+        return update;
+      });
+
+      // Process in batches of 1000
+      const batchSize = 1000;
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize);
+        await client.partialUpdateObjects({
+          indexName,
+          objects: batch,
+          createIfNotExists: false,
+        });
+        fixedCount += batch.length;
+        console.log(`✅ Fixed batch: ${batch.length} records (total: ${fixedCount})`);
+      }
+    }
+
+    // Group by field for response
+    const byField: Record<string, number> = { name: 0, brand: 0, ingredients: 0 };
+    for (const item of itemsToFix) {
+      for (const field of item.htmlFound) {
+        byField[field] = (byField[field] || 0) + 1;
+      }
+    }
+
+    return {
+      success: true,
+      dryRun,
+      itemsScanned: totalScanned,
+      itemsDetected: itemsToFix.length,
+      itemsFixed: fixedCount,
+      byField,
+      items: itemsToFix.slice(0, 100), // Return first 100 for preview
+      message: dryRun
+        ? `Found ${itemsToFix.length} items with HTML code. Run with dryRun=false to apply fixes.`
+        : `Fixed ${fixedCount} items by removing HTML code.`,
+    };
+
+  } catch (error: unknown) {
+    console.error('❌ Error fixing HTML code:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to fix HTML code',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 });

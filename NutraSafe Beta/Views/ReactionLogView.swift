@@ -790,6 +790,7 @@ struct LogReactionSheet: View {
     @State private var selectedType: ReactionType = .headache
     @State private var customType: String = ""
     @State private var reactionDate: Date = Date()
+    @State private var selectedSeverity: ReactionSeverity = .moderate
     @State private var notes: String = ""
     @State private var dayRange: ReactionLogView.DayRange
 
@@ -856,6 +857,9 @@ struct LogReactionSheet: View {
                 VStack(spacing: 24) {
                     // Reaction Type Section
                     reactionTypeSection
+
+                    // Severity Section
+                    severitySection
 
                     // Date & Time Section
                     dateTimeSection
@@ -978,6 +982,64 @@ struct LogReactionSheet: View {
             .cornerRadius(10)
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Severity Section
+
+    private var severitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "How severe?", icon: "speedometer", color: .red)
+
+            HStack(spacing: 10) {
+                ForEach(ReactionSeverity.allCases, id: \.self) { severity in
+                    Button(action: { selectedSeverity = severity }) {
+                        VStack(spacing: 6) {
+                            ZStack {
+                                Circle()
+                                    .fill(severityColor(severity).opacity(selectedSeverity == severity ? 0.2 : 0.1))
+                                    .frame(width: 44, height: 44)
+                                Circle()
+                                    .fill(severityColor(severity))
+                                    .frame(width: selectedSeverity == severity ? 20 : 12, height: selectedSeverity == severity ? 20 : 12)
+                            }
+                            Text(severityLabel(severity))
+                                .font(.system(size: 13, weight: selectedSeverity == severity ? .bold : .medium))
+                                .foregroundColor(selectedSeverity == severity ? severityColor(severity) : .secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(selectedSeverity == severity ? severityColor(severity).opacity(0.1) : (colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6)))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(selectedSeverity == severity ? severityColor(severity).opacity(0.5) : Color.clear, lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(16)
+        .background(cardBackground)
+        .cornerRadius(16)
+    }
+
+    private func severityColor(_ severity: ReactionSeverity) -> Color {
+        switch severity {
+        case .mild: return .yellow
+        case .moderate: return .orange
+        case .severe: return .red
+        }
+    }
+
+    private func severityLabel(_ severity: ReactionSeverity) -> String {
+        switch severity {
+        case .mild: return "Mild"
+        case .moderate: return "Moderate"
+        case .severe: return "Severe"
+        }
     }
 
     // MARK: - Date & Time Section
@@ -1761,26 +1823,10 @@ struct LogReactionSheet: View {
                 return []
             }()
 
-            // Build food info string
-            if let name = foodName {
-                var info = "Suspected food: \(name)"
-                if !ingredientsList.isEmpty {
-                    info += "\nIngredients: \(ingredientsList.joined(separator: ", "))"
-                }
-                if foodSource == .ai && !inferredIngredients.isEmpty {
-                    info += "\n(AI-estimated ingredients)"
-                }
-                foodInfo = info
-            }
-
-            // Combine notes with food info
-            if let info = foodInfo {
-                if notesText.isEmpty {
-                    notesText = info
-                } else {
-                    notesText = "\(info)\n\n\(notesText)"
-                }
-            }
+            // Food info is stored separately in the FoodReaction model,
+            // so we don't need to add it to notes anymore.
+            // The notes field should only contain the user's actual notes.
+            _ = foodInfo // Silence unused variable warning
 
             print("🔵 [LogReactionSheet] Calling manager.saveReactionLog...")
             let savedEntry = try await manager.saveReactionLog(
@@ -1800,7 +1846,7 @@ struct LogReactionSheet: View {
                 foodId: nil,
                 foodBrand: nil,
                 timestamp: FirebaseFirestore.Timestamp(date: reactionDate),
-                severity: .moderate, // Default severity
+                severity: selectedSeverity,
                 symptoms: [reactionType],
                 suspectedIngredients: ingredientsList,
                 notes: notesText.isEmpty ? nil : notesText

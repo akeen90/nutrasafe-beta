@@ -431,8 +431,11 @@ struct NutritionGoalsSection: View {
     @State private var waterGoal: Int = 8
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
     @State private var selectedDietType: DietType? = .flexible
+    @State private var customCarbLimit: Int = 50
+    @State private var showingCarbLimitEditor = false
 
     @AppStorage("dailyWaterGoal") private var savedWaterGoal: Int = 8
+    @AppStorage("customCarbLimit") private var savedCarbLimit: Int = 50
 
     @State private var isLoading = true
     @State private var showingError = false
@@ -604,6 +607,7 @@ struct NutritionGoalsSection: View {
             MacroManagementView(
                 macroGoals: $macroGoals,
                 dietType: $selectedDietType,
+                customCarbLimit: $customCarbLimit,
                 onSave: saveMacroGoals
             )
         }
@@ -637,6 +641,7 @@ struct NutritionGoalsSection: View {
                 cachedStepGoal = stepGoal
                 macroGoals = loadedMacroGoals
                 selectedDietType = loadedDiet
+                customCarbLimit = savedCarbLimit
                 isLoading = false
                             }
         } catch {
@@ -2526,11 +2531,15 @@ struct MacroManagementView: View {
 
     @Binding var macroGoals: [MacroGoal]
     @Binding var dietType: DietType?
+    @Binding var customCarbLimit: Int
     let onSave: (DietType?) -> Void
 
     // Selected diet type
     @State private var selectedDiet: DietType?
     @State private var isCustomMode: Bool = false
+    @State private var showingCarbLimitEditor: Bool = false
+    @State private var editableCarbLimit: Int = 50
+    @AppStorage("customCarbLimit") private var savedCarbLimit: Int = 50
 
     // Core macro percentages (always present)
     @State private var proteinPercent: Int
@@ -2553,9 +2562,10 @@ struct MacroManagementView: View {
     @AppStorage("userWeightKg") private var userWeightKg: Double = 65
     @AppStorage("userActivityLevel") private var userActivityLevel: String = "moderate"
 
-    init(macroGoals: Binding<[MacroGoal]>, dietType: Binding<DietType?>, onSave: @escaping (DietType?) -> Void) {
+    init(macroGoals: Binding<[MacroGoal]>, dietType: Binding<DietType?>, customCarbLimit: Binding<Int>, onSave: @escaping (DietType?) -> Void) {
         self._macroGoals = macroGoals
         self._dietType = dietType
+        self._customCarbLimit = customCarbLimit
         self.onSave = onSave
 
         let goals = macroGoals.wrappedValue
@@ -2570,6 +2580,9 @@ struct MacroManagementView: View {
         let extraGoal = goals.first(where: { !$0.macroType.isCoreMacro })
         self._selectedExtraMacro = State(initialValue: extraGoal?.macroType ?? .fiber)
         self._extraMacroTarget = State(initialValue: String(Int(extraGoal?.directTarget ?? 30)))
+
+        // Initialize editable carb limit
+        self._editableCarbLimit = State(initialValue: customCarbLimit.wrappedValue)
 
         // Use the passed diet type if available, otherwise check macro match
         if let existingDiet = dietType.wrappedValue {
@@ -2682,6 +2695,16 @@ struct MacroManagementView: View {
                     }
                 )
                 .environmentObject(firebaseManager)
+            }
+            .sheet(isPresented: $showingCarbLimitEditor) {
+                CarbLimitEditorSheet(
+                    carbLimit: $editableCarbLimit,
+                    isKeto: selectedDiet == .keto,
+                    onSave: {
+                        customCarbLimit = editableCarbLimit
+                        savedCarbLimit = editableCarbLimit
+                    }
+                )
             }
         }
         .navigationViewStyle(.stack)
@@ -2890,15 +2913,25 @@ struct MacroManagementView: View {
                 .foregroundColor(.secondary)
                 .lineSpacing(2)
 
-            if let carbLimit = diet.dailyCarbLimit {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.orange)
-                    Text("Daily carb limit: \(carbLimit)g")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.orange)
+            if diet.dailyCarbLimit != nil {
+                Button(action: {
+                    editableCarbLimit = customCarbLimit
+                    showingCarbLimitEditor = true
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.orange)
+                        Text("Daily carb limit: \(customCarbLimit)g")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.orange)
+                        Spacer()
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.orange.opacity(0.6))
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
                 .padding(.top, 4)
             }
 
@@ -3086,6 +3119,147 @@ struct MacroManagementView: View {
         dismiss()
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+}
+
+// MARK: - Carb Limit Editor Sheet
+struct CarbLimitEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var carbLimit: Int
+    let isKeto: Bool  // True for keto diet, false for low-carb
+    let onSave: () -> Void
+
+    // All available presets
+    private let allPresets = [
+        (value: 20, label: "Very Strict", description: "Strict keto, maximum ketosis", ketoOnly: true),
+        (value: 30, label: "Strict", description: "Standard keto target", ketoOnly: true),
+        (value: 50, label: "Moderate", description: "Relaxed keto, easier to maintain", ketoOnly: false),
+        (value: 75, label: "Liberal", description: "Low-carb but not strict keto", ketoOnly: false),
+        (value: 100, label: "Low-Carb", description: "General low-carb diet", ketoOnly: false)
+    ]
+
+    // Filter presets based on diet type
+    private var presetLimits: [(value: Int, label: String, description: String, ketoOnly: Bool)] {
+        if isKeto {
+            // Keto diet: only show presets up to 50g
+            return allPresets.filter { $0.value <= 50 }
+        } else {
+            // Low-carb diet: show all presets
+            return allPresets
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Current value display
+                VStack(spacing: 8) {
+                    Text("\(carbLimit)")
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
+                        .foregroundColor(.orange)
+                    Text("grams per day")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 20)
+
+                // Stepper for fine control
+                HStack {
+                    Button(action: { if carbLimit > 10 { carbLimit -= 5 } }) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.orange)
+                    }
+                    .disabled(carbLimit <= 10)
+
+                    Slider(value: Binding(
+                        get: { Double(carbLimit) },
+                        set: { carbLimit = Int($0) }
+                    ), in: 10...150, step: 5)
+                    .accentColor(.orange)
+
+                    Button(action: { if carbLimit < 150 { carbLimit += 5 } }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.orange)
+                    }
+                    .disabled(carbLimit >= 150)
+                }
+                .padding(.horizontal, 20)
+
+                // Preset options
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Quick Presets")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+
+                    ForEach(presetLimits, id: \.value) { preset in
+                        Button(action: { carbLimit = preset.value }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(preset.label)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    Text(preset.description)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                Text("\(preset.value)g")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(carbLimit == preset.value ? .white : .orange)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(carbLimit == preset.value ? Color.orange : Color.orange.opacity(0.15))
+                                    )
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(carbLimit == preset.value ? Color.orange.opacity(0.1) : Color(.secondarySystemGroupedBackground))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                Spacer()
+
+                // Info note
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(.blue)
+                    Text("Your carb limit affects compliance alerts when logging food.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+            }
+            .navigationTitle("Daily Carb Limit")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
     }
 }
 

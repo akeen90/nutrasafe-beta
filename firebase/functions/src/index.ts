@@ -52,7 +52,7 @@ export { configureQueryRules, getQueryRulesStats, clearQueryRules } from './algo
 export { syncEmailConsentToMailchimp, syncAllEmailConsentsToMailchimp } from './mailchimp-sync';
 
 // Database scanning and batch operations
-export { scanDatabaseIssues, batchUpdateFoods, fixKjKcalCombinedCalories, fixSimpleIngredients } from './scan-database';
+export { scanDatabaseIssues, batchUpdateFoods, fixKjKcalCombinedCalories, fixSimpleIngredients, fixHtmlCode } from './scan-database';
 
 // UK Data Cleansing - Google Discovery and Extraction
 export { discoverUKProductPage, generateManualSearchLinks } from './uk-discovery';

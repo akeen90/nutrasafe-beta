@@ -1070,6 +1070,12 @@
             color: #a16207;
         }
 
+        .issue-badge.issue-html-code {
+            background: #fce4ec;
+            color: #c2185b;
+            font-weight: 600;
+        }
+
         /* Highlighted text for misspellings */
         mark.misspelling {
             background: #fde68a;
@@ -4685,6 +4691,10 @@
                                     <span class="btn-title">🥜 Fix Simple Ingredients</span>
                                     <span class="btn-desc">Auto-add ingredients for single-ingredient foods (oils, nuts, etc.)</span>
                                 </button>
+                                <button class="verify-action-btn fix-calories" id="btn-fix-html-code" onclick="app.fixHtmlCode()" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);">
+                                    <span class="btn-title">🧹 Fix HTML Code</span>
+                                    <span class="btn-desc">Remove HTML tags & entities from names, brands, ingredients</span>
+                                </button>
                             </div>
 
                             <!-- UK Verification Status Legend -->
@@ -4733,6 +4743,7 @@
                                     <option value="misspelling">Misspellings</option>
                                     <option value="weird-spacing">Weird Spacing</option>
                                     <option value="non-word">Non-Words</option>
+                                    <option value="html-code">HTML Code</option>
                                 </optgroup>
                                 <option value="multiple">Multiple Issues</option>
                             </select>
@@ -10080,31 +10091,100 @@
                     return;
                 }
 
-                this.showToast('Scanning for simple ingredient foods...', 'info');
-                this.addActivityLog(`Starting simple ingredients fix for ${indexName}...`, 'info');
+                this.showToast('Scanning for simple ingredient foods... This may take several minutes.', 'info');
+                this.addActivityLog(`Starting simple ingredients fix for ${indexName} (may take up to 9 minutes)...`, 'info');
 
                 try {
-                    const fixSimpleIngredientsFunc = firebase.functions().httpsCallable('fixSimpleIngredients');
+                    console.log('[fixSimpleIngredients] Calling function with indexName:', indexName);
+                    const fixSimpleIngredientsFunc = firebase.functions().httpsCallable('fixSimpleIngredients', { timeout: 540000 });
                     const result = await fixSimpleIngredientsFunc({ indexName });
+                    console.log('[fixSimpleIngredients] Got result:', result);
                     const fixResult = result.data;
+                    console.log('[fixSimpleIngredients] Result data:', fixResult);
 
-                    if (fixResult.success) {
+                    if (fixResult && fixResult.success) {
                         this.showToast(`Fixed ${fixResult.itemsFixed} simple ingredient foods!`, 'success');
                         this.addActivityLog(`Fixed ${fixResult.itemsFixed} simple ingredient foods (scanned ${fixResult.itemsScanned}, detected ${fixResult.itemsDetected})`, 'success');
 
+                        // Show category breakdown
+                        if (fixResult.byCategory) {
+                            console.log('Fixed by category:', fixResult.byCategory);
+                            const categories = Object.entries(fixResult.byCategory).map(([k, v]) => `${k}: ${v}`).join(', ');
+                            this.addActivityLog(`Categories: ${categories}`, 'info');
+                        }
+
                         // Show some examples if available
-                        if (fixResult.examples && fixResult.examples.length > 0) {
-                            console.log('Examples of fixed items:', fixResult.examples);
-                            const exampleNames = fixResult.examples.slice(0, 3).map(e => e.name).join(', ');
+                        if (fixResult.items && fixResult.items.length > 0) {
+                            console.log('Examples of fixed items:', fixResult.items.slice(0, 5));
+                            const exampleNames = fixResult.items.slice(0, 3).map(e => e.foodName || e.name).join(', ');
                             this.addActivityLog(`Examples: ${exampleNames}`, 'info');
                         }
                     } else {
-                        this.showToast(`Error: ${fixResult.error}`, 'error');
+                        const errorMsg = fixResult?.error || fixResult?.message || 'Unknown error - check console';
+                        this.showToast(`Error: ${errorMsg}`, 'error');
+                        this.addActivityLog(`Error: ${errorMsg}`, 'error');
                     }
 
                 } catch (error) {
-                    console.error('Fix simple ingredients error:', error);
-                    this.showToast(`Error: ${error.message}`, 'error');
+                    console.error('[fixSimpleIngredients] Error:', error);
+                    // Firebase callable errors have code, message, and details
+                    const errorMsg = error.message || error.code || 'Unknown error';
+                    const errorDetails = error.details ? ` (${error.details})` : '';
+                    this.showToast(`Error: ${errorMsg}${errorDetails}`, 'error');
+                    this.addActivityLog(`Error: ${errorMsg}${errorDetails}`, 'error');
+                }
+            },
+
+            // Fix HTML code in food records
+            async fixHtmlCode() {
+                const indexName = state.currentIndex || 'tesco_products';
+
+                if (!confirm(`This will scan the "${indexName}" index for HTML code (tags like <b>, entities like &amp;) in food names, brands, and ingredients, then remove them.\n\nThis may update many records. Continue?`)) {
+                    return;
+                }
+
+                this.showToast('Scanning for HTML code... This may take several minutes.', 'info');
+                this.addActivityLog(`Starting HTML code fix for ${indexName} (may take up to 9 minutes)...`, 'info');
+
+                try {
+                    console.log('[fixHtmlCode] Calling function with indexName:', indexName);
+                    const fixHtmlCodeFunc = firebase.functions().httpsCallable('fixHtmlCode', { timeout: 540000 });
+                    const result = await fixHtmlCodeFunc({ indexName });
+                    console.log('[fixHtmlCode] Got result:', result);
+                    const fixResult = result.data;
+                    console.log('[fixHtmlCode] Result data:', fixResult);
+
+                    if (fixResult && fixResult.success) {
+                        this.showToast(`Fixed ${fixResult.itemsFixed} items with HTML code!`, 'success');
+                        this.addActivityLog(`Fixed ${fixResult.itemsFixed} items with HTML code (scanned ${fixResult.itemsScanned}, detected ${fixResult.itemsDetected})`, 'success');
+
+                        // Show field breakdown
+                        if (fixResult.byField) {
+                            console.log('Fixed by field:', fixResult.byField);
+                            const fields = Object.entries(fixResult.byField).filter(([k, v]) => v > 0).map(([k, v]) => `${k}: ${v}`).join(', ');
+                            if (fields) {
+                                this.addActivityLog(`Fields affected: ${fields}`, 'info');
+                            }
+                        }
+
+                        // Show some examples if available
+                        if (fixResult.items && fixResult.items.length > 0) {
+                            console.log('Examples of fixed items:', fixResult.items.slice(0, 5));
+                            const exampleNames = fixResult.items.slice(0, 3).map(e => e.foodName || e.name).join(', ');
+                            this.addActivityLog(`Examples: ${exampleNames}`, 'info');
+                        }
+                    } else {
+                        const errorMsg = fixResult?.error || fixResult?.message || 'Unknown error - check console';
+                        this.showToast(`Error: ${errorMsg}`, 'error');
+                        this.addActivityLog(`Error: ${errorMsg}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('[fixHtmlCode] Error:', error);
+                    const errorMsg = error.message || error.code || 'Unknown error';
+                    const errorDetails = error.details ? ` (${error.details})` : '';
+                    this.showToast(`Error: ${errorMsg}${errorDetails}`, 'error');
+                    this.addActivityLog(`Error: ${errorMsg}${errorDetails}`, 'error');
                 }
             },
 
@@ -10890,7 +10970,8 @@
                     'missing-ingredients': 'min',
                     'weird-spacing': 'wsp',
                     'non-word': 'nwd',
-                    'suspect-value': 'sus'
+                    'suspect-value': 'sus',
+                    'html-code': 'htm'
                 };
                 return issues.map(i => codeMap[i.type] || i.type.substring(0, 3)).join(',');
             },

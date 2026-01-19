@@ -1521,44 +1521,45 @@ struct ReactionDetailView: View {
                         )
                     }
 
-                    // Symptoms Card
-                    VStack(alignment: .leading, spacing: 14) {
-                        Label("SYMPTOMS", systemImage: "heart.text.square.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .textCase(.uppercase)
+                    // Symptoms Card - only show if symptoms exist
+                    if !reaction.symptoms.isEmpty {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("SYMPTOMS", systemImage: "heart.text.square.fill")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.secondary)
+                                .textCase(.uppercase)
 
-                        // Simple wrapping layout for symptoms
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(reaction.symptoms, id: \.self) { symptom in
-                                Text(symptom)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.blue.opacity(0.1))
-                                    )
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-                                    )
-                                    .foregroundColor(.blue)
-                                    .fixedSize()
+                            // Wrapping flow layout for symptoms
+                            FlowLayout(spacing: 8) {
+                                ForEach(reaction.symptoms, id: \.self) { symptom in
+                                    Text(symptom)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.blue.opacity(0.1))
+                                        )
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                                        )
+                                        .foregroundColor(.blue)
+                                }
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color(.secondarySystemGroupedBackground))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color(.systemGray5), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(.secondarySystemGroupedBackground))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color(.systemGray5), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
 
                     // Suspected Ingredients Card
                     if !reaction.suspectedIngredients.isEmpty {
@@ -1568,8 +1569,8 @@ struct ReactionDetailView: View {
                                 .foregroundColor(.secondary)
                                 .textCase(.uppercase)
 
-                            // Simple wrapping layout for ingredients
-                            VStack(alignment: .leading, spacing: 8) {
+                            // Wrapping flow layout for ingredients
+                            FlowLayout(spacing: 8) {
                                 ForEach(reaction.suspectedIngredients, id: \.self) { ingredient in
                                     Text(ingredient)
                                         .font(.system(size: 13, weight: .semibold))
@@ -1584,7 +1585,6 @@ struct ReactionDetailView: View {
                                                 .stroke(Color.red.opacity(0.2), lineWidth: 1)
                                         )
                                         .foregroundColor(.red)
-                                        .fixedSize()
                                 }
                             }
                         }

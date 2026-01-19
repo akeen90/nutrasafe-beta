@@ -116,203 +116,111 @@ struct UseByTabView: View {
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
 
-    // MARK: - Hero Header (Tip Card)
+    // MARK: - Hero Header (Search Bar)
     private var useByHeroHeader: some View {
-        VStack(spacing: 16) {
-            // Quick tip card
+        VStack(spacing: 12) {
+            // Direct search text field
             HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.orange.opacity(0.2), Color.yellow.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 44, height: 44)
+                TextField("Search food to add...", text: $searchQuery)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .autocorrectionDisabled(true)
+                    .textInputAutocapitalization(.never)
+                    .font(.system(size: 16, weight: .regular))
+                    .focused($isSearchFieldFocused)
+                    .onChange(of: searchQuery) { _, newValue in
+                        performUseBySearch(query: newValue)
+                    }
+                    .onChange(of: isSearchFieldFocused) { _, focused in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isSearchExpanded = focused
+                        }
+                    }
 
-                    Image(systemName: "lightbulb.fill")
+                if !searchQuery.isEmpty {
+                    Button(action: {
+                        searchQuery = ""
+                        searchResults = []
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Barcode icon
+                Button(action: {
+                    showingBarcodeScanner = true
+                }) {
+                    Image(systemName: "barcode.viewfinder")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.orange, .yellow],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .foregroundColor(.orange)
                 }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Did you know?")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
-
-                    Text("UK households waste £700+ of food yearly. Track use-by dates to save money!")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-
-                Spacer(minLength: 0)
             }
-            .padding(14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.orange.opacity(0.08),
-                                Color.yellow.opacity(0.05)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [Color.orange.opacity(0.3), Color.yellow.opacity(0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
+                    .strokeBorder(isSearchFieldFocused ? Color.orange.opacity(0.5) : Color(.systemGray4), lineWidth: 1)
             )
+
+            // Manual add option - show when focused or has search query
+            if isSearchExpanded || !searchQuery.isEmpty {
+                manualAddButton
+            }
         }
     }
 
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
-                // Header - Title with inline search
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        if isSearchExpanded {
-                            // Expanded search field
-                            HStack(spacing: 8) {
-                                Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.secondary)
-                                    .font(.system(size: 16))
+                // Header - Title only
+                HStack(spacing: 12) {
+                    Text("Use By Tracker")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.primary, .primary.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
 
-                                TextField("Search foods to add...", text: $searchQuery)
-                                    .textFieldStyle(PlainTextFieldStyle())
-                                    .autocorrectionDisabled(true)
-                                    .textInputAutocapitalization(.never)
-                                    .focused($isSearchFieldFocused)
-                                    .onChange(of: searchQuery) { _, newValue in
-                                        performUseBySearch(query: newValue)
-                                    }
+                    Spacer()
 
-                                if !searchQuery.isEmpty {
-                                    Button(action: {
-                                        searchQuery = ""
-                                        searchResults = []
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
-                            .cornerRadius(10)
-
-                            // Barcode scan button
-                            Button(action: {
-                                showingBarcodeScanner = true
-                            }) {
-                                Image(systemName: "barcode.viewfinder")
-                                    .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.orange)
-                                    .frame(width: 40, height: 40)
-                                    .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
-                                    .cornerRadius(10)
-                            }
-
-                            // Cancel button
-                            Button("Cancel") {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    isSearchExpanded = false
-                                    searchQuery = ""
-                                    searchResults = []
-                                    isSearchFieldFocused = false
-                                }
-                            }
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.blue)
-                        } else {
-                            // Title
-                            Text("Use By Tracker")
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.primary, .primary.opacity(0.8)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-
-                            Spacer()
-
-                            Button(action: { showingSettings = true }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .frame(width: 40, height: 40)
-                                        .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
-                                    Image(systemName: "gearshape.fill")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                }
-                            }
-
-                            // Only show search/add button for premium users
-                            if subscriptionManager.hasAccess {
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        isSearchExpanded = true
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                            isSearchFieldFocused = true
-                                        }
-                                    }
-                                }) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(AppColors.primary)
-                                            .frame(width: 40, height: 40)
-                                        Image(systemName: "magnifyingglass")
-                                            .font(.system(size: 18, weight: .bold))
-                                            .foregroundColor(.white)
-                                    }
-                                }
-                                .buttonStyle(SpringyButtonStyle())
-                            }
+                    Button(action: { showingSettings = true }) {
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 40, height: 40)
+                                .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-
-                    // Inline search results dropdown
-                    if isSearchExpanded && subscriptionManager.hasAccess {
-                        useBySearchResultsView
-                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
                 // Check premium access
                 if subscriptionManager.hasAccess {
                     // Premium users see full content
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            // Hero header section (hide when search is expanded)
-                            if !isSearchExpanded {
-                                useByHeroHeader
+                            // Search bar section
+                            useByHeroHeader
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+
+                            // Search results (show below search bar when active)
+                            if isSearchExpanded && (!searchResults.isEmpty || isSearching || (searchQuery.count >= 2)) {
+                                useBySearchResultsView
                                     .padding(.horizontal, 16)
-                                    .padding(.top, 8)
                             }
 
                             UseByExpiryView(
@@ -345,20 +253,18 @@ struct UseByTabView: View {
             .navigationBarHidden(true)
         }
         .fullScreenCover(item: $showingFoodDetailForSearch) { food in
-            NavigationView {
-                UseByItemDetailView(
-                    item: nil,
-                    prefillFood: food,
-                    onComplete: {
-                        showingFoodDetailForSearch = nil
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isSearchExpanded = false
-                            searchQuery = ""
-                            searchResults = []
-                        }
+            UseByItemDetailView(
+                item: nil,
+                prefillFood: food,
+                onComplete: {
+                    showingFoodDetailForSearch = nil
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSearchExpanded = false
+                        searchQuery = ""
+                        searchResults = []
                     }
-                )
-            }
+                }
+            )
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddUseByItemSheet(onComplete: {
@@ -424,7 +330,7 @@ struct UseByTabView: View {
 
     @ViewBuilder
     private var useBySearchResultsView: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 8) {
             if isSearching {
                 HStack(spacing: 8) {
                     ProgressView()
@@ -434,74 +340,103 @@ struct UseByTabView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.vertical, 8)
             } else if !searchResults.isEmpty {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(searchResults.prefix(8), id: \.id) { food in
-                            Button(action: {
-                                showingFoodDetailForSearch = food
-                            }) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(food.name)
-                                            .font(.system(size: 15, weight: .medium))
-                                            .foregroundColor(.primary)
+                LazyVStack(spacing: 8) {
+                    ForEach(searchResults.prefix(8), id: \.id) { food in
+                        Button(action: {
+                            showingFoodDetailForSearch = food
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(food.name)
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+
+                                    if let brand = food.brand, !brand.isEmpty {
+                                        Text(brand)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
                                             .lineLimit(1)
-
-                                        if let brand = food.brand, !brand.isEmpty {
-                                            Text(brand)
-                                                .font(.system(size: 12))
-                                                .foregroundColor(.secondary)
-                                                .lineLimit(1)
-                                        }
                                     }
-
-                                    Spacer()
-
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 22))
-                                        .foregroundColor(.orange)
                                 }
-                                .padding(12)
-                                .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
-                                .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
-                        }
 
-                        if searchResults.count > 8 {
-                            Text("\(searchResults.count - 8) more results...")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.top, 4)
+                                Spacer()
+
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundColor(.orange)
+                            }
+                            .padding(12)
+                            .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                            .cornerRadius(10)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
+
+                    if searchResults.count > 8 {
+                        Text("\(searchResults.count - 8) more results...")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.top, 4)
+                    }
                 }
-                .frame(maxHeight: 300)
             } else if !searchQuery.isEmpty && searchQuery.count >= 2 {
                 // No results message
                 VStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass.circle")
-                        .font(.system(size: 32))
-                        .foregroundColor(.secondary.opacity(0.5))
                     Text("No foods found")
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
-                    Text("Try different keywords")
+                    Text("Try different keywords or use Manual Add above")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
+                .padding(.vertical, 12)
             }
         }
-        .background(Color.adaptiveBackground)
+    }
+
+    // MARK: - Manual Add Button
+
+    private var manualAddButton: some View {
+        Button(action: {
+            // Close search and open manual add sheet
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isSearchExpanded = false
+                searchQuery = ""
+                searchResults = []
+            }
+            showingAddSheet = true
+        }) {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.orange)
+
+                Text("Add Manually")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.orange.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Search Helper

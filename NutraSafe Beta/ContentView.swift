@@ -946,6 +946,21 @@ enum ProgressSubTab: String, CaseIterable {
     case diet = "Diet"
 }
 
+// MARK: - Journey Time Range
+enum JourneyTimeRange: String, CaseIterable {
+    case thirtyDays = "30 Days"
+    case ninetyDays = "90 Days"
+    case allTime = "All Time"
+
+    var entryLimit: Int? {
+        switch self {
+        case .thirtyDays: return 30
+        case .ninetyDays: return 90
+        case .allTime: return nil
+        }
+    }
+}
+
 // MARK: - Weight Tracking View
 struct WeightTrackingView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -974,6 +989,8 @@ struct WeightTrackingView: View {
     @State private var entryToDelete: WeightEntry?
     @State private var showingDeleteConfirmation = false
     @State private var showAllWeightEntries = false
+    @State private var showingGoalWeightEditor = false
+    @State private var journeyTimeRange: JourneyTimeRange = .thirtyDays
 
     // MARK: - Feature Tips
     @State private var showingProgressTip = false
@@ -1122,31 +1139,40 @@ struct WeightTrackingView: View {
                                     .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                             )
 
-                            // Goal Weight
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Goal")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    Text(goalWeight > 0 ? formatWeight(goalWeight) : "--")
-                                        .font(.system(size: 32, weight: .bold))
-                                        .foregroundColor(.green)
-                                    Text(weightUnit)
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.secondary)
+                            // Goal Weight - Tappable to edit
+                            Button(action: { showingGoalWeightEditor = true }) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Text("Goal")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Image(systemName: "pencil.circle.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.green.opacity(0.6))
+                                    }
+                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                        Text(goalWeight > 0 ? formatWeight(goalWeight) : "--")
+                                            .font(.system(size: 32, weight: .bold))
+                                            .foregroundColor(.green)
+                                        Text(weightUnit)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .stroke(Color(.systemGray4), lineWidth: 1)
+                                        )
+                                        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
+                                )
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .stroke(Color(.systemGray4), lineWidth: 1)
-                                    )
-                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
-                            )
+                            .buttonStyle(PlainButtonStyle())
                         }
                         .padding(.horizontal, 16)
 
@@ -1212,6 +1238,14 @@ struct WeightTrackingView: View {
 
                     // Progress Graph Section
                     if weightHistory.count >= 2 {
+                        let journeyEntries: [WeightEntry] = {
+                            if let limit = journeyTimeRange.entryLimit {
+                                return Array(weightHistory.prefix(limit).reversed())
+                            } else {
+                                return Array(weightHistory.reversed())
+                            }
+                        }()
+
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Text("Your Journey")
@@ -1220,28 +1254,25 @@ struct WeightTrackingView: View {
 
                                 Spacer()
 
-                                // Time range label
-                                if let firstEntry = weightHistory.last, let lastEntry = weightHistory.first {
-                                    let daysDiff = Calendar.current.dateComponents([.day], from: firstEntry.date, to: lastEntry.date).day ?? 0
-                                    Text(daysDiff > 0 ? "\(daysDiff) days" : "Today")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(Color(.systemGray6))
-                                        .cornerRadius(6)
+                                // Time range picker
+                                Picker("Time Range", selection: $journeyTimeRange) {
+                                    ForEach(JourneyTimeRange.allCases, id: \.self) { range in
+                                        Text(range.rawValue).tag(range)
+                                    }
                                 }
+                                .pickerStyle(.segmented)
+                                .frame(width: 200)
                             }
                             .padding(.horizontal, 16)
 
-                            // Weight trend graph
+                            // Weight trend line graph
                             WeightLineChart(
-                                entries: Array(weightHistory.prefix(30).reversed()), // Last 30 entries, oldest first for left-to-right
+                                entries: journeyEntries,
                                 goalWeight: goalWeight,
                                 startWeight: weightHistory.last?.weight ?? currentWeight,
                                 weightUnit: selectedWeightUnit
                             )
-                            .frame(height: 130)
+                            .frame(height: 160)
                             .padding(.horizontal, 12)
 
                             // Progress summary stats
@@ -1612,6 +1643,13 @@ struct WeightTrackingView: View {
             )
             .environmentObject(firebaseManager)
         }
+        .sheet(isPresented: $showingGoalWeightEditor) {
+            GoalWeightEditorSheet(
+                goalWeight: $goalWeight,
+                weightUnit: selectedWeightUnit,
+                onSave: saveGoalWeight
+            )
+        }
         .alert("Delete Weight Entry?", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
                 entryToDelete = nil
@@ -1782,6 +1820,24 @@ struct WeightTrackingView: View {
         }
     }
 
+    private func saveGoalWeight() {
+        Task {
+            do {
+                try await firebaseManager.saveUserSettings(height: nil, goalWeight: goalWeight)
+                // Notify other views about goal weight change
+                await MainActor.run {
+                    NotificationCenter.default.post(
+                        name: .goalWeightUpdated,
+                        object: nil,
+                        userInfo: ["goalWeight": goalWeight]
+                    )
+                }
+            } catch {
+                // Silently fail - the UI is already updated
+            }
+        }
+    }
+
     // MARK: - Progress Tab Picker (Matching Health Tab Style)
     @Namespace private var progressTabAnimation
 
@@ -1882,6 +1938,8 @@ struct DietManagementTabContent: View {
 
     // Diet Management sheet
     @State private var showingDietManagement: Bool = false
+    @State private var customCarbLimit: Int = 50
+    @AppStorage("customCarbLimit") private var savedCarbLimit: Int = 50
 
     // Activity Goals
     @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
@@ -2214,6 +2272,7 @@ struct DietManagementTabContent: View {
             calorieGoal = cachedCaloricGoal
             stepGoal = cachedStepGoal
             exerciseGoal = cachedExerciseGoal
+            customCarbLimit = savedCarbLimit
             loadDietSettings()
         }
         .sheet(isPresented: $showingBMRCalculator) {
@@ -2234,6 +2293,7 @@ struct DietManagementTabContent: View {
             MacroManagementView(
                 macroGoals: $macroGoals,
                 dietType: $selectedDietType,
+                customCarbLimit: $customCarbLimit,
                 onSave: { newDiet in
                     selectedDietType = newDiet
                     saveDietSettings()
@@ -2871,7 +2931,7 @@ struct WeightLineChart: View {
     let startWeight: Double
     var weightUnit: WeightUnit = .kg
 
-    // Date formatter for pillar labels
+    // Date formatter for axis labels
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "d/M"
@@ -2893,113 +2953,203 @@ struct WeightLineChart: View {
         }
     }
 
-    // Weight bounds based on start weight and goal weight for proper scaling
+    // Weight bounds based on all weights for proper scaling
     private var weightBounds: (min: Double, max: Double, range: Double) {
         let weights = entries.map { $0.weight }
         let allWeights = weights + [goalWeight, startWeight].filter { $0 > 0 }
 
-        // Use goal as minimum baseline if losing weight, start weight as max
-        let minW = min(allWeights.min() ?? 0, goalWeight > 0 ? goalWeight : (allWeights.min() ?? 0)) - 2
-        let maxW = max(allWeights.max() ?? 0, startWeight) + 2
+        let minW = min(allWeights.min() ?? 0, goalWeight > 0 ? goalWeight : (allWeights.min() ?? 0)) - 1
+        let maxW = max(allWeights.max() ?? 0, startWeight) + 1
 
         return (minW, maxW, max(maxW - minW, 1))
     }
 
-    // Color based on whether weight is above or below goal
-    private func barColor(for weight: Double) -> Color {
-        if goalWeight <= 0 {
-            return Color.blue
+    // Line color based on trend
+    private var lineColor: Color {
+        guard entries.count >= 2 else { return .blue }
+        let firstWeight = entries.first?.weight ?? 0
+        let lastWeight = entries.last?.weight ?? 0
+
+        if goalWeight > 0 {
+            // If losing towards goal
+            if lastWeight < firstWeight && lastWeight >= goalWeight {
+                return .green
+            } else if lastWeight <= goalWeight {
+                return .green
+            }
         }
-        if weight <= goalWeight {
-            return Color.green
-        } else if weight <= goalWeight + 2 {
-            return Color.orange
-        } else {
-            return Color.blue
-        }
+        return lastWeight <= firstWeight ? .green : .orange
     }
 
     var body: some View {
         let bounds = weightBounds
-        let displayEntries = Array(entries.suffix(10)) // Show last 10 entries max for cleaner look
 
         GeometryReader { geometry in
-            let availableWidth = geometry.size.width - 32 // Account for padding
-            let barCount = displayEntries.count + (goalWeight > 0 ? 1 : 0)
-            let barWidth: CGFloat = min(40, max(24, (availableWidth - CGFloat(barCount - 1) * 12) / CGFloat(barCount)))
-            let spacing: CGFloat = 12
+            let width = geometry.size.width - 50 // Leave space for Y-axis labels
+            let height = geometry.size.height - 30 // Leave space for X-axis labels
+            let chartLeft: CGFloat = 45
+            let chartTop: CGFloat = 10
 
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .bottom, spacing: spacing) {
-                        ForEach(Array(displayEntries.enumerated()), id: \.element.id) { index, entry in
-                            let barHeight = max(0.15, (entry.weight - bounds.min) / bounds.range)
-                            let isLatest = index == displayEntries.count - 1
-
-                            VStack(spacing: 3) {
-                                // Weight value at top
-                                Text(formatWeight(entry.weight))
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                    .foregroundColor(isLatest ? .white : barColor(for: entry.weight))
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 3)
-                                    .background(
-                                        Capsule()
-                                            .fill(isLatest ? barColor(for: entry.weight) : Color.clear)
-                                    )
-
-                                // The pillar/bar - uniform width
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(barColor(for: entry.weight))
-                                    .frame(width: barWidth, height: CGFloat(barHeight) * 80)
-
-                                // Date at bottom
-                                Text(dateFormatter.string(from: entry.date))
-                                    .font(.system(size: 10, weight: isLatest ? .bold : .medium))
-                                    .foregroundColor(isLatest ? .primary : .secondary)
-                            }
-                            .id(entry.id)
-                        }
-
-                        // Goal marker pillar (if set)
-                        if goalWeight > 0 {
-                            let goalBarHeight = max(0.15, (goalWeight - bounds.min) / bounds.range)
-
-                            VStack(spacing: 3) {
-                                Text(formatWeight(goalWeight))
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 3)
-                                    .background(Capsule().fill(Color.green))
-
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.green.opacity(0.3))
-                                    .frame(width: barWidth, height: CGFloat(goalBarHeight) * 80)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
-                                            .foregroundColor(.green)
-                                    )
-
-                                Text("Goal")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(.green)
-                            }
+            ZStack(alignment: .topLeading) {
+                // Background grid lines
+                VStack(spacing: 0) {
+                    ForEach(0..<5) { i in
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.15))
+                            .frame(height: 1)
+                        if i < 4 {
+                            Spacer()
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
                 }
-                .onAppear {
-                    // Scroll to the latest entry
-                    if let lastEntry = displayEntries.last {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation {
-                                proxy.scrollTo(lastEntry.id, anchor: .trailing)
-                            }
+                .frame(width: width, height: height)
+                .offset(x: chartLeft, y: chartTop)
+
+                // Y-axis labels
+                VStack {
+                    Text(formatWeight(bounds.max))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(formatWeight((bounds.max + bounds.min) / 2))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(formatWeight(bounds.min))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .frame(width: 40, height: height)
+                .offset(y: chartTop)
+
+                // Goal line (dashed horizontal)
+                if goalWeight > 0 {
+                    let goalY = chartTop + height - CGFloat((goalWeight - bounds.min) / bounds.range) * height
+
+                    Path { path in
+                        path.move(to: CGPoint(x: chartLeft, y: goalY))
+                        path.addLine(to: CGPoint(x: chartLeft + width, y: goalY))
+                    }
+                    .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                    .foregroundColor(.green.opacity(0.7))
+
+                    // Goal label
+                    Text("Goal: \(formatWeight(goalWeight))")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color.green.opacity(0.15))
+                        .cornerRadius(4)
+                        .offset(x: chartLeft + width - 60, y: goalY - 18)
+                }
+
+                // Line graph with gradient fill
+                if entries.count >= 2 {
+                    let points = entries.enumerated().map { index, entry -> CGPoint in
+                        let x = chartLeft + (CGFloat(index) / CGFloat(max(entries.count - 1, 1))) * width
+                        let y = chartTop + height - CGFloat((entry.weight - bounds.min) / bounds.range) * height
+                        return CGPoint(x: x, y: y)
+                    }
+
+                    // Gradient fill under the line
+                    Path { path in
+                        guard let firstPoint = points.first else { return }
+                        path.move(to: CGPoint(x: firstPoint.x, y: chartTop + height))
+                        path.addLine(to: firstPoint)
+
+                        for point in points.dropFirst() {
+                            path.addLine(to: point)
+                        }
+
+                        if let lastPoint = points.last {
+                            path.addLine(to: CGPoint(x: lastPoint.x, y: chartTop + height))
+                        }
+                        path.closeSubpath()
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [lineColor.opacity(0.3), lineColor.opacity(0.05)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    // The line itself
+                    Path { path in
+                        guard let firstPoint = points.first else { return }
+                        path.move(to: firstPoint)
+
+                        for point in points.dropFirst() {
+                            path.addLine(to: point)
                         }
                     }
+                    .stroke(lineColor, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+
+                    // Dots for each entry
+                    ForEach(Array(points.enumerated()), id: \.offset) { index, point in
+                        let isLast = index == points.count - 1
+                        let isFirst = index == 0
+                        let entry = entries[index]
+
+                        Circle()
+                            .fill(isLast ? lineColor : Color.white)
+                            .frame(width: isLast ? 10 : 7, height: isLast ? 10 : 7)
+                            .overlay(
+                                Circle()
+                                    .stroke(lineColor, lineWidth: isLast ? 0 : 2)
+                            )
+                            .shadow(color: lineColor.opacity(0.3), radius: isLast ? 4 : 0)
+                            .position(point)
+
+                        // Show weight label for first, last, and every ~5th point
+                        if isFirst || isLast || (entries.count > 10 && index % max(entries.count / 5, 1) == 0) {
+                            Text(formatWeight(entry.weight))
+                                .font(.system(size: 9, weight: isLast ? .bold : .medium, design: .rounded))
+                                .foregroundColor(isLast ? lineColor : .secondary)
+                                .offset(x: point.x, y: point.y - 14)
+                        }
+                    }
+                } else if entries.count == 1 {
+                    // Single entry - just show a dot
+                    let entry = entries[0]
+                    let x = chartLeft + width / 2
+                    let y = chartTop + height - CGFloat((entry.weight - bounds.min) / bounds.range) * height
+
+                    Circle()
+                        .fill(lineColor)
+                        .frame(width: 12, height: 12)
+                        .position(x: x, y: y)
+
+                    Text(formatWeight(entry.weight))
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(lineColor)
+                        .position(x: x, y: y - 16)
+                }
+
+                // X-axis date labels (first, middle, last)
+                if entries.count >= 2 {
+                    HStack {
+                        Text(dateFormatter.string(from: entries.first?.date ?? Date()))
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        Spacer()
+
+                        if entries.count > 2 {
+                            Text(dateFormatter.string(from: entries[entries.count / 2].date))
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.secondary)
+
+                            Spacer()
+                        }
+
+                        Text(dateFormatter.string(from: entries.last?.date ?? Date()))
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(width: width)
+                    .offset(x: chartLeft, y: chartTop + height + 5)
                 }
             }
         }
@@ -4347,7 +4497,158 @@ struct HeightSetupView: View {
     }
 }
 
+// MARK: - Goal Weight Editor Sheet
+struct GoalWeightEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Binding var goalWeight: Double
+    let weightUnit: WeightUnit
+    let onSave: () -> Void
 
+    @State private var goalWeightText: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+
+    private var goalWeightInKg: Double? {
+        let sanitized = goalWeightText.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(sanitized), value > 0 else { return nil }
+        switch weightUnit {
+        case .kg: return value
+        case .lbs: return value / 2.20462
+        case .stones:
+            // Parse stone.pounds format (e.g., "10.7" = 10st 7lb)
+            let parts = sanitized.split(separator: ".")
+            if parts.count == 2, let stone = Double(parts[0]), let pounds = Double(parts[1]) {
+                return (stone * 14 + pounds) / 2.20462
+            }
+            return value * 6.35029 // Plain stone to kg
+        }
+    }
+
+    private func displayValue(_ kg: Double) -> String {
+        switch weightUnit {
+        case .kg: return String(format: "%.1f", kg)
+        case .lbs: return String(format: "%.0f", kg * 2.20462)
+        case .stones:
+            let totalPounds = kg * 2.20462
+            let stone = Int(totalPounds / 14)
+            let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
+            return "\(stone).\(pounds)"
+        }
+    }
+
+    private var unitLabel: String {
+        switch weightUnit {
+        case .kg: return "kg"
+        case .lbs: return "lbs"
+        case .stones: return "st.lb"
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.15))
+                        .frame(width: 80, height: 80)
+                    Image(systemName: "target")
+                        .font(.system(size: 36, weight: .medium))
+                        .foregroundColor(.green)
+                }
+                .padding(.top, 20)
+
+                Text("Set Your Goal Weight")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Text("This helps track your progress towards your target")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                // Weight Input
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        TextField("Goal weight", text: $goalWeightText)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 32, weight: .bold))
+                            .multilineTextAlignment(.center)
+                            .focused($isTextFieldFocused)
+                            .frame(maxWidth: 150)
+
+                        Text(unitLabel)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                    )
+
+                    if goalWeightInKg == nil && !goalWeightText.isEmpty {
+                        Text("Please enter a valid weight")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(.horizontal, 32)
+
+                Spacer()
+
+                // Save Button
+                Button(action: {
+                    if let kg = goalWeightInKg {
+                        goalWeight = kg
+                        onSave()
+                        dismiss()
+                    }
+                }) {
+                    Text("Save Goal")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(goalWeightInKg != nil ? Color.green : Color.gray)
+                        )
+                }
+                .disabled(goalWeightInKg == nil)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 16)
+            }
+            .background(Color.adaptiveBackground)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Clear") {
+                        goalWeight = 0
+                        onSave()
+                        dismiss()
+                    }
+                    .foregroundColor(.red)
+                }
+            }
+        }
+        .onAppear {
+            if goalWeight > 0 {
+                goalWeightText = displayValue(goalWeight)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                isTextFieldFocused = true
+            }
+        }
+    }
+}
 
 func formatRestTime(_ seconds: Int) -> String {
     let minutes = seconds / 60
