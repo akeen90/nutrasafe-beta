@@ -1029,32 +1029,25 @@ struct UseByExpiryView: View {
     private var emptyStateView: some View {
         // Empty state without full-frame expansion so it works in ScrollView
         VStack(spacing: 20) {
-            AnimatedFridgeIcon()
-                .frame(width: 140, height: 200)
+            Image("useby-fridge")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 180)
                 .padding(.top, 32)
 
-            VStack(spacing: 14) {
-                Text("Your Fridge Awaits")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+            VStack(spacing: 12) {
+                Text("No items yet")
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.primary)
 
-                Text("Never wonder \"is this still good?\" again")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                Text("Use the search bar above to find foods and track their use-by dates.")
+                    .font(.system(size: 15))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-
-                // Subtle hint text
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 13))
-                    Text("Search above to add your first item")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .foregroundColor(.blue.opacity(0.8))
-                .padding(.top, 8)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 32)
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 20)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 16)
@@ -2012,31 +2005,46 @@ struct UseByEmptyStateView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            AnimatedFridgeIcon()
-                .frame(width: 140, height: 200)
+            Image("useby-fridge")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 180)
                 .accessibilityHidden(true)
 
-            VStack(spacing: 14) {
-                Text("Your Fridge Awaits")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+            VStack(spacing: 8) {
+                Text("No items yet")
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.primary)
 
-                Text("Never wonder \"is this still good?\" again")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                Text("Never forget your food again. Add items to keep track of use-by dates.")
+                    .font(.system(size: 16))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                    .lineSpacing(4)
                     .padding(.horizontal, 24)
-
-                // Subtle hint text
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 13))
-                    Text("Search above to add your first item")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .foregroundColor(.blue.opacity(0.8))
-                .padding(.top, 8)
             }
+
+            Button(action: { onAddFirstItem?() }) {
+                Text("Add Your First Item")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.7, blue: 0.5),
+                                Color(red: 1.0, green: 0.6, blue: 0.7),
+                                Color(red: 0.7, green: 0.6, blue: 1.0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(24)
+                    .accessibilityLabel("Add your first use-by item")
+            }
+            .padding(.horizontal, 16)
         }
         .frame(maxWidth: .infinity)
         .padding(24)
@@ -5688,43 +5696,23 @@ struct ModernGradientBackground: View {
 }
 
 struct AnimatedFridgeIcon: View {
-    @State private var isGlowing = false
-    @State private var temperatureAnimate = false
-
     var body: some View {
         ZStack {
-            // Ambient glow behind fridge
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.blue.opacity(isGlowing ? 0.15 : 0.08),
-                            Color.clear
-                        ],
-                        center: .center,
-                        startRadius: 30,
-                        endRadius: 90
-                    )
-                )
-                .frame(width: 180, height: 180)
-                .scaleEffect(isGlowing ? 1.1 : 1.0)
-                .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isGlowing)
-
             // Drop shadow
             Ellipse()
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color.black.opacity(0.12),
+                            Color.black.opacity(0.08),
                             Color.clear
                         ],
                         center: .center,
                         startRadius: 5,
-                        endRadius: 50
+                        endRadius: 40
                     )
                 )
-                .frame(width: 100, height: 18)
-                .offset(y: 100)
+                .frame(width: 90, height: 15)
+                .offset(y: 95)
 
             HStack(spacing: 0) {
                 // Left side panel (3D depth)
@@ -5741,13 +5729,13 @@ struct AnimatedFridgeIcon: View {
                                 endPoint: .bottom
                             )
                         )
-                        .frame(width: 16, height: 80)
-                        .cornerRadius(28, corners: [.topLeft])
+                        .frame(width: 15, height: 75)
+                        .cornerRadius(25, corners: [.topLeft])
 
                     // Divider area
                     Rectangle()
                         .fill(Color(red: 0.56, green: 0.71, blue: 0.84))
-                        .frame(width: 16, height: 3)
+                        .frame(width: 15, height: 2)
 
                     // Bottom part of left panel
                     RoundedRectangle(cornerRadius: 0)
@@ -5761,8 +5749,8 @@ struct AnimatedFridgeIcon: View {
                                 endPoint: .bottom
                             )
                         )
-                        .frame(width: 16, height: 110)
-                        .cornerRadius(28, corners: [.bottomLeft])
+                        .frame(width: 15, height: 103)
+                        .cornerRadius(25, corners: [.bottomLeft])
                 }
 
                 // Main fridge body
@@ -5780,8 +5768,8 @@ struct AnimatedFridgeIcon: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 100, height: 80)
-                            .cornerRadius(28, corners: [.topRight])
+                            .frame(width: 95, height: 75)
+                            .cornerRadius(25, corners: [.topRight])
 
                         // Recessed handle
                         Capsule()
@@ -5795,42 +5783,15 @@ struct AnimatedFridgeIcon: View {
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(width: 14, height: 44)
+                            .frame(width: 12, height: 40)
                             .shadow(color: Color(red: 0.5, green: 0.65, blue: 0.8).opacity(0.4), radius: 2, x: 1, y: 1)
-                            .padding(.leading, 20)
-
-                        // Snowflake icon for freezer
-                        Image(systemName: "snowflake")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color(red: 0.4, green: 0.6, blue: 0.85).opacity(0.6))
-                            .offset(x: 70, y: -20)
-
-                        // Ice cube peek
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.white.opacity(0.7))
-                            .frame(width: 10, height: 10)
-                            .offset(x: 55, y: 15)
-
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.white.opacity(0.5))
-                            .frame(width: 8, height: 8)
-                            .offset(x: 70, y: 12)
+                            .padding(.leading, 18)
                     }
 
-                    // Divider line with subtle gradient
+                    // Divider line
                     Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.65, green: 0.78, blue: 0.90),
-                                    Color(red: 0.68, green: 0.81, blue: 0.92),
-                                    Color(red: 0.65, green: 0.78, blue: 0.90)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(height: 3)
+                        .fill(Color(red: 0.68, green: 0.81, blue: 0.92))
+                        .frame(height: 2)
 
                     // Bottom fridge compartment
                     ZStack(alignment: .leading) {
@@ -5845,8 +5806,8 @@ struct AnimatedFridgeIcon: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 100, height: 110)
-                            .cornerRadius(28, corners: [.bottomRight])
+                            .frame(width: 95, height: 103)
+                            .cornerRadius(25, corners: [.bottomRight])
 
                         // Recessed handle
                         Capsule()
@@ -5860,71 +5821,16 @@ struct AnimatedFridgeIcon: View {
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(width: 14, height: 56)
+                            .frame(width: 12, height: 52)
                             .shadow(color: Color(red: 0.5, green: 0.65, blue: 0.8).opacity(0.4), radius: 2, x: 1, y: 1)
-                            .padding(.leading, 20)
-
-                        // Temperature indicator
-                        VStack(spacing: 2) {
-                            Circle()
-                                .fill(Color.green.opacity(temperatureAnimate ? 0.9 : 0.6))
-                                .frame(width: 8, height: 8)
-                                .shadow(color: Color.green.opacity(0.4), radius: 3)
-                            Text("4°")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.75))
-                        }
-                        .offset(x: 65, y: -35)
-
-                        // Food items peeking out (apple, carrot, milk)
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [Color.red.opacity(0.8), Color.red.opacity(0.6)],
-                                    center: .topLeading,
-                                    startRadius: 0,
-                                    endRadius: 10
-                                )
-                            )
-                            .frame(width: 14, height: 14)
-                            .offset(x: 50, y: 5)
-
-                        // Carrot
-                        Capsule()
-                            .fill(Color.orange.opacity(0.7))
-                            .frame(width: 6, height: 16)
-                            .rotationEffect(.degrees(-15))
-                            .offset(x: 68, y: 8)
-
-                        // Milk carton
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.white.opacity(0.85))
-                            .frame(width: 12, height: 18)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 2)
-                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                            )
-                            .offset(x: 82, y: 15)
-
-                        // Shelf line
-                        Rectangle()
-                            .fill(Color(red: 0.6, green: 0.75, blue: 0.88).opacity(0.5))
-                            .frame(width: 55, height: 2)
-                            .offset(x: 40, y: 25)
+                            .padding(.leading, 18)
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 28))
-            .shadow(color: Color.blue.opacity(0.15), radius: 15, x: 3, y: 5)
-            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 2, y: 3)
+            .clipShape(RoundedRectangle(cornerRadius: 25))
+            .shadow(color: Color.blue.opacity(0.12), radius: 12, x: 2, y: 4)
         }
-        .frame(width: 120, height: 195)
-        .onAppear {
-            isGlowing = true
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                temperatureAnimate = true
-            }
-        }
+        .frame(width: 110, height: 180)
     }
 }
 

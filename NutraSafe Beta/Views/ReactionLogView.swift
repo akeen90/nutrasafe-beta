@@ -786,8 +786,8 @@ struct LogReactionSheet: View {
 
     let selectedDayRange: ReactionLogView.DayRange
 
-    // Core state
-    @State private var selectedType: ReactionType = .headache
+    // Core state - supports multiple symptom selection
+    @State private var selectedTypes: Set<ReactionType> = []
     @State private var customType: String = ""
     @State private var reactionDate: Date = Date()
     @State private var selectedSeverity: ReactionSeverity = .moderate
@@ -937,7 +937,20 @@ struct LogReactionSheet: View {
 
     private var reactionTypeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(title: "What happened?", icon: "exclamationmark.triangle.fill", color: .orange)
+            HStack {
+                sectionHeader(title: "What happened?", icon: "exclamationmark.triangle.fill", color: .orange)
+                Spacer()
+                if !selectedTypes.isEmpty {
+                    Text("\(selectedTypes.count) selected")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Text("Select all that apply")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .padding(.bottom, 4)
 
             // Reaction type grid (2 columns)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
@@ -950,7 +963,7 @@ struct LogReactionSheet: View {
             reactionTypeButton(.custom)
                 .frame(maxWidth: .infinity)
 
-            if selectedType == .custom {
+            if selectedTypes.contains(.custom) {
                 TextField("Describe your reaction...", text: $customType)
                     .textFieldStyle(.plain)
                     .padding(14)
@@ -964,18 +977,34 @@ struct LogReactionSheet: View {
     }
 
     private func reactionTypeButton(_ type: ReactionType) -> some View {
-        Button(action: { selectedType = type }) {
+        let isSelected = selectedTypes.contains(type)
+        return Button(action: {
+            // Toggle selection
+            if isSelected {
+                selectedTypes.remove(type)
+            } else {
+                selectedTypes.insert(type)
+            }
+        }) {
             HStack(spacing: 8) {
-                Image(systemName: type.icon)
-                    .font(.system(size: 16))
+                // Checkmark for selected items
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                } else {
+                    Image(systemName: type.icon)
+                        .font(.system(size: 16))
+                }
                 Text(type.rawValue)
                     .font(.system(size: 14, weight: .medium))
+                Spacer()
             }
-            .foregroundColor(selectedType == type ? .white : .primary)
+            .foregroundColor(isSelected ? .white : .primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
+            .padding(.horizontal, 12)
             .background(
-                selectedType == type ?
+                isSelected ?
                 LinearGradient(colors: [.orange, .red.opacity(0.8)], startPoint: .leading, endPoint: .trailing) :
                 LinearGradient(colors: [colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6)], startPoint: .leading, endPoint: .trailing)
             )
@@ -1776,8 +1805,16 @@ struct LogReactionSheet: View {
     }
 
     private var isValid: Bool {
-        if selectedType == .custom {
-            return !customType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        // Must have at least one symptom selected
+        guard !selectedTypes.isEmpty else { return false }
+
+        // If "Other" is selected, must have custom text
+        if selectedTypes.contains(.custom) {
+            // If ONLY custom is selected, require custom text
+            if selectedTypes.count == 1 {
+                return !customType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            // If custom is selected along with others, custom text is optional
         }
         return true
     }
@@ -1790,7 +1827,14 @@ struct LogReactionSheet: View {
         print("🔵 [LogReactionSheet] Manager reactionLogs count BEFORE: \(manager.reactionLogs.count)")
 
         do {
-            let reactionType = selectedType == .custom ? customType : selectedType.rawValue
+            // Build array of selected symptom types
+            var symptomStrings: [String] = selectedTypes.filter { $0 != .custom }.map { $0.rawValue }
+            if selectedTypes.contains(.custom) && !customType.isEmpty {
+                symptomStrings.append(customType)
+            }
+
+            // Use first symptom as primary reaction type for backward compatibility
+            let reactionType = symptomStrings.first ?? "Unknown"
             var notesText = notes.trimmingCharacters(in: .whitespacesAndNewlines)
 
             print("🔵 [LogReactionSheet] Reaction type: \(reactionType)")
@@ -1840,19 +1884,19 @@ struct LogReactionSheet: View {
             print("✅ [LogReactionSheet] Manager reactionLogs count AFTER: \(manager.reactionLogs.count)")
 
             // Also update the FoodReactionsView's ReactionManager so Health tab shows the reaction
-            // Create a FoodReaction from the saved entry data
+            // Create a FoodReaction from the saved entry data with ALL selected symptoms
             let foodReaction = FoodReaction(
                 foodName: foodName ?? reactionType,
                 foodId: nil,
                 foodBrand: nil,
                 timestamp: FirebaseFirestore.Timestamp(date: reactionDate),
                 severity: selectedSeverity,
-                symptoms: [reactionType],
+                symptoms: symptomStrings,
                 suspectedIngredients: ingredientsList,
                 notes: notesText.isEmpty ? nil : notesText
             )
             await ReactionManager.shared.addReaction(foodReaction)
-            print("✅ [LogReactionSheet] Also added to ReactionManager for Health tab")
+            print("✅ [LogReactionSheet] Also added to ReactionManager for Health tab with \(symptomStrings.count) symptoms")
 
             dismiss()
         } catch {
