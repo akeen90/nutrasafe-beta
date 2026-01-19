@@ -62,6 +62,7 @@
 		AB13BC1A2EAE215A00C7B892 /* IngredientMicronutrientParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */; };
 		AB13BC1C2EAE253100C7B892 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = AB13BC1B2EAE253100C7B892 /* FirebaseFunctions */; };
 		AB1BF6492ED3B3E6004EA968 /* FastingActionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1BF6482ED3B3E6004EA968 /* FastingActionSheet.swift */; };
+		AB1BF64A2ED3B400004EA968 /* StaleSessionRecoverySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1BF64B2ED3B400004EA968 /* StaleSessionRecoverySheet.swift */; };
 		AB4B75A72E72DEF60058DCD3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75A62E72DEF60058DCD3 /* FirebaseAuth */; };
 		AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75A82E72DEFC0058DCD3 /* FirebaseCore */; };
 		AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AA2E72DF020058DCD3 /* FirebaseFirestore */; };
@@ -183,6 +184,7 @@
 		AB13BC172EAE215A00C7B892 /* AIMicronutrientParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMicronutrientParser.swift; sourceTree = "<group>"; };
 		AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientMicronutrientParser.swift; sourceTree = "<group>"; };
 		AB1BF6482ED3B3E6004EA968 /* FastingActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingActionSheet.swift; sourceTree = "<group>"; };
+		AB1BF64B2ED3B400004EA968 /* StaleSessionRecoverySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleSessionRecoverySheet.swift; sourceTree = "<group>"; };
 		AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe BetaDebug.entitlements"; sourceTree = "<group>"; };
 		AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingSourcesView.swift; sourceTree = "<group>"; };
 		ABB0AEF92EAC3F13009F044D /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
@@ -333,6 +335,7 @@
 			children = (
 				AB1BF6482ED3B3E6004EA968 /* FastingActionSheet.swift */,
 				3904D5585038499D93BAFF26 /* FastingEarlyEndViews.swift */,
+				AB1BF64B2ED3B400004EA968 /* StaleSessionRecoverySheet.swift */,
 				AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */,
 				034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */,
 				FASTHIST0001FILE /* FastingHistoryDropdown.swift */,
@@ -638,6 +641,7 @@
 				A1234567890123456789012301 /* NutraSafeBetaApp.swift in Sources */,
 				AB13BC192EAE215A00C7B892 /* AIMicronutrientParser.swift in Sources */,
 				AB1BF6492ED3B3E6004EA968 /* FastingActionSheet.swift in Sources */,
+				AB1BF64A2ED3B400004EA968 /* StaleSessionRecoverySheet.swift in Sources */,
 				AB13BC1A2EAE215A00C7B892 /* IngredientMicronutrientParser.swift in Sources */,
 				A1234567890123456789012305 /* FirebaseManager.swift in Sources */,
 				A1234567890123456789012307 /* HealthKitManager.swift in Sources */,

@@ -28,6 +28,10 @@ class FastingViewModel: ObservableObject {
     @Published var showingEndConfirmation = false
     @Published var confirmationContext: FastingConfirmationContext?
 
+    // MARK: - Stale Session Recovery
+    @Published var staleSessionToResolve: FastingSession?
+    @Published var showStaleSessionSheet: Bool = false
+
     // PERFORMANCE: Memoized week summaries - only recalculated when recentSessions changes
     @Published private(set) var weekSummaries: [WeekSummary] = []
 
@@ -355,7 +359,91 @@ class FastingViewModel: ObservableObject {
             } else {
                 allSessions = try await firebaseManager.getFastingSessions()
             }
-            self.activeSession = allSessions.prefix(1).first(where: { $0.isActive })
+
+            if let activeCandidate = allSessions.first(where: { $0.isActive }) {
+                // Check if this session is stale (orphaned)
+                if activeCandidate.isLikelyStale {
+                    // Show recovery UI instead of treating as active
+                    await handleStaleSession(activeCandidate)
+                    self.activeSession = nil
+                } else {
+                    self.activeSession = activeCandidate
+                }
+            } else {
+                self.activeSession = nil
+            }
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    // MARK: - Stale Session Handling
+
+    /// Handle a stale session - prompt user for resolution
+    private func handleStaleSession(_ session: FastingSession) async {
+        await MainActor.run {
+            self.staleSessionToResolve = session
+            self.showStaleSessionSheet = true
+        }
+    }
+
+    /// User confirms they completed the stale fast
+    func resolveStaleSessionAsCompleted(_ session: FastingSession) async {
+        guard session.id != nil else { return }
+
+        var resolvedSession = session
+        // Set end time to target duration after start
+        resolvedSession.endTime = session.startTime.addingTimeInterval(Double(session.targetDurationHours) * 3600)
+        resolvedSession.completionStatus = .completed
+        resolvedSession.manuallyEdited = true
+        resolvedSession.notes = (session.notes ?? "") + "\n[Resolved: Marked as completed]"
+
+        do {
+            try await firebaseManager.updateFastingSession(resolvedSession)
+            self.staleSessionToResolve = nil
+            self.showStaleSessionSheet = false
+            await loadRecentSessions()
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    /// User ended the stale fast early
+    func resolveStaleSessionAsEarlyEnd(_ session: FastingSession) async {
+        guard session.id != nil else { return }
+
+        var resolvedSession = session
+        // Set end time to target duration after start (reasonable estimate)
+        resolvedSession.endTime = session.startTime.addingTimeInterval(Double(session.targetDurationHours) * 3600)
+        resolvedSession.completionStatus = .earlyEnd
+        resolvedSession.manuallyEdited = true
+        resolvedSession.notes = (session.notes ?? "") + "\n[Resolved: Marked as ended early]"
+
+        do {
+            try await firebaseManager.updateFastingSession(resolvedSession)
+            self.staleSessionToResolve = nil
+            self.showStaleSessionSheet = false
+            await loadRecentSessions()
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    /// User wants to discard the stale session entirely
+    func resolveStaleSessionAsDiscarded(_ session: FastingSession) async {
+        guard let sessionId = session.id else { return }
+
+        do {
+            try await firebaseManager.deleteFastingSession(id: sessionId)
+            self.staleSessionToResolve = nil
+            self.showStaleSessionSheet = false
+            await loadRecentSessions()
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
         } catch {
             self.error = error
             self.showError = true

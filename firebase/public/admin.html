@@ -4695,6 +4695,10 @@
                                     <span class="btn-title">🧹 Fix HTML Code</span>
                                     <span class="btn-desc">Remove HTML tags & entities from names, brands, ingredients</span>
                                 </button>
+                                <button class="verify-action-btn fix-calories" id="btn-rescan-products" onclick="app.rescanProducts()" style="background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);">
+                                    <span class="btn-title">🔄 Rescan Products</span>
+                                    <span class="btn-desc">Re-fetch nutrition data from Tesco API for items with issues</span>
+                                </button>
                             </div>
 
                             <!-- UK Verification Status Legend -->
@@ -9141,9 +9145,8 @@
                 // Count pending bulk fixes
                 const htmlFixCount = (state.pendingFixes['html-code'] || []).length;
                 const ingredientFixCount = (state.pendingFixes['simple-ingredients'] || []).length;
-                const totalFixCount = htmlFixCount + ingredientFixCount;
-
-                console.log('[updatePendingStatus] edits:', editCount, 'deletes:', deleteCount, 'htmlFixes:', htmlFixCount, 'ingredientFixes:', ingredientFixCount);
+                const rescanCount = (state.pendingFixes['rescan'] || []).length;
+                const totalFixCount = htmlFixCount + ingredientFixCount + rescanCount;
 
                 // Build status text
                 let statusParts = [];
@@ -9152,6 +9155,7 @@
                     let fixParts = [];
                     if (htmlFixCount > 0) fixParts.push(`${htmlFixCount} HTML`);
                     if (ingredientFixCount > 0) fixParts.push(`${ingredientFixCount} ingredients`);
+                    if (rescanCount > 0) fixParts.push(`${rescanCount} rescan`);
                     statusParts.push(`${totalFixCount} fix${totalFixCount !== 1 ? 'es' : ''} (${fixParts.join(', ')})`);
                 }
 
@@ -9183,19 +9187,9 @@
                 // Get pending bulk fixes
                 const htmlFixIds = state.pendingFixes['html-code'] || [];
                 const ingredientFixIds = state.pendingFixes['simple-ingredients'] || [];
+                const rescanIds = state.pendingFixes['rescan'] || [];
                 const hasEdits = updates.length > 0 || deletes.length > 0;
-                const hasFixes = htmlFixIds.length > 0 || ingredientFixIds.length > 0;
-
-                // DEBUG: Log what we're about to send
-                console.log('=== APPLY ALL CHANGES DEBUG ===');
-                console.log('Index:', indexName);
-                console.log('pendingEdits object:', JSON.stringify(state.pendingEdits, null, 2));
-                console.log('Updates array:', JSON.stringify(updates, null, 2));
-                console.log('Deletes array:', deletes);
-                console.log('Updates count:', updates.length);
-                console.log('Deletes count:', deletes.length);
-                console.log('HTML Fix IDs:', htmlFixIds.length);
-                console.log('Ingredient Fix IDs:', ingredientFixIds.length);
+                const hasFixes = htmlFixIds.length > 0 || ingredientFixIds.length > 0 || rescanIds.length > 0;
 
                 if (!hasEdits && !hasFixes) {
                     this.showToast('No changes to apply', 'info');
@@ -9208,8 +9202,11 @@
                 if (deletes.length > 0) confirmParts.push(`${deletes.length} deletion(s)`);
                 if (htmlFixIds.length > 0) confirmParts.push(`${htmlFixIds.length} HTML code fix(es)`);
                 if (ingredientFixIds.length > 0) confirmParts.push(`${ingredientFixIds.length} ingredient fix(es)`);
+                if (rescanIds.length > 0) confirmParts.push(`${rescanIds.length} rescan(s)`);
                 const confirmMsg = `Apply ${confirmParts.join(', ')}?`;
-                if (!confirm(confirmMsg)) return;
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
 
                 document.getElementById('apply-changes-btn').disabled = true;
                 document.getElementById('apply-changes-btn').textContent = 'Applying...';
@@ -9221,7 +9218,6 @@
                     // 1. Process regular edits and deletes
                     if (hasEdits) {
                         const requestBody = { indexName, updates, deletes };
-                        console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
 
                         const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoods`, {
                             method: 'POST',
@@ -9229,13 +9225,11 @@
                             body: JSON.stringify(requestBody)
                         });
 
-                        console.log('Response status:', response.status);
                         const result = await response.json();
-                        console.log('Response body:', JSON.stringify(result, null, 2));
 
                         if (result.success) {
                             totalSuccess += (result.updated || 0) + (result.deleted || 0);
-                            this.addActivityLog(`Applied ${result.updated} updates and ${result.deleted} deletions`, 'success');
+                            this.showToast(`Applied ${result.updated} updates and ${result.deleted} deletions`, 'success');
 
                             // Mark issues as resolved in the ledger (keep them for before/after)
                             const processedIds = new Set([...deletes, ...updates.map(u => u.objectID)]);
@@ -9250,21 +9244,21 @@
                                         // Apply the pending changes to the item so afterState is correct
                                         Object.assign(item, changes);
                                     }
-                                    // Mark as resolved
+                                    // Mark as resolved (skipSave=true for bulk operations)
                                     this.resolveIssue(objectId, Object.entries(changes).map(([field, value]) => ({
                                         field,
                                         oldValue: null, // Not tracked in simple mode
                                         newValue: value,
                                         reason: 'Applied from edit queue'
-                                    })), 'manual_edit', {});
+                                    })), 'manual_edit', {}, true);
                                 } else if (deletes.includes(objectId)) {
-                                    // For deletes, mark as resolved with deletion reason
+                                    // For deletes, mark as resolved with deletion reason (skipSave=true for bulk operations)
                                     this.resolveIssue(objectId, [{
                                         field: 'deleted',
                                         oldValue: 'exists',
                                         newValue: 'deleted',
                                         reason: 'Item deleted from database'
-                                    }], 'manual_delete', {});
+                                    }], 'manual_delete', {}, true);
                                 }
                             }
 
@@ -9275,14 +9269,14 @@
                             // Mark affected items as error
                             const processedIds = [...deletes, ...updates.map(u => u.objectID)];
                             processedIds.forEach(id => this.markIssueError(id, result.error || 'Batch update failed'));
-                            this.addActivityLog('Batch update failed: ' + (result.error || 'Unknown error'), 'error');
+                            this.showToast('Batch update failed: ' + (result.error || 'Unknown error'), 'error');
                         }
                     }
 
                     // 2. Process HTML code fixes
                     if (htmlFixIds.length > 0) {
                         document.getElementById('apply-changes-btn').textContent = `Fixing HTML (${htmlFixIds.length})...`;
-                        this.addActivityLog(`Processing ${htmlFixIds.length} HTML code fixes...`, 'info');
+                        this.showToast(`Processing ${htmlFixIds.length} HTML code fixes...`, 'info');
 
                         const MAX_BATCH = 500;
                         let htmlFixed = 0;
@@ -9299,7 +9293,7 @@
                                 if (result.data?.success) {
                                     htmlFixed += result.data.itemsFixed || 0;
 
-                                    // Mark fixed items as resolved and remove from scan results
+                                    // Mark fixed items as resolved (skipSave=true for bulk operations)
                                     if (result.data.items) {
                                         result.data.items.forEach(item => {
                                             this.resolveIssue(item.objectID, [{
@@ -9307,7 +9301,7 @@
                                                 oldValue: 'had HTML',
                                                 newValue: 'cleaned',
                                                 reason: 'HTML code removed'
-                                            }], 'bulk_fix', {});
+                                            }], 'bulk_fix', {}, true);
                                         });
                                     }
                                 }
@@ -9318,13 +9312,13 @@
                         }
 
                         totalSuccess += htmlFixed;
-                        this.addActivityLog(`Fixed ${htmlFixed} items with HTML code`, 'success');
+                        this.showToast(`Fixed ${htmlFixed} items with HTML code`, 'success');
                     }
 
                     // 3. Process simple ingredient fixes
                     if (ingredientFixIds.length > 0) {
                         document.getElementById('apply-changes-btn').textContent = `Fixing ingredients (${ingredientFixIds.length})...`;
-                        this.addActivityLog(`Processing ${ingredientFixIds.length} simple ingredient fixes...`, 'info');
+                        this.showToast(`Processing ${ingredientFixIds.length} simple ingredient fixes...`, 'info');
 
                         const MAX_BATCH = 500;
                         let ingredientsFixed = 0;
@@ -9341,7 +9335,7 @@
                                 if (result.data?.success) {
                                     ingredientsFixed += result.data.itemsFixed || 0;
 
-                                    // Mark fixed items as resolved
+                                    // Mark fixed items as resolved (skipSave=true for bulk operations)
                                     if (result.data.items) {
                                         result.data.items.forEach(item => {
                                             this.resolveIssue(item.objectID, [{
@@ -9349,7 +9343,7 @@
                                                 oldValue: 'missing',
                                                 newValue: item.addedIngredients || 'added',
                                                 reason: 'Simple ingredients auto-populated'
-                                            }], 'bulk_fix', {});
+                                            }], 'bulk_fix', {}, true);
                                         });
                                     }
                                 }
@@ -9360,7 +9354,51 @@
                         }
 
                         totalSuccess += ingredientsFixed;
-                        this.addActivityLog(`Fixed ${ingredientsFixed} simple ingredient foods`, 'success');
+                        this.showToast(`Fixed ${ingredientsFixed} simple ingredient foods`, 'success');
+                    }
+
+                    // 4. Process Tesco rescans
+                    if (rescanIds.length > 0) {
+                        document.getElementById('apply-changes-btn').textContent = `Rescanning (${rescanIds.length})...`;
+                        this.showToast(`Rescanning ${rescanIds.length} products via Tesco API...`, 'info');
+
+                        const MAX_BATCH = 50; // Smaller batches due to API rate limits
+                        let rescannedCount = 0;
+
+                        for (let i = 0; i < rescanIds.length; i += MAX_BATCH) {
+                            const batch = rescanIds.slice(i, i + MAX_BATCH);
+                            if (rescanIds.length > MAX_BATCH) {
+                                document.getElementById('apply-changes-btn').textContent = `Rescan batch ${Math.floor(i/MAX_BATCH) + 1}/${Math.ceil(rescanIds.length/MAX_BATCH)}...`;
+                            }
+
+                            try {
+                                const rescanFunc = firebase.functions().httpsCallable('rescanProducts', { timeout: 540000 });
+                                const result = await rescanFunc({ indexName, objectIDs: batch });
+                                if (result.data?.success) {
+                                    rescannedCount += result.data.itemsUpdated || 0;
+
+                                    // Mark rescanned items as resolved (skipSave=true for bulk operations)
+                                    if (result.data.items) {
+                                        result.data.items.forEach(item => {
+                                            if (item.status === 'found') {
+                                                this.resolveIssue(item.objectID, [{
+                                                    field: 'nutrition',
+                                                    oldValue: 'missing/bad',
+                                                    newValue: 'rescanned',
+                                                    reason: 'Fresh data fetched from Tesco API'
+                                                }], 'bulk_fix', {}, true);
+                                            }
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                console.error('Rescan batch error:', err);
+                                totalErrors++;
+                            }
+                        }
+
+                        totalSuccess += rescannedCount;
+                        this.showToast(`Rescanned ${rescannedCount} products with fresh Tesco data`, 'success');
                     }
 
                     // Clear all queues
@@ -9384,7 +9422,7 @@
                     this.updateActiveSession();
 
                 } catch (error) {
-                    console.error('Apply all changes error:', error);
+                    console.error('Apply changes error:', error);
                     this.showToast('Apply changes failed: ' + error.message, 'error');
                 }
 
@@ -9694,7 +9732,7 @@
             },
 
             // Resolve an issue with changes
-            resolveIssue(objectId, changes, resolvedBy, sourceInfo = {}) {
+            resolveIssue(objectId, changes, resolvedBy, sourceInfo = {}, skipSave = false) {
                 if (!state.issueLedger) return;
 
                 // Ensure issue exists in ledger
@@ -9754,7 +9792,9 @@
 
                 // Update UI
                 this.updateLedgerUI();
-                this.updateActiveSession();
+                if (!skipSave) {
+                    this.updateActiveSession();
+                }
             },
 
             // Skip an issue
@@ -10206,7 +10246,6 @@
 
                     if (fixResult.success) {
                         this.showToast(`✅ Fixed ${fixResult.itemsFixed} items with kJ+kcal combined calories.`, 'success');
-                        this.addActivityLog(`Fixed ${fixResult.itemsFixed} kJ+kcal combined calorie values`, 'success');
                     } else {
                         this.showToast(`Error: ${fixResult.error}`, 'error');
                     }
@@ -10258,7 +10297,6 @@
                 state.pendingFixes['simple-ingredients'] = [...new Set([...alreadyEarmarked, ...objectIDs])];
 
                 this.showToast(`Earmarked ${newCount} item(s) for simple ingredients fix. Click "Apply All Changes" to execute.`, 'success');
-                this.addActivityLog(`Earmarked ${newCount} items for simple ingredients fix (total: ${state.pendingFixes['simple-ingredients'].length})`, 'info');
                 this.updatePendingStatus();
                 this.renderIssuesList(); // Re-render to show earmarked state
             },
@@ -10304,7 +10342,38 @@
                 state.pendingFixes['html-code'] = [...new Set([...alreadyEarmarked, ...objectIDs])];
 
                 this.showToast(`Earmarked ${newCount} item(s) for HTML code fix. Click "Apply All Changes" to execute.`, 'success');
-                this.addActivityLog(`Earmarked ${newCount} items for HTML code fix (total: ${state.pendingFixes['html-code'].length})`, 'info');
+                this.updatePendingStatus();
+                this.renderIssuesList(); // Re-render to show earmarked state
+            },
+
+            // Rescan products with bad nutrition/details via Tesco API - EARMARK for Apply All Changes
+            rescanProducts() {
+                // Find items with nutrition or detail issues that could benefit from a rescan
+                const rescanIssueTypes = ['missing-nutrition', 'impossible-nutrition', 'missing-ingredients'];
+                const rescanItems = (state.scanResults || []).filter(item =>
+                    item.issues && item.issues.some(issue => rescanIssueTypes.includes(issue.type))
+                );
+
+                if (rescanItems.length === 0) {
+                    this.showToast('No items with nutrition/ingredient issues found. Run a scan first.', 'info');
+                    return;
+                }
+
+                const objectIDs = rescanItems.map(item => item.objectID);
+
+                // Check if already earmarked
+                const alreadyEarmarked = state.pendingFixes['rescan'] || [];
+                const newCount = objectIDs.filter(id => !alreadyEarmarked.includes(id)).length;
+
+                if (newCount === 0) {
+                    this.showToast(`${objectIDs.length} items already earmarked for rescan`, 'info');
+                    return;
+                }
+
+                // Add to pending fixes (merge with existing)
+                state.pendingFixes['rescan'] = [...new Set([...alreadyEarmarked, ...objectIDs])];
+
+                this.showToast(`Earmarked ${newCount} item(s) for Tesco rescan. Click "Apply All Changes" to execute.`, 'success');
                 this.updatePendingStatus();
                 this.renderIssuesList(); // Re-render to show earmarked state
             },
@@ -11210,52 +11279,13 @@
             },
 
             loadSavedSessions() {
-                try {
-                    const saved = localStorage.getItem('dbcheck_sessions');
-                    if (saved) {
-                        state.savedSessions = JSON.parse(saved);
-                        this.renderSessionList();
-                    }
-                } catch (e) {
-                    console.error('Error loading sessions:', e);
-                    state.savedSessions = [];
-                }
+                // Session history storage disabled to prevent localStorage quota errors
+                state.savedSessions = [];
             },
 
-            saveSessions() {
-                try {
-                    const dataStr = JSON.stringify(state.savedSessions);
-                    localStorage.setItem('dbcheck_sessions', dataStr);
-
-                    // Log storage info (debounced - only warn once per minute)
-                    const info = this.getStorageInfo();
-                    console.log(`💾 Sessions saved (${(dataStr.length / 1024).toFixed(1)}KB). Storage: ${info.percent}% used`);
-
-                    if (info.percent > 80) {
-                        const now = Date.now();
-                        if (!state.lastStorageWarning || now - state.lastStorageWarning > 60000) {
-                            state.lastStorageWarning = now;
-                            this.addToActivityLog(`Storage ${info.percent}% full. Consider clearing old sessions.`, 'info');
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error saving sessions:', e);
-                    // If localStorage is full, try removing oldest sessions one by one
-                    if (e.name === 'QuotaExceededError') {
-                        if (state.savedSessions.length > 1) {
-                            console.log('Storage full, removing oldest session...');
-                            state.savedSessions.pop(); // Remove oldest (last) session
-                            this.saveSessions(); // Try again
-                        } else {
-                            // Only show this error once per session (debounced)
-                            const now = Date.now();
-                            if (!state.lastStorageError || now - state.lastStorageError > 30000) {
-                                state.lastStorageError = now;
-                                this.addToActivityLog('Storage full! Clear browser data or reduce session size.', 'error');
-                            }
-                        }
-                    }
-                }
+            saveSessions(retryCount = 0) {
+                // Session history storage disabled to prevent localStorage quota errors
+                // Sessions are kept in memory only for the current browser session
             },
 
             saveCurrentSession(indexName, results, totalScanned) {

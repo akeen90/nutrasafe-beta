@@ -426,9 +426,22 @@ final class AlgoliaSearchManager {
             if nameLower == queryLower || brandLower == queryLower {
                 score += 10000
             }
-            // Name/brand starts with original query
-            else if nameLower.hasPrefix(queryLower) || brandLower.hasPrefix(queryLower) {
+            // Name starts with query AND query is a complete word (e.g., "Mars Bar" for "mars")
+            // This should rank higher than generic "contains word" matches
+            else if nameLower.hasPrefix(queryLower) && nameWords.contains(queryLower) {
+                score += 8000  // High score: starts with query as complete word
+                // Extra bonus for short product names (e.g., "Mars Bar" vs "Mars Bar Multipack 6x45g")
+                if nameWords.count <= 3 {
+                    score += 1500
+                }
+            }
+            // Name starts with query (but query might be partial word)
+            else if nameLower.hasPrefix(queryLower) {
                 score += 5000
+            }
+            // Brand starts with query (e.g., brand "Mars" for query "mars")
+            else if brandLower.hasPrefix(queryLower) {
+                score += 4500
             }
             // PRIORITY: Query word appears as EXACT COMPLETE WORD in name
             // e.g., "milk" matches "Whole Milk", "Semi-Skimmed Milk" but NOT "Milkybar"
@@ -612,6 +625,15 @@ final class AlgoliaSearchManager {
             // Exact match (highest priority) - "Big Mac" == "big mac"
             if nameLower == queryLower {
                 score += 10000
+            }
+            // Name starts with query AND query is a complete word (e.g., "Mars Bar" for "mars")
+            // This should rank higher than generic "contains word" matches
+            else if nameLower.hasPrefix(queryLower) && nameWords.contains(queryLower) {
+                score += 8000  // High score: starts with query as complete word
+                // Extra bonus for short product names (e.g., "Mars Bar" vs "Mars Bar Multipack 6x45g")
+                if nameWords.count <= 3 {
+                    score += 1500
+                }
             }
             // Name starts with query - "Big Mac Meal" starts with "big mac"
             else if nameLower.hasPrefix(queryLower) {

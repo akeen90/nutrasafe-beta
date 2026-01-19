@@ -199,6 +199,13 @@ struct FastingMainView: View {
                 viewModel.handleConfirmationNotification(userInfo: userInfo)
             }
         }
+        // MARK: - Stale Session Recovery Sheet
+        .sheet(isPresented: $viewModel.showStaleSessionSheet) {
+            if let staleSession = viewModel.staleSessionToResolve {
+                StaleSessionRecoverySheet(session: staleSession)
+                    .environmentObject(viewModel)
+            }
+        }
         .onAppear {
             // Enable timer updates when view is visible
             viewModel.timerViewDidAppear()

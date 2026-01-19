@@ -1,8 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fixHtmlCode = exports.fixSimpleIngredients = exports.fixKjKcalCombinedCalories = exports.batchUpdateFoods = exports.scanDatabaseIssues = void 0;
+exports.rescanProducts = exports.fixHtmlCode = exports.fixSimpleIngredients = exports.fixKjKcalCombinedCalories = exports.batchUpdateFoods = exports.scanDatabaseIssues = void 0;
 const functions = require("firebase-functions");
 const algoliasearch_1 = require("algoliasearch");
+const axios_1 = require("axios");
+// Tesco API configuration
+const TESCO8_HOST = 'tesco8.p.rapidapi.com';
+const getTesco8ApiKey = () => functions.config().tesco8?.api_key || process.env.TESCO8_API_KEY || '';
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 // Use functions.config() for v1 triggers (more reliable than v2 secrets)
@@ -1417,6 +1421,7 @@ exports.fixSimpleIngredients = functions
                     const foodName = food.foodName || food.name || '';
                     if (!foodName)
                         continue;
+                    // First try pattern matching for known simple foods
                     const detection = detectSimpleIngredient(foodName);
                     if (detection && detection.match) {
                         itemsToFix.push({
@@ -1426,9 +1431,37 @@ exports.fixSimpleIngredients = functions
                             category: detection.category,
                         });
                     }
+                    else {
+                        // Fallback: extract the core ingredient from the food name
+                        // Clean up the name - remove brand prefixes, weights, qualifiers, etc.
+                        let ingredientName = foodName
+                            // Remove brand names
+                            .replace(/^(tesco|sainsbury'?s?|asda|morrisons|waitrose|aldi|lidl|co-?op|m&s|marks\s*&?\s*spencer'?s?)\s+/i, '')
+                            // Remove weights/quantities at end
+                            .replace(/\s*\d+\s*(g|kg|ml|l|oz|lb|pack|pcs?|pieces?)\s*$/i, '')
+                            .replace(/\s*x\s*\d+\s*$/i, '')
+                            // Remove common qualifiers/prefixes
+                            .replace(/^(extra\s*virgin|virgin|organic|free\s*range|fresh|frozen|dried|raw|cooked|british|scottish|welsh|irish|italian|spanish|greek|french|premium|finest|everyday|value|essential|basic)\s+/i, '')
+                            // Remove common suffixes
+                            .replace(/\s+(loose|bunch|pack|bag|punnet|tray|box|tin|can|jar|bottle)\s*$/i, '')
+                            .trim();
+                        // Capitalize properly
+                        ingredientName = ingredientName
+                            .split(' ')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                            .join(' ');
+                        if (ingredientName) {
+                            itemsToFix.push({
+                                objectID: food.objectID,
+                                foodName,
+                                ingredients: [ingredientName],
+                                category: 'inferred',
+                            });
+                        }
+                    }
                 }
             }
-            console.log(`📊 Quick mode: Processed ${totalScanned} objects, found ${itemsToFix.length} simple ingredient items`);
+            console.log(`📊 Quick mode: Processed ${totalScanned} objects, found ${itemsToFix.length} items to fix`);
         }
         else {
             // FULL SCAN MODE: Browse entire index
@@ -1464,6 +1497,34 @@ exports.fixSimpleIngredients = functions
                             ingredients: detection.ingredients,
                             category: detection.category,
                         });
+                    }
+                    else {
+                        // Fallback: extract the core ingredient from the food name
+                        // Clean up the name - remove brand prefixes, weights, qualifiers, etc.
+                        let ingredientName = foodName
+                            // Remove brand names
+                            .replace(/^(tesco|sainsbury'?s?|asda|morrisons|waitrose|aldi|lidl|co-?op|m&s|marks\s*&?\s*spencer'?s?)\s+/i, '')
+                            // Remove weights/quantities at end
+                            .replace(/\s*\d+\s*(g|kg|ml|l|oz|lb|pack|pcs?|pieces?)\s*$/i, '')
+                            .replace(/\s*x\s*\d+\s*$/i, '')
+                            // Remove common qualifiers/prefixes
+                            .replace(/^(extra\s*virgin|virgin|organic|free\s*range|fresh|frozen|dried|raw|cooked|british|scottish|welsh|irish|italian|spanish|greek|french|premium|finest|everyday|value|essential|basic)\s+/i, '')
+                            // Remove common suffixes
+                            .replace(/\s+(loose|bunch|pack|bag|punnet|tray|box|tin|can|jar|bottle)\s*$/i, '')
+                            .trim();
+                        // Capitalize properly
+                        ingredientName = ingredientName
+                            .split(' ')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                            .join(' ');
+                        if (ingredientName) {
+                            itemsToFix.push({
+                                objectID: food.objectID,
+                                foodName,
+                                ingredients: [ingredientName],
+                                category: 'inferred',
+                            });
+                        }
                     }
                 }
                 cursor = result.cursor;
@@ -1617,8 +1678,11 @@ exports.fixHtmlCode = functions
                     totalScanned++;
                     const foodName = food.foodName || food.name || '';
                     const brandName = food.brandName || food.brand || '';
-                    const ingredients = food.ingredients || food.extractedIngredients || [];
-                    const ingredientText = ingredients.join(' ');
+                    const rawIngredients = food.ingredients || food.extractedIngredients || '';
+                    // Handle ingredients as either array or string
+                    const ingredientText = Array.isArray(rawIngredients)
+                        ? rawIngredients.join(' ')
+                        : (typeof rawIngredients === 'string' ? rawIngredients : '');
                     const hasHtmlInName = containsHtml(foodName);
                     const hasHtmlInBrand = containsHtml(brandName);
                     const hasHtmlInIngredients = containsHtml(ingredientText);
@@ -1642,7 +1706,15 @@ exports.fixHtmlCode = functions
                             item.cleanedBrand = stripHtml(brandName);
                         }
                         if (hasHtmlInIngredients) {
-                            item.cleanedIngredients = ingredients.map(ing => stripHtml(ing));
+                            // Handle both array and string ingredients
+                            if (Array.isArray(rawIngredients)) {
+                                item.cleanedIngredients = rawIngredients.map(ing => stripHtml(ing));
+                            }
+                            else if (typeof rawIngredients === 'string') {
+                                // If stored as string, clean it and split by common delimiters
+                                const cleaned = stripHtml(rawIngredients);
+                                item.cleanedIngredients = cleaned ? [cleaned] : [];
+                            }
                         }
                         itemsToFix.push(item);
                     }
@@ -1670,8 +1742,11 @@ exports.fixHtmlCode = functions
                 for (const food of hits) {
                     const foodName = food.foodName || food.name || '';
                     const brandName = food.brandName || food.brand || '';
-                    const ingredients = food.ingredients || food.extractedIngredients || [];
-                    const ingredientText = ingredients.join(' ');
+                    const rawIngredients = food.ingredients || food.extractedIngredients || '';
+                    // Handle ingredients as either array or string
+                    const ingredientText = Array.isArray(rawIngredients)
+                        ? rawIngredients.join(' ')
+                        : (typeof rawIngredients === 'string' ? rawIngredients : '');
                     const hasHtmlInName = containsHtml(foodName);
                     const hasHtmlInBrand = containsHtml(brandName);
                     const hasHtmlInIngredients = containsHtml(ingredientText);
@@ -1695,7 +1770,15 @@ exports.fixHtmlCode = functions
                             item.cleanedBrand = stripHtml(brandName);
                         }
                         if (hasHtmlInIngredients) {
-                            item.cleanedIngredients = ingredients.map(ing => stripHtml(ing));
+                            // Handle both array and string ingredients
+                            if (Array.isArray(rawIngredients)) {
+                                item.cleanedIngredients = rawIngredients.map(ing => stripHtml(ing));
+                            }
+                            else if (typeof rawIngredients === 'string') {
+                                // If stored as string, clean it and split by common delimiters
+                                const cleaned = stripHtml(rawIngredients);
+                                item.cleanedIngredients = cleaned ? [cleaned] : [];
+                            }
                         }
                         itemsToFix.push(item);
                     }
@@ -1763,6 +1846,248 @@ exports.fixHtmlCode = functions
     catch (error) {
         console.error('❌ Error fixing HTML code:', error);
         throw new functions.https.HttpsError('internal', 'Failed to fix HTML code', error instanceof Error ? error.message : 'Unknown error');
+    }
+});
+/**
+ * Rescan products with bad nutrition/details via Tesco API
+ * Takes objectIDs from admin scan results and fetches fresh data from Tesco
+ */
+exports.rescanProducts = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .https.onCall(async (data, context) => {
+    // Verify auth
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+    }
+    const { indexName, objectIDs, dryRun = false } = data;
+    const TESCO8_API_KEY = getTesco8ApiKey();
+    if (!TESCO8_API_KEY) {
+        throw new functions.https.HttpsError('failed-precondition', 'Tesco API key not configured');
+    }
+    if (!indexName) {
+        throw new functions.https.HttpsError('invalid-argument', 'Index name is required');
+    }
+    console.log(`🔄 Rescanning products in index: ${indexName}`);
+    console.log(`   Processing ${objectIDs?.length || 'all'} items, dryRun: ${dryRun}`);
+    try {
+        const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, getAlgoliaAdminKey());
+        const itemsToRescan = [];
+        // Fetch items from Algolia
+        if (objectIDs && objectIDs.length > 0) {
+            console.log(`📊 Fetching ${objectIDs.length} specific objects`);
+            const objects = await client.getObjects({
+                requests: objectIDs.map(id => ({
+                    indexName,
+                    objectID: id,
+                    attributesToRetrieve: ['objectID', 'foodName', 'name', 'brandName', 'brand', 'barcode',
+                        'calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium', 'saturatedFat',
+                        'ingredients', 'extractedIngredients', 'servingSize', 'servingSizeUnit']
+                }))
+            });
+            for (const food of objects.results) {
+                if (!food)
+                    continue;
+                const foodName = food.foodName || food.name || '';
+                if (!foodName || foodName.length < 3)
+                    continue;
+                itemsToRescan.push({
+                    objectID: food.objectID,
+                    foodName,
+                    oldData: food,
+                    status: 'pending'
+                });
+            }
+        }
+        console.log(`📊 Found ${itemsToRescan.length} items to rescan`);
+        // Search Tesco API for each item and collect updates
+        let successCount = 0;
+        let notFoundCount = 0;
+        let errorCount = 0;
+        for (let i = 0; i < itemsToRescan.length; i++) {
+            const item = itemsToRescan[i];
+            // Rate limiting - 1 request per 100ms to avoid API throttling
+            if (i > 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            try {
+                console.log(`🔍 [${i + 1}/${itemsToRescan.length}] Searching Tesco for: ${item.foodName}`);
+                // Step 1: Search for the product
+                const searchResponse = await axios_1.default.get(`https://${TESCO8_HOST}/product-search-by-keyword`, {
+                    params: { query: item.foodName },
+                    headers: {
+                        'x-rapidapi-host': TESCO8_HOST,
+                        'x-rapidapi-key': TESCO8_API_KEY
+                    },
+                    timeout: 10000
+                });
+                if (!searchResponse.data?.success || !searchResponse.data?.data?.products?.length) {
+                    console.log(`   ❌ Not found in Tesco`);
+                    item.status = 'not_found';
+                    notFoundCount++;
+                    continue;
+                }
+                // Get the first matching product
+                const searchResult = searchResponse.data.data.products[0];
+                console.log(`   ✓ Found: ${searchResult.title} (ID: ${searchResult.id})`);
+                // Step 2: Get full product details
+                const detailsResponse = await axios_1.default.get(`https://${TESCO8_HOST}/product-details`, {
+                    params: { productId: searchResult.id },
+                    headers: {
+                        'x-rapidapi-host': TESCO8_HOST,
+                        'x-rapidapi-key': TESCO8_API_KEY
+                    },
+                    timeout: 10000
+                });
+                if (!detailsResponse.data?.success || !detailsResponse.data?.data?.results?.[0]?.data?.product) {
+                    console.log(`   ⚠️ Could not get details`);
+                    item.status = 'not_found';
+                    notFoundCount++;
+                    continue;
+                }
+                const productData = detailsResponse.data.data.results[0].data.product;
+                const details = productData.details || {};
+                // Parse nutrition data
+                const nutrition = {};
+                const nutritionItems = details.nutritionInfo || [];
+                for (const nutItem of nutritionItems) {
+                    const name = nutItem.name?.toLowerCase() || '';
+                    const value = nutItem.perComp || '';
+                    if (name.includes('energy') || (name === '-' && value.includes('kcal'))) {
+                        const kcalMatch = value.match(/(\d+(?:\.\d+)?)\s*kcal/i);
+                        if (kcalMatch)
+                            nutrition.calories = parseFloat(kcalMatch[1]);
+                    }
+                    else if (name === 'fat' && !name.includes('saturate')) {
+                        nutrition.fat = parseFloat(value) || undefined;
+                    }
+                    else if (name === 'saturates' || name.includes('saturate')) {
+                        nutrition.saturatedFat = parseFloat(value) || undefined;
+                    }
+                    else if ((name === 'carbohydrate' || name.includes('carbohydrate')) && !name.includes('sugar')) {
+                        nutrition.carbs = parseFloat(value) || undefined;
+                    }
+                    else if (name === 'sugars' || name.includes('sugar')) {
+                        nutrition.sugar = parseFloat(value) || undefined;
+                    }
+                    else if (name === 'fibre' || name.includes('fibre') || name.includes('fiber')) {
+                        nutrition.fiber = parseFloat(value) || undefined;
+                    }
+                    else if (name === 'protein') {
+                        nutrition.protein = parseFloat(value) || undefined;
+                    }
+                    else if (name === 'salt') {
+                        // Convert salt to sodium (sodium = salt / 2.5)
+                        const saltValue = parseFloat(value);
+                        if (saltValue)
+                            nutrition.sodium = Math.round((saltValue / 2.5) * 1000); // mg
+                    }
+                }
+                // Parse ingredients
+                let ingredients = [];
+                if (details.ingredients) {
+                    const ingredientText = details.ingredients
+                        .replace(/<[^>]+>/g, '') // Remove HTML
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    if (ingredientText) {
+                        // Split by comma but handle parentheses
+                        ingredients = ingredientText
+                            .split(/,(?![^()]*\))/)
+                            .map((s) => s.trim())
+                            .filter((s) => s.length > 0);
+                    }
+                }
+                // Build update object - only include fields that have values
+                const newData = {
+                    objectID: item.objectID
+                };
+                if (nutrition.calories !== undefined)
+                    newData.calories = nutrition.calories;
+                if (nutrition.protein !== undefined)
+                    newData.protein = nutrition.protein;
+                if (nutrition.carbs !== undefined)
+                    newData.carbs = nutrition.carbs;
+                if (nutrition.fat !== undefined)
+                    newData.fat = nutrition.fat;
+                if (nutrition.fiber !== undefined)
+                    newData.fiber = nutrition.fiber;
+                if (nutrition.sugar !== undefined)
+                    newData.sugar = nutrition.sugar;
+                if (nutrition.saturatedFat !== undefined)
+                    newData.saturatedFat = nutrition.saturatedFat;
+                if (nutrition.sodium !== undefined)
+                    newData.sodium = nutrition.sodium;
+                if (ingredients.length > 0) {
+                    newData.ingredients = ingredients;
+                    newData.extractedIngredients = ingredients;
+                }
+                // Only mark as found if we got useful data
+                if (Object.keys(newData).length > 1) { // More than just objectID
+                    item.newData = newData;
+                    item.status = 'found';
+                    successCount++;
+                    console.log(`   ✅ Got nutrition data: ${JSON.stringify(nutrition)}`);
+                }
+                else {
+                    item.status = 'not_found';
+                    notFoundCount++;
+                    console.log(`   ⚠️ No useful nutrition data found`);
+                }
+            }
+            catch (err) {
+                const error = err;
+                console.error(`   ❌ Error: ${error.message}`);
+                item.status = 'error';
+                item.error = error.message;
+                errorCount++;
+            }
+        }
+        console.log(`📊 Rescan complete: ${successCount} found, ${notFoundCount} not found, ${errorCount} errors`);
+        // Apply updates if not dry run
+        let updatedCount = 0;
+        if (!dryRun) {
+            const updates = itemsToRescan
+                .filter(item => item.status === 'found' && item.newData)
+                .map(item => item.newData);
+            if (updates.length > 0) {
+                console.log(`📝 Applying ${updates.length} updates to Algolia`);
+                // Process in batches of 1000
+                const batchSize = 1000;
+                for (let i = 0; i < updates.length; i += batchSize) {
+                    const batch = updates.slice(i, i + batchSize);
+                    await client.partialUpdateObjects({
+                        indexName,
+                        objects: batch,
+                        createIfNotExists: false,
+                    });
+                    updatedCount += batch.length;
+                    console.log(`✅ Updated batch: ${batch.length} records (total: ${updatedCount})`);
+                }
+            }
+        }
+        return {
+            success: true,
+            dryRun,
+            itemsScanned: itemsToRescan.length,
+            itemsFound: successCount,
+            itemsNotFound: notFoundCount,
+            itemsError: errorCount,
+            itemsUpdated: updatedCount,
+            items: itemsToRescan.slice(0, 50).map(item => ({
+                objectID: item.objectID,
+                foodName: item.foodName,
+                status: item.status,
+                hasNewData: !!item.newData,
+                error: item.error
+            })),
+            message: dryRun
+                ? `Found fresh data for ${successCount} of ${itemsToRescan.length} items. Run with dryRun=false to apply updates.`
+                : `Updated ${updatedCount} items with fresh data from Tesco.`,
+        };
+    }
+    catch (error) {
+        console.error('❌ Error rescanning products:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to rescan products', error instanceof Error ? error.message : 'Unknown error');
     }
 });
 //# sourceMappingURL=scan-database.js.map

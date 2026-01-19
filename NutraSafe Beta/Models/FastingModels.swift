@@ -93,7 +93,7 @@ enum FastingCompletionStatus: String, CaseIterable, Codable {
         case .skipped: return "Skipped"
         }
     }
-    
+
     var color: String {
         switch self {
         case .active: return "blue"
@@ -103,6 +103,18 @@ enum FastingCompletionStatus: String, CaseIterable, Codable {
         case .failed: return "red"
         case .skipped: return "gray"
         }
+    }
+}
+
+// MARK: - Fasting Session Configuration
+
+struct FastingSessionConfig {
+    // Maximum reasonable duration for any fast (7 days)
+    static let absoluteMaxDurationHours: Double = 168.0
+
+    // Session is considered stale if it exceeds target + 24h buffer
+    static func maxAllowedDuration(targetHours: Int) -> Double {
+        return min(Double(targetHours) + 24.0, absoluteMaxDurationHours)
     }
 }
 
@@ -425,7 +437,23 @@ struct FastingSession: Identifiable, Codable, Equatable {
     var isActive: Bool {
         return endTime == nil && !skipped
     }
-    
+
+    /// Check if session appears orphaned/stale (exceeded reasonable max duration)
+    var isLikelyStale: Bool {
+        guard isActive else { return false }
+        let maxAllowed = FastingSessionConfig.maxAllowedDuration(targetHours: targetDurationHours)
+        return actualDurationHours > maxAllowed
+    }
+
+    /// Capped duration for display - prevents alarming 72+ hour displays for stale sessions
+    var displayDurationHours: Double {
+        if isActive && isLikelyStale {
+            // Cap at target + 12h for display purposes
+            return min(actualDurationHours, Double(targetDurationHours) + 12.0)
+        }
+        return actualDurationHours
+    }
+
     var progressPercentage: Double {
         guard targetDurationHours > 0 else { return 0 }
         let progress = min(actualDurationHours / Double(targetDurationHours), 1.0)

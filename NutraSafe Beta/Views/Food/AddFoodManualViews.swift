@@ -550,34 +550,7 @@ struct ManualFoodDetailEntryView: View {
 
                         // Core Nutrition Section
                         VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                SectionHeader(title: isPerUnit ? "Core Nutrition (per unit)" : "Core Nutrition (per 100g)")
-
-                                Spacer()
-
-                                Button(action: {
-                                    showingNutritionCamera = true
-                                }) {
-                                    HStack(spacing: 6) {
-                                        if isProcessingNutritionOCR {
-                                            ProgressView()
-                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                                .scaleEffect(0.8)
-                                        } else {
-                                            Image(systemName: "camera.fill")
-                                                .font(.system(size: 14))
-                                        }
-                                        Text("Scan")
-                                            .font(.system(size: 14, weight: .medium))
-                                    }
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(Color.blue)
-                                    .cornerRadius(8)
-                                }
-                                .disabled(isProcessingNutritionOCR)
-                            }
+                            SectionHeader(title: isPerUnit ? "Core Nutrition (per unit)" : "Core Nutrition (per 100g)")
 
                             VStack(spacing: 12) {
                                 ManualNutritionInputRow(label: "Energy", value: $calories, unit: "kcal", isRequired: true, showError: shouldShowError(for: "calories"))
@@ -621,59 +594,11 @@ struct ManualFoodDetailEntryView: View {
                             SectionHeader(title: "Ingredients")
 
                             VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Text("Enter, scan, or estimate with AI")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
+                                Text("Optional - enter ingredients if known")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
 
-                                    Spacer()
-
-                                    // AI Estimate Button (for generic foods like takeaway)
-                                    Button(action: {
-                                        if !foodName.isEmpty {
-                                            showingInferredIngredientsSheet = true
-                                        }
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "sparkles")
-                                                .font(.system(size: 12))
-                                            Text("AI")
-                                                .font(.system(size: 13, weight: .medium))
-                                        }
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            LinearGradient(
-                                                colors: [.purple, .blue],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
-                                        .cornerRadius(8)
-                                    }
-                                    .disabled(foodName.isEmpty || isInferringIngredients)
-                                    .opacity(foodName.isEmpty ? 0.5 : 1.0)
-
-                                    Button(action: {
-                                        showingIngredientCamera = true
-                                    }) {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "camera.fill")
-                                                .font(.system(size: 14))
-                                            Text("Scan")
-                                                .font(.system(size: 14, weight: .medium))
-                                        }
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(Color.blue)
-                                        .cornerRadius(8)
-                                    }
-                                    .disabled(isProcessingOCR)
-                                }
-
-                                    TextEditor(text: $ingredientsText)
+                                TextEditor(text: $ingredientsText)
                                         .frame(height: 100)
                                         .padding(8)
                                         .background(Color(.systemGray6))
@@ -3188,7 +3113,7 @@ struct UnifiedProductScannerView: View {
                                 .progressViewStyle(CircularProgressViewStyle(tint: .blue))
                                 .scaleEffect(1.5)
 
-                            Text("Analyzing Photos...")
+                            Text("Analysing Photos...")
                                 .font(.headline)
 
                             Text(processingStage)

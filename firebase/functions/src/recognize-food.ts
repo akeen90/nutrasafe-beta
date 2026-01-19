@@ -90,7 +90,11 @@ interface FoodRecognitionItem {
  * Using v1 functions style
  */
 export const recognizeFood = functions
-  .runWith({ timeoutSeconds: 90, memory: '1GB' })
+  .runWith({
+    timeoutSeconds: 90,
+    memory: '1GB',
+    secrets: ['GEMINI_API_KEY', 'ALGOLIA_ADMIN_API_KEY']
+  })
   .https.onRequest(async (req: functions.https.Request, res: functions.Response) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {

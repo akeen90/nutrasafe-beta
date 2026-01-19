@@ -25,7 +25,11 @@ const UK_SOURCE_INDICES = new Set(['tesco_products', 'uk_foods_cleaned']);
  * Using v1 functions style
  */
 exports.recognizeFood = functions
-    .runWith({ timeoutSeconds: 90, memory: '1GB' })
+    .runWith({
+    timeoutSeconds: 90,
+    memory: '1GB',
+    secrets: ['GEMINI_API_KEY', 'ALGOLIA_ADMIN_API_KEY']
+})
     .https.onRequest(async (req, res) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
