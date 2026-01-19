@@ -278,6 +278,9 @@ struct ReactionLogView: View {
                     message: "Start logging reactions to see your timeline and meal history"
                 )
             } else {
+                // Smart insights card (shown with 3+ reactions)
+                reactionInsightsCard
+
                 // Symptom filter picker
                 symptomFilterPicker
 
@@ -357,14 +360,6 @@ struct ReactionLogView: View {
                     .font(.system(size: 12))
                 Text(label)
                     .font(.system(size: 13, weight: .medium))
-
-                // Show count for specific symptoms
-                if let symptom = symptom {
-                    let count = manager.reactionLogs.filter { $0.reactionType == symptom }.count
-                    Text("(\(count))")
-                        .font(.system(size: 12))
-                        .opacity(0.8)
-                }
             }
             .foregroundColor(isSelected ? .white : .primary)
             .padding(.horizontal, 12)
@@ -393,6 +388,191 @@ struct ReactionLogView: View {
             let count1 = manager.reactionLogs.filter { $0.reactionType == symptom1 }.count
             let count2 = manager.reactionLogs.filter { $0.reactionType == symptom2 }.count
             return count1 > count2
+        }
+    }
+
+    // MARK: - Reaction Insights
+
+    /// Most common symptom with percentage
+    private var mostCommonSymptomInsight: (symptom: String, percentage: Int)? {
+        guard !manager.reactionLogs.isEmpty else { return nil }
+
+        let grouped = Dictionary(grouping: manager.reactionLogs) { $0.reactionType }
+        guard let (symptom, entries) = grouped.max(by: { $0.value.count < $1.value.count }) else { return nil }
+
+        let percentage = Int((Double(entries.count) / Double(manager.reactionLogs.count)) * 100)
+        return (symptom, percentage)
+    }
+
+    /// Peak timing for reactions (Morning/Afternoon/Evening/Night)
+    private var peakTimingInsight: String? {
+        guard !manager.reactionLogs.isEmpty else { return nil }
+
+        let calendar = Calendar.current
+        var timingCounts: [String: Int] = ["Morning": 0, "Afternoon": 0, "Evening": 0, "Night": 0]
+
+        for entry in manager.reactionLogs {
+            let hour = calendar.component(.hour, from: entry.reactionDate)
+            switch hour {
+            case 5..<12: timingCounts["Morning", default: 0] += 1
+            case 12..<17: timingCounts["Afternoon", default: 0] += 1
+            case 17..<21: timingCounts["Evening", default: 0] += 1
+            default: timingCounts["Night", default: 0] += 1
+            }
+        }
+
+        return timingCounts.max(by: { $0.value < $1.value })?.key
+    }
+
+    /// Weekly trend: reactions this week vs last week
+    private var weeklyTrendInsight: (thisWeek: Int, lastWeek: Int, trend: String)? {
+        let calendar = Calendar.current
+        let now = Date()
+
+        guard let startOfThisWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
+              let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek) else {
+            return nil
+        }
+
+        let thisWeekCount = manager.reactionLogs.filter { $0.reactionDate >= startOfThisWeek }.count
+        let lastWeekCount = manager.reactionLogs.filter { $0.reactionDate >= startOfLastWeek && $0.reactionDate < startOfThisWeek }.count
+
+        let trend: String
+        if thisWeekCount < lastWeekCount {
+            trend = "down"
+        } else if thisWeekCount > lastWeekCount {
+            trend = "up"
+        } else {
+            trend = "same"
+        }
+
+        return (thisWeekCount, lastWeekCount, trend)
+    }
+
+    /// Top trigger correlation from analysis data
+    private var topTriggerInsight: (name: String, percentage: Int)? {
+        // Aggregate all trigger analyses to find the most common trigger
+        var ingredientScores: [String: Double] = [:]
+
+        for entry in manager.reactionLogs {
+            guard let analysis = entry.triggerAnalysis else { continue }
+
+            for ingredient in analysis.topIngredients.prefix(3) {
+                ingredientScores[ingredient.ingredientName, default: 0] += ingredient.crossReactionFrequency
+            }
+        }
+
+        guard let (name, score) = ingredientScores.max(by: { $0.value < $1.value }),
+              score > 0 else { return nil }
+
+        // Normalize to percentage (crossReactionFrequency is already 0-100)
+        let percentage = Int(score / Double(max(1, manager.reactionLogs.filter { $0.triggerAnalysis != nil }.count)))
+        return (name, min(percentage, 100))
+    }
+
+    // MARK: - Reaction Insights Card
+    @ViewBuilder
+    private var reactionInsightsCard: some View {
+        // Only show if we have enough data (3+ reactions)
+        if manager.reactionLogs.count >= 3 {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundColor(.yellow)
+                    Text("Your Reaction Insights")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    Spacer()
+                }
+
+                // Insights rows
+                VStack(spacing: 10) {
+                    // Most common symptom
+                    if let insight = mostCommonSymptomInsight {
+                        insightRow(
+                            icon: "chart.bar.fill",
+                            iconColor: .blue,
+                            label: "Most common",
+                            value: "\(insight.symptom) (\(insight.percentage)%)"
+                        )
+                    }
+
+                    // Peak timing
+                    if let timing = peakTimingInsight {
+                        insightRow(
+                            icon: "clock.fill",
+                            iconColor: .orange,
+                            label: "Peak timing",
+                            value: timing
+                        )
+                    }
+
+                    // Weekly trend
+                    if let trend = weeklyTrendInsight {
+                        let trendIcon = trend.trend == "down" ? "arrow.down.right" : (trend.trend == "up" ? "arrow.up.right" : "equal")
+                        let trendColor: Color = trend.trend == "down" ? .green : (trend.trend == "up" ? .red : .secondary)
+                        let trendText = trend.trend == "down" ? "↓ from \(trend.lastWeek)" : (trend.trend == "up" ? "↑ from \(trend.lastWeek)" : "same as last week")
+
+                        insightRow(
+                            icon: "calendar",
+                            iconColor: .purple,
+                            label: "This week",
+                            value: "\(trend.thisWeek) \(trend.thisWeek == 1 ? "reaction" : "reactions")",
+                            badge: trendText,
+                            badgeColor: trendColor
+                        )
+                    }
+
+                    // Top trigger
+                    if let trigger = topTriggerInsight {
+                        insightRow(
+                            icon: "target",
+                            iconColor: .red,
+                            label: "Watch for",
+                            value: trigger.name,
+                            badge: "\(trigger.percentage)% correlation",
+                            badgeColor: .secondary
+                        )
+                    }
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(colorScheme == .dark ? Color(.systemGray6) : Color.white)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            )
+            .padding(.bottom, 8)
+        }
+    }
+
+    private func insightRow(icon: String, iconColor: Color, label: String, value: String, badge: String? = nil, badgeColor: Color = .secondary) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(iconColor)
+                .frame(width: 20)
+
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Text(value)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primary)
+
+            if let badge = badge {
+                Text(badge)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(badgeColor)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(badgeColor.opacity(0.15))
+                    .cornerRadius(4)
+            }
         }
     }
 
