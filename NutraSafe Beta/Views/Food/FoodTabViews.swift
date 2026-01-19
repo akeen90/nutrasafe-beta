@@ -476,7 +476,7 @@ struct FoodReactionSummaryCard: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 4)
         .fullScreenCover(isPresented: $showingLogReaction) {
-            navigationContainer { LogReactionView(reactionManager: reactionManager, selectedTab: $selectedTab) }
+            LogReactionSheet(selectedDayRange: .threeDays)
         }
     }
 }

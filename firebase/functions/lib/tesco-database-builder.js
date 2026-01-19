@@ -980,6 +980,7 @@ exports.startTescoBuild = functions
                         try {
                             await tescoCollection.doc(product.id).set(removeUndefined(product));
                             progress.productsSaved++;
+                            progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
                             console.log(`Saved product: ${product.id} - ${product.title?.substring(0, 40)} (${product.nutrition?.energyKcal} kcal)`);
                             // Track this product in recentlyFoundProducts
                             if (!progress.recentlyFoundProducts) {
@@ -1057,6 +1058,7 @@ exports.startTescoBuild = functions
                             try {
                                 await tescoCollection.doc(product.id).set(removeUndefined(product));
                                 progress.productsSaved++;
+                                progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
                                 if (!progress.recentlyFoundProducts)
                                     progress.recentlyFoundProducts = [];
                                 progress.recentlyFoundProducts.push({
@@ -1189,6 +1191,40 @@ exports.scheduledTescoBuild = functions.pubsub
         console.log(`[SCHEDULED] Build status is '${progress.status}', not continuing.`);
         return null;
     }
+    // ============ STALL DETECTION & AUTO-RESTART ============
+    // Check if we've stalled (no product saved in last 2 minutes)
+    const STALL_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+    const AUTO_RESTART_DELAY_MS = 30 * 1000; // 30 seconds
+    const now = Date.now();
+    const lastProductTime = progress.lastProductSavedAt
+        ? new Date(progress.lastProductSavedAt).getTime()
+        : new Date(progress.lastUpdated).getTime();
+    const timeSinceLastProduct = now - lastProductTime;
+    if (timeSinceLastProduct > STALL_THRESHOLD_MS) {
+        console.log(`[SCHEDULED] ⚠️ STALL DETECTED! No product saved for ${Math.round(timeSinceLastProduct / 1000)}s`);
+        console.log(`[SCHEDULED] 🔄 Auto-restarting: pausing, waiting 30s, then resuming...`);
+        // Update progress to show we're auto-restarting
+        progress.autoRestartCount = (progress.autoRestartCount || 0) + 1;
+        progress.lastAutoRestart = new Date().toISOString();
+        progress.errorMessages.push(`Auto-restart #${progress.autoRestartCount} at ${progress.lastAutoRestart} - stalled for ${Math.round(timeSinceLastProduct / 1000)}s`);
+        if (progress.errorMessages.length > 50) {
+            progress.errorMessages = progress.errorMessages.slice(-50);
+        }
+        // Step 1: Pause
+        progress.status = 'paused';
+        progress.lastUpdated = new Date().toISOString();
+        await progressRef.update({ ...progress });
+        console.log(`[SCHEDULED] ⏸️ Paused. Waiting ${AUTO_RESTART_DELAY_MS / 1000}s before restart...`);
+        // Step 2: Wait 30 seconds
+        await new Promise(resolve => setTimeout(resolve, AUTO_RESTART_DELAY_MS));
+        // Step 3: Resume
+        progress.status = 'running';
+        progress.lastUpdated = new Date().toISOString();
+        progress.lastProductSavedAt = new Date().toISOString(); // Reset the timer
+        await progressRef.update({ ...progress });
+        console.log(`[SCHEDULED] ▶️ Resumed after auto-restart #${progress.autoRestartCount}`);
+    }
+    // ============ END STALL DETECTION ============
     // Check if already completed
     if (progress.currentTermIndex >= SEARCH_TERMS.length) {
         console.log(`[SCHEDULED] All terms processed, marking as completed.`);
@@ -1287,6 +1323,7 @@ exports.scheduledTescoBuild = functions.pubsub
                         try {
                             await tescoCollection.doc(product.id).set(removeUndefined(product));
                             progress.productsSaved++;
+                            progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
                             console.log(`[SCHEDULED] Saved: ${product.title?.substring(0, 30)} (${product.nutrition?.energyKcal} kcal)`);
                             // OPTIMIZED: Add to Algolia batch instead of individual writes
                             algoliaBatch.push(prepareAlgoliaObject(product));
@@ -1339,6 +1376,7 @@ exports.scheduledTescoBuild = functions.pubsub
                             try {
                                 await tescoCollection.doc(product.id).set(removeUndefined(product));
                                 progress.productsSaved++;
+                                progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
                                 // OPTIMIZED: Add to Algolia batch
                                 algoliaBatch.push(prepareAlgoliaObject(product));
                                 if (algoliaBatch.length >= ALGOLIA_BATCH_SIZE) {

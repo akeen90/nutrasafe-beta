@@ -22,7 +22,9 @@ class ReactionLogManager: ObservableObject {
     // MARK: - Load Reaction Logs
 
     func loadReactionLogs() async {
+        print("🔄 [ReactionLogManager] loadReactionLogs called")
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
+            print("🔴 [ReactionLogManager] loadReactionLogs: User not authenticated")
             errorMessage = "You must be signed in to view reaction logs"
             showError = true
             return
@@ -35,6 +37,7 @@ class ReactionLogManager: ObservableObject {
 
         do {
             reactionLogs = try await FirebaseManager.shared.getReactionLogs(userId: userId)
+            print("✅ [ReactionLogManager] loadReactionLogs complete. Loaded \(reactionLogs.count) reactions")
         } catch {
             
             // Provide user-friendly error message
@@ -54,11 +57,17 @@ class ReactionLogManager: ObservableObject {
     // MARK: - Save New Reaction Log
 
     func saveReactionLog(reactionType: String, reactionDate: Date, notes: String?, dayRange: Int = 3) async throws -> ReactionLogEntry {
+        print("🟢 [ReactionLogManager] saveReactionLog called")
+        print("🟢 [ReactionLogManager] Current reactionLogs count: \(reactionLogs.count)")
+
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
+            print("🔴 [ReactionLogManager] User not authenticated!")
             errorMessage = "You must be signed in to save reaction logs"
             showError = true
             throw NSError(domain: "ReactionLogManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
+
+        print("🟢 [ReactionLogManager] User ID: \(userId)")
 
         // Create the log entry
         var entry = ReactionLogEntry(
@@ -67,8 +76,10 @@ class ReactionLogManager: ObservableObject {
             reactionDate: reactionDate,
             notes: notes
         )
+        print("🟢 [ReactionLogManager] Entry created for type: \(reactionType)")
 
         // Perform analysis with configurable day range
+        print("🟢 [ReactionLogManager] Performing trigger analysis...")
         let analysis = try await analyzeReactionTriggers(
             reactionDate: reactionDate,
             reactionType: reactionType,
@@ -76,15 +87,20 @@ class ReactionLogManager: ObservableObject {
             dayRange: dayRange
         )
         entry.triggerAnalysis = analysis
+        print("🟢 [ReactionLogManager] Analysis complete. Foods: \(analysis.topFoods.count), Ingredients: \(analysis.topIngredients.count)")
 
         // Save to Firebase
+        print("🟢 [ReactionLogManager] Saving to Firebase...")
         let savedEntry = try await FirebaseManager.shared.saveReactionLog(entry)
+        print("🟢 [ReactionLogManager] Saved to Firebase! Entry ID: \(savedEntry.id ?? "no-id")")
 
         // Add to local array and sort in a single update to prevent double-publish
         var updatedLogs = reactionLogs
         updatedLogs.append(savedEntry)
         updatedLogs.sort { $0.reactionDate > $1.reactionDate }
+        print("🟢 [ReactionLogManager] About to update reactionLogs: \(updatedLogs.count) entries")
         reactionLogs = updatedLogs
+        print("✅ [ReactionLogManager] reactionLogs updated! New count: \(reactionLogs.count)")
 
         return savedEntry
     }
@@ -269,6 +285,8 @@ class ReactionLogManager: ObservableObject {
 
     // MARK: - Calculate Weighted Ingredient Scores
 
+    /// Calculate weighted ingredient scores with support for AI-inferred ingredients
+    /// Inferred ingredients receive lower weights based on confidence level
     private func calculateWeightedIngredientScores(
         foods: [(food: FoodEntry, mealId: String, mealDate: Date)],
         reactionDate: Date,
@@ -277,34 +295,48 @@ class ReactionLogManager: ObservableObject {
         totalReactions: Int
     ) async -> [WeightedIngredientScore] {
         var ingredientData: [String: (
-            occurrences: Int,
+            weightedOccurrences: Double,      // Sum of weights (accounts for confidence)
+            rawOccurrences: Int,              // Raw count for display
+            exactCount: Int,                  // Count from exact (labeled) sources
+            estimatedCount: Int,              // Count from AI-inferred sources
             foodNames: Set<String>,
             mealIds: [String],
             lastSeenHours: Double,
-            within24h: Int,
-            between24_48h: Int,
-            between48_72h: Int,
+            within24h: Double,                // Weighted counts by time window
+            between24_48h: Double,
+            between48_72h: Double,
             displayName: String
         )] = [:]
 
         // Aggregate ingredient occurrences from all foods (case-insensitive)
+        // Now using weighted extraction for inferred ingredients
         for item in foods {
             let hoursBeforeReaction = reactionDate.timeIntervalSince(item.mealDate) / 3600
 
-            // Parse ingredients from the food
-            let ingredients = extractIngredients(from: item.food)
+            // Extract ingredients with their weights (exact = 1.0, inferred varies by confidence)
+            let ingredientsWithWeights = extractIngredientsWithWeights(from: item.food)
 
-            for ingredient in ingredients {
+            for (ingredientName, weight, isEstimated) in ingredientsWithWeights {
                 // Normalize ingredient name (lowercase, trimmed) for matching
-                let normalizedIngredient = ingredient.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                let normalizedIngredient = ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
                 if ingredientData[normalizedIngredient] == nil {
-                    ingredientData[normalizedIngredient] = (0, [], [], hoursBeforeReaction, 0, 0, 0, ingredient)
+                    ingredientData[normalizedIngredient] = (0, 0, 0, 0, [], [], hoursBeforeReaction, 0, 0, 0, ingredientName)
                 }
 
                 // Safe dictionary mutation
                 if var data = ingredientData[normalizedIngredient] {
-                    data.occurrences += 1
+                    // Add weighted occurrence (for scoring)
+                    data.weightedOccurrences += weight
+                    data.rawOccurrences += 1
+
+                    // Track source type for UI badges
+                    if isEstimated {
+                        data.estimatedCount += 1
+                    } else {
+                        data.exactCount += 1
+                    }
+
                     data.foodNames.insert(item.food.foodName)
                     data.mealIds.append(item.mealId)
 
@@ -313,18 +345,17 @@ class ReactionLogManager: ObservableObject {
                         data.lastSeenHours = hoursBeforeReaction
                     }
 
-                    // Count by time window
+                    // Count by time window (weighted)
                     if hoursBeforeReaction < 24 {
-                        data.within24h += 1
+                        data.within24h += weight
                     } else if hoursBeforeReaction < 48 {
-                        data.between24_48h += 1
+                        data.between24_48h += weight
                     } else {
-                        data.between48_72h += 1
+                        data.between48_72h += weight
                     }
 
                     ingredientData[normalizedIngredient] = data
-                } else {
-                                    }
+                }
             }
         }
 
@@ -335,13 +366,14 @@ class ReactionLogManager: ObservableObject {
         var scores: [WeightedIngredientScore] = []
 
         for (normalizedName, data) in ingredientData {
-            // Recency score: 70% for <24h, 20% for 24-48h, 10% for 48-72h
-            let recencyScore = Double(data.within24h) * 70.0 +
-                               Double(data.between24_48h) * 20.0 +
-                               Double(data.between48_72h) * 10.0
+            // Weighted recency score: Uses weighted occurrences to downweight inferred ingredients
+            // 70% for <24h, 20% for 24-48h, 10% for 48-72h
+            let recencyScore = data.within24h * 70.0 +
+                               data.between24_48h * 20.0 +
+                               data.between48_72h * 10.0
 
-            // Frequency score
-            let frequencyScore = Double(data.occurrences) * 10.0
+            // Weighted frequency score
+            let frequencyScore = data.weightedOccurrences * 10.0
 
             // Symptom association score (use normalized name for lookup)
             let association = symptomAssociations[normalizedName] ?? (total: 0, sameSymptom: 0)
@@ -360,16 +392,18 @@ class ReactionLogManager: ObservableObject {
                 recencyScore: recencyScore,
                 frequencyScore: frequencyScore,
                 symptomAssociationScore: symptomBoost,
-                occurrences: data.occurrences,
+                occurrences: data.rawOccurrences,  // Raw count for display
                 lastSeenHoursBeforeReaction: data.lastSeenHours,
                 contributingFoodNames: Array(data.foodNames),
                 contributingMealIds: Array(Set(data.mealIds)),
                 crossReactionFrequency: crossReactionFrequency,
-                occurrencesWithin24h: data.within24h,
-                occurrencesBetween24_48h: data.between24_48h,
-                occurrencesBetween48_72h: data.between48_72h,
+                occurrencesWithin24h: Int(data.within24h.rounded()),  // Round weighted values for display
+                occurrencesBetween24_48h: Int(data.between24_48h.rounded()),
+                occurrencesBetween48_72h: Int(data.between48_72h.rounded()),
                 appearedInReactionCount: association.total,
-                appearedInSameSymptomCount: association.sameSymptom
+                appearedInSameSymptomCount: association.sameSymptom,
+                exactExposureCount: data.exactCount,
+                estimatedExposureCount: data.estimatedCount
             )
 
             scores.append(score)
@@ -380,13 +414,38 @@ class ReactionLogManager: ObservableObject {
 
     // MARK: - Helper: Extract Ingredients
 
-    private func extractIngredients(from food: FoodEntry) -> [String] {
-        // FoodEntry stores ingredients as [String]? array
+    /// Extract ingredients from a FoodEntry, including both exact and inferred ingredients
+    /// Returns tuples with (name, weight, isEstimated) for weighted scoring
+    private func extractIngredientsWithWeights(from food: FoodEntry) -> [(name: String, weight: Double, isEstimated: Bool)] {
+        var result: [(name: String, weight: Double, isEstimated: Bool)] = []
+
+        // Add exact ingredients with full weight (1.0)
         if let ingredients = food.ingredients, !ingredients.isEmpty {
-            return ingredients.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            for ingredient in ingredients {
+                let name = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !name.isEmpty {
+                    result.append((name: name, weight: 1.0, isEstimated: false))
+                }
+            }
         }
 
-        return []
+        // Add inferred ingredients with their confidence-based weights
+        // Weight: exact = 1.0, user-edited = 1.0, estimated high/medium = 0.6, estimated low = 0.3
+        if let inferred = food.inferredIngredients, !inferred.isEmpty {
+            for ingredient in inferred {
+                let name = ingredient.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !name.isEmpty {
+                    result.append((name: name, weight: ingredient.reactionWeight, isEstimated: ingredient.isEstimated))
+                }
+            }
+        }
+
+        return result
+    }
+
+    /// Legacy method for backward compatibility - returns ingredient names only
+    private func extractIngredients(from food: FoodEntry) -> [String] {
+        return extractIngredientsWithWeights(from: food).map { $0.name }
     }
 
     // MARK: - Helper: Get Symptom Associations

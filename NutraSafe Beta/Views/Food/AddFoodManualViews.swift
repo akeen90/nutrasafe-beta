@@ -330,6 +330,11 @@ struct ManualFoodDetailEntryView: View {
     // Unified product scanner state
     @State private var showingUnifiedScanner = false
 
+    // AI Ingredient Estimation state
+    @State private var showingInferredIngredientsSheet = false
+    @State private var inferredIngredients: [InferredIngredient] = []
+    @State private var isInferringIngredients = false
+
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
@@ -617,11 +622,38 @@ struct ManualFoodDetailEntryView: View {
 
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
-                                    Text("Enter ingredients or scan from a photo")
+                                    Text("Enter, scan, or estimate with AI")
                                         .font(.system(size: 14))
                                         .foregroundColor(.secondary)
 
                                     Spacer()
+
+                                    // AI Estimate Button (for generic foods like takeaway)
+                                    Button(action: {
+                                        if !foodName.isEmpty {
+                                            showingInferredIngredientsSheet = true
+                                        }
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "sparkles")
+                                                .font(.system(size: 12))
+                                            Text("AI")
+                                                .font(.system(size: 13, weight: .medium))
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            LinearGradient(
+                                                colors: [.purple, .blue],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .cornerRadius(8)
+                                    }
+                                    .disabled(foodName.isEmpty || isInferringIngredients)
+                                    .opacity(foodName.isEmpty ? 0.5 : 1.0)
 
                                     Button(action: {
                                         showingIngredientCamera = true
@@ -868,6 +900,21 @@ struct ManualFoodDetailEntryView: View {
                         showingUnifiedScanner = false
                     }
                 )
+            }
+            .sheet(isPresented: $showingInferredIngredientsSheet) {
+                InferredIngredientsSheet(
+                    foodName: foodName.isEmpty ? "Food" : foodName,
+                    inferredIngredients: $inferredIngredients
+                )
+                .onDisappear {
+                    // Convert inferred ingredients to comma-separated text for the ingredients field
+                    if !inferredIngredients.isEmpty {
+                        ingredientsText = inferredIngredients
+                            .filter { !$0.name.isEmpty }
+                            .map { $0.name }
+                            .joined(separator: ", ")
+                    }
+                }
             }
             .onAppear {
                 // Initialize barcode from prefilledBarcode if provided

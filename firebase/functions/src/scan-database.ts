@@ -250,6 +250,81 @@ function isLegitForeignTerm(word: string, fullText: string): boolean {
 }
 
 /**
+ * Detect if a calorie value is likely kJ + kcal combined (common Tesco data entry error)
+ *
+ * Pattern: When data is scraped, sometimes the energy value appears as kJ and kcal
+ * concatenated together. For example:
+ * - Actual: 583 kcal / 2431 kJ
+ * - Error: 2431583 (kJ concatenated with kcal)
+ *
+ * Detection method:
+ * 1. Try splitting the number at different positions
+ * 2. Check if one part × 4.184 ≈ the other part (with 10 kcal tolerance)
+ * 3. If so, the smaller number is the kcal
+ *
+ * Conversion: 1 kcal = 4.184 kJ
+ */
+function detectKjKcalCombined(
+  calories: number,
+  protein: number,
+  carbs: number,
+  fat: number,
+  tolerancePercent: number = 10 // 10% tolerance for the kJ/kcal conversion check
+): { isLikelyCombined: boolean; suggestedKcal: number; pattern: string } {
+  const calStr = calories.toString();
+
+  // Need at least 4 digits to have two meaningful parts (e.g., "1234" -> "12" and "34")
+  if (calStr.length < 4) {
+    return { isLikelyCombined: false, suggestedKcal: 0, pattern: 'too-short' };
+  }
+
+  // Try splitting at different positions
+  for (let splitPos = 1; splitPos < calStr.length; splitPos++) {
+    const firstPart = parseInt(calStr.substring(0, splitPos), 10);
+    const secondPart = parseInt(calStr.substring(splitPos), 10);
+
+    // Skip if either part is 0 or has leading zeros that got trimmed
+    if (firstPart === 0 || secondPart === 0) continue;
+
+    // Check if firstPart is kJ and secondPart is kcal
+    // kJ / 4.184 should ≈ kcal
+    const firstAsKcal = firstPart / 4.184;
+    const toleranceKcal1 = secondPart * (tolerancePercent / 100); // 10% of the kcal value
+    if (Math.abs(secondPart - firstAsKcal) <= toleranceKcal1) {
+      // Smaller value is kcal
+      const suggestedKcal = Math.min(firstPart, secondPart);
+      // Sanity check: kcal should be reasonable (1-900 per 100g)
+      if (suggestedKcal >= 1 && suggestedKcal <= 900) {
+        return {
+          isLikelyCombined: true,
+          suggestedKcal: secondPart, // The kcal is the second part (after kJ)
+          pattern: `kJ|kcal concatenated (${firstPart}|${secondPart})`
+        };
+      }
+    }
+
+    // Check if firstPart is kcal and secondPart is kJ
+    // kcal * 4.184 should ≈ kJ
+    const secondAsKcal = secondPart / 4.184;
+    const toleranceKcal2 = firstPart * (tolerancePercent / 100); // 10% of the kcal value
+    if (Math.abs(firstPart - secondAsKcal) <= toleranceKcal2) {
+      // Smaller value is kcal
+      const suggestedKcal = Math.min(firstPart, secondPart);
+      // Sanity check: kcal should be reasonable (1-900 per 100g)
+      if (suggestedKcal >= 1 && suggestedKcal <= 900) {
+        return {
+          isLikelyCombined: true,
+          suggestedKcal: firstPart, // The kcal is the first part (before kJ)
+          pattern: `kcal|kJ concatenated (${firstPart}|${secondPart})`
+        };
+      }
+    }
+  }
+
+  return { isLikelyCombined: false, suggestedKcal: 0, pattern: 'no-match' };
+}
+
+/**
  * Detect issues in a food record
  */
 function detectIssues(food: Record<string, unknown>): Issue[] {
@@ -278,8 +353,16 @@ function detectIssues(food: Record<string, unknown>): Issue[] {
   const impossibleIssues: string[] = [];
 
   // Calories: Pure fat is ~900 kcal/100g, anything higher is impossible
+  // But first check if it might be kJ + kcal combined (common data entry error)
   if (calories > 900) {
-    impossibleIssues.push(`calories: ${calories} (max possible ~900)`);
+    const kjKcalCombinedCheck = detectKjKcalCombined(calories, protein, carbs, fat);
+    if (kjKcalCombinedCheck.isLikelyCombined) {
+      impossibleIssues.push(
+        `calories: ${calories} appears to be kJ+kcal combined (likely correct kcal: ~${kjKcalCombinedCheck.suggestedKcal})`
+      );
+    } else {
+      impossibleIssues.push(`calories: ${calories} (max possible ~900)`);
+    }
   }
 
   // Macronutrients can't exceed 100g per 100g serving
@@ -589,10 +672,9 @@ export const scanDatabaseIssues = functions
 /**
  * Batch update and delete foods in Algolia
  */
-export const batchUpdateFoods = functionsV2.https.onRequest({
-  secrets: [algoliaAdminKey],
-  cors: true,
-}, async (req, res) => {
+export const batchUpdateFoods = functions
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .https.onRequest(async (req, res) => {
   // CORS headers
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -611,11 +693,17 @@ export const batchUpdateFoods = functionsV2.https.onRequest({
       return;
     }
 
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+      res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+      return;
+    }
+
     console.log(`📝 Batch update for index: ${indexName}`);
     console.log(`   Updates: ${updates?.length || 0}, Deletes: ${deletes?.length || 0}`);
 
     // Initialize Algolia client
-    const client = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
 
     let updatedCount = 0;
     let deletedCount = 0;
@@ -676,6 +764,891 @@ export const batchUpdateFoods = functionsV2.https.onRequest({
     res.status(500).json({
       success: false,
       error: 'Failed to batch update',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * Fix kJ+kcal combined calories in an Algolia index
+ * Scans for impossibly high calorie values that are actually kJ and kcal concatenated,
+ * then fixes them by extracting the correct kcal value.
+ */
+export const fixKjKcalCombinedCalories = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .https.onRequest(async (req, res) => {
+  // CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).send();
+    return;
+  }
+
+  try {
+    const { indexName, dryRun = true } = req.body;
+
+    if (!indexName) {
+      res.status(400).json({ success: false, error: 'Index name is required' });
+      return;
+    }
+
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+      res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+      return;
+    }
+
+    console.log(`🔧 ${dryRun ? '[DRY RUN] ' : ''}Fixing kJ+kcal combined calories in index: ${indexName}`);
+
+    const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+
+    // Find all records with impossibly high calories (> 900)
+    const itemsToFix: Array<{ objectID: string; oldCalories: number; newCalories: number; pattern: string }> = [];
+    let totalScanned = 0;
+    let cursor: string | undefined;
+    let batchNumber = 0;
+
+    do {
+      batchNumber++;
+      const browseParams: Record<string, unknown> = {
+        filters: 'calories > 900',
+        attributesToRetrieve: ['objectID', 'calories', 'protein', 'carbs', 'carbohydrates', 'fat', 'foodName', 'name'],
+        hitsPerPage: 1000,
+      };
+
+      if (cursor) {
+        browseParams.cursor = cursor;
+      }
+
+      const result = await client.browse({ indexName, browseParams });
+      const hits = (result.hits || []) as Record<string, unknown>[];
+      totalScanned += hits.length;
+
+      console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records with calories > 900`);
+
+      for (const food of hits) {
+        const calories = (food.calories as number) || 0;
+        const protein = (food.protein as number) || 0;
+        const carbs = (food.carbs as number) || (food.carbohydrates as number) || 0;
+        const fat = (food.fat as number) || 0;
+
+        const detection = detectKjKcalCombined(calories, protein, carbs, fat);
+
+        if (detection.isLikelyCombined && detection.suggestedKcal > 0) {
+          itemsToFix.push({
+            objectID: food.objectID as string,
+            oldCalories: calories,
+            newCalories: detection.suggestedKcal,
+            pattern: detection.pattern,
+          });
+        }
+      }
+
+      cursor = result.cursor;
+
+      if (batchNumber > 100) {
+        console.log('⚠️ Reached batch limit, stopping scan');
+        break;
+      }
+    } while (cursor);
+
+    console.log(`📊 Found ${itemsToFix.length} items to fix out of ${totalScanned} with high calories`);
+
+    // Apply fixes if not dry run
+    let fixedCount = 0;
+    if (!dryRun && itemsToFix.length > 0) {
+      const updates = itemsToFix.map(item => ({
+        objectID: item.objectID,
+        calories: item.newCalories,
+      }));
+
+      // Process in batches of 1000
+      const batchSize = 1000;
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize);
+        await client.partialUpdateObjects({
+          indexName,
+          objects: batch,
+          createIfNotExists: false,
+        });
+        fixedCount += batch.length;
+        console.log(`✅ Fixed batch: ${batch.length} records (total: ${fixedCount})`);
+      }
+    }
+
+    res.json({
+      success: true,
+      dryRun,
+      totalScanned,
+      itemsFound: itemsToFix.length,
+      itemsFixed: fixedCount,
+      items: itemsToFix.slice(0, 100), // Return first 100 for preview
+      message: dryRun
+        ? `Found ${itemsToFix.length} items to fix. Run with dryRun=false to apply fixes.`
+        : `Fixed ${fixedCount} items.`,
+    });
+
+  } catch (error: unknown) {
+    console.error('❌ Error fixing calories:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fix calories',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * Simple/single ingredient foods mapping
+ * Maps food name patterns to their obvious ingredients
+ */
+const SIMPLE_INGREDIENT_FOODS: Array<{
+  patterns: RegExp[];
+  ingredients: string[];
+  category: string;
+}> = [
+  // Oils
+  {
+    patterns: [/\bolive\s*oil\b/i, /\bextra\s*virgin\s*olive\b/i],
+    ingredients: ['Olive Oil'],
+    category: 'oils'
+  },
+  {
+    patterns: [/\bvegetable\s*oil\b/i],
+    ingredients: ['Vegetable Oil'],
+    category: 'oils'
+  },
+  {
+    patterns: [/\bsunflower\s*oil\b/i],
+    ingredients: ['Sunflower Oil'],
+    category: 'oils'
+  },
+  {
+    patterns: [/\bcoconut\s*oil\b/i],
+    ingredients: ['Coconut Oil'],
+    category: 'oils'
+  },
+  {
+    patterns: [/\brapeseed\s*oil\b/i, /\bcanola\s*oil\b/i],
+    ingredients: ['Rapeseed Oil'],
+    category: 'oils'
+  },
+  {
+    patterns: [/\bsesame\s*oil\b/i],
+    ingredients: ['Sesame Oil'],
+    category: 'oils'
+  },
+  {
+    patterns: [/\bavocado\s*oil\b/i],
+    ingredients: ['Avocado Oil'],
+    category: 'oils'
+  },
+  {
+    patterns: [/\bgroundnut\s*oil\b/i, /\bpeanut\s*oil\b/i],
+    ingredients: ['Groundnut Oil (Peanut)'],
+    category: 'oils'
+  },
+
+  // Vinegars
+  {
+    patterns: [/\bbalsamic\s*vinegar\b/i],
+    ingredients: ['Balsamic Vinegar (Grape Must, Wine Vinegar)'],
+    category: 'vinegars'
+  },
+  {
+    patterns: [/\bwhite\s*wine\s*vinegar\b/i],
+    ingredients: ['White Wine Vinegar'],
+    category: 'vinegars'
+  },
+  {
+    patterns: [/\bred\s*wine\s*vinegar\b/i],
+    ingredients: ['Red Wine Vinegar'],
+    category: 'vinegars'
+  },
+  {
+    patterns: [/\bapple\s*cider\s*vinegar\b/i],
+    ingredients: ['Apple Cider Vinegar'],
+    category: 'vinegars'
+  },
+  {
+    patterns: [/\bmalt\s*vinegar\b/i],
+    ingredients: ['Malt Vinegar (Barley)'],
+    category: 'vinegars'
+  },
+
+  // Sweeteners
+  {
+    patterns: [/\bhoney\b/i],
+    ingredients: ['Honey'],
+    category: 'sweeteners'
+  },
+  {
+    patterns: [/\bmaple\s*syrup\b/i],
+    ingredients: ['Maple Syrup'],
+    category: 'sweeteners'
+  },
+  {
+    patterns: [/\bgolden\s*syrup\b/i],
+    ingredients: ['Golden Syrup (Sugar, Water)'],
+    category: 'sweeteners'
+  },
+  {
+    patterns: [/\bagave\s*(syrup|nectar)\b/i],
+    ingredients: ['Agave Syrup'],
+    category: 'sweeteners'
+  },
+  {
+    patterns: [/\bmolasses\b/i, /\btreacle\b/i],
+    ingredients: ['Molasses'],
+    category: 'sweeteners'
+  },
+
+  // Butters & Spreads
+  {
+    patterns: [/\bpeanut\s*butter\b/i],
+    ingredients: ['Peanuts'],
+    category: 'spreads'
+  },
+  {
+    patterns: [/\balmond\s*butter\b/i],
+    ingredients: ['Almonds'],
+    category: 'spreads'
+  },
+  {
+    patterns: [/\bcashew\s*butter\b/i],
+    ingredients: ['Cashew Nuts'],
+    category: 'spreads'
+  },
+  {
+    patterns: [/\btahini\b/i, /\bsesame\s*(seed\s*)?paste\b/i],
+    ingredients: ['Sesame Seeds'],
+    category: 'spreads'
+  },
+
+  // Dairy basics
+  {
+    patterns: [/\bwhole\s*milk\b/i, /\bfull\s*fat\s*milk\b/i],
+    ingredients: ['Whole Milk'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bsemi[\s-]?skimmed\s*milk\b/i],
+    ingredients: ['Semi-Skimmed Milk'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bskimmed\s*milk\b/i],
+    ingredients: ['Skimmed Milk'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bdouble\s*cream\b/i],
+    ingredients: ['Double Cream'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bsingle\s*cream\b/i],
+    ingredients: ['Single Cream'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bwhipping\s*cream\b/i],
+    ingredients: ['Whipping Cream'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bclotted\s*cream\b/i],
+    ingredients: ['Clotted Cream'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bsoured?\s*cream\b/i],
+    ingredients: ['Soured Cream'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bcreme\s*fraiche\b/i],
+    ingredients: ['Crème Fraîche'],
+    category: 'dairy'
+  },
+  {
+    patterns: [/\bbutter\b/i],
+    ingredients: ['Butter (Milk)'],
+    category: 'dairy'
+  },
+
+  // Eggs
+  {
+    patterns: [/\b(free\s*range\s*)?eggs?\b/i, /\blarge\s*eggs?\b/i, /\bmedium\s*eggs?\b/i],
+    ingredients: ['Eggs'],
+    category: 'eggs'
+  },
+
+  // Plain flours & grains
+  {
+    patterns: [/\bplain\s*flour\b/i, /\ball[\s-]?purpose\s*flour\b/i],
+    ingredients: ['Wheat Flour'],
+    category: 'grains'
+  },
+  {
+    patterns: [/\bself[\s-]?raising\s*flour\b/i],
+    ingredients: ['Wheat Flour, Raising Agents'],
+    category: 'grains'
+  },
+  {
+    patterns: [/\bstrong\s*(bread\s*)?flour\b/i],
+    ingredients: ['Strong Wheat Flour'],
+    category: 'grains'
+  },
+  {
+    patterns: [/\bwholemeal\s*flour\b/i],
+    ingredients: ['Wholemeal Wheat Flour'],
+    category: 'grains'
+  },
+  {
+    patterns: [/\brice\b/i, /\bbasmati\b/i, /\bjasmine\s*rice\b/i, /\blong\s*grain\s*rice\b/i],
+    ingredients: ['Rice'],
+    category: 'grains'
+  },
+  {
+    patterns: [/\bporridge\s*oats\b/i, /\brolled\s*oats\b/i, /\boats\b/i],
+    ingredients: ['Oats'],
+    category: 'grains'
+  },
+  {
+    patterns: [/\bquinoa\b/i],
+    ingredients: ['Quinoa'],
+    category: 'grains'
+  },
+  {
+    patterns: [/\bcouscous\b/i],
+    ingredients: ['Couscous (Wheat)'],
+    category: 'grains'
+  },
+
+  // Sugars
+  {
+    patterns: [/\bcaster\s*sugar\b/i],
+    ingredients: ['Caster Sugar'],
+    category: 'sugars'
+  },
+  {
+    patterns: [/\bgranulated\s*sugar\b/i],
+    ingredients: ['Granulated Sugar'],
+    category: 'sugars'
+  },
+  {
+    patterns: [/\bicing\s*sugar\b/i, /\bpowdered\s*sugar\b/i],
+    ingredients: ['Icing Sugar'],
+    category: 'sugars'
+  },
+  {
+    patterns: [/\b(light\s*)?brown\s*sugar\b/i, /\bdemerara\s*sugar\b/i],
+    ingredients: ['Brown Sugar'],
+    category: 'sugars'
+  },
+  {
+    patterns: [/\bmuscovado\s*sugar\b/i],
+    ingredients: ['Muscovado Sugar'],
+    category: 'sugars'
+  },
+
+  // Nuts (plain)
+  {
+    patterns: [/\balmonds?\b/i, /\bwhole\s*almonds?\b/i, /\bflaked\s*almonds?\b/i],
+    ingredients: ['Almonds'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bwalnuts?\b/i],
+    ingredients: ['Walnuts'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bcashews?\b/i, /\bcashew\s*nuts?\b/i],
+    ingredients: ['Cashew Nuts'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bpistachios?\b/i],
+    ingredients: ['Pistachios'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bhazelnuts?\b/i],
+    ingredients: ['Hazelnuts'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bpecans?\b/i],
+    ingredients: ['Pecans'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bmacadamia\b/i],
+    ingredients: ['Macadamia Nuts'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bbrazil\s*nuts?\b/i],
+    ingredients: ['Brazil Nuts'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bpeanuts?\b/i, /\bmonkey\s*nuts?\b/i],
+    ingredients: ['Peanuts'],
+    category: 'nuts'
+  },
+  {
+    patterns: [/\bmixed\s*nuts\b/i],
+    ingredients: ['Mixed Nuts (may contain various tree nuts and peanuts)'],
+    category: 'nuts'
+  },
+
+  // Seeds
+  {
+    patterns: [/\bchia\s*seeds?\b/i],
+    ingredients: ['Chia Seeds'],
+    category: 'seeds'
+  },
+  {
+    patterns: [/\bflax\s*seeds?\b/i, /\blinseed\b/i],
+    ingredients: ['Flaxseeds'],
+    category: 'seeds'
+  },
+  {
+    patterns: [/\bsunflower\s*seeds?\b/i],
+    ingredients: ['Sunflower Seeds'],
+    category: 'seeds'
+  },
+  {
+    patterns: [/\bpumpkin\s*seeds?\b/i],
+    ingredients: ['Pumpkin Seeds'],
+    category: 'seeds'
+  },
+  {
+    patterns: [/\bsesame\s*seeds?\b/i],
+    ingredients: ['Sesame Seeds'],
+    category: 'seeds'
+  },
+  {
+    patterns: [/\bpoppy\s*seeds?\b/i],
+    ingredients: ['Poppy Seeds'],
+    category: 'seeds'
+  },
+
+  // Dried fruits
+  {
+    patterns: [/\braisins?\b/i],
+    ingredients: ['Raisins (Dried Grapes)'],
+    category: 'dried_fruit'
+  },
+  {
+    patterns: [/\bsultanas?\b/i],
+    ingredients: ['Sultanas (Dried Grapes)'],
+    category: 'dried_fruit'
+  },
+  {
+    patterns: [/\bcurrants?\b/i],
+    ingredients: ['Currants (Dried Grapes)'],
+    category: 'dried_fruit'
+  },
+  {
+    patterns: [/\bdried?\s*apricots?\b/i],
+    ingredients: ['Dried Apricots'],
+    category: 'dried_fruit'
+  },
+  {
+    patterns: [/\bdates?\b/i, /\bmedjool\s*dates?\b/i],
+    ingredients: ['Dates'],
+    category: 'dried_fruit'
+  },
+  {
+    patterns: [/\bdried?\s*figs?\b/i],
+    ingredients: ['Dried Figs'],
+    category: 'dried_fruit'
+  },
+  {
+    patterns: [/\bprunes?\b/i],
+    ingredients: ['Prunes (Dried Plums)'],
+    category: 'dried_fruit'
+  },
+  {
+    patterns: [/\bdried?\s*cranberries?\b/i],
+    ingredients: ['Dried Cranberries'],
+    category: 'dried_fruit'
+  },
+
+  // Salt & basic seasonings
+  {
+    patterns: [/\bsea\s*salt\b/i, /\btable\s*salt\b/i, /\brock\s*salt\b/i],
+    ingredients: ['Salt'],
+    category: 'seasonings'
+  },
+  {
+    patterns: [/\bblack\s*pepper\b/i, /\bpeppercorns?\b/i],
+    ingredients: ['Black Pepper'],
+    category: 'seasonings'
+  },
+
+  // Fresh produce (single items)
+  {
+    patterns: [/\bbananas?\b/i],
+    ingredients: ['Banana'],
+    category: 'fruit'
+  },
+  {
+    patterns: [/\bapples?\b/i],
+    ingredients: ['Apple'],
+    category: 'fruit'
+  },
+  {
+    patterns: [/\boranges?\b/i],
+    ingredients: ['Orange'],
+    category: 'fruit'
+  },
+  {
+    patterns: [/\blemons?\b/i],
+    ingredients: ['Lemon'],
+    category: 'fruit'
+  },
+  {
+    patterns: [/\blimes?\b/i],
+    ingredients: ['Lime'],
+    category: 'fruit'
+  },
+  {
+    patterns: [/\bavocados?\b/i],
+    ingredients: ['Avocado'],
+    category: 'fruit'
+  },
+  {
+    patterns: [/\btomato(es)?\b/i],
+    ingredients: ['Tomatoes'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bonions?\b/i],
+    ingredients: ['Onion'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bgarlic\b/i],
+    ingredients: ['Garlic'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bpotato(es)?\b/i],
+    ingredients: ['Potatoes'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bcarrots?\b/i],
+    ingredients: ['Carrots'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bcucumber\b/i],
+    ingredients: ['Cucumber'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bbroccoli\b/i],
+    ingredients: ['Broccoli'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bspinach\b/i],
+    ingredients: ['Spinach'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bkale\b/i],
+    ingredients: ['Kale'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bmushrooms?\b/i],
+    ingredients: ['Mushrooms'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bpeppers?\b/i, /\bbell\s*peppers?\b/i],
+    ingredients: ['Peppers'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\bcourgettes?\b/i, /\bzucchini\b/i],
+    ingredients: ['Courgette'],
+    category: 'vegetables'
+  },
+  {
+    patterns: [/\baubergine\b/i, /\beggplant\b/i],
+    ingredients: ['Aubergine'],
+    category: 'vegetables'
+  },
+
+  // Canned basics
+  {
+    patterns: [/\bchopped\s*tomato(es)?\b/i, /\btinned\s*tomato(es)?\b/i, /\bcanned\s*tomato(es)?\b/i],
+    ingredients: ['Tomatoes'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\btomato\s*passata\b/i, /\bpassata\b/i],
+    ingredients: ['Tomatoes'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\btomato\s*puree\b/i, /\btomato\s*paste\b/i],
+    ingredients: ['Tomatoes'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\bcoconut\s*milk\b/i, /\bcoconut\s*cream\b/i],
+    ingredients: ['Coconut Extract, Water'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\bchickpeas?\b/i, /\bgarbanzo\b/i],
+    ingredients: ['Chickpeas'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\blentils?\b/i],
+    ingredients: ['Lentils'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\bkidney\s*beans?\b/i],
+    ingredients: ['Kidney Beans'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\bbaked\s*beans?\b/i],
+    ingredients: ['Beans, Tomato Sauce, Sugar, Salt'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\bbutter\s*beans?\b/i, /\blima\s*beans?\b/i],
+    ingredients: ['Butter Beans'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\bcannellini\s*beans?\b/i],
+    ingredients: ['Cannellini Beans'],
+    category: 'canned'
+  },
+  {
+    patterns: [/\bblack\s*beans?\b/i],
+    ingredients: ['Black Beans'],
+    category: 'canned'
+  },
+
+  // Sauces basics
+  {
+    patterns: [/\bsoy\s*sauce\b/i, /\bsoya\s*sauce\b/i],
+    ingredients: ['Water, Soya Beans, Wheat, Salt'],
+    category: 'sauces'
+  },
+  {
+    patterns: [/\bworcestershire\s*sauce\b/i],
+    ingredients: ['Vinegar, Molasses, Sugar, Salt, Anchovies, Tamarind, Onion, Garlic, Spices'],
+    category: 'sauces'
+  },
+  {
+    patterns: [/\btabasco\b/i, /\bhot\s*sauce\b/i],
+    ingredients: ['Peppers, Vinegar, Salt'],
+    category: 'sauces'
+  },
+
+  // Water & basic drinks
+  {
+    patterns: [/\bwater\b/i, /\bmineral\s*water\b/i, /\bspring\s*water\b/i, /\bsparkling\s*water\b/i],
+    ingredients: ['Water'],
+    category: 'drinks'
+  },
+  {
+    patterns: [/\bblack\s*coffee\b/i, /\binstant\s*coffee\b/i, /\bground\s*coffee\b/i],
+    ingredients: ['Coffee'],
+    category: 'drinks'
+  },
+  {
+    patterns: [/\bgreen\s*tea\b/i, /\bblack\s*tea\b/i, /\btea\s*bags?\b/i],
+    ingredients: ['Tea'],
+    category: 'drinks'
+  },
+];
+
+/**
+ * Detect if a food name matches a simple ingredient pattern
+ */
+function detectSimpleIngredient(foodName: string): { match: boolean; ingredients: string[]; category: string } | null {
+  const name = foodName.toLowerCase().trim();
+
+  for (const entry of SIMPLE_INGREDIENT_FOODS) {
+    for (const pattern of entry.patterns) {
+      if (pattern.test(name)) {
+        return {
+          match: true,
+          ingredients: entry.ingredients,
+          category: entry.category
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fix missing ingredients for simple/single ingredient foods
+ * Detects foods like "Olive Oil", "Honey", "Eggs" and auto-populates ingredients
+ */
+export const fixSimpleIngredients = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .https.onRequest(async (req, res) => {
+  // CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).send();
+    return;
+  }
+
+  try {
+    const { indexName, dryRun = true } = req.body;
+
+    if (!indexName) {
+      res.status(400).json({ success: false, error: 'Index name is required' });
+      return;
+    }
+
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+      res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+      return;
+    }
+
+    console.log(`🥗 ${dryRun ? '[DRY RUN] ' : ''}Fixing simple ingredients in index: ${indexName}`);
+
+    const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+
+    // Find all records with missing ingredients
+    const itemsToFix: Array<{
+      objectID: string;
+      foodName: string;
+      ingredients: string[];
+      category: string;
+    }> = [];
+    let totalScanned = 0;
+    let totalMissingIngredients = 0;
+    let cursor: string | undefined;
+    let batchNumber = 0;
+
+    do {
+      batchNumber++;
+      const browseParams: Record<string, unknown> = {
+        attributesToRetrieve: ['objectID', 'foodName', 'name', 'ingredients', 'extractedIngredients'],
+        hitsPerPage: 1000,
+      };
+
+      if (cursor) {
+        browseParams.cursor = cursor;
+      }
+
+      const result = await client.browse({ indexName, browseParams });
+      const hits = (result.hits || []) as Record<string, unknown>[];
+      totalScanned += hits.length;
+
+      console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records`);
+
+      for (const food of hits) {
+        const ingredients = (food.ingredients as string[]) || (food.extractedIngredients as string[]) || [];
+
+        // Only process items with missing ingredients
+        if (ingredients.length > 0) continue;
+
+        totalMissingIngredients++;
+
+        const foodName = (food.foodName as string) || (food.name as string) || '';
+        if (!foodName) continue;
+
+        const detection = detectSimpleIngredient(foodName);
+
+        if (detection && detection.match) {
+          itemsToFix.push({
+            objectID: food.objectID as string,
+            foodName,
+            ingredients: detection.ingredients,
+            category: detection.category,
+          });
+        }
+      }
+
+      cursor = result.cursor;
+
+      if (batchNumber > 100) {
+        console.log('⚠️ Reached batch limit, stopping scan');
+        break;
+      }
+    } while (cursor);
+
+    console.log(`📊 Found ${itemsToFix.length} simple ingredient items to fix out of ${totalMissingIngredients} with missing ingredients`);
+
+    // Apply fixes if not dry run
+    let fixedCount = 0;
+    if (!dryRun && itemsToFix.length > 0) {
+      const updates = itemsToFix.map(item => ({
+        objectID: item.objectID,
+        ingredients: item.ingredients,
+        extractedIngredients: item.ingredients,
+      }));
+
+      // Process in batches of 1000
+      const batchSize = 1000;
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize);
+        await client.partialUpdateObjects({
+          indexName,
+          objects: batch,
+          createIfNotExists: false,
+        });
+        fixedCount += batch.length;
+        console.log(`✅ Fixed batch: ${batch.length} records (total: ${fixedCount})`);
+      }
+    }
+
+    // Group items by category for the response
+    const byCategory: Record<string, number> = {};
+    for (const item of itemsToFix) {
+      byCategory[item.category] = (byCategory[item.category] || 0) + 1;
+    }
+
+    res.json({
+      success: true,
+      dryRun,
+      totalScanned,
+      totalMissingIngredients,
+      itemsFound: itemsToFix.length,
+      itemsFixed: fixedCount,
+      byCategory,
+      items: itemsToFix.slice(0, 100), // Return first 100 for preview
+      message: dryRun
+        ? `Found ${itemsToFix.length} simple ingredient items to fix. Run with dryRun=false to apply fixes.`
+        : `Fixed ${fixedCount} items with simple ingredients.`,
+    });
+
+  } catch (error: unknown) {
+    console.error('❌ Error fixing simple ingredients:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fix simple ingredients',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }

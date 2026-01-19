@@ -75,6 +75,9 @@
 		ALGOLIA001BUILD /* Managers/AlgoliaSearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */; };
 		ANALYTICS001BUILD /* Managers/AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ANALYTICS001FILE /* Managers/AnalyticsManager.swift */; };
 		ANALYTICS002BUILD /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		INFERREDINGMOD001BUILD /* InferredIngredientModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = INFERREDINGMOD001FILE /* InferredIngredientModels.swift */; };
+		INFERREDINGMGR001BUILD /* InferredIngredientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = INFERREDINGMGR001FILE /* InferredIngredientManager.swift */; };
+		INFERREDINGSHEET001BUILD /* InferredIngredientsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = INFERREDINGSHEET001FILE /* InferredIngredientsSheet.swift */; };
 		AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH1234567890123456789002 /* AuthenticationView.swift */; };
 		B1234567890123456789CM02 /* CoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789CM01 /* CoreModels.swift */; };
 		B1234567890123456789FA02 /* FastingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789FA01 /* FastingModels.swift */; };
@@ -234,6 +237,9 @@
 		FEATTIPS001FILE /* NutraSafe Beta/Managers/FeatureTipsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/FeatureTipsManager.swift"; sourceTree = SOURCE_ROOT; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
 		IMGCACHE001FILE /* Managers/ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ImageCacheManager.swift; sourceTree = "<group>"; };
+		INFERREDINGMOD001FILE /* InferredIngredientModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientModels.swift; path = "NutraSafe Beta/Models/InferredIngredientModels.swift"; sourceTree = SOURCE_ROOT; };
+		INFERREDINGMGR001FILE /* InferredIngredientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientManager.swift; path = "NutraSafe Beta/Managers/InferredIngredientManager.swift"; sourceTree = SOURCE_ROOT; };
+		INFERREDINGSHEET001FILE /* InferredIngredientsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientsSheet.swift; path = "NutraSafe Beta/Views/Food/InferredIngredientsSheet.swift"; sourceTree = SOURCE_ROOT; };
 		MEALMANAGER001FILE /* Managers/MealManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/MealManager.swift; sourceTree = "<group>"; };
 		MEALMODELS001FILE /* MealModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealModels.swift; sourceTree = "<group>"; };
 		MIGRMGR001FILE /* NutraSafe Beta/Managers/MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/MigrationManager.swift"; sourceTree = SOURCE_ROOT; };
@@ -281,6 +287,7 @@
 				B1E4A63C54154D289C990AE1BEA07BB8 /* FoodTabViews.swift */,
 				MYMEALSVIEW001FILE /* MyMealsView.swift */,
 				B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */,
+				INFERREDINGSHEET001FILE /* InferredIngredientsSheet.swift */,
 			);
 			path = Food;
 			sourceTree = "<group>";
@@ -370,6 +377,7 @@
 				B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */,
 				BA25CC3104894F129803B0E8 /* CitationManager.swift */,
 				MEALMODELS001FILE /* MealModels.swift */,
+				INFERREDINGMOD001FILE /* InferredIngredientModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -381,6 +389,7 @@
 				ANALYTICS001FILE /* Managers/AnalyticsManager.swift */,
 				ONBMGR0001FILE /* Managers/OnboardingManager.swift */,
 				MEALMANAGER001FILE /* Managers/MealManager.swift */,
+				INFERREDINGMGR001FILE /* InferredIngredientManager.swift */,
 			);
 			name = Managers;
 			sourceTree = "<group>";
@@ -717,6 +726,9 @@
 				A1B31A3BE469C0DBE4BF2B99 /* NutrientGapsView.swift in Sources */,
 				BE43B1A4B3D845F3E0BC73CC /* NutrientDetailModal.swift in Sources */,
 				ANALYTICS001BUILD /* Managers/AnalyticsManager.swift in Sources */,
+				INFERREDINGMOD001BUILD /* InferredIngredientModels.swift in Sources */,
+				INFERREDINGMGR001BUILD /* InferredIngredientManager.swift in Sources */,
+				INFERREDINGSHEET001BUILD /* InferredIngredientsSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -104,6 +104,10 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingManualSearchForEnhancement = false
     @State private var manualSearchText = ""
 
+    // AI-Inferred Ingredients states
+    @State private var showingInferredIngredientsSheet = false
+    @State private var inferredIngredients: [InferredIngredient] = []
+
     // MARK: - Fasting Integration
     var fastingViewModel: FastingViewModel?
     @State private var showingFastingPrompt = false
@@ -1931,6 +1935,13 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
+        // AI-Inferred Ingredients Sheet
+        .sheet(isPresented: $showingInferredIngredientsSheet) {
+            InferredIngredientsSheet(
+                foodName: displayFood.name,
+                inferredIngredients: $inferredIngredients
+            )
+        }
     }
 
 
@@ -2294,7 +2305,7 @@ private var nutritionFactsSection: some View {
     }
 
     private var ingredientsSection: some View {
-        IngredientsSectionView(status: cachedIngredientsStatus, ingredients: cachedIngredients, userAllergens: userAllergens)
+        IngredientsSectionView(status: cachedIngredientsStatus, ingredients: cachedIngredients, userAllergens: userAllergens, foodName: displayFood.name, showingInferredIngredientsSheet: $showingInferredIngredientsSheet)
     }
 
     struct NutritionFactsSectionView: View {
@@ -2435,6 +2446,8 @@ private var nutritionFactsSection: some View {
         let status: IngredientsStatus?
         let ingredients: [String]?
         let userAllergens: [Allergen]
+        let foodName: String
+        @Binding var showingInferredIngredientsSheet: Bool
 
         // Common additive/processed ingredient patterns to highlight
         private let concerningPatterns = [
@@ -2590,12 +2603,41 @@ private var nutritionFactsSection: some View {
                     .padding(24)
                     .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                 } else {
-                    Text("No ingredients found")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .padding(16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    // No ingredients - offer AI estimation for generic foods
+                    VStack(spacing: 12) {
+                        Text("No ingredients found")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+
+                        // AI Estimate Ingredients button
+                        Button(action: {
+                            showingInferredIngredientsSheet = true
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                Text("Estimate Ingredients")
+                            }
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                LinearGradient(
+                                    colors: [.blue, .purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .clipShape(Capsule())
+                        }
+
+                        Text("Uses AI to estimate likely ingredients")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity)
+                    .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                 }
             }
             .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))

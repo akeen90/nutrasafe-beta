@@ -713,13 +713,7 @@ struct ContentView: View {
             }
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
-            NavigationView {
-                LogReactionView(reactionManager: ReactionManager.shared, selectedTab: $selectedTab)
-            }
-            .onDisappear {
-                // Clean up when sheet is dismissed
-                showingReactionLog = false
-            }
+            LogReactionSheet(selectedDayRange: .threeDays)
         }
         .fullScreenCover(isPresented: $showingWeightAdd) {
             AddWeightView(

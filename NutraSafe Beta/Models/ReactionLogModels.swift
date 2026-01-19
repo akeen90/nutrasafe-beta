@@ -122,7 +122,36 @@ struct WeightedIngredientScore: Identifiable, Codable {
     let appearedInReactionCount: Int  // How many total reactions this ingredient appeared before
     let appearedInSameSymptomCount: Int  // How many reactions of THIS symptom type
 
-    init(ingredientName: String, totalScore: Double, recencyScore: Double, frequencyScore: Double, symptomAssociationScore: Double, occurrences: Int, lastSeenHoursBeforeReaction: Double, contributingFoodNames: [String], contributingMealIds: [String], crossReactionFrequency: Double, occurrencesWithin24h: Int, occurrencesBetween24_48h: Int, occurrencesBetween48_72h: Int, appearedInReactionCount: Int, appearedInSameSymptomCount: Int) {
+    // AI-Inferred Meal Analysis: Track estimated vs exact exposure sources
+    // These fields track how many times this ingredient appeared from different sources
+    let exactExposureCount: Int       // Times from exact ingredient labels
+    let estimatedExposureCount: Int   // Times from AI-inferred generic foods
+
+    /// Returns true if this ingredient was primarily from estimated (AI-inferred) sources
+    /// Used to display "Estimated" badge in the UI
+    var isPrimarilyEstimated: Bool {
+        estimatedExposureCount > exactExposureCount
+    }
+
+    /// Percentage of exposures from exact (labeled) sources
+    var exactExposurePercentage: Double {
+        let total = exactExposureCount + estimatedExposureCount
+        guard total > 0 else { return 100.0 }  // Default to 100% exact if no data
+        return (Double(exactExposureCount) / Double(total)) * 100.0
+    }
+
+    /// Display label for source breakdown
+    var sourceLabel: String {
+        if estimatedExposureCount == 0 {
+            return "From labels"
+        } else if exactExposureCount == 0 {
+            return "Estimated"
+        } else {
+            return "Mixed sources"
+        }
+    }
+
+    init(ingredientName: String, totalScore: Double, recencyScore: Double, frequencyScore: Double, symptomAssociationScore: Double, occurrences: Int, lastSeenHoursBeforeReaction: Double, contributingFoodNames: [String], contributingMealIds: [String], crossReactionFrequency: Double, occurrencesWithin24h: Int, occurrencesBetween24_48h: Int, occurrencesBetween48_72h: Int, appearedInReactionCount: Int, appearedInSameSymptomCount: Int, exactExposureCount: Int = 0, estimatedExposureCount: Int = 0) {
         self.id = ingredientName
         self.ingredientName = ingredientName
         self.totalScore = totalScore
@@ -139,6 +168,8 @@ struct WeightedIngredientScore: Identifiable, Codable {
         self.occurrencesBetween48_72h = occurrencesBetween48_72h
         self.appearedInReactionCount = appearedInReactionCount
         self.appearedInSameSymptomCount = appearedInSameSymptomCount
+        self.exactExposureCount = exactExposureCount
+        self.estimatedExposureCount = estimatedExposureCount
     }
 }
 

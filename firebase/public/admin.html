@@ -4677,6 +4677,14 @@
                                     <span class="btn-title">Force Re-verify</span>
                                     <span class="btn-desc">Re-check even if already verified</span>
                                 </button>
+                                <button class="verify-action-btn fix-calories" id="btn-fix-kj-kcal" onclick="app.fixKjKcalCalories()">
+                                    <span class="btn-title">🔧 Fix kJ+kcal Calories</span>
+                                    <span class="btn-desc">Detect & fix concatenated kJ|kcal values (e.g., 2431583 → 583)</span>
+                                </button>
+                                <button class="verify-action-btn fix-calories" id="btn-fix-simple-ingredients" onclick="app.fixSimpleIngredients()" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                                    <span class="btn-title">🥜 Fix Simple Ingredients</span>
+                                    <span class="btn-desc">Auto-add ingredients for single-ingredient foods (oils, nuts, etc.)</span>
+                                </button>
                             </div>
 
                             <!-- UK Verification Status Legend -->
@@ -5059,6 +5067,7 @@
                     <button class="btn btn-info" id="tesco-sync-btn" onclick="app.syncTescoToAlgolia()">
                         🔄 Sync to Algolia
                     </button>
+                    <span id="tesco-sync-status" style="margin-left: 10px; font-size: 12px; color: var(--text-secondary);"></span>
                     <button class="btn btn-danger" id="tesco-reset-btn" onclick="app.resetTescoDatabase()">
                         🗑️ Reset Database
                     </button>
@@ -5676,6 +5685,62 @@
                 this.loadFoods();
                 this.loadReportsCount();
                 this.loadSavedSessions();
+                this.updateIndexCounts(); // Fetch real counts from Algolia
+            },
+
+            // Fetch actual record counts from Algolia for all indices
+            async updateIndexCounts() {
+                const indices = [
+                    { name: 'uk_foods_cleaned', label: 'UK Foods Cleaned' },
+                    { name: 'tesco_products', label: 'Tesco Products' },
+                    { name: 'foods', label: 'All Foods' },
+                    { name: 'generic_database', label: 'Generic Database' },
+                    { name: 'fast_foods_database', label: 'Fast Foods' },
+                    { name: 'user_added', label: 'User Added' },
+                    { name: 'ai_manually_added', label: 'AI Manually Added' },
+                    { name: 'verified_foods', label: 'Verified Foods' },
+                    { name: 'manual_foods', label: 'Manual Foods' }
+                ];
+
+                console.log('📊 Fetching index counts from Algolia...');
+
+                // Fetch counts in parallel
+                const counts = await Promise.all(indices.map(async (idx) => {
+                    try {
+                        const index = algoliaClient.initIndex(idx.name);
+                        // Use empty search with 0 hits to get nbHits count
+                        const result = await index.search('', { hitsPerPage: 0 });
+                        return { name: idx.name, label: idx.label, count: result.nbHits };
+                    } catch (e) {
+                        console.warn(`Failed to get count for ${idx.name}:`, e.message);
+                        return { name: idx.name, label: idx.label, count: 0 };
+                    }
+                }));
+
+                console.log('📊 Index counts:', counts);
+
+                // Update both dropdown selects
+                const collectionFilter = document.getElementById('collection-filter');
+                const scanIndex = document.getElementById('scan-index');
+
+                counts.forEach(({ name, label, count }) => {
+                    const formattedCount = count.toLocaleString();
+                    const displayText = `${label} (${formattedCount})`;
+
+                    // Update collection-filter dropdown
+                    if (collectionFilter) {
+                        const option = collectionFilter.querySelector(`option[value="${name}"]`);
+                        if (option) option.textContent = displayText;
+                    }
+
+                    // Update scan-index dropdown
+                    if (scanIndex) {
+                        const option = scanIndex.querySelector(`option[value="${name}"]`);
+                        if (option) option.textContent = displayText;
+                    }
+                });
+
+                console.log('✅ Index counts updated');
             },
 
             setupAuthListener() {
@@ -9940,6 +10005,109 @@
                 await this.runVerificationBatch(items, 'full');
             },
 
+            // Fix kJ+kcal Combined Calories
+            async fixKjKcalCalories() {
+                const indexSelect = document.getElementById('scan-index');
+                const indexName = indexSelect ? indexSelect.value : 'tesco_products';
+
+                // First do a dry run to show what will be fixed
+                this.showToast('Scanning for kJ+kcal combined calories...', 'info');
+
+                try {
+                    const dryRunResponse = await fetch(`${CONFIG.API_BASE}/fixKjKcalCombinedCalories`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ indexName, dryRun: true })
+                    });
+
+                    const dryRunResult = await dryRunResponse.json();
+
+                    if (!dryRunResult.success) {
+                        this.showToast(`Error: ${dryRunResult.error}`, 'error');
+                        return;
+                    }
+
+                    if (dryRunResult.itemsFound === 0) {
+                        this.showToast('No kJ+kcal combined calories found in this index.', 'success');
+                        return;
+                    }
+
+                    // Show preview of items to fix
+                    let previewMsg = `Found ${dryRunResult.itemsFound} items with kJ+kcal combined calories:\n\n`;
+                    const preview = dryRunResult.items.slice(0, 10);
+                    preview.forEach(item => {
+                        previewMsg += `• ${item.oldCalories} → ${item.newCalories} kcal (${item.pattern})\n`;
+                    });
+                    if (dryRunResult.itemsFound > 10) {
+                        previewMsg += `\n...and ${dryRunResult.itemsFound - 10} more.\n`;
+                    }
+                    previewMsg += `\nApply fixes to ${dryRunResult.itemsFound} items?`;
+
+                    if (!confirm(previewMsg)) {
+                        this.showToast('Fix cancelled.', 'info');
+                        return;
+                    }
+
+                    // Apply the fixes
+                    this.showToast('Applying fixes...', 'info');
+
+                    const fixResponse = await fetch(`${CONFIG.API_BASE}/fixKjKcalCombinedCalories`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ indexName, dryRun: false })
+                    });
+
+                    const fixResult = await fixResponse.json();
+
+                    if (fixResult.success) {
+                        this.showToast(`✅ Fixed ${fixResult.itemsFixed} items with kJ+kcal combined calories.`, 'success');
+                        this.addActivityLog(`Fixed ${fixResult.itemsFixed} kJ+kcal combined calorie values`, 'success');
+                    } else {
+                        this.showToast(`Error: ${fixResult.error}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Fix kJ+kcal error:', error);
+                    this.showToast(`Error: ${error.message}`, 'error');
+                }
+            },
+
+            // Fix simple ingredient foods (olive oil, honey, etc.)
+            async fixSimpleIngredients() {
+                const indexName = state.currentIndex || 'tesco_products';
+
+                if (!confirm(`This will scan the "${indexName}" index for foods with missing ingredients that are simple single-ingredient products (like olive oil, honey, butter, etc.) and auto-populate their ingredients.\n\nThis may update many records. Continue?`)) {
+                    return;
+                }
+
+                this.showToast('Scanning for simple ingredient foods...', 'info');
+                this.addActivityLog(`Starting simple ingredients fix for ${indexName}...`, 'info');
+
+                try {
+                    const fixSimpleIngredientsFunc = firebase.functions().httpsCallable('fixSimpleIngredients');
+                    const result = await fixSimpleIngredientsFunc({ indexName });
+                    const fixResult = result.data;
+
+                    if (fixResult.success) {
+                        this.showToast(`Fixed ${fixResult.itemsFixed} simple ingredient foods!`, 'success');
+                        this.addActivityLog(`Fixed ${fixResult.itemsFixed} simple ingredient foods (scanned ${fixResult.itemsScanned}, detected ${fixResult.itemsDetected})`, 'success');
+
+                        // Show some examples if available
+                        if (fixResult.examples && fixResult.examples.length > 0) {
+                            console.log('Examples of fixed items:', fixResult.examples);
+                            const exampleNames = fixResult.examples.slice(0, 3).map(e => e.name).join(', ');
+                            this.addActivityLog(`Examples: ${exampleNames}`, 'info');
+                        }
+                    } else {
+                        this.showToast(`Error: ${fixResult.error}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Fix simple ingredients error:', error);
+                    this.showToast(`Error: ${error.message}`, 'error');
+                }
+            },
+
             // Main batch verification runner
             async runVerificationBatch(items, mode = 'full') {
                 if (state.verificationInProgress) {
@@ -11641,6 +11809,7 @@
                     }
 
                     this.updateTescoUI();
+                    this.updateTescoSyncStatus(); // Check Firestore vs Algolia sync status
                 } catch (error) {
                     console.error('Error loading Tesco progress:', error);
 
@@ -12109,6 +12278,9 @@
 
                     if (result.data.success) {
                         this.showToast(`Synced ${result.data.synced} Tesco products to Algolia!`, 'success');
+                        // Refresh index counts after sync
+                        this.updateIndexCounts();
+                        this.updateTescoSyncStatus();
                     } else {
                         throw new Error(result.data.error || 'Failed to sync');
                     }
@@ -12120,6 +12292,32 @@
                         syncBtn.disabled = false;
                         syncBtn.innerHTML = '🔄 Sync to Algolia';
                     }
+                }
+            },
+
+            // Update Tesco sync status (Firestore vs Algolia count)
+            async updateTescoSyncStatus() {
+                const statusEl = document.getElementById('tesco-sync-status');
+                if (!statusEl) return;
+
+                try {
+                    // Get Firestore count from stats
+                    const firestoreCount = state.tescoStats?.totalProducts || 0;
+
+                    // Get Algolia count
+                    const tescoIndex = algoliaClient.initIndex('tesco_products');
+                    const algoliaResult = await tescoIndex.search('', { hitsPerPage: 0 });
+                    const algoliaCount = algoliaResult.nbHits;
+
+                    if (firestoreCount === algoliaCount) {
+                        statusEl.innerHTML = `<span style="color: #16a34a;">✓ Synced (${firestoreCount.toLocaleString()} products)</span>`;
+                    } else {
+                        const diff = firestoreCount - algoliaCount;
+                        statusEl.innerHTML = `<span style="color: #dc2626;">⚠ Out of sync: Firestore: ${firestoreCount.toLocaleString()}, Algolia: ${algoliaCount.toLocaleString()} (${diff > 0 ? '+' : ''}${diff.toLocaleString()} missing)</span>`;
+                    }
+                } catch (error) {
+                    console.error('Error checking sync status:', error);
+                    statusEl.innerHTML = '<span style="color: #6b7280;">Unable to check sync status</span>';
                 }
             },
 

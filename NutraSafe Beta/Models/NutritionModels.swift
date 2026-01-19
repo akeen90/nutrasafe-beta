@@ -1198,10 +1198,46 @@ struct FoodEntry: Identifiable, Codable {
     let date: Date
     let dateLogged: Date
 
+    // AI-Inferred Meal Analysis: For foods without known ingredient labels
+    // These are ESTIMATED exposures and may be incomplete or incorrect
+    var inferredIngredients: [InferredIngredient]?
+
+    /// Returns true if this food has AI-inferred ingredients (generic/takeaway food)
+    var hasInferredIngredients: Bool {
+        inferredIngredients != nil && !(inferredIngredients?.isEmpty ?? true)
+    }
+
+    /// Returns true if this food is a generic food without exact ingredients
+    var isGenericFood: Bool {
+        (ingredients == nil || ingredients?.isEmpty == true) && brandName == nil && barcode == nil
+    }
+
+    /// All ingredients for pattern analysis (exact + inferred)
+    /// Returns ingredient names with their reaction weights applied
+    func allIngredientsForAnalysis() -> [(name: String, weight: Double, isEstimated: Bool)] {
+        var result: [(name: String, weight: Double, isEstimated: Bool)] = []
+
+        // Add exact ingredients with full weight
+        if let exact = ingredients {
+            for ingredient in exact {
+                result.append((name: ingredient, weight: 1.0, isEstimated: false))
+            }
+        }
+
+        // Add inferred ingredients with their confidence-based weights
+        if let inferred = inferredIngredients {
+            for ingredient in inferred {
+                result.append((name: ingredient.name, weight: ingredient.reactionWeight, isEstimated: ingredient.isEstimated))
+            }
+        }
+
+        return result
+    }
+
     init(id: String = UUID().uuidString, userId: String, foodName: String, brandName: String? = nil,
          servingSize: Double, servingUnit: String, calories: Double, protein: Double,
          carbohydrates: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
-         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, mealType: MealType, date: Date, dateLogged: Date = Date()) {
+         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, mealType: MealType, date: Date, dateLogged: Date = Date(), inferredIngredients: [InferredIngredient]? = nil) {
         self.id = id
         self.userId = userId
         self.foodName = foodName
@@ -1224,6 +1260,7 @@ struct FoodEntry: Identifiable, Codable {
         self.mealType = mealType
         self.date = date
         self.dateLogged = dateLogged
+        self.inferredIngredients = inferredIngredients
     }
 
     func toDictionary() -> [String: Any] {
@@ -1272,6 +1309,14 @@ struct FoodEntry: Identifiable, Codable {
            let micronutrientsDict = try? JSONSerialization.jsonObject(with: micronutrientsData, options: []) as? [String: Any],
            JSONSerialization.isValidJSONObject(micronutrientsDict) {
             dict["micronutrientProfile"] = micronutrientsDict
+        }
+
+        // Add inferred ingredients if available (AI-estimated ingredients for generic foods)
+        if let inferred = inferredIngredients,
+           let inferredData = try? JSONEncoder().encode(inferred),
+           let inferredArray = try? JSONSerialization.jsonObject(with: inferredData, options: []) as? [[String: Any]],
+           JSONSerialization.isValidJSONObject(inferredArray) {
+            dict["inferredIngredients"] = inferredArray
         }
 
         return dict
@@ -1335,6 +1380,15 @@ struct FoodEntry: Identifiable, Codable {
             return nil
         }
 
+        // Deserialize inferred ingredients if available (AI-estimated ingredients for generic foods)
+        var inferredIngredients: [InferredIngredient]? = nil
+        if let inferredArray = data["inferredIngredients"] as? [[String: Any]],
+           JSONSerialization.isValidJSONObject(inferredArray),
+           let inferredData = try? JSONSerialization.data(withJSONObject: inferredArray, options: []) {
+            inferredIngredients = try? JSONDecoder().decode([InferredIngredient].self, from: inferredData)
+        }
+        // Note: Don't reject entry if inferredIngredients has wrong type - it's optional
+
         return FoodEntry(
             id: id,
             userId: userId,
@@ -1357,7 +1411,8 @@ struct FoodEntry: Identifiable, Codable {
             isPerUnit: data["isPerUnit"] as? Bool,
             mealType: mealType,
             date: dateTimestamp.dateValue(),
-            dateLogged: dateLoggedTimestamp.dateValue()
+            dateLogged: dateLoggedTimestamp.dateValue(),
+            inferredIngredients: inferredIngredients
         )
     }
 }
@@ -1509,7 +1564,42 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let micronutrientProfile: MicronutrientProfile?
     let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
 
-    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, saturatedFat: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil) {
+    // AI-Inferred Meal Analysis: For foods without known ingredient labels
+    // These are ESTIMATED exposures and may be incomplete or incorrect
+    var inferredIngredients: [InferredIngredient]?
+
+    /// Returns true if this food has AI-inferred ingredients (generic/takeaway food)
+    var hasInferredIngredients: Bool {
+        inferredIngredients != nil && !(inferredIngredients?.isEmpty ?? true)
+    }
+
+    /// Returns true if this food is a generic food without exact ingredients
+    var isGenericFood: Bool {
+        (ingredients == nil || ingredients?.isEmpty == true) && brand == nil && barcode == nil
+    }
+
+    /// All ingredients for pattern analysis (exact + inferred)
+    func allIngredientsForAnalysis() -> [(name: String, weight: Double, isEstimated: Bool)] {
+        var result: [(name: String, weight: Double, isEstimated: Bool)] = []
+
+        // Add exact ingredients with full weight
+        if let exact = ingredients {
+            for ingredient in exact {
+                result.append((name: ingredient, weight: 1.0, isEstimated: false))
+            }
+        }
+
+        // Add inferred ingredients with their confidence-based weights
+        if let inferred = inferredIngredients {
+            for ingredient in inferred {
+                result.append((name: ingredient.name, weight: ingredient.reactionWeight, isEstimated: ingredient.isEstimated))
+            }
+        }
+
+        return result
+    }
+
+    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, saturatedFat: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, inferredIngredients: [InferredIngredient]? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -1532,6 +1622,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
         self.isPerUnit = isPerUnit
+        self.inferredIngredients = inferredIngredients
     }
 
     static func == (lhs: DiaryFoodItem, rhs: DiaryFoodItem) -> Bool {
@@ -1545,7 +1636,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         case id, name, brand, calories, protein, carbs, fat, fiber, sugar, sodium
         case calcium, saturatedFat, servingDescription, quantity, time
         case processedScore, sugarLevel, ingredients, additives, barcode
-        case micronutrientProfile, isPerUnit
+        case micronutrientProfile, isPerUnit, inferredIngredients
     }
 
     init(from decoder: Decoder) throws {
@@ -1576,6 +1667,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
         micronutrientProfile = try container.decodeIfPresent(MicronutrientProfile.self, forKey: .micronutrientProfile)
         isPerUnit = try container.decodeIfPresent(Bool.self, forKey: .isPerUnit)
+        inferredIngredients = try container.decodeIfPresent([InferredIngredient].self, forKey: .inferredIngredients)
     }
 
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access

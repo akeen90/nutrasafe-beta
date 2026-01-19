@@ -39,6 +39,7 @@ export { findIngredients } from './find-ingredients';
 export { auditMissingIngredients } from './audit-missing-ingredients';
 export { recognizeFood } from './recognize-food';
 export { scanProductComplete } from './scan-product-complete';
+export { inferMealIngredients } from './infer-meal-ingredients';
 
 // Algolia integration (auto-sync on document write + manual sync functions)
 export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, syncTescoProductToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
@@ -51,7 +52,7 @@ export { configureQueryRules, getQueryRulesStats, clearQueryRules } from './algo
 export { syncEmailConsentToMailchimp, syncAllEmailConsentsToMailchimp } from './mailchimp-sync';
 
 // Database scanning and batch operations
-export { scanDatabaseIssues, batchUpdateFoods } from './scan-database';
+export { scanDatabaseIssues, batchUpdateFoods, fixKjKcalCombinedCalories, fixSimpleIngredients } from './scan-database';
 
 // UK Data Cleansing - Google Discovery and Extraction
 export { discoverUKProductPage, generateManualSearchLinks } from './uk-discovery';
