@@ -18,6 +18,7 @@ struct ReactionLogView: View {
     @State private var showingPDFExportSheet = false
     @State private var isLoadingData = false
     @State private var userAllergens: Set<Allergen> = []
+    @State private var selectedSymptomFilter: String? = nil  // nil = All Symptoms
 
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
@@ -277,16 +278,121 @@ struct ReactionLogView: View {
                     message: "Start logging reactions to see your timeline and meal history"
                 )
             } else {
-                // Reaction history list
-                ForEach(manager.reactionLogs) { entry in
-                    Button(action: {
-                        selectedEntry = entry
-                    }) {
-                        ReactionLogCard(entry: entry)
+                // Symptom filter picker
+                symptomFilterPicker
+
+                // Filtered reaction history list
+                let filteredLogs = filteredReactionLogs
+
+                if filteredLogs.isEmpty {
+                    // No reactions for selected symptom
+                    VStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 40))
+                            .foregroundColor(.secondary.opacity(0.5))
+                        Text("No \(selectedSymptomFilter ?? "reactions") logged")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                } else {
+                    // Show count
+                    Text("\(filteredLogs.count) \(filteredLogs.count == 1 ? "reaction" : "reactions")")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    ForEach(filteredLogs) { entry in
+                        Button(action: {
+                            selectedEntry = entry
+                        }) {
+                            ReactionLogCard(entry: entry)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
+        }
+    }
+
+    // MARK: - Symptom Filter Picker
+    private var symptomFilterPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Filter by Symptom")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // All Symptoms option
+                    symptomFilterChip(symptom: nil, label: "All", icon: "list.bullet")
+
+                    // Get unique symptoms from logged reactions
+                    ForEach(uniqueSymptoms, id: \.self) { symptom in
+                        let reactionType = ReactionType.allCases.first { $0.rawValue == symptom }
+                        symptomFilterChip(
+                            symptom: symptom,
+                            label: symptom,
+                            icon: reactionType?.icon ?? "circle.fill"
+                        )
+                    }
+                }
+                .padding(.horizontal, 1)
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
+    private func symptomFilterChip(symptom: String?, label: String, icon: String) -> some View {
+        let isSelected = selectedSymptomFilter == symptom
+
+        return Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedSymptomFilter = symptom
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                Text(label)
+                    .font(.system(size: 13, weight: .medium))
+
+                // Show count for specific symptoms
+                if let symptom = symptom {
+                    let count = manager.reactionLogs.filter { $0.reactionType == symptom }.count
+                    Text("(\(count))")
+                        .font(.system(size: 12))
+                        .opacity(0.8)
+                }
+            }
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? Color.blue : Color(.systemGray5))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Filtered Reaction Logs
+    private var filteredReactionLogs: [ReactionLogEntry] {
+        guard let symptom = selectedSymptomFilter else {
+            return manager.reactionLogs
+        }
+        return manager.reactionLogs.filter { $0.reactionType == symptom }
+    }
+
+    // MARK: - Unique Symptoms
+    private var uniqueSymptoms: [String] {
+        let symptoms = Set(manager.reactionLogs.map { $0.reactionType })
+        // Sort by frequency (most common first)
+        return symptoms.sorted { symptom1, symptom2 in
+            let count1 = manager.reactionLogs.filter { $0.reactionType == symptom1 }.count
+            let count2 = manager.reactionLogs.filter { $0.reactionType == symptom2 }.count
+            return count1 > count2
         }
     }
 
