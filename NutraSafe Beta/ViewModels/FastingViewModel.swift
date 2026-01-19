@@ -1857,6 +1857,13 @@ class FastingViewModel: ObservableObject {
                     for: plan,
                     startingAt: context.scheduledTime
                 )
+
+                // If regime is active, set custom start time override so the regime UI shows the correct fasting state
+                if plan.regimeActive {
+                    customStartTimeOverride = context.scheduledTime
+                    customTargetHoursOverride = context.durationHours
+                    lastEndedWindowEnd = nil
+                }
             }
 
                     } catch {
@@ -1898,6 +1905,13 @@ class FastingViewModel: ObservableObject {
                     for: plan,
                     startingAt: customTime
                 )
+
+                // If regime is active, set custom start time override so the regime UI shows the correct fasting state
+                if plan.regimeActive {
+                    customStartTimeOverride = customTime
+                    customTargetHoursOverride = context.durationHours
+                    lastEndedWindowEnd = nil
+                }
             }
 
                     } catch {
