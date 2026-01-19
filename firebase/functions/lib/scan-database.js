@@ -4,9 +4,9 @@ exports.rescanProducts = exports.fixHtmlCode = exports.fixSimpleIngredients = ex
 const functions = require("firebase-functions");
 const algoliasearch_1 = require("algoliasearch");
 const axios_1 = require("axios");
-// Tesco API configuration
+// Tesco API configuration (matches tesco-database-builder.ts)
 const TESCO8_HOST = 'tesco8.p.rapidapi.com';
-const getTesco8ApiKey = () => functions.config().tesco8?.api_key || process.env.TESCO8_API_KEY || '';
+const TESCO8_API_KEY = functions.config().rapidapi?.key || '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 // Use functions.config() for v1 triggers (more reliable than v2 secrets)
@@ -1860,10 +1860,6 @@ exports.rescanProducts = functions
         throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
     }
     const { indexName, objectIDs, dryRun = false } = data;
-    const TESCO8_API_KEY = getTesco8ApiKey();
-    if (!TESCO8_API_KEY) {
-        throw new functions.https.HttpsError('failed-precondition', 'Tesco API key not configured');
-    }
     if (!indexName) {
         throw new functions.https.HttpsError('invalid-argument', 'Index name is required');
     }

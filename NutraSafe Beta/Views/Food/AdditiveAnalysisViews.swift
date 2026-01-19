@@ -72,6 +72,10 @@ struct AdditiveScoreSummary {
     let hasSulphiteWarnings: Bool
 
     var gradeLabel: String {
+        // Show "No Additives" when there are genuinely none detected
+        if totalAdditives == 0 {
+            return "No Additives"
+        }
         switch score {
         case 80...100: return "Few Additives"
         case 60..<80: return "Some Additives"
