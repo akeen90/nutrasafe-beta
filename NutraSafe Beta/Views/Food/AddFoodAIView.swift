@@ -217,13 +217,8 @@ struct AddFoodAIView: View {
                 }
             }
         )) { food in
-            NavigationView {
-                // Use constant binding to prevent Details view from changing main tab while in AI scanner
-                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary), fastingViewModel: fastingViewModelWrapper.viewModel)
-            }
-            .environmentObject(diaryDataManager)
-            .environmentObject(subscriptionManager)
-            .environmentObject(firebaseManager)
+            // Show read-only AI detail sheet - users should add via the main AI flow, not from details
+            AIFoodDetailSheet(food: food, onDismiss: { selectedFoodForDetail = nil })
         }
         .sheet(isPresented: $showingGalleryPicker) {
             MultiImagePicker(maxSelection: 1) { [self] images in
@@ -907,13 +902,8 @@ struct AIFoodSelectionView: View {
                 }
             }
         )) { food in
-            NavigationView {
-                // Use constant binding to prevent Details view from changing main tab while in AI scanner
-                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary), fastingViewModel: fastingViewModelWrapper.viewModel)
-            }
-            .environmentObject(diaryDataManager)
-            .environmentObject(subscriptionManager)
-            .environmentObject(firebaseManager)
+            // Show read-only AI detail sheet - users should add via the main AI flow, not from details
+            AIFoodDetailSheet(food: food, onDismiss: { selectedFood = nil })
         }
         .onAppear {
             // Auto-select all detected foods by default
@@ -1478,4 +1468,210 @@ private struct LocalAtomicConstants {
     static let padding14: CGFloat = 14
     static let padding32: CGFloat = 32
     static let minQuantityWidth80: CGFloat = 80
+}
+
+// MARK: - AI Food Detail Sheet (Read-Only)
+/// A read-only detail sheet for AI-recognized foods
+/// Users should add foods via the main AI selection flow, not from this details view
+struct AIFoodDetailSheet: View {
+    let food: FoodSearchResult
+    let onDismiss: () -> Void
+
+    private func getNutraSafeColor(_ grade: String) -> Color {
+        switch grade.uppercased() {
+        case "A", "A+": return .green
+        case "B": return .mint
+        case "C": return .orange
+        case "D", "E", "F": return .red
+        default: return .gray
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Food Header
+                    VStack(spacing: 8) {
+                        Text(food.name)
+                            .font(.title2.bold())
+                            .multilineTextAlignment(.center)
+
+                        if let brand = food.brand, !brand.isEmpty {
+                            Text(brand)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        // Confidence and verification badges
+                        HStack(spacing: 12) {
+                            if food.isVerified {
+                                Label("Database Match", systemImage: "checkmark.seal.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(8)
+                            } else {
+                                Label("AI Estimate", systemImage: "sparkles")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.orange.opacity(0.1))
+                                    .cornerRadius(8)
+                            }
+
+                            if let confidence = food.confidence, confidence >= 0.7 {
+                                Text("\(Int(confidence * 100))% match")
+                                    .font(.caption)
+                                    .foregroundColor(confidence >= 0.85 ? .green : .secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(confidence >= 0.85 ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .padding(.top)
+
+                    // NutraSafe Grade
+                    let gradeResult = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: food)
+                    VStack(spacing: 8) {
+                        Text(gradeResult.grade)
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 80, height: 80)
+                            .background(getNutraSafeColor(gradeResult.grade))
+                            .clipShape(Circle())
+
+                        Text("NutraSafe Grade")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Serving Info
+                    if let servingDesc = food.servingDescription {
+                        Text("Serving: \(servingDesc)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                    }
+
+                    // Nutrition Card
+                    VStack(spacing: 16) {
+                        Text("Nutrition Facts")
+                            .font(.headline)
+
+                        // Calories
+                        HStack {
+                            Text("Calories")
+                                .font(.system(size: 18, weight: .semibold))
+                            Spacer()
+                            Text("\(Int(food.calories))")
+                                .font(.system(size: 24, weight: .bold))
+                            Text("kcal")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(12)
+
+                        // Macros
+                        HStack(spacing: 12) {
+                            MacroCard(label: "Protein", value: food.protein, color: .blue)
+                            MacroCard(label: "Carbs", value: food.carbs, color: .orange)
+                            MacroCard(label: "Fat", value: food.fat, color: .purple)
+                        }
+
+                        // Additional nutrients
+                        VStack(spacing: 8) {
+                            AIDetailNutrientRow(label: "Fiber", value: food.fiber)
+                            AIDetailNutrientRow(label: "Sugar", value: food.sugar)
+                            AIDetailNutrientRow(label: "Sodium", value: food.sodium, unit: "mg")
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+                    .padding()
+                    .background(Color.adaptiveCard)
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    .padding(.horizontal)
+
+                    // Info notice
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.blue)
+                        Text("To add this food, go back and use the selection checkboxes")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+
+                    Spacer(minLength: 40)
+                }
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Food Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        onDismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - AI Detail Supporting Views
+
+private struct MacroCard: View {
+    let label: String
+    let value: Double
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(String(format: "%.1fg", value))
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(color)
+            Text(label)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(color.opacity(0.1))
+        .cornerRadius(10)
+    }
+}
+
+private struct AIDetailNutrientRow: View {
+    let label: String
+    let value: Double
+    var unit: String = "g"
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(String(format: "%.1f%@", value, unit))
+                .font(.subheadline.weight(.medium))
+        }
+    }
 }

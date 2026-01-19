@@ -252,6 +252,44 @@ const SEARCH_TERMS = [
     'Warburtons', 'Hovis', 'Kingsmill',
     'Cathedral City', 'Pilgrims Choice',
     'Richmond', 'Mattessons',
+    // ============ CHILLED DESSERTS ============
+    'Chilled Desserts', 'Mousse', 'Chocolate Mousse', 'Panna Cotta', 'Rice Pudding',
+    'Tiramisu', 'Creme Brulee', 'Pots', 'Chocolate Pot', 'Dessert Pots', 'Gu',
+    // ============ DELI & ANTIPASTI ============
+    'Deli', 'Antipasti', 'Olives', 'Stuffed Olives', 'Sun Dried Tomatoes',
+    'Stuffed Peppers', 'Marinated', 'Artichokes', 'Capers', 'Anchovies',
+    // ============ PICKLES & PRESERVES ============
+    'Pickles', 'Gherkins', 'Pickled Onions', 'Pickled Beetroot', 'Sauerkraut',
+    'Chutney', 'Mango Chutney', 'Relish', 'Piccalilli', 'Branston Pickle',
+    // ============ MORE WORLD FOODS ============
+    'Korean', 'Korean Food', 'Kimchi', 'Gochujang', 'Korean BBQ',
+    'Vietnamese', 'Pho', 'Vietnamese Food',
+    'Caribbean', 'Jerk', 'Jerk Chicken', 'Plantain', 'Ackee',
+    'African', 'Jollof', 'African Food',
+    // ============ OFFAL & SPECIALTY MEATS ============
+    'Liver', 'Chicken Liver', 'Lambs Liver', 'Kidney', 'Heart',
+    'Black Pudding', 'White Pudding', 'Haggis', 'Tripe',
+    'Venison', 'Rabbit', 'Goat', 'Pheasant', 'Partridge',
+    // ============ DRIED FRUITS & TRAIL MIX ============
+    'Dried Fruit', 'Raisins', 'Sultanas', 'Currants', 'Dried Apricots',
+    'Dried Mango', 'Dried Cranberries', 'Prunes', 'Trail Mix', 'Fruit And Nut Mix',
+    // ============ MEAL KITS & BUNDLES ============
+    'Meal Kit', 'Recipe Box', 'Dinner Kit', 'Cook Kit', 'Meal Bundle',
+    // ============ TESCO OWN BRAND RANGES ============
+    'Tesco', 'Tesco Everyday Value', 'Tesco Clubcard', 'Tesco Meal Deal',
+    'Exclusively At Tesco', 'Tesco Ingredients',
+    // ============ SEASONAL ============
+    'Christmas Food', 'Christmas Dinner', 'Turkey Crown', 'Mince Pies', 'Christmas Pudding',
+    'Easter', 'Easter Eggs', 'Hot Cross Buns', 'Simnel Cake',
+    'BBQ', 'BBQ Food', 'Summer Food', 'Picnic', 'Party Food',
+    'Halloween', 'Bonfire Night',
+    // ============ BREAKFAST EXTRAS ============
+    'Hash Browns', 'Potato Waffles', 'Beans On Toast', 'Full English',
+    'Kippers', 'Smoked Kippers', 'Kedgeree',
+    // ============ BROAD CATCH-ALL TERMS ============
+    'Groceries', 'Food', 'Fresh Food', 'Chilled', 'Chilled Food',
+    'Ambient', 'Cupboard', 'Essentials', 'Basics', 'Everyday',
+    'Weekly Shop', 'Big Shop', 'Top Up',
     // ============ ALPHABETICAL CATCH-ALL (A-Z single letters) ============
     // These catch products not found by category searches
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
@@ -1084,7 +1122,8 @@ exports.startTescoBuild = functions
                 }
                 // No sleep() needed - rate limiter handles timing
                 // OPTIMIZED: Process additional pages with parallel batch processing
-                const maxPages = Math.min(totalPages, 5);
+                // Increased from 5 to 20 to capture more products per search term
+                const maxPages = Math.min(totalPages, 20);
                 for (let page = 1; page < maxPages; page++) {
                     // Rate limit the search call itself
                     const { products: pageProducts } = await apiRateLimiter.execute(() => searchTescoProducts(term, page));
@@ -1412,7 +1451,8 @@ exports.scheduledTescoBuild = functions
                 progress.lastUpdated = new Date().toISOString();
                 await progressRef.update({ ...progress });
                 // OPTIMIZED: Process additional pages with parallel batch processing
-                const maxPages = Math.min(totalPages, 3);
+                // Increased from 3 to 15 to capture more products per search term
+                const maxPages = Math.min(totalPages, 15);
                 for (let page = 1; page < maxPages; page++) {
                     // Rate limit the search call itself
                     const { products: pageProducts } = await apiRateLimiter.execute(() => searchTescoProducts(term, page));
