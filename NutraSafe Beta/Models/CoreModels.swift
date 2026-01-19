@@ -1245,6 +1245,7 @@ enum DietType: String, CaseIterable, Codable {
     case keto = "keto"
     case lowCarb = "lowCarb"
     case highProtein = "highProtein"
+    case highProteinMax = "highProteinMax"
     case mediterranean = "mediterranean"
     case paleo = "paleo"
 
@@ -1254,6 +1255,7 @@ enum DietType: String, CaseIterable, Codable {
         case .keto: return "Keto"
         case .lowCarb: return "Low Carb"
         case .highProtein: return "High Protein"
+        case .highProteinMax: return "Max Protein"
         case .mediterranean: return "Mediterranean"
         case .paleo: return "Paleo"
         }
@@ -1265,6 +1267,7 @@ enum DietType: String, CaseIterable, Codable {
         case .keto: return "Very low carb, high fat"
         case .lowCarb: return "Reduced carbs, moderate fat"
         case .highProtein: return "Muscle building, athletic"
+        case .highProteinMax: return "Maximum protein, bodybuilding"
         case .mediterranean: return "Heart-healthy, whole foods"
         case .paleo: return "Whole foods, no processed"
         }
@@ -1280,6 +1283,8 @@ enum DietType: String, CaseIterable, Codable {
             return "Reduced carbohydrate intake (typically 50-100g daily) while maintaining moderate protein and healthy fats. Studies show benefits for weight management, blood sugar control, and reduced triglycerides without the strictness of keto."
         case .highProtein:
             return "Increased protein intake (1.6-2.2g per kg bodyweight) to support muscle growth, recovery, and satiety. Research confirms higher protein diets preserve muscle during weight loss and support athletic performance."
+        case .highProteinMax:
+            return "Maximum protein intake (2.2g+ per kg bodyweight) for serious athletes and bodybuilders. Half your calories from protein to maximise muscle protein synthesis during intense training phases. Best paired with resistance training."
         case .mediterranean:
             return "Emphasises olive oil, fish, whole grains, vegetables, legumes, and moderate red wine. Extensively researched with strong evidence for heart health, longevity, and reduced risk of chronic diseases. Recognised by the WHO as a healthy dietary pattern."
         case .paleo:
@@ -1296,7 +1301,7 @@ enum DietType: String, CaseIterable, Codable {
             return URL(string: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8153354/")
         case .lowCarb:
             return URL(string: "https://www.diabetes.org.uk/guide-to-diabetes/enjoy-food/eating-with-diabetes/food-groups/low-carb-diet")
-        case .highProtein:
+        case .highProtein, .highProteinMax:
             return URL(string: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5852756/")
         case .mediterranean:
             return URL(string: "https://www.bhf.org.uk/informationsupport/heart-matters-magazine/nutrition/mediterranean-diet")
@@ -1311,7 +1316,7 @@ enum DietType: String, CaseIterable, Codable {
         case .flexible: return "NHS"
         case .keto: return "NIH Research"
         case .lowCarb: return "Diabetes UK"
-        case .highProtein: return "NIH Research"
+        case .highProtein, .highProteinMax: return "NIH Research"
         case .mediterranean: return "British Heart Foundation"
         case .paleo: return "NIH Research"
         }
@@ -1323,6 +1328,7 @@ enum DietType: String, CaseIterable, Codable {
         case .keto: return "flame.fill"
         case .lowCarb: return "leaf.fill"
         case .highProtein: return "figure.strengthtraining.traditional"
+        case .highProteinMax: return "dumbbell.fill"
         case .mediterranean: return "fish.fill"
         case .paleo: return "hare.fill"
         }
@@ -1334,6 +1340,7 @@ enum DietType: String, CaseIterable, Codable {
         case .keto: return .orange
         case .lowCarb: return .green
         case .highProtein: return .red
+        case .highProteinMax: return .purple
         case .mediterranean: return .cyan
         case .paleo: return .brown
         }
@@ -1346,6 +1353,7 @@ enum DietType: String, CaseIterable, Codable {
         case .keto: return (20, 5, 75)
         case .lowCarb: return (30, 25, 45)
         case .highProtein: return (40, 35, 25)
+        case .highProteinMax: return (50, 25, 25)
         case .mediterranean: return (20, 45, 35)
         case .paleo: return (30, 20, 50)
         }

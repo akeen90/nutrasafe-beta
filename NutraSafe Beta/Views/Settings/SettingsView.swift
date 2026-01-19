@@ -2957,52 +2957,35 @@ struct MacroManagementView: View {
 
             Divider()
 
-            // UK Recommendations
+            // UK Recommendation based on user's profile
             VStack(alignment: .leading, spacing: 8) {
                 Text("UK Recommended Daily Intake")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
 
-                HStack(spacing: 16) {
-                    // Women recommendation
-                    Button {
-                        calorieGoal = 2000
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "figure.stand.dress")
-                                .font(.system(size: 14))
-                            Text("Women: 2,000")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .foregroundColor(calorieGoal == 2000 ? .white : .pink)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(calorieGoal == 2000 ? Color.pink : Color.pink.opacity(0.15))
-                        )
-                    }
+                // Show recommendation based on user's gender
+                let userGender = OnboardingManager.shared.userGender
+                let recommendedCalories = userGender == .male ? 2500 : 2000
+                let genderIcon = userGender == .male ? "figure.stand" : "figure.stand.dress"
+                let genderColor: Color = userGender == .male ? .blue : .pink
 
-                    // Men recommendation
-                    Button {
-                        calorieGoal = 2500
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "figure.stand")
-                                .font(.system(size: 14))
-                            Text("Men: 2,500")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .foregroundColor(calorieGoal == 2500 ? .white : .blue)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(calorieGoal == 2500 ? Color.blue : Color.blue.opacity(0.15))
-                        )
+                Button {
+                    calorieGoal = recommendedCalories
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: genderIcon)
+                            .font(.system(size: 14))
+                        Text("\(recommendedCalories.formatted()) kcal")
+                            .font(.system(size: 13, weight: .medium))
                     }
+                    .foregroundColor(calorieGoal == recommendedCalories ? .white : genderColor)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(calorieGoal == recommendedCalories ? genderColor : genderColor.opacity(0.15))
+                    )
                 }
             }
 
