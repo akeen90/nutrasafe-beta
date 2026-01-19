@@ -248,14 +248,15 @@ struct DiaryTabView: View {
                                 // Blue pill background - centered in frame
                                 Capsule()
                                     .fill(Color.blue)
-                                    .frame(width: 70, height: 32)
+                                    .frame(width: 76, height: 32)
 
                                 // Content centered inside pill
-                                HStack(spacing: 6) {
+                                HStack(spacing: 4) {
                                     Text(dayName)
-                                        .font(.system(size: 13, weight: .semibold))
-                                    Image(systemName: "calendar")
                                         .font(.system(size: 12, weight: .semibold))
+                                        .lineLimit(1)
+                                    Image(systemName: "calendar")
+                                        .font(.system(size: 11, weight: .semibold))
                                 }
                                 .foregroundColor(.white)
                             } else {
@@ -263,6 +264,8 @@ struct DiaryTabView: View {
                                 Text(dayName)
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
                             }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

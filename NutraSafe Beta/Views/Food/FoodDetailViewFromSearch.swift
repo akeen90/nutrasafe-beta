@@ -223,6 +223,11 @@ struct FoodDetailViewFromSearch: View {
                     // Regular per-100g foods should stay as 100g default
                 }
             }
+
+            // If unit is still default "g" but food is a liquid category, use "ml"
+            if initialUnit == "g" && food.isLiquidCategory {
+                initialUnit = "ml"
+            }
         }
 
         // Initialize all serving size state variables with the determined value
@@ -1434,42 +1439,45 @@ struct FoodDetailViewFromSearch: View {
                     // Serving and Meal Controls Section
                     servingControlsSection
                         .onAppear {
-                            // Only auto-detect grams for non per-unit foods
-                            if !isPerUnit, servingAmount == "1" && servingUnit == "g" {
+                            // Determine the appropriate unit based on food category
+                            let appropriateUnit = food.isLiquidCategory ? "ml" : "g"
+
+                            // Only auto-detect serving size for non per-unit foods
+                            if !isPerUnit, servingAmount == "1" && (servingUnit == "g" || servingUnit == "ml") {
                                 // PRIORITY 1: Use servingSizeG if available (most reliable)
                                 if let sizeG = food.servingSizeG, sizeG > 0 {
                                     servingAmount = String(format: "%.0f", sizeG)
-                                    servingUnit = "g"
+                                    servingUnit = appropriateUnit
                                     gramsAmount = String(format: "%.0f", sizeG)  // Also update gramsAmount
                                 } else {
                                     // PRIORITY 2: Extract from serving description
                                     let description = food.servingDescription ?? "100g"
 
-                                    // Try to extract grams from multiple patterns
+                                    // Try to extract amount from multiple patterns (g or ml)
                                     let patterns = [
-                                        #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
-                                        #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)" in parentheses
-                                        #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g" at start
-                                        #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g" at start with space
+                                        #"(\d+(?:\.\d+)?)\s*(?:g|ml)\s+serving"#,  // Match "150g serving" or "330ml serving"
+                                        #"\((\d+(?:\.\d+)?)\s*(?:g|ml)\)"#,         // Match "(345 g)" or "(330ml)" in parentheses
+                                        #"^(\d+(?:\.\d+)?)\s*(?:g|ml)$"#,           // Match "345g" or "330ml" at start
+                                        #"^(\d+(?:\.\d+)?)\s+(?:g|ml)$"#            // Match "345 g" or "330 ml" at start with space
                                     ]
 
                                     var found = false
                                     for pattern in patterns {
-                                        if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                                        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                                            let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)),
                                            let range = Range(match.range(at: 1), in: description) {
                                             let extractedValue = String(description[range])
                                             servingAmount = extractedValue
-                                            servingUnit = "g"
+                                            servingUnit = appropriateUnit
                                             gramsAmount = extractedValue  // Also update gramsAmount
                                             found = true
                                             break
                                         }
                                     }
 
-                                    // PRIORITY 3: If nothing found, attempt per-unit detection before defaulting to grams
+                                    // PRIORITY 3: If nothing found, attempt per-unit detection before defaulting
                                     if !found {
-                                                                                let lower = description.lowercased()
+                                        let lower = description.lowercased()
                                         let unitWords = ["serving","piece","slice","burger","wrap","taco","burrito","sandwich","portion"]
                                         var setUnit = false
                                         if lower.hasPrefix("1 ") {
@@ -1498,7 +1506,7 @@ struct FoodDetailViewFromSearch: View {
                                         }
                                         if !setUnit {
                                             servingAmount = "100"
-                                            servingUnit = "g"
+                                            servingUnit = appropriateUnit
                                             gramsAmount = "100"
                                         }
                                     }

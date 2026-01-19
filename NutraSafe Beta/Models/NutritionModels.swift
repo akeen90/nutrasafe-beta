@@ -274,6 +274,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     enum FoodCategory {
         // Drinks
         case softDrink      // Carbonated drinks, sodas
+        case cordial        // Cordials, squash (concentrated - need diluting)
         case juice          // Fruit juices, smoothies
         case hotDrink       // Coffee, tea
         case water          // Water, flavoured water
@@ -354,13 +355,23 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
         // Check name keywords - Drinks & Snacks
         let softDrinkKeywords = ["cola", "lemonade", "soda", "fizzy", "carbonated", "energy drink", "sparkling"]
-        let juiceKeywords = ["juice", "smoothie", "squash", "cordial"]
+        // Cordial/squash keywords and UK brands - check BEFORE juice since these are concentrated
+        let cordialKeywords = ["cordial", "squash", "dilute", "diluting", "concentrate"]
+        let cordialBrands = ["robinsons", "robinson's", "ribena", "vimto", "miwadi", "mi wadi", "rocks", "belvoir", "bottlegreen", "bottle green", "elderflower cordial", "lime cordial", "barley water"]
+        let juiceKeywords = ["juice", "smoothie"]  // Removed squash/cordial - now separate category
         let hotDrinkKeywords = ["coffee", "tea", "latte", "cappuccino", "espresso", "americano", "hot chocolate", "mocha"]
         let waterKeywords = ["water", "sparkling water", "still water", "mineral water"]
         let alcoholKeywords = ["beer", "lager", "ale", "wine", "vodka", "gin", "whisky", "whiskey", "rum", "brandy", "cider"]
         let chocolateKeywords = ["chocolate bar", "chocolate", "truffle"]
         let sweetKeywords = ["gummy", "jelly", "sweets", "candy", "lollipop", "toffee", "fudge", "mints"]
         let crispKeywords = ["crisps", "chips", "pretzels", "popcorn", "puffs"]
+
+        // Check cordials FIRST - these are concentrated and need diluting
+        // Also check serving description for "dilute" hints from Tesco/supermarket data
+        if cordialKeywords.contains(where: { nameLower.contains($0) }) { return .cordial }
+        if cordialBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) { return .cordial }
+        // Check serving description for dilution instructions (common in Tesco data)
+        if servingLower.contains("dilute") || servingLower.contains("to taste") || servingLower.contains("add water") { return .cordial }
 
         if softDrinkKeywords.contains(where: { nameLower.contains($0) }) { return .softDrink }
         if juiceKeywords.contains(where: { nameLower.contains($0) }) { return .juice }
@@ -425,7 +436,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// Returns true if this food category represents a liquid/drink
     var isLiquidCategory: Bool {
         switch detectedCategory {
-        case .softDrink, .juice, .hotDrink, .water, .alcoholicDrink, .milk:
+        case .softDrink, .cordial, .juice, .hotDrink, .water, .alcoholicDrink, .milk:
             return true
         default:
             return false
@@ -512,6 +523,15 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
                 PortionOption(name: "330ml Can", calories: caloriesPer100 * 3.3, serving_g: 330),
                 PortionOption(name: "500ml Bottle", calories: caloriesPer100 * 5, serving_g: 500)
+            ]
+        case .cordial:
+            // Cordials are concentrated - show undiluted serving sizes
+            // Typical dilution is 1:4 or 1:5 (e.g., 50ml cordial makes 250ml drink)
+            return [
+                PortionOption(name: "25ml (makes 1 glass)", calories: caloriesPer100 * 0.25, serving_g: 25),
+                PortionOption(name: "40ml (makes 200ml)", calories: caloriesPer100 * 0.40, serving_g: 40),
+                PortionOption(name: "50ml (makes 250ml)", calories: caloriesPer100 * 0.50, serving_g: 50),
+                PortionOption(name: "75ml (makes 375ml)", calories: caloriesPer100 * 0.75, serving_g: 75)
             ]
         case .juice:
             return [
