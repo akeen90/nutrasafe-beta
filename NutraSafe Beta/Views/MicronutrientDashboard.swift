@@ -155,6 +155,7 @@ struct MicronutrientDashboard: View {
             hasLoadedData = true
             isLoading = false
                     }
+        .trackScreen("Micronutrient Dashboard")
     }
 
     // MARK: - Header Section

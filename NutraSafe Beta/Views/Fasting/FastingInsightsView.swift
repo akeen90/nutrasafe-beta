@@ -81,8 +81,9 @@ struct FastingInsightsView: View {
                 AllSessionsView(viewModel: viewModel)
             }
         }
+        .trackScreen("Fasting Insights")
     }
-    
+
     private var filteredSessions: [FastingSession] {
         let calendar = Calendar.current
         let now = Date()

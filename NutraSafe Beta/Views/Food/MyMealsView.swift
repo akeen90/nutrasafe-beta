@@ -64,6 +64,7 @@ struct MyMealsView: View {
             PaywallView()
                 .environmentObject(subscriptionManager)
         }
+        .trackScreen("My Meals")
     }
 
     // MARK: - Empty State

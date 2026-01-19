@@ -17,5 +17,6 @@ struct AddTabView: View {
                 isPresented = false
             }
         )
+        .trackScreen("Add Food")
     }
 }

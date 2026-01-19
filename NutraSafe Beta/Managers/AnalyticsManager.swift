@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 import FirebaseAnalytics
 
 /// Centralized analytics manager for tracking user behavior
@@ -253,8 +254,6 @@ class AnalyticsManager {
 }
 
 // MARK: - SwiftUI View Extension for Easy Screen Tracking
-
-import SwiftUI
 
 extension View {
     /// Track screen view when this view appears

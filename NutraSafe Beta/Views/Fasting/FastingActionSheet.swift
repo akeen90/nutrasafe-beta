@@ -20,12 +20,13 @@ struct FastingActionSheet: View {
     @State private var showingSnoozeOptions = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            VStack(spacing: 8) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 40))
-                    .foregroundColor(.orange)
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 40))
+                        .foregroundColor(.orange)
 
                 Text("Fast Not Started Yet?")
                     .font(.system(size: 22, weight: .bold))
@@ -46,11 +47,14 @@ struct FastingActionSheet: View {
             } else {
                 mainActionsView
             }
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.adaptiveCard)
+            .cornerRadius(20, corners: [.topLeft, .topRight])
+            .shadow(radius: 10)
+            .navigationBarHidden(true)
         }
-        .frame(maxWidth: .infinity)
-        .background(Color.adaptiveCard)
-        .cornerRadius(20, corners: [.topLeft, .topRight])
-        .shadow(radius: 10)
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     // MARK: - Main Actions View

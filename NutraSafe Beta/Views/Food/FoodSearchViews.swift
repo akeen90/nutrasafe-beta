@@ -251,7 +251,21 @@ struct FoodSearchResultRowEnhanced: View {
         .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .fullScreenCover(isPresented: $showingFoodDetail) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showingFoodDetail },
+            set: { newValue in
+                if !newValue {
+                    // Disable animation when dismissing
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showingFoodDetail = false
+                    }
+                } else {
+                    showingFoodDetail = newValue
+                }
+            }
+        )) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
                 onComplete?(tab)
             }

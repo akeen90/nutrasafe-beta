@@ -180,11 +180,24 @@ struct AddFoodBarcodeView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showingFoodDetail, onDismiss: {
-            // When food detail is dismissed, reset for another scan
-            scannedProduct = nil
-            errorMessage = nil
-        }) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showingFoodDetail },
+            set: { newValue in
+                if !newValue {
+                    // Disable animation when dismissing
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showingFoodDetail = false
+                    }
+                    // Reset for another scan
+                    scannedProduct = nil
+                    errorMessage = nil
+                } else {
+                    showingFoodDetail = newValue
+                }
+            }
+        )) {
             if let product = scannedProduct {
                 FoodDetailViewFromSearch(food: product, sourceType: .barcode, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
                     selectedTab = tab
@@ -199,6 +212,7 @@ struct AddFoodBarcodeView: View {
                 showingFoodDetail = true
             }
         }
+        .trackScreen("Barcode Scanner")
     }
     
     // MARK: - Scanner Reset

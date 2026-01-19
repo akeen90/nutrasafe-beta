@@ -52,8 +52,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
     let portions: [PortionOption]? // Available portion sizes (e.g., McNuggets 6pc, 9pc, 20pc)
+    let source: String? // Source index (e.g., "tesco_products", "uk_foods_cleaned") for tier-based ranking
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -79,6 +80,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
         self.portions = portions
+        self.source = source
     }
 
     // Custom decoder to handle flexible payloads from Cloud Functions
@@ -111,6 +113,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case micronutrientProfile
         case isPerUnit = "per_unit_nutrition"
         case portions
+        case source
     }
     
     // Helper structs for nested nutrition format from Firebase
@@ -228,6 +231,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.micronutrientProfile = try? c.decode(MicronutrientProfile.self, forKey: .micronutrientProfile)
         self.isPerUnit = try? c.decode(Bool.self, forKey: .isPerUnit)
         self.portions = try? c.decode([PortionOption].self, forKey: .portions)
+        self.source = try? c.decode(String.self, forKey: .source)
     }
 
     /// Returns true if this food has multiple portion options (e.g., McNuggets with 6pc, 9pc, 20pc)

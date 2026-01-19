@@ -61,6 +61,7 @@ struct SmartRecommendationsView: View {
                 await refreshRecommendations()
             }
         }
+        .trackScreen("Smart Recommendations")
     }
 
     // MARK: - Header Section

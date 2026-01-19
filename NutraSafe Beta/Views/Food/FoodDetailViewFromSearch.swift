@@ -1633,6 +1633,7 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
+        .trackScreen("Food Detail")
         .onChange(of: food.id) {
             // Invalidate all caches when food changes (e.g., switching between search and diary)
             cachedIngredients = nil
@@ -1714,11 +1715,30 @@ struct FoodDetailViewFromSearch: View {
             )
         }
         // UseBy add flow
-        .fullScreenCover(isPresented: $showingUseByAddSheet) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showingUseByAddSheet },
+            set: { newValue in
+                if !newValue {
+                    // Disable animation when dismissing
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showingUseByAddSheet = false
+                    }
+                } else {
+                    showingUseByAddSheet = newValue
+                }
+            }
+        )) {
             // Reuse UseBy add sheet for details like expiry/location
             AddFoundFoodToUseBySheet(food: food) { tab in
                 selectedTab = tab
-                dismiss()
+                // Dismiss parent sheet without animation
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    dismiss()
+                }
             }
         }
         .fullScreenCover(isPresented: $showingNutraSafeInfo) {

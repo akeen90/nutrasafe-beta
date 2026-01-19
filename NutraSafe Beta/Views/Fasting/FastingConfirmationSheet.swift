@@ -25,28 +25,29 @@ struct FastingStartConfirmationSheet: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Drag indicator
-            RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color.secondary.opacity(0.3))
-                .frame(width: 36, height: 5)
-                .padding(.top, 12)
+        NavigationView {
+            VStack(spacing: 0) {
+                // Drag indicator
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 12)
 
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.green.opacity(0.15))
-                                .frame(width: 80, height: 80)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        VStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.green.opacity(0.15))
+                                    .frame(width: 80, height: 80)
 
-                            Image(systemName: "clock.badge.checkmark.fill")
-                                .font(.system(size: 40))
-                                .foregroundStyle(.green, .green.opacity(0.7))
-                        }
+                                Image(systemName: "clock.badge.checkmark.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.green, .green.opacity(0.7))
+                            }
 
-                        Text("Time to Start Fasting")
+                            Text("Time to Start Fasting")
                             .font(.system(size: 24, weight: .bold))
 
                         Text(context.planName)
@@ -86,12 +87,15 @@ struct FastingStartConfirmationSheet: View {
                     }
                 }
                 .padding(.bottom, 40)
+                }
             }
+            .background(Color.adaptiveCard)
+            .onAppear {
+                selectedTime = context.scheduledTime
+            }
+            .navigationBarHidden(true)
         }
-        .background(Color.adaptiveCard)
-        .onAppear {
-            selectedTime = context.scheduledTime
-        }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     // MARK: - Main Actions View
@@ -275,28 +279,29 @@ struct FastingEndConfirmationSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Drag indicator
-            RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color.secondary.opacity(0.3))
-                .frame(width: 36, height: 5)
-                .padding(.top, 12)
+        NavigationView {
+            VStack(spacing: 0) {
+                // Drag indicator
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 12)
 
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(completionPercentage >= 100 ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                                .frame(width: 80, height: 80)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        VStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(completionPercentage >= 100 ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                                    .frame(width: 80, height: 80)
 
-                            Image(systemName: completionPercentage >= 100 ? "trophy.fill" : "clock.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(completionPercentage >= 100 ? .green : .orange)
-                        }
+                                Image(systemName: completionPercentage >= 100 ? "trophy.fill" : "clock.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(completionPercentage >= 100 ? .green : .orange)
+                            }
 
-                        Text(completionPercentage >= 100 ? "Fast Complete!" : "End Your Fast?")
+                            Text(completionPercentage >= 100 ? "Fast Complete!" : "End Your Fast?")
                             .font(.system(size: 24, weight: .bold))
 
                         Text(context.planName)
@@ -346,12 +351,15 @@ struct FastingEndConfirmationSheet: View {
                     }
                 }
                 .padding(.bottom, 40)
+                }
             }
+            .background(Color.adaptiveCard)
+            .onAppear {
+                selectedTime = Date()
+            }
+            .navigationBarHidden(true)
         }
-        .background(Color.adaptiveCard)
-        .onAppear {
-            selectedTime = Date()
-        }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     // MARK: - End Actions View

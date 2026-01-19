@@ -202,7 +202,21 @@ struct AddFoodAIView: View {
                 }
             )
         }
-        .sheet(item: $selectedFoodForDetail) { food in
+        .sheet(item: Binding(
+            get: { selectedFoodForDetail },
+            set: { newValue in
+                if newValue == nil {
+                    // Disable animation when dismissing
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        selectedFoodForDetail = nil
+                    }
+                } else {
+                    selectedFoodForDetail = newValue
+                }
+            }
+        )) { food in
             NavigationView {
                 // Use constant binding to prevent Details view from changing main tab while in AI scanner
                 FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary), fastingViewModel: fastingViewModelWrapper.viewModel)
@@ -261,6 +275,7 @@ struct AddFoodAIView: View {
                 }
             }
         }
+        .trackScreen("AI Food Scanner")
     }
 
     // MARK: - Pro Feature Gate View
@@ -877,7 +892,21 @@ struct AIFoodSelectionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.adaptiveCard)
-        .sheet(item: $selectedFood) { food in
+        .sheet(item: Binding(
+            get: { selectedFood },
+            set: { newValue in
+                if newValue == nil {
+                    // Disable animation when dismissing
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        selectedFood = nil
+                    }
+                } else {
+                    selectedFood = newValue
+                }
+            }
+        )) { food in
             NavigationView {
                 // Use constant binding to prevent Details view from changing main tab while in AI scanner
                 FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary), fastingViewModel: fastingViewModelWrapper.viewModel)

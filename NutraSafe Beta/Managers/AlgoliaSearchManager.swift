@@ -262,14 +262,17 @@ final class AlgoliaSearchManager {
     }
 
     // Index names with priority - lower number = higher priority
+    // TIER 1: Tesco products (official UK supermarket data - highest quality)
+    // TIER 2: Other UK/verified sources
     // Results are deduplicated, so items from lower-priority indices only appear if not in higher-priority ones
     private var indices: [(String, Int)] {
         return [
-            ("uk_foods_cleaned", 0),     // UK Foods Cleaned (primary - 59k records)
-            ("foods", 1),                // Original foods (fallback - fills gaps)
-            ("fast_foods_database", 2),  // Fast Food restaurants
-            ("generic_database", 3),     // Generic food items
-            ("user_added", 4),           // User's custom foods
+            ("tesco_products", 0),       // TIER 1: Tesco UK (official supermarket data)
+            ("uk_foods_cleaned", 1),     // UK Foods Cleaned (59k records)
+            ("foods", 2),                // Original foods (fallback - fills gaps)
+            ("fast_foods_database", 3),  // Fast Food restaurants
+            ("generic_database", 4),     // Generic food items
+            ("user_added", 5),           // User's custom foods
         ]
     }
 
@@ -510,6 +513,15 @@ final class AlgoliaSearchManager {
                 score += 200
             }
 
+            // TIER 1 PRIORITY: Tesco products get significant boost (official UK supermarket data)
+            if let source = result.source {
+                if source == "tesco_products" {
+                    score += 300  // Tesco tier 1 boost
+                } else if source == "uk_foods_cleaned" {
+                    score += 250  // UK Foods tier 2 boost
+                }
+            }
+
             // RAW/WHOLE FOOD PRIORITY: When searching single words like "apple", "banana",
             // prioritize raw/whole versions over processed (juice, pie, dried, etc.)
             if queryWords.count == 1 && queryLower.count >= 3 {
@@ -661,9 +673,17 @@ final class AlgoliaSearchManager {
                 score += 200
             }
 
-            // Small bonus for source priority (user_added gets slight boost)
-            // But this is now secondary to relevance
-            score += (4 - item.sourcePriority) * 50
+            // TIER 1 PRIORITY: Tesco products get significant boost (official UK supermarket data)
+            // Priority 0 = Tesco = +300 boost
+            // Priority 1 = UK Foods = +250 boost
+            // Other sources get smaller bonuses
+            if item.sourcePriority == 0 {
+                score += 300  // Tesco tier 1 boost
+            } else if item.sourcePriority == 1 {
+                score += 250  // UK Foods tier 2 boost
+            } else {
+                score += (5 - item.sourcePriority) * 30  // Other sources get smaller bonus
+            }
 
             // Brand bonus logic - only give high bonus when query is primarily a brand search
             // If query contains food-related words that match the name, prioritize name matches
@@ -880,7 +900,8 @@ final class AlgoliaSearchManager {
                 isVerified: verified,
                 barcode: barcode,
                 micronutrientProfile: micronutrientProfile,
-                portions: portions
+                portions: portions,
+                source: source
             )
         }
     }
@@ -971,21 +992,27 @@ final class AlgoliaSearchManager {
     }
 
     private func searchBarcodeInIndices(_ barcode: String) async throws -> FoodSearchResult? {
-        // PERFORMANCE: Search all indices in PARALLEL and return first exact match
-        // This reduces worst-case from N × timeout to single timeout
-        return await withTaskGroup(of: FoodSearchResult?.self) { group in
-            for (indexName, _) in indices {
+        // TIER-BASED BARCODE SEARCH: Prioritize Tesco, then UK Foods, then others
+        // Search all indices in parallel but return the highest priority match
+        return await withTaskGroup(of: (Int, FoodSearchResult?).self) { group in
+            for (indexName, priority) in indices {
                 group.addTask {
-                    try? await self.searchIndexByBarcode(indexName: indexName, barcode: barcode)
+                    let result = try? await self.searchIndexByBarcode(indexName: indexName, barcode: barcode)
+                    return (priority, result)
                 }
             }
 
-            // Return first successful result
-            for await result in group {
+            // Collect all results with their priorities
+            var allResults: [(priority: Int, result: FoodSearchResult)] = []
+            for await (priority, result) in group {
                 if let result = result {
-                    group.cancelAll() // Cancel remaining tasks
-                    return result
+                    allResults.append((priority, result))
                 }
+            }
+
+            // Return the result with lowest priority number (Tesco = 0, highest priority)
+            if let best = allResults.min(by: { $0.priority < $1.priority }) {
+                return best.result
             }
             return nil
         }

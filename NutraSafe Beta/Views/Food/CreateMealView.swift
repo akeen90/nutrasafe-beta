@@ -284,6 +284,7 @@ struct CreateMealView: View {
                 }
             }
         }
+        .trackScreen("Create Meal")
     }
 
     private func saveMeal() {

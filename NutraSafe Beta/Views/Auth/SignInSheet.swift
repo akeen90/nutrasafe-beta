@@ -70,6 +70,7 @@ struct SignInSheet: View {
                 }
             }
         }
+        .trackScreen("Sign In")
     }
 
     private func signIn() async {

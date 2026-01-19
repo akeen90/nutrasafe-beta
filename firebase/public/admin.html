@@ -8,6 +8,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
     <script>
         // Initialize Firebase
@@ -3723,10 +3724,65 @@
             color: #1a1a2e;
             font-size: 24px;
             margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .tesco-header p {
             color: #6b7280;
+        }
+
+        /* Real-time connection indicator */
+        .realtime-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: #f3f4f6;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+
+        .realtime-indicator.connected {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .realtime-indicator.disconnected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .realtime-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #9ca3af;
+            animation: none;
+        }
+
+        .realtime-dot.connected {
+            background: #22c55e;
+            animation: pulse-green 2s infinite;
+        }
+
+        .realtime-dot.disconnected {
+            background: #ef4444;
+        }
+
+        @keyframes pulse-green {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.2);
+            }
         }
 
         .tesco-stats {
@@ -4900,7 +4956,7 @@
         <div id="tesco-builder-view" class="view">
             <div class="tesco-builder-container">
                 <div class="tesco-header">
-                    <h2>🛒 Tesco Database Builder</h2>
+                    <h2>🛒 Tesco Database Builder <span id="realtime-indicator" class="realtime-indicator" title="Connection status"><span class="realtime-dot"></span> Connecting...</span></h2>
                     <p>Build a comprehensive UK food database by scanning Tesco's product catalog via their official API</p>
                 </div>
 
@@ -4996,6 +5052,9 @@
                     </button>
                     <button class="btn btn-secondary" id="tesco-refresh-btn" onclick="app.refreshTescoProgress()">
                         🔄 Refresh Status
+                    </button>
+                    <button class="btn btn-warning" id="tesco-restart-btn" onclick="app.startTescoBuild(true)">
+                        🔄 Restart Build
                     </button>
                     <button class="btn btn-info" id="tesco-sync-btn" onclick="app.syncTescoToAlgolia()">
                         🔄 Sync to Algolia
@@ -11720,8 +11779,18 @@
                         if (startBtn) startBtn.style.display = 'none';
                         if (pauseBtn) pauseBtn.style.display = 'none';
                         if (resumeBtn) resumeBtn.style.display = 'inline-flex';
+                    } else if (status === 'completed') {
+                        if (startBtn) {
+                            startBtn.style.display = 'inline-flex';
+                            startBtn.innerHTML = '🔄 Restart Build';
+                        }
+                        if (pauseBtn) pauseBtn.style.display = 'none';
+                        if (resumeBtn) resumeBtn.style.display = 'none';
                     } else {
-                        if (startBtn) startBtn.style.display = 'inline-flex';
+                        if (startBtn) {
+                            startBtn.style.display = 'inline-flex';
+                            startBtn.innerHTML = '▶️ Start Build';
+                        }
                         if (pauseBtn) pauseBtn.style.display = 'none';
                         if (resumeBtn) resumeBtn.style.display = 'none';
                     }
@@ -11856,9 +11925,20 @@
                 container.innerHTML = html;
             },
 
-            async startTescoBuild() {
-                if (!confirm('Start building the Tesco database?\n\nThis will scan 147 Tesco food categories and save products to your database. You can pause at any time.')) {
-                    return;
+            async startTescoBuild(forceReset = false) {
+                // Check current build status
+                const currentStatus = state.tescoBuildProgress?.status;
+
+                // If build is completed, ask if they want to restart
+                if (currentStatus === 'completed' && !forceReset) {
+                    if (!confirm('The build has already completed.\n\nDo you want to restart the build from the beginning?\n\n(Products already in the database will be kept)')) {
+                        return;
+                    }
+                    forceReset = true;
+                } else if (!forceReset) {
+                    if (!confirm('Start building the Tesco database?\n\nThis will scan 147 Tesco food categories and save products to your database. You can pause at any time.')) {
+                        return;
+                    }
                 }
 
                 const startBtn = document.getElementById('tesco-start-btn');
@@ -11868,8 +11948,10 @@
                 }
 
                 try {
+                    console.log('[START] Calling startTescoBuild function... reset:', forceReset);
                     const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
-                    const result = await startTescoBuild();
+                    const result = await startTescoBuild({ reset: forceReset });
+                    console.log('[START] Result:', result.data);
 
                     if (result.data.success) {
                         this.showToast('Tesco database build started!', 'success');
@@ -11885,7 +11967,17 @@
                         // Start polling for progress
                         this.startTescoProgressPolling();
                     } else {
-                        throw new Error(result.data.error || 'Failed to start build');
+                        // Use message field (not error field) from function response
+                        const errorMsg = result.data.message || result.data.error || 'Failed to start build';
+                        console.warn('[START] Build not started:', errorMsg, result.data);
+
+                        // If the build is completed and user hasn't tried reset yet, offer to restart
+                        if (errorMsg.includes('completed') && !forceReset) {
+                            if (confirm('Build is already completed. Would you like to restart from the beginning?')) {
+                                return this.startTescoBuild(true);
+                            }
+                        }
+                        throw new Error(errorMsg);
                     }
                 } catch (error) {
                     console.error('Error starting Tesco build:', error);
@@ -12031,35 +12123,175 @@
                 }
             },
 
-            // Polling for progress updates
-            tescoPollingInterval: null,
+            // Real-time Firestore listener for live updates
+            tescoProgressUnsubscribe: null,
             tescoTimeSinceUpdateInterval: null,
+            tescoRealtimeConnected: false,
+            tescoPollingInterval: null,
+            tescoStaleCheckInterval: null,
+            tescoLastDataTimestamp: null, // Track when we last got new data from Firebase
 
-            startTescoProgressPolling() {
-                this.stopTescoProgressPolling(); // Clear any existing
+            startTescoRealtimeListener() {
+                this.stopTescoRealtimeListener(); // Clear any existing
 
-                // Poll every 2 seconds during active build for live updates
-                this.tescoPollingInterval = setInterval(() => {
-                    if (state.currentView === 'tesco-builder') {
-                        this.refreshTescoProgress();
+                // Subscribe to real-time updates from Firestore
+                const db = firebase.firestore();
+                const progressRef = db.collection('system').doc('tescoBuildProgress');
+
+                console.log('[REALTIME] Starting Firestore listener for tescoBuildProgress...');
+
+                this.tescoProgressUnsubscribe = progressRef.onSnapshot(
+                    (doc) => {
+                        if (doc.exists) {
+                            const progress = doc.data();
+                            console.log('[REALTIME] Progress update received:', progress.status, progress.productsSaved);
+
+                            // Track when we received this update
+                            this.tescoLastDataTimestamp = Date.now();
+
+                            // Update state
+                            state.tescoBuildProgress = progress;
+                            this.tescoRealtimeConnected = true;
+
+                            // Update last update time from the progress data
+                            if (progress.lastUpdated) {
+                                state.tescoLastUpdateTime = new Date(progress.lastUpdated).getTime();
+                            }
+
+                            // Update the UI immediately
+                            this.updateTescoUI();
+
+                            // Update connection indicator
+                            this.updateRealtimeIndicator(true);
+                        }
+                    },
+                    (error) => {
+                        console.error('[REALTIME] Firestore listener error:', error);
+                        this.tescoRealtimeConnected = false;
+                        this.updateRealtimeIndicator(false);
+
+                        // Fall back to polling on error
+                        console.log('[REALTIME] Falling back to polling due to error');
+                        this.startFallbackPolling();
                     }
-                }, 2000);
+                );
 
-                // Update "time since" display every second
+                // Update "time since" display every second + check for stale data
                 this.tescoTimeSinceUpdateInterval = setInterval(() => {
                     this.updateTimeSinceDisplay();
                 }, 1000);
+
+                // Check for stale data every 10 seconds - if no updates for 60s, force refresh
+                this.tescoStaleCheckInterval = setInterval(() => {
+                    this.checkForStaleData();
+                }, 10000);
+
+                // Initial stats load (real-time listener doesn't cover stats)
+                this.loadTescoStats();
             },
 
-            stopTescoProgressPolling() {
-                if (this.tescoPollingInterval) {
-                    clearInterval(this.tescoPollingInterval);
-                    this.tescoPollingInterval = null;
+            // Check if data is stale (no updates for 60 seconds) and force refresh
+            checkForStaleData() {
+                const buildStatus = state.tescoBuildProgress?.status;
+                if (buildStatus !== 'running') return; // Only check during active builds
+
+                const now = Date.now();
+                const lastUpdate = state.tescoLastUpdateTime || 0;
+                const timeSinceUpdate = now - lastUpdate;
+
+                // If no update for 60 seconds, force a refresh via Firebase Functions
+                if (timeSinceUpdate > 60000) {
+                    console.log(`[STALE] No updates for ${Math.round(timeSinceUpdate/1000)}s - forcing refresh...`);
+                    this.addActivityLogEntry(`Stale data detected (${Math.round(timeSinceUpdate/1000)}s) - refreshing...`, 'warning');
+                    this.refreshTescoProgress();
+                }
+            },
+
+            stopTescoRealtimeListener() {
+                if (this.tescoProgressUnsubscribe) {
+                    this.tescoProgressUnsubscribe();
+                    this.tescoProgressUnsubscribe = null;
+                    console.log('[REALTIME] Firestore listener stopped');
                 }
                 if (this.tescoTimeSinceUpdateInterval) {
                     clearInterval(this.tescoTimeSinceUpdateInterval);
                     this.tescoTimeSinceUpdateInterval = null;
                 }
+                if (this.tescoStaleCheckInterval) {
+                    clearInterval(this.tescoStaleCheckInterval);
+                    this.tescoStaleCheckInterval = null;
+                }
+                if (this.tescoPollingInterval) {
+                    clearInterval(this.tescoPollingInterval);
+                    this.tescoPollingInterval = null;
+                }
+                this.tescoRealtimeConnected = false;
+                this.updateRealtimeIndicator(false);
+            },
+
+            // Fallback polling if real-time fails
+            startFallbackPolling() {
+                if (this.tescoPollingInterval) return;
+                console.log('[POLLING] Starting fallback polling every 3 seconds');
+                this.tescoPollingInterval = setInterval(() => {
+                    if (state.currentView === 'tesco-builder') {
+                        this.refreshTescoProgress();
+                    }
+                }, 3000);
+            },
+
+            // Load stats separately (not covered by real-time listener)
+            async loadTescoStats() {
+                try {
+                    const getTescoDatabaseStats = firebase.functions().httpsCallable('getTescoDatabaseStats');
+                    const statsResult = await getTescoDatabaseStats();
+                    if (statsResult.data) {
+                        state.tescoStats = statsResult.data;
+                        this.updateTescoUI();
+                    }
+                } catch (error) {
+                    console.error('Error loading Tesco stats:', error);
+                }
+            },
+
+            // Update the real-time connection indicator
+            updateRealtimeIndicator(connected) {
+                const indicator = document.getElementById('realtime-indicator');
+                if (indicator) {
+                    if (connected) {
+                        indicator.innerHTML = '<span class="realtime-dot connected"></span> Live';
+                        indicator.className = 'realtime-indicator connected';
+                        indicator.title = 'Real-time updates active';
+                    } else {
+                        indicator.innerHTML = '<span class="realtime-dot disconnected"></span> Polling';
+                        indicator.className = 'realtime-indicator disconnected';
+                        indicator.title = 'Using polling for updates';
+                    }
+                }
+            },
+
+            // Legacy method for compatibility - now uses hybrid approach
+            startTescoProgressPolling() {
+                // Try real-time first, but also start polling as backup
+                this.startTescoRealtimeListener();
+
+                // Also start a slower polling interval as insurance
+                if (!this.tescoPollingInterval) {
+                    this.tescoPollingInterval = setInterval(() => {
+                        if (state.currentView === 'tesco-builder') {
+                            // Only poll if real-time isn't working or data seems stale
+                            const timeSinceData = Date.now() - (this.tescoLastDataTimestamp || 0);
+                            if (!this.tescoRealtimeConnected || timeSinceData > 30000) {
+                                console.log('[POLLING] Backup poll triggered');
+                                this.refreshTescoProgress();
+                            }
+                        }
+                    }, 5000); // Poll every 5 seconds as backup
+                }
+            },
+
+            stopTescoProgressPolling() {
+                this.stopTescoRealtimeListener();
             },
 
             // Update the "time since last update" display

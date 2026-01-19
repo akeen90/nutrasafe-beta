@@ -96,6 +96,7 @@ struct FoodTabView: View {
         }
         .featureTip(isPresented: $showingHealthTip, tipKey: .healthOverview)
         .featureTip(isPresented: $showingFastingTip, tipKey: .healthFasting)
+        .trackScreen("Health")
     }
 }
 

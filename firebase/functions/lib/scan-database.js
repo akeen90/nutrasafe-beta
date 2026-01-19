@@ -402,72 +402,66 @@ exports.scanDatabaseIssues = functionsV2.https.onRequest({
         // Collect all foods with issues
         const foodsWithIssues = [];
         let totalScanned = 0;
-        // Browse ALL objects in the index using cursor-based pagination (no 1000 limit)
-        // This uses Algolia's browse API which can iterate through the entire index
-        let cursor;
         let batchNumber = 0;
-        do {
-            batchNumber++;
-            const browseParams = {
+        // Use the browseObjects helper for reliable iteration through ALL records
+        // This handles cursor-based pagination automatically
+        await client.browseObjects({
+            indexName,
+            browseParams: {
                 attributesToRetrieve: [
                     'objectID', 'foodName', 'name', 'brandName', 'brand', 'barcode',
                     'calories', 'protein', 'carbs', 'carbohydrates', 'fat', 'fiber',
                     'sugar', 'sodium', 'extractedIngredients', 'ingredients',
                     'servingSize', 'category'
                 ],
-                hitsPerPage: 1000, // Max batch size for browse
-            };
-            // Add cursor for subsequent requests
-            if (cursor) {
-                browseParams.cursor = cursor;
-            }
-            const result = await client.browse({
-                indexName,
-                browseParams,
-            });
-            const hits = (result.hits || []);
-            totalScanned += hits.length;
-            console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records (total: ${totalScanned})`);
-            // Check each food for issues
-            for (const food of hits) {
-                const issues = detectIssues(food);
-                // Filter by checkTypes if specified
-                let filteredIssues = issues;
-                if (checkTypes && Array.isArray(checkTypes) && checkTypes.length > 0) {
-                    filteredIssues = issues.filter(issue => {
-                        if (checkTypes.includes('misspellings') && issue.type === 'misspelling')
-                            return true;
-                        if (checkTypes.includes('missing-nutrition') && issue.type === 'missing-nutrition')
-                            return true;
-                        if (checkTypes.includes('impossible-nutrition') && issue.type === 'impossible-nutrition')
-                            return true;
-                        if (checkTypes.includes('non-words') && issue.type === 'non-word')
-                            return true;
-                        if (checkTypes.includes('weird-spacing') && issue.type === 'weird-spacing')
-                            return true;
-                        if (checkTypes.includes('missing-barcode') && issue.type === 'missing-barcode')
-                            return true;
-                        if (checkTypes.includes('missing-ingredients') && issue.type === 'missing-ingredients')
-                            return true;
-                        return false;
-                    });
+            },
+            aggregator: (response) => {
+                batchNumber++;
+                const hits = (response.hits || []);
+                totalScanned += hits.length;
+                console.log(`📊 Scanned batch ${batchNumber}: ${hits.length} records (total: ${totalScanned})`);
+                // Check each food for issues
+                for (const food of hits) {
+                    const issues = detectIssues(food);
+                    // Filter by checkTypes if specified
+                    let filteredIssues = issues;
+                    if (checkTypes && Array.isArray(checkTypes) && checkTypes.length > 0) {
+                        filteredIssues = issues.filter(issue => {
+                            if (checkTypes.includes('misspellings') && issue.type === 'misspelling')
+                                return true;
+                            if (checkTypes.includes('missing-nutrition') && issue.type === 'missing-nutrition')
+                                return true;
+                            if (checkTypes.includes('impossible-nutrition') && issue.type === 'impossible-nutrition')
+                                return true;
+                            if (checkTypes.includes('non-words') && issue.type === 'non-word')
+                                return true;
+                            if (checkTypes.includes('weird-spacing') && issue.type === 'weird-spacing')
+                                return true;
+                            if (checkTypes.includes('missing-barcode') && issue.type === 'missing-barcode')
+                                return true;
+                            if (checkTypes.includes('missing-ingredients') && issue.type === 'missing-ingredients')
+                                return true;
+                            return false;
+                        });
+                    }
+                    if (filteredIssues.length > 0) {
+                        foodsWithIssues.push({
+                            ...food,
+                            objectID: food.objectID,
+                            issues: filteredIssues,
+                        });
+                    }
                 }
-                if (filteredIssues.length > 0) {
-                    foodsWithIssues.push({
-                        ...food,
-                        objectID: food.objectID,
-                        issues: filteredIssues,
-                    });
+            },
+            // Safety limit to prevent infinite loops (200 batches * 1000 = 200k records max)
+            validate: (response) => {
+                if (batchNumber > 200) {
+                    console.log('⚠️ Reached batch limit (200), stopping scan');
+                    return true; // Stop iteration
                 }
+                return response.cursor === undefined; // Default: stop when no more cursor
             }
-            // Get cursor for next batch (undefined when done)
-            cursor = result.cursor;
-            // Safety check to prevent infinite loops (60k records / 1000 per batch = 60 batches max expected)
-            if (batchNumber > 200) {
-                console.log('⚠️ Reached batch limit (200), stopping scan');
-                break;
-            }
-        } while (cursor);
+        });
         console.log(`✅ Scan complete: ${totalScanned} records scanned, ${foodsWithIssues.length} issues found`);
         res.json({
             success: true,

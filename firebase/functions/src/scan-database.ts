@@ -1,10 +1,10 @@
-import * as functionsV2 from 'firebase-functions/v2';
-import { defineSecret } from 'firebase-functions/params';
+import * as functions from 'firebase-functions';
 import { algoliasearch } from 'algoliasearch';
 
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
-const algoliaAdminKey = defineSecret('ALGOLIA_ADMIN_API_KEY');
+// Use functions.config() for v1 triggers (more reliable than v2 secrets)
+const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
 
 // Issue types
 interface Issue {
@@ -457,12 +457,9 @@ function detectIssues(food: Record<string, unknown>): Issue[] {
  * Scan entire Algolia index for issues
  * Uses browseObjects to iterate through all records
  */
-export const scanDatabaseIssues = functionsV2.https.onRequest({
-  secrets: [algoliaAdminKey],
-  cors: true,
-  timeoutSeconds: 540,  // 9 minutes for full scan
-  memory: '1GiB',       // Extra memory for processing
-}, async (req, res) => {
+export const scanDatabaseIssues = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .https.onRequest(async (req, res) => {
   // CORS headers
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -481,10 +478,16 @@ export const scanDatabaseIssues = functionsV2.https.onRequest({
       return;
     }
 
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+      res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+      return;
+    }
+
     console.log(`🔍 Starting database scan for index: ${indexName}`);
 
     // Initialize Algolia client
-    const client = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
 
     // Collect all foods with issues
     const foodsWithIssues: FoodWithIssues[] = [];
@@ -497,6 +500,8 @@ export const scanDatabaseIssues = functionsV2.https.onRequest({
 
     do {
       batchNumber++;
+
+      // Build browse parameters
       const browseParams: Record<string, unknown> = {
         attributesToRetrieve: [
           'objectID', 'foodName', 'name', 'brandName', 'brand', 'barcode',
@@ -511,6 +516,8 @@ export const scanDatabaseIssues = functionsV2.https.onRequest({
       if (cursor) {
         browseParams.cursor = cursor;
       }
+
+      console.log(`📊 Browsing batch ${batchNumber}${cursor ? ' with cursor' : ''}...`);
 
       const result = await client.browse({
         indexName,
@@ -553,7 +560,7 @@ export const scanDatabaseIssues = functionsV2.https.onRequest({
       // Get cursor for next batch (undefined when done)
       cursor = result.cursor;
 
-      // Safety check to prevent infinite loops (60k records / 1000 per batch = 60 batches max expected)
+      // Safety check to prevent infinite loops (200k records / 1000 per batch = 200 batches max expected)
       if (batchNumber > 200) {
         console.log('⚠️ Reached batch limit (200), stopping scan');
         break;

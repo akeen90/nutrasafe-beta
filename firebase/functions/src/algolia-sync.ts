@@ -958,9 +958,13 @@ function prepareTescoForAlgolia(data: any): any {
     superDepartment: data.superDepartment || "",
     imageUrl: data.imageUrl || "",
 
-    // Metadata
+    // Metadata - extract numeric serving size from string like "250ml" or "30g"
     servingSize: data.servingSize || "per 100g",
-    servingSizeG: 100,
+    servingSizeG: (() => {
+      const servingStr = data.servingSize || "";
+      const match = servingStr.match(/(\d+(?:\.\d+)?)\s*(g|ml)/i);
+      return match ? parseFloat(match[1]) : 100;
+    })(),
     category: data.category || data.department || "",
     source: "Tesco",
     verified: true,

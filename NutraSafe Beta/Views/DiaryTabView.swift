@@ -619,6 +619,7 @@ struct DiaryTabView: View {
                 PaywallView()
             }
             .background(Color.adaptiveBackground)
+            .trackScreen("Diary")
             .featureTip(isPresented: $showingDiaryTip, tipKey: .diaryOverview)
             .featureTip(isPresented: $showingNutrientsTip, tipKey: .nutrientsOverview)
             .featureTip(isPresented: $showingInsightsTip, tipKey: .insightsOverview)

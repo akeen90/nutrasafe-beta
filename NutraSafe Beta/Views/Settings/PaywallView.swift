@@ -26,17 +26,18 @@ struct PaywallView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Background
-            Color.adaptiveBackground
-                .ignoresSafeArea()
+        NavigationView {
+            ZStack {
+                // Background
+                Color.adaptiveBackground
+                    .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Close button
-                HStack {
-                    Spacer()
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
+                VStack(spacing: 0) {
+                    // Close button
+                    HStack {
+                        Spacer()
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.secondary)
                             .frame(width: 32, height: 32)
@@ -227,10 +228,13 @@ struct PaywallView: View {
                     }
                     .padding(.horizontal, 24)
                 }
+                }
             }
+            .task { try? await subscriptionManager.load() }
+            .trackScreen("Paywall")
+            .navigationBarHidden(true)
         }
-        .task { try? await subscriptionManager.load() }
-        .trackScreen("Paywall")
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 

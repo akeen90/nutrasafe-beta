@@ -86,6 +86,7 @@ struct ReactionLogView: View {
             await allergensTask
             isLoadingData = false
         }
+        .trackScreen("Reaction Log")
     }
 
     // MARK: - Load User Allergens

@@ -302,6 +302,7 @@ struct UseByTabView: View {
                 }
             }
         }
+        .trackScreen("Use By Tracker")
     }
 }
 
@@ -395,10 +396,11 @@ struct AddFoundFoodToUseBySheet: View {
     enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Custom header
-            HStack {
-                Button("Cancel") { dismiss() }
+        NavigationView {
+            VStack(spacing: 0) {
+                // Custom header
+                HStack {
+                    Button("Cancel") { dismiss() }
                     .font(.system(size: 17))
                     .foregroundColor(.blue)
 
@@ -581,7 +583,10 @@ struct AddFoundFoodToUseBySheet: View {
                     }
                 }
             }
+            .navigationBarHidden(true)
+            }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     private func recalcExpiry() {
@@ -611,8 +616,12 @@ struct AddFoundFoodToUseBySheet: View {
         let expiry = expiryDate
         let image = capturedImage
 
-        // Dismiss immediately for instant UX
-        dismiss()
+        // Dismiss immediately for instant UX - disable animation for seamless transition
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            dismiss()
+        }
         onComplete?(.useBy)
 
         // Save in background - don't block UI
@@ -2293,7 +2302,8 @@ struct UseByBarcodeScanSheet: View {
     @State private var showingAddToUseBy = false
 
     var body: some View {
-        VStack(spacing: 0) {
+        NavigationView {
+            VStack(spacing: 0) {
             if let contribution = pendingContribution {
                 // Product not found - offer manual add
                 VStack(spacing: 20) {
@@ -2413,11 +2423,24 @@ struct UseByBarcodeScanSheet: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showingAddToUseBy, onDismiss: {
-            // When UseBy detail is dismissed, reset for another scan
-            scannedFood = nil
-            errorMessage = nil
-        }) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showingAddToUseBy },
+            set: { newValue in
+                if !newValue {
+                    // Disable animation when dismissing
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showingAddToUseBy = false
+                    }
+                    // When UseBy detail is dismissed, reset for another scan
+                    scannedFood = nil
+                    errorMessage = nil
+                } else {
+                    showingAddToUseBy = newValue
+                }
+            }
+        )) {
             if let food = scannedFood {
                 AddFoundFoodToUseBySheet(food: food)
             }
@@ -2428,6 +2451,9 @@ struct UseByBarcodeScanSheet: View {
                 showingAddToUseBy = true
             }
         }
+        .navigationBarHidden(true)
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     // MARK: - Scanner Reset
@@ -2941,7 +2967,21 @@ Text(food.name)
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-.fullScreenCover(item: $selectedFood) { selectedFood in
+        .fullScreenCover(item: Binding(
+            get: { selectedFood },
+            set: { newValue in
+                if newValue == nil {
+                    // Disable animation when dismissing
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        selectedFood = nil
+                    }
+                } else {
+                    selectedFood = newValue
+                }
+            }
+        )) { selectedFood in
             AddFoundFoodToUseBySheet(food: selectedFood)
         }
     }

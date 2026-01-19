@@ -774,18 +774,26 @@ async function searchDatabaseForFood(
     return null;
   }
 
-  // PRIORITIZE UK results over non-UK results
-  // Sort by: 1) UK source first, 2) Match score descending
+  // PRIORITIZE: Tesco (tier 1) > UK Foods (tier 2) > Others (tier 3)
+  // Sort by: 1) Source tier, 2) Match score descending
+  const getSourceTier = (indexName: string): number => {
+    if (indexName === 'tesco_products') return 0;  // Tier 1: Official supermarket data
+    if (indexName === 'uk_foods_cleaned') return 1;  // Tier 2: UK verified data
+    return 2;  // Tier 3: Other sources
+  };
+
   candidates.sort((a, b) => {
-    // UK sources always come first
-    if (a.isUkSource && !b.isUkSource) return -1;
-    if (!a.isUkSource && b.isUkSource) return 1;
-    // Within same source type, prefer higher match score
+    const tierA = getSourceTier(a.indexName);
+    const tierB = getSourceTier(b.indexName);
+    // Lower tier number = higher priority
+    if (tierA !== tierB) return tierA - tierB;
+    // Within same tier, prefer higher match score
     return b.matchScore - a.matchScore;
   });
 
   const bestMatch = candidates[0];
-  console.log(`  🎯 Best match: "${bestMatch.hit.name}" from ${bestMatch.indexName} (score: ${(bestMatch.matchScore * 100).toFixed(0)}%, UK: ${bestMatch.isUkSource})`);
+  const tierLabel = getSourceTier(bestMatch.indexName) === 0 ? 'TIER 1' : getSourceTier(bestMatch.indexName) === 1 ? 'TIER 2' : 'TIER 3';
+  console.log(`  🎯 Best match: "${bestMatch.hit.name}" from ${bestMatch.indexName} [${tierLabel}] (score: ${(bestMatch.matchScore * 100).toFixed(0)}%)`);
 
   // If best match is non-UK but UK matches exist, log warning
   if (!bestMatch.isUkSource) {
