@@ -124,6 +124,8 @@
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* SubscriptionManager.swift */; };
+		ANALYTICS001BUILD /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ANALYTICS001FILE /* AnalyticsManager.swift */; };
+		ANALYTICS002BUILD /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = ANALYTICS002REF /* FirebaseAnalytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -242,6 +244,7 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
+		ANALYTICS001FILE /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/AnalyticsManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -256,6 +259,7 @@
 				AB13BC1C2EAE253100C7B892 /* FirebaseFunctions in Frameworks */,
 				AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */,
 				AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */,
+				ANALYTICS002BUILD /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -372,6 +376,7 @@
 			isa = PBXGroup;
 			children = (
 				ALGOLIA001FILE /* AlgoliaSearchManager.swift */,
+				ANALYTICS001FILE /* AnalyticsManager.swift */,
 				ONBMGR0001FILE /* OnboardingManager.swift */,
 				MEALMANAGER001FILE /* MealManager.swift */,
 			);
@@ -713,6 +718,7 @@
 				73C56727E489A7AACBFA399E /* DiarySegmentedControl.swift in Sources */,
 				A1B31A3BE469C0DBE4BF2B99 /* NutrientGapsView.swift in Sources */,
 				BE43B1A4B3D845F3E0BC73CC /* NutrientDetailModal.swift in Sources */,
+				ANALYTICS001BUILD /* AnalyticsManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -977,6 +983,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		ANALYTICS002REF /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

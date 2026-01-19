@@ -230,6 +230,7 @@ struct PaywallView: View {
             }
         }
         .task { try? await subscriptionManager.load() }
+        .trackScreen("Paywall")
     }
 }
 

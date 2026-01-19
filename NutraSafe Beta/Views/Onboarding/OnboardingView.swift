@@ -65,6 +65,21 @@ struct OnboardingView: View {
                 .padding(.bottom, 24)
             }
         }
+        .onAppear {
+            AnalyticsManager.shared.trackOnboardingStep(step: currentPage, stepName: onboardingStepName(currentPage))
+        }
+        .onChange(of: currentPage) { _, newPage in
+            AnalyticsManager.shared.trackOnboardingStep(step: newPage, stepName: onboardingStepName(newPage))
+        }
+    }
+
+    private func onboardingStepName(_ page: Int) -> String {
+        switch page {
+        case 0: return "Welcome"
+        case 1: return "Permissions"
+        case 2: return "Disclaimer"
+        default: return "Unknown"
+        }
     }
 }
 

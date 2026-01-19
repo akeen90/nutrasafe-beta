@@ -578,6 +578,8 @@ struct ContentView: View {
                         }
                         .onChange(of: selectedTab) { oldTab, newTab in
                             visitedTabs.insert(newTab)
+                            // Track tab changes in analytics
+                            trackTabChange(newTab)
                         }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -871,6 +873,19 @@ struct ContentView: View {
         // Haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
+    }
+
+    // MARK: - Analytics Tracking
+    private func trackTabChange(_ tab: TabItem) {
+        let screenName: String
+        switch tab {
+        case .diary: screenName = "Diary"
+        case .weight: screenName = "Progress"
+        case .add: return // Add menu is a modal, not a screen
+        case .food: screenName = "Search"
+        case .useBy: screenName = "Use By Tracker"
+        }
+        AnalyticsManager.shared.trackScreen(screenName, screenClass: "ContentView")
     }
 }
 

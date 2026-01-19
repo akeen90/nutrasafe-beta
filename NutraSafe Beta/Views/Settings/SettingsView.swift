@@ -126,6 +126,7 @@ struct SettingsView: View {
         .navigationViewStyle(.stack)
         .tabGradientBackground(.settings)
         .preferredColorScheme(appearanceMode.colorScheme)
+        .trackScreen("Settings")
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)

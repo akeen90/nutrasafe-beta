@@ -23,6 +23,7 @@ struct FastingMainView: View {
             }
             .navigationTitle("Fasting")
         }
+        .trackScreen("Fasting")
     }
 
     // MARK: - Premium Locked View

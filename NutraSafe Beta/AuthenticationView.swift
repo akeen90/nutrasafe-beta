@@ -218,6 +218,7 @@ struct SignInView: View {
         .fullScreenCover(isPresented: $showingPasswordReset) {
             PasswordResetView()
         }
+        .trackScreen("Sign In")
     }
 
     private func signIn() {
@@ -226,11 +227,13 @@ struct SignInView: View {
         Task {
             do {
                 try await firebaseManager.signIn(email: email, password: password)
+                AnalyticsManager.shared.trackSignIn(method: "email")
             } catch {
                 await MainActor.run {
                     errorMessage = error.localizedDescription
                     showingError = true
                     isLoading = false
+                    AnalyticsManager.shared.trackError(errorType: "sign_in", errorMessage: error.localizedDescription)
                 }
             }
         }
@@ -243,11 +246,13 @@ struct SignInView: View {
                         Task {
                 do {
                     try await firebaseManager.signInWithApple(authorization: authorization)
+                    AnalyticsManager.shared.trackSignIn(method: "apple")
                                     } catch {
                                         await MainActor.run {
                         errorMessage = "Sign in failed: \(error.localizedDescription)"
                         showingError = true
                         isLoading = false
+                        AnalyticsManager.shared.trackError(errorType: "apple_sign_in", errorMessage: error.localizedDescription)
                     }
                 }
             }
@@ -445,6 +450,7 @@ struct SignUpView: View {
         } message: {
             Text(errorMessage)
         }
+        .trackScreen("Sign Up")
     }
 
     private var isFormValid: Bool {
@@ -458,11 +464,13 @@ struct SignUpView: View {
                         Task {
                 do {
                     try await firebaseManager.signInWithApple(authorization: authorization)
+                    AnalyticsManager.shared.trackSignUp(method: "apple")
                                     } catch {
                                         await MainActor.run {
                         errorMessage = "Sign up failed: \(error.localizedDescription)"
                         showingError = true
                         isLoading = false
+                        AnalyticsManager.shared.trackError(errorType: "apple_sign_up", errorMessage: error.localizedDescription)
                     }
                 }
             }
@@ -471,6 +479,7 @@ struct SignUpView: View {
             if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
                 errorMessage = "Apple Sign Up failed: \(error.localizedDescription)"
                 showingError = true
+                AnalyticsManager.shared.trackError(errorType: "apple_sign_up", errorMessage: error.localizedDescription)
             }
         }
     }
@@ -493,6 +502,7 @@ struct SignUpView: View {
         Task {
             do {
                 try await firebaseManager.signUp(email: email, password: password)
+                AnalyticsManager.shared.trackSignUp(method: "email")
                 await MainActor.run {
                     showingSignUp = false
                 }
@@ -501,6 +511,7 @@ struct SignUpView: View {
                     errorMessage = error.localizedDescription
                     showingError = true
                     isLoading = false
+                    AnalyticsManager.shared.trackError(errorType: "sign_up", errorMessage: error.localizedDescription)
                 }
             }
         }
