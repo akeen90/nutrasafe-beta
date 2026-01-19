@@ -417,28 +417,167 @@ struct FoodReactionSummaryCard: View {
     @State private var showingLogReaction = false
     @EnvironmentObject var reactionManager: ReactionManager
 
+    // MARK: - Computed Insights
+
+    /// Most common symptom with percentage
+    private var mostCommonSymptom: (symptom: String, percentage: Int)? {
+        guard !reactionManager.reactions.isEmpty else { return nil }
+
+        var symptomCounts: [String: Int] = [:]
+        for reaction in reactionManager.reactions {
+            for symptom in reaction.symptoms {
+                symptomCounts[symptom, default: 0] += 1
+            }
+        }
+
+        guard let (symptom, count) = symptomCounts.max(by: { $0.value < $1.value }) else { return nil }
+        let percentage = Int((Double(count) / Double(reactionManager.reactions.count)) * 100)
+        return (symptom, percentage)
+    }
+
+    /// Peak timing for reactions (Morning/Afternoon/Evening/Night)
+    private var peakTiming: String? {
+        guard !reactionManager.reactions.isEmpty else { return nil }
+
+        let calendar = Calendar.current
+        var timingCounts: [String: Int] = ["Morning": 0, "Afternoon": 0, "Evening": 0, "Night": 0]
+
+        for reaction in reactionManager.reactions {
+            let hour = calendar.component(.hour, from: reaction.timestamp.dateValue())
+            switch hour {
+            case 5..<12: timingCounts["Morning", default: 0] += 1
+            case 12..<17: timingCounts["Afternoon", default: 0] += 1
+            case 17..<21: timingCounts["Evening", default: 0] += 1
+            default: timingCounts["Night", default: 0] += 1
+            }
+        }
+
+        return timingCounts.max(by: { $0.value < $1.value })?.key
+    }
+
+    /// Weekly trend: reactions this week vs last week
+    private var weeklyTrend: (thisWeek: Int, lastWeek: Int, trend: String)? {
+        let calendar = Calendar.current
+        let now = Date()
+
+        guard let startOfThisWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
+              let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek) else {
+            return nil
+        }
+
+        let thisWeekCount = reactionManager.reactions.filter { $0.timestamp.dateValue() >= startOfThisWeek }.count
+        let lastWeekCount = reactionManager.reactions.filter {
+            let date = $0.timestamp.dateValue()
+            return date >= startOfLastWeek && date < startOfThisWeek
+        }.count
+
+        let trend: String
+        if thisWeekCount < lastWeekCount {
+            trend = "down"
+        } else if thisWeekCount > lastWeekCount {
+            trend = "up"
+        } else {
+            trend = "same"
+        }
+
+        return (thisWeekCount, lastWeekCount, trend)
+    }
+
+    /// Top suspected ingredient from reactions
+    private var topSuspectedIngredient: (name: String, count: Int)? {
+        var ingredientCounts: [String: Int] = [:]
+
+        for reaction in reactionManager.reactions {
+            for ingredient in reaction.suspectedIngredients {
+                ingredientCounts[ingredient, default: 0] += 1
+            }
+        }
+
+        guard let (name, count) = ingredientCounts.max(by: { $0.value < $1.value }),
+              count >= 2 else { return nil }
+
+        return (name, count)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Overview")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.primary)
+            // Header
+            HStack {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(.yellow)
+                Text("Your Insights")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
 
-            HStack(spacing: 12) {
-                StatMiniCard(
-                    value: "\(reactionManager.monthlyCount)",
-                    label: "Month",
-                    color: .red
-                )
-                StatMiniCard(
-                    value: "\(reactionManager.weeklyCount)",
-                    label: "Week",
-                    color: .orange
-                )
-                StatMiniCard(
-                    value: "\(reactionManager.reactions.count)",
-                    label: "Total",
-                    color: .green
-                )
+            // Smart Insights (show if 3+ reactions, otherwise show simple counts)
+            if reactionManager.reactions.count >= 3 {
+                VStack(spacing: 10) {
+                    // Most common symptom
+                    if let symptom = mostCommonSymptom {
+                        insightRow(
+                            icon: "chart.bar.fill",
+                            iconColor: .blue,
+                            label: "Most common",
+                            value: symptom.symptom,
+                            badge: "\(symptom.percentage)%"
+                        )
+                    }
+
+                    // Peak timing
+                    if let timing = peakTiming {
+                        insightRow(
+                            icon: "clock.fill",
+                            iconColor: .orange,
+                            label: "Peak timing",
+                            value: timing,
+                            badge: nil
+                        )
+                    }
+
+                    // Weekly trend
+                    if let trend = weeklyTrend {
+                        let trendColor: Color = trend.trend == "down" ? .green : (trend.trend == "up" ? .red : .secondary)
+                        let trendText = trend.trend == "down" ? "↓ from \(trend.lastWeek)" : (trend.trend == "up" ? "↑ from \(trend.lastWeek)" : "same")
+
+                        insightRow(
+                            icon: "calendar",
+                            iconColor: .purple,
+                            label: "This week",
+                            value: "\(trend.thisWeek) \(trend.thisWeek == 1 ? "reaction" : "reactions")",
+                            badge: trendText,
+                            badgeColor: trendColor
+                        )
+                    }
+
+                    // Top suspected ingredient
+                    if let ingredient = topSuspectedIngredient {
+                        insightRow(
+                            icon: "exclamationmark.triangle.fill",
+                            iconColor: .red,
+                            label: "Watch for",
+                            value: ingredient.name,
+                            badge: "\(ingredient.count) times"
+                        )
+                    }
+                }
+            } else {
+                // Simple message for new users
+                VStack(spacing: 8) {
+                    Text("Log \(3 - reactionManager.reactions.count) more \(3 - reactionManager.reactions.count == 1 ? "reaction" : "reactions") to unlock insights")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    if reactionManager.reactions.count > 0 {
+                        Text("\(reactionManager.reactions.count) logged so far")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
             }
 
             Button(action: { showingLogReaction = true }) {
@@ -478,6 +617,37 @@ struct FoodReactionSummaryCard: View {
         .fullScreenCover(isPresented: $showingLogReaction) {
             LogReactionSheet(selectedDayRange: .threeDays)
         }
+    }
+
+    private func insightRow(icon: String, iconColor: Color, label: String, value: String, badge: String?, badgeColor: Color = .secondary) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(iconColor)
+                .frame(width: 20)
+
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Text(value)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+
+            if let badge = badge {
+                Text(badge)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(badgeColor)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(badgeColor.opacity(0.15))
+                    .cornerRadius(4)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
