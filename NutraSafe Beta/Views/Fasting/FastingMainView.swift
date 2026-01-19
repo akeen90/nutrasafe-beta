@@ -359,7 +359,7 @@ struct PlanDashboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @ObservedObject var viewModel: FastingViewModel
     let plan: FastingPlan
-    @State private var showRegimeDetails = false
+    @State private var showTimerDetails = false
     @State private var showStartTimeChoice = false
     @State private var showFastSettings = false
     @State private var scheduledStartTime: Date?
@@ -372,6 +372,9 @@ struct PlanDashboardView: View {
     @State private var showingCitations = false
     @State private var showFastingOptions = false
     @State private var showStopPlanConfirmation = false
+    @State private var showEditFast = false
+    @State private var editStartTime = Date()
+    @State private var editTargetHours = 16
 
     // Timeline view state
     @State private var selectedTimelineDate: Date?
@@ -379,12 +382,9 @@ struct PlanDashboardView: View {
     @State private var showDeleteSessionAlert = false
 
     // PERFORMANCE: Cache average duration to prevent redundant calculations on every render
-    // Pattern from Clay's production app: move expensive operations to cached state
     @State private var cachedAverageDuration: Double = 0
 
-    // Use all sessions for accurate totals (not limited recentSessions)
-    // Filter out only cleared sessions (actualDurationHours == 0)
-    // Skipped sessions SHOULD count their actual hours in totals
+    // Use all sessions for accurate totals
     private var planSessions: [FastingSession] {
         viewModel.allSessions.filter { $0.actualDurationHours > 0 }
     }
@@ -405,7 +405,15 @@ struct PlanDashboardView: View {
 
     private var averageDuration: Double { cachedAverageDuration }
 
-    // Update cached average duration when data changes
+    // Current streak calculation
+    private var currentStreak: Int {
+        viewModel.analytics?.currentWeeklyStreak ?? 0
+    }
+
+    private var bestStreak: Int {
+        viewModel.analytics?.bestWeeklyStreak ?? 0
+    }
+
     private func updateCachedAverageDuration() {
         guard !planSessions.isEmpty else {
             cachedAverageDuration = 0
@@ -427,190 +435,192 @@ struct PlanDashboardView: View {
 
     private var effectiveDisplayName: String {
         let h = effectiveDurationHours
-        if h == 16 { return "16:8 Fasting Plan" }
-        if h == 12 { return "12:12 Fasting Plan" }
-        if h == 18 { return "18:6 Fasting Plan" }
-        if h == 20 { return "20:4 Fasting Plan" }
-        if h == 24 { return "OMAD Plan" }
-        return "\(h)-Hour Fast"
+        if h == 16 { return "16:8 Plan" }
+        if h == 12 { return "12:12 Plan" }
+        if h == 18 { return "18:6 Plan" }
+        if h == 20 { return "20:4 Plan" }
+        if h == 24 { return "OMAD" }
+        return "\(h)h Fast"
     }
 
-    // MARK: - Extracted View Components
-
-    @ViewBuilder
-    private var planHeaderCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: "clock.badge.checkmark")
-                    .foregroundColor(.green)
-                Text(effectiveDisplayName)
-                    .font(.headline)
-                Spacer()
-            }
-
-            HStack {
-                Text("\(effectiveDurationHours)h")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                if !plan.daysOfWeek.isEmpty {
-                    Text("•")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Text("\(plan.daysOfWeek.count) days/week")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding()
-        .cardBackground(cornerRadius: 12)
-    }
-
-    @ViewBuilder
-    private var statsGrid: some View {
-        HStack(spacing: 12) {
-            FastingStatCard(title: "Total Fasts", value: "\(totalFasts)", icon: "calendar")
-            FastingStatCard(title: "Completed", value: "\(completionRate)%", icon: "checkmark.circle.fill")
-            FastingStatCard(title: "Avg Duration", value: String(format: "%.1fh", averageDuration), icon: "clock.fill")
+    // MARK: - Phase Helpers
+    private func phaseIcon(for phase: FastingPhase) -> String {
+        switch phase {
+        case .postMeal: return "fork.knife"
+        case .fuelSwitching: return "arrow.triangle.swap"
+        case .fatMobilization: return "flame.fill"
+        case .mildKetosis: return "bolt.fill"
+        case .autophagyPotential: return "sparkles"
+        case .deepAdaptive: return "star.fill"
         }
     }
 
-    // MARK: - New Design Components
+    private func phaseColor(for phase: FastingPhase) -> Color {
+        switch phase {
+        case .postMeal: return .gray
+        case .fuelSwitching: return .orange
+        case .fatMobilization: return .red
+        case .mildKetosis: return .purple
+        case .autophagyPotential: return .blue
+        case .deepAdaptive: return .green
+        }
+    }
 
+    // MARK: - Main Timer Card (Simplified)
     @ViewBuilder
-    private var currentStateCard: some View {
+    private var mainTimerCard: some View {
         VStack(spacing: 16) {
             switch viewModel.currentRegimeState {
-            case .fasting(_, let ends):
-                // Currently Fasting state
-                VStack(spacing: 12) {
+            case .fasting(let started, let ends):
+                // FASTING STATE - Show big timer with current stage
+                VStack(spacing: 16) {
+                    // Header with edit button
                     HStack {
-                        Text("Currently Fasting")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Menu {
-                            Button {
-                                snoozeUntilTime = Date()
-                                showSnoozePicker = true
-                            } label: {
-                                Label("Snooze Fast", systemImage: "moon.zzz.fill")
-                            }
-                            Button {
-                                showRegimeDetails = true
-                            } label: {
-                                Label("View Timer & Stages", systemImage: "clock.fill")
-                            }
-                            Divider()
-                            Button(role: .destructive) {
-                                showStopPlanConfirmation = true
-                            } label: {
-                                Label("Stop Plan", systemImage: "stop.circle.fill")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle.fill")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Fasting")
                                 .font(.title2)
-                                .foregroundColor(.blue)
+                                .fontWeight(.bold)
+                            Text(effectiveDisplayName)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+
+                        // Edit button
+                        Button {
+                            editStartTime = started
+                            editTargetHours = effectiveDurationHours
+                            showEditFast = true
+                        } label: {
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue.opacity(0.7))
                         }
                     }
 
+                    // Big countdown timer
                     Text(viewModel.timeUntilFastEnds)
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundColor(.primary)
 
-                    Text("Fast ends at \(ends.formatted(date: .omitted, time: .shortened))")
+                    // Current Stage Badge (right under timer)
+                    if let phase = viewModel.currentRegimeFastingPhase {
+                        HStack(spacing: 8) {
+                            Image(systemName: phaseIcon(for: phase))
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(phase.displayName)
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(phaseColor(for: phase))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(phaseColor(for: phase).opacity(0.15))
+                        )
+                    }
+
+                    // End time subtitle
+                    Text("Ends at \(ends.formatted(date: .omitted, time: .shortened))")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                    // Two buttons side by side
+                    // Action buttons
                     HStack(spacing: 12) {
+                        // Take a Break button
                         Button {
                             snoozeUntilTime = Date()
                             showSnoozePicker = true
                         } label: {
-                            HStack {
-                                Image(systemName: "moon.zzz.fill")
-                                Text("Snooze")
+                            HStack(spacing: 6) {
+                                Image(systemName: "pause.circle.fill")
+                                Text("Take a Break")
                                     .fontWeight(.semibold)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.blue.opacity(0.15))
+                            .background(Color.blue.opacity(0.12))
                             .foregroundColor(.blue)
                             .cornerRadius(12)
                         }
                         .buttonStyle(.plain)
 
+                        // End Fast button
                         Button {
                             Task {
                                 await viewModel.skipCurrentRegimeFast()
                             }
                         } label: {
-                            HStack {
-                                Image(systemName: "forward.fill")
-                                Text("End Early")
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("End Fast")
                                     .fontWeight(.semibold)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.orange)
+                            .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
                         .buttonStyle(.plain)
                     }
+
+                    // View all stages link
+                    Button {
+                        showTimerDetails = true
+                    } label: {
+                        HStack {
+                            Text("View all fasting stages")
+                                .font(.subheadline)
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.top, 4)
                 }
 
             case .eating(let nextFastStart):
-                // Eating Window state
-                VStack(spacing: 12) {
+                // EATING WINDOW STATE
+                VStack(spacing: 16) {
                     HStack {
-                        Text("Eating Window")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Menu {
-                            Button {
-                                showRegimeDetails = true
-                            } label: {
-                                Label("View Timer & Stages", systemImage: "clock.fill")
-                            }
-                            Divider()
-                            Button(role: .destructive) {
-                                showStopPlanConfirmation = true
-                            } label: {
-                                Label("Stop Plan", systemImage: "stop.circle.fill")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle.fill")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Eating Window")
                                 .font(.title2)
-                                .foregroundColor(.blue)
+                                .fontWeight(.bold)
+                            Text("Enjoy your meals")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
+                        Spacer()
                     }
 
-                    Text(viewModel.timeUntilNextFast)
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Countdown to next fast
+                    VStack(spacing: 4) {
+                        Text(viewModel.timeUntilNextFast)
+                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundColor(.green)
+
+                        Text("until next fast")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
 
                     Text("Next fast starts at \(nextFastStart.formatted(date: .omitted, time: .shortened))")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
 
+                    // Start Fast Early button
                     Button {
                         Task {
-                            await viewModel.stopRegime()
+                            await viewModel.startRegime(startFromNow: true)
                         }
                     } label: {
-                        HStack {
-                            Image(systemName: "stop.fill")
-                            Text("End Eating Window")
+                        HStack(spacing: 6) {
+                            Image(systemName: "bolt.fill")
+                            Text("Start Fasting Now")
                                 .fontWeight(.semibold)
                         }
                         .frame(maxWidth: .infinity)
@@ -623,19 +633,20 @@ struct PlanDashboardView: View {
                 }
 
             case .inactive:
-                // Not active - show start button
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("Ready to Fast")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                        Spacer()
-                    }
+                // NOT STARTED STATE
+                VStack(spacing: 16) {
+                    Image(systemName: "timer")
+                        .font(.system(size: 50))
+                        .foregroundColor(.blue)
 
-                    Text("Start your fasting plan to begin tracking")
+                    Text("Ready to Start")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Tap below to begin your \(effectiveDisplayName)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .multilineTextAlignment(.center)
 
                     Button {
                         let (isPast, startTime) = viewModel.checkIfPastTodaysStartTime()
@@ -648,13 +659,13 @@ struct PlanDashboardView: View {
                             }
                         }
                     } label: {
-                        HStack {
-                            Image(systemName: "bolt.circle.fill")
-                            Text("Start Regime")
+                        HStack(spacing: 6) {
+                            Image(systemName: "play.fill")
+                            Text("Start Fasting")
                                 .fontWeight(.semibold)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 16)
                         .background(Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(12)
@@ -665,138 +676,122 @@ struct PlanDashboardView: View {
         }
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
         )
     }
 
+    // MARK: - Streak Card
     @ViewBuilder
-    private var planInfoCard: some View {
+    private var streakCard: some View {
+        HStack(spacing: 16) {
+            // Current Streak
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                        .foregroundColor(.orange)
+                    Text("\(currentStreak)")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                }
+                Text("Day Streak")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            // Divider
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 1, height: 40)
+
+            // Best Streak
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    Image(systemName: "trophy.fill")
+                        .foregroundColor(.yellow)
+                    Text("\(bestStreak)")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                }
+                Text("Best Streak")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            // Divider
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 1, height: 40)
+
+            // Total Fasts
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("\(totalFasts)")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                }
+                Text("Total Fasts")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
+        )
+    }
+
+    // MARK: - Plan Settings Card
+    @ViewBuilder
+    private var planSettingsCard: some View {
         Button {
             showFastSettings = true
         } label: {
-            VStack(spacing: 16) {
-                // Plan header
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.green.opacity(0.15))
-                            .frame(width: 40, height: 40)
-                        Image(systemName: "clock.badge.checkmark")
-                            .font(.system(size: 18))
-                            .foregroundColor(.green)
-                    }
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.blue)
+                }
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(effectiveDisplayName)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        Text("\(effectiveDurationHours)h • \(plan.daysOfWeek.count == 7 ? "Daily" : "\(plan.daysOfWeek.count) days/week")")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Fasting Plan Settings")
                         .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    Text("Tap to edit your plan")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                // Stats row
-                HStack(spacing: 8) {
-                    PlanStatBox(value: "\(totalFasts)", label: "Total Fasts", icon: "calendar", color: .blue)
-                    PlanStatBox(value: "\(completionRate)%", label: "Completed", icon: "checkmark.circle.fill", color: .blue)
-                    PlanStatBox(value: String(format: "%.1fh", averageDuration), label: "Avg Duration", icon: "clock.fill", color: .blue)
-                }
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
-            .padding(16)
+            .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+                    .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
             )
         }
         .buttonStyle(.plain)
     }
 
-    @ViewBuilder
-    private var regimeActiveControls: some View {
-        VStack(spacing: 12) {
-            Button {
-                showRegimeDetails = true
-            } label: {
-                HStack {
-                    Image(systemName: "bolt.circle.fill")
-                        .foregroundColor(.green)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Regime Active")
-                            .font(.headline)
-                            .foregroundColor(.green)
-                        Text("Tap for timer & stages")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
-                .padding()
-                .cardBackground(cornerRadius: 12)
-            }
-            .buttonStyle(.plain)
-
-            regimeStateView
-
-            // Stop Regime Button
-            Button {
-                Task {
-                    await viewModel.stopRegime()
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "stop.circle.fill")
-                    Text("Stop Regime")
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.red)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-            }
-            .buttonStyle(.plain)
-
-            // View Sources Button
-            Button {
-                showingCitations = true
-            } label: {
-                HStack {
-                    Image(systemName: "doc.text.fill")
-                    Text("View Sources")
-                        .fontWeight(.medium)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .cardBackground(cornerRadius: 12)
-                .foregroundColor(.blue)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
+    // Keeping old views for backwards compatibility but they won't be used in main body
     @ViewBuilder
     private var regimeStateView: some View {
-        switch viewModel.currentRegimeState {
-        case .fasting(_, let ends):
-            fastingStateView(ends: ends)
-        case .eating(let nextFastStart):
-            eatingStateView(nextFastStart: nextFastStart)
-        case .inactive:
-            EmptyView()
-        }
+        EmptyView()
     }
 
     @ViewBuilder
@@ -1002,17 +997,56 @@ struct PlanDashboardView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Main state card (Eating Window / Currently Fasting)
-            currentStateCard
+            // Main timer card - the primary focus
+            mainTimerCard
 
-            // Plan info card with stats
-            planInfoCard
+            // Streak and stats card
+            streakCard
+
+            // Plan settings card
+            planSettingsCard
 
             // Fasting history
             fastingHistorySection
         }
-        .fullScreenCover(isPresented: $showRegimeDetails) {
-            RegimeDetailView(viewModel: viewModel, plan: plan)
+        .fullScreenCover(isPresented: $showTimerDetails) {
+            FastingStagesDetailView(viewModel: viewModel, plan: plan)
+        }
+        .fullScreenCover(isPresented: $showEditFast) {
+            NavigationStack {
+                Form {
+                    Section("Edit Current Fast") {
+                        DatePicker("Started at", selection: $editStartTime, in: ...Date())
+                        Stepper("Goal: \(editTargetHours) hours", value: $editTargetHours, in: 8...24)
+                    }
+
+                    Section {
+                        Button {
+                            Task {
+                                await viewModel.editActiveFast(startTime: editStartTime, targetHours: editTargetHours)
+                            }
+                            showEditFast = false
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text("Save Changes")
+                                    .fontWeight(.semibold)
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .navigationTitle("Edit Fast")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showEditFast = false
+                        }
+                    }
+                }
+            }
         }
         .fullScreenCover(isPresented: $showFastSettings) {
             FastingPlanCreationView(viewModel: viewModel)
@@ -1161,7 +1195,270 @@ struct PlanDashboardView: View {
     }
 }
 
-// MARK: - Regime Detail View
+// MARK: - Fasting Stages Detail View (Simplified)
+struct FastingStagesDetailView: View {
+    @ObservedObject var viewModel: FastingViewModel
+    let plan: FastingPlan
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var showingCitations = false
+
+    // Phase helpers
+    private func phaseIcon(for phase: FastingPhase) -> String {
+        switch phase {
+        case .postMeal: return "fork.knife"
+        case .fuelSwitching: return "arrow.triangle.swap"
+        case .fatMobilization: return "flame.fill"
+        case .mildKetosis: return "bolt.fill"
+        case .autophagyPotential: return "sparkles"
+        case .deepAdaptive: return "star.fill"
+        }
+    }
+
+    private func phaseColor(for phase: FastingPhase) -> Color {
+        switch phase {
+        case .postMeal: return .gray
+        case .fuelSwitching: return .orange
+        case .fatMobilization: return .red
+        case .mildKetosis: return .purple
+        case .autophagyPotential: return .blue
+        case .deepAdaptive: return .green
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Current status card
+                    if case .fasting(let started, let ends) = viewModel.currentRegimeState {
+                        VStack(spacing: 12) {
+                            Text("Time Remaining")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            Text(viewModel.timeUntilFastEnds)
+                                .font(.system(size: 48, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+
+                            if let phase = viewModel.currentRegimeFastingPhase {
+                                HStack(spacing: 8) {
+                                    Image(systemName: phaseIcon(for: phase))
+                                        .font(.system(size: 14, weight: .semibold))
+                                    Text(phase.displayName)
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                                .foregroundColor(phaseColor(for: phase))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(
+                                    Capsule()
+                                        .fill(phaseColor(for: phase).opacity(0.15))
+                                )
+                            }
+
+                            HStack(spacing: 16) {
+                                VStack(spacing: 2) {
+                                    Text("Started")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(started.formatted(date: .omitted, time: .shortened))
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                }
+
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(width: 1, height: 30)
+
+                                VStack(spacing: 2) {
+                                    Text("Ends")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(ends.formatted(date: .omitted, time: .shortened))
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                }
+                            }
+                            .padding(.top, 8)
+                        }
+                        .padding(20)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                                .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
+                        )
+                    }
+
+                    // All Fasting Stages
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Fasting Stages")
+                            .font(.headline)
+
+                        VStack(spacing: 0) {
+                            ForEach(Array(FastingPhase.allCases.enumerated()), id: \.element) { index, phase in
+                                FastingStageDetailRow(
+                                    phase: phase,
+                                    viewModel: viewModel,
+                                    isLast: index == FastingPhase.allCases.count - 1
+                                )
+                            }
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                        )
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
+                    )
+
+                    // Science info
+                    Button {
+                        showingCitations = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.fill")
+                            Text("View Scientific Sources")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.12))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+            }
+            .navigationTitle("Fasting Stages")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showingCitations) {
+                FastingCitationsView()
+            }
+        }
+    }
+}
+
+// MARK: - Fasting Stage Detail Row
+struct FastingStageDetailRow: View {
+    let phase: FastingPhase
+    @ObservedObject var viewModel: FastingViewModel
+    let isLast: Bool
+
+    private var isCurrentPhase: Bool {
+        guard case .fasting = viewModel.currentRegimeState else { return false }
+        return viewModel.currentRegimeFastingPhase == phase
+    }
+
+    private var isPastPhase: Bool {
+        guard case .fasting = viewModel.currentRegimeState else { return false }
+        let hoursInFast = viewModel.hoursIntoCurrentFast
+        return hoursInFast >= Double(phase.timeRange.upperBound)
+    }
+
+    private func phaseIcon(for phase: FastingPhase) -> String {
+        switch phase {
+        case .postMeal: return "fork.knife"
+        case .fuelSwitching: return "arrow.triangle.swap"
+        case .fatMobilization: return "flame.fill"
+        case .mildKetosis: return "bolt.fill"
+        case .autophagyPotential: return "sparkles"
+        case .deepAdaptive: return "star.fill"
+        }
+    }
+
+    private func phaseColor(for phase: FastingPhase) -> Color {
+        switch phase {
+        case .postMeal: return .gray
+        case .fuelSwitching: return .orange
+        case .fatMobilization: return .red
+        case .mildKetosis: return .purple
+        case .autophagyPotential: return .blue
+        case .deepAdaptive: return .green
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                // Status icon
+                ZStack {
+                    Circle()
+                        .fill(isPastPhase ? Color.green : (isCurrentPhase ? phaseColor(for: phase) : Color.gray.opacity(0.3)))
+                        .frame(width: 32, height: 32)
+
+                    if isPastPhase {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    } else {
+                        Image(systemName: phaseIcon(for: phase))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(isCurrentPhase ? .white : .gray)
+                    }
+                }
+
+                // Phase info
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(phase.displayName)
+                            .font(.subheadline)
+                            .fontWeight(isCurrentPhase ? .bold : .medium)
+                            .foregroundColor(isCurrentPhase ? phaseColor(for: phase) : .primary)
+
+                        if isCurrentPhase {
+                            Text("NOW")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(phaseColor(for: phase))
+                                .cornerRadius(4)
+                        }
+                    }
+
+                    Text(phase.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                // Time range
+                Text(phase.timeRange.upperBound == Int.max
+                     ? "\(phase.timeRange.lowerBound)h+"
+                     : "\(phase.timeRange.lowerBound)-\(phase.timeRange.upperBound)h")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 12)
+            .opacity(isPastPhase || isCurrentPhase ? 1.0 : 0.6)
+
+            if !isLast {
+                Divider()
+                    .padding(.leading, 58)
+            }
+        }
+    }
+}
+
+// MARK: - Regime Detail View (Legacy - kept for compatibility)
 struct RegimeDetailView: View {
     @ObservedObject var viewModel: FastingViewModel
     let plan: FastingPlan

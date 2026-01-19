@@ -247,12 +247,7 @@ struct FoodDetailViewFromSearch: View {
             self._servingAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
             self._gramsAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
             // Set appropriate unit based on food category (ml for drinks, g for food)
-            let drinkCategories: [FoodSearchResult.FoodCategory] = [.softDrink, .juice, .hotDrink, .water, .alcoholicDrink]
-            if drinkCategories.contains(food.detectedCategory) {
-                self._servingUnit = State(initialValue: "ml")
-            } else {
-                self._servingUnit = State(initialValue: "g")
-            }
+            self._servingUnit = State(initialValue: food.isLiquidCategory ? "ml" : "g")
         }
     }
 
@@ -3594,7 +3589,7 @@ private var nutritionFactsSection: some View {
                             Button {
                                 selectedPortionName = portion.name
                                 servingAmount = String(format: "%.0f", portion.serving_g)
-                                servingUnit = food.detectedCategory == .other ? "g" : (food.detectedCategory == .softDrink || food.detectedCategory == .juice || food.detectedCategory == .hotDrink || food.detectedCategory == .water || food.detectedCategory == .alcoholicDrink ? "ml" : "g")
+                                servingUnit = food.isLiquidCategory ? "ml" : "g"
                             } label: {
                                 HStack(spacing: 6) {
                                     // 1x button - left edge

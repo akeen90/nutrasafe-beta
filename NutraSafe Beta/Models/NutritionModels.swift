@@ -410,15 +410,26 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         if vegetableKeywords.contains(where: { nameLower.contains($0) }) { return .vegetable }
         if fruitKeywords.contains(where: { nameLower.contains($0) }) { return .fruit }
 
-        // Check serving description for ml (likely a drink)
+        // Check serving description for ml - but ONLY if it's clearly a drink
+        // Don't assume ml = drink (sauces, marinades, etc also use ml)
         if servingLower.contains("ml") {
-            // It's measured in ml - likely a drink
+            // It's measured in ml - check if it's actually a drink
             if nameLower.contains("juice") || nameLower.contains("smoothie") { return .juice }
-            if nameLower.contains("water") { return .water }
-            return .softDrink // Default ml items to soft drink
+            if nameLower.contains("water") && !nameLower.contains("sauce") { return .water }
+            // DON'T default to softDrink - could be a sauce, marinade, etc.
         }
 
         return .other
+    }
+
+    /// Returns true if this food category represents a liquid/drink
+    var isLiquidCategory: Bool {
+        switch detectedCategory {
+        case .softDrink, .juice, .hotDrink, .water, .alcoholicDrink, .milk:
+            return true
+        default:
+            return false
+        }
     }
 
     /// Fast food restaurant brands that shouldn't show generic preset portions

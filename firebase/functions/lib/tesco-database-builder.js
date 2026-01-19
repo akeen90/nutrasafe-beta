@@ -1227,7 +1227,9 @@ exports.pauseTescoBuild = functions.https.onCall(async (_data, context) => {
  * Scheduled function to auto-continue Tesco build every 5 minutes
  * This keeps the build running continuously until all products are imported
  */
-exports.scheduledTescoBuild = functions.pubsub
+exports.scheduledTescoBuild = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .pubsub
     .schedule('every 5 minutes')
     .onRun(async () => {
     const db = admin.firestore();
