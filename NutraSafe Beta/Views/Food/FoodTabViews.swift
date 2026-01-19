@@ -759,130 +759,114 @@ struct FoodReactionSummaryCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with gradient background
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.yellow.opacity(0.3), Color.orange.opacity(0.2)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 36, height: 36)
-
-                    Image(systemName: "lightbulb.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.orange)
-                }
-
-                Text("Your Insights")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                Text("\(reactionManager.reactions.count) logged")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule()
-                            .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
-                    )
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-
-            // Divider
-            Rectangle()
-                .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray5).opacity(0.5))
-                .frame(height: 1)
-                .padding(.horizontal, 16)
-
-            // Smart Insights (show if 3+ reactions, otherwise show simple message)
+            // Smart Insights (show if 3+ reactions, otherwise show onboarding)
             if reactionManager.reactions.count >= 3 {
-                // 2x2 Grid of insights
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    // Most common symptom
-                    if let symptom = mostCommonSymptom {
-                        insightCell(
-                            icon: "heart.fill",
-                            iconColor: .pink,
-                            label: "Common Symptom",
-                            value: symptom.symptom,
-                            badge: "\(symptom.percentage)%",
-                            badgeColor: .pink
-                        )
+                // Apple Health-inspired 2x2 Grid
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        // Most common symptom - Pink theme
+                        if let symptom = mostCommonSymptom {
+                            appleStyleCell(
+                                icon: "heart.fill",
+                                label: "COMMON SYMPTOM",
+                                value: symptom.symptom,
+                                subValue: "\(symptom.percentage)% of reactions",
+                                color: .pink
+                            )
+                        }
+
+                        // Peak timing - Orange theme
+                        if let timing = peakTiming {
+                            appleStyleCell(
+                                icon: "clock.fill",
+                                label: "PEAK TIME",
+                                value: timing,
+                                subValue: "Most reactions occur",
+                                color: .orange
+                            )
+                        }
                     }
 
-                    // Peak timing
-                    if let timing = peakTiming {
-                        insightCell(
-                            icon: "clock.fill",
-                            iconColor: .orange,
-                            label: "Peak Time",
-                            value: timing,
-                            badge: nil,
-                            badgeColor: .orange
-                        )
-                    }
+                    HStack(spacing: 10) {
+                        // Weekly trend - Purple theme
+                        if let trend = weeklyTrend {
+                            let trendArrow = trend.trend == "down" ? "↓" : (trend.trend == "up" ? "↑" : "→")
+                            let trendDesc = trend.trend == "down" ? "Down from \(trend.lastWeek)" : (trend.trend == "up" ? "Up from \(trend.lastWeek)" : "Same as last week")
 
-                    // Weekly trend
-                    if let trend = weeklyTrend {
-                        let trendColor: Color = trend.trend == "down" ? .green : (trend.trend == "up" ? .red : .secondary)
-                        let trendIcon = trend.trend == "down" ? "arrow.down.right" : (trend.trend == "up" ? "arrow.up.right" : "minus")
-                        let trendText = trend.trend == "same" ? "same" : "vs \(trend.lastWeek)"
+                            appleStyleCell(
+                                icon: "calendar",
+                                label: "THIS WEEK",
+                                value: "\(trend.thisWeek) \(trendArrow)",
+                                subValue: trendDesc,
+                                color: .purple
+                            )
+                        }
 
-                        insightCell(
-                            icon: "calendar",
-                            iconColor: .purple,
-                            label: "This Week",
-                            value: "\(trend.thisWeek)",
-                            badge: trendText,
-                            badgeColor: trendColor,
-                            trendIcon: trendIcon
-                        )
-                    }
+                        // Most common allergen - Red theme
+                        if let allergens = topAllergenTriggers {
+                            let allergenText = allergens.count > 1
+                                ? allergens.prefix(2).map { $0.name }.joined(separator: ", ")
+                                : allergens.first?.name ?? ""
+                            let count = allergens.first?.count ?? 0
 
-                    // Most common allergen (UK 14 only)
-                    if let allergens = topAllergenTriggers {
-                        let allergenText = allergens.count > 1
-                            ? allergens.prefix(2).map { $0.name }.joined(separator: ", ")
-                            : allergens.first?.name ?? ""
-                        let count = allergens.first?.count ?? 0
-
-                        insightCell(
-                            icon: "exclamationmark.triangle.fill",
-                            iconColor: .red,
-                            label: "Common Allergen",
-                            value: allergenText,
-                            badge: "\(count)×",
-                            badgeColor: .red
-                        )
+                            appleStyleCell(
+                                icon: "exclamationmark.triangle.fill",
+                                label: "COMMON ALLERGEN",
+                                value: allergenText,
+                                subValue: "Appeared \(count) times",
+                                color: .red
+                            )
+                        }
                     }
                 }
-                .padding(16)
+                .padding(12)
             } else {
-                // Simple message for new users
-                VStack(spacing: 12) {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 32))
-                        .foregroundColor(.blue.opacity(0.6))
+                // Onboarding state - more visually interesting
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.blue.opacity(0.2), Color.purple.opacity(0.15)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 70, height: 70)
 
-                    Text("Log \(3 - reactionManager.reactions.count) more \(3 - reactionManager.reactions.count == 1 ? "reaction" : "reactions")")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.primary)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 30, weight: .medium))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.blue, .purple],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    }
 
-                    Text("to unlock personalised insights")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                    VStack(spacing: 6) {
+                        Text("Unlock Your Insights")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("Log \(3 - reactionManager.reactions.count) more \(3 - reactionManager.reactions.count == 1 ? "reaction" : "reactions") to discover patterns")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    // Progress dots
+                    HStack(spacing: 8) {
+                        ForEach(0..<3, id: \.self) { index in
+                            Circle()
+                                .fill(index < reactionManager.reactions.count ? Color.blue : Color(.systemGray4))
+                                .frame(width: 10, height: 10)
+                        }
+                    }
                 }
-                .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
+                .padding(.horizontal, 16)
             }
 
             // Log Reaction Button
@@ -909,12 +893,12 @@ struct FoodReactionSummaryCard: View {
                 .cornerRadius(14)
             }
             .buttonStyle(SpringyButtonStyle())
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
         }
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.85))
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.9))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(colorScheme == .dark ? Color(.systemGray5) : Color.white.opacity(0.8), lineWidth: 1)
@@ -926,51 +910,60 @@ struct FoodReactionSummaryCard: View {
         }
     }
 
-    private func insightCell(icon: String, iconColor: Color, label: String, value: String, badge: String?, badgeColor: Color, trendIcon: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Icon and label row
-            HStack(spacing: 5) {
+    // MARK: - Apple Health-inspired Cell
+    private func appleStyleCell(icon: String, label: String, value: String, subValue: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Icon with colored background
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(color)
+                    .frame(width: 28, height: 28)
+
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(iconColor)
-
-                Text(label.uppercased())
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .tracking(0.3)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
             }
+            .padding(.bottom, 8)
 
-            Spacer(minLength: 0)
+            // Label
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.secondary)
+                .tracking(0.5)
 
-            // Value
+            Spacer(minLength: 4)
+
+            // Main value - large and prominent
             Text(value)
-                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.7)
 
-            // Badge row - always present for consistent height
-            HStack(spacing: 4) {
-                if let trendIcon = trendIcon {
-                    Image(systemName: trendIcon)
-                        .font(.system(size: 10, weight: .bold))
-                }
-                if let badge = badge {
-                    Text(badge)
-                        .font(.system(size: 12, weight: .semibold))
-                } else {
-                    Text(" ") // Invisible placeholder for alignment
-                        .font(.system(size: 12, weight: .semibold))
-                }
-            }
-            .foregroundColor(badge != nil ? badgeColor : .clear)
+            // Sub value
+            Text(subValue)
+                .font(.system(size: 11))
+                .foregroundColor(color)
+                .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6).opacity(0.6))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            color.opacity(colorScheme == .dark ? 0.2 : 0.08),
+                            color.opacity(colorScheme == .dark ? 0.1 : 0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(color.opacity(0.2), lineWidth: 1)
+                )
         )
     }
 }
