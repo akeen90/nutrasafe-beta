@@ -811,6 +811,10 @@ struct LogReactionSheet: View {
     @FocusState private var isDatabaseSearchFocused: Bool
     @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
 
+    // Barcode scanning state
+    @State private var showingBarcodeScanner = false
+    @State private var isBarcodeSearching = false
+
     // Editable ingredients list
     @State private var editableIngredients: [String] = []
     @State private var newIngredientText: String = ""
@@ -896,6 +900,17 @@ struct LogReactionSheet: View {
             InferredIngredientsSheet(
                 foodName: manualFoodName.isEmpty ? "Food" : manualFoodName,
                 inferredIngredients: $inferredIngredients
+            )
+        }
+        .fullScreenCover(isPresented: $showingBarcodeScanner) {
+            ReactionBarcodeScannerSheet(
+                onFoodFound: { food in
+                    showingBarcodeScanner = false
+                    selectDatabaseFood(food)
+                },
+                onCancel: {
+                    showingBarcodeScanner = false
+                }
             )
         }
         .onAppear {
@@ -1123,35 +1138,49 @@ struct LogReactionSheet: View {
     private var databaseSearchContent: some View {
         VStack(spacing: 12) {
             // Inline search field
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+            HStack(spacing: 10) {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
 
-                TextField("Search foods...", text: $databaseSearchText)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .autocorrectionDisabled(true)
-                    .textInputAutocapitalization(.never)
-                    .focused($isDatabaseSearchFocused)
-                    .onChange(of: databaseSearchText) { _, newValue in
-                        // Debounce search to avoid excessive API calls
-                        searchDebouncer.debounce {
-                            await performDatabaseSearch(query: newValue)
+                    TextField("Search foods...", text: $databaseSearchText)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .autocorrectionDisabled(true)
+                        .textInputAutocapitalization(.never)
+                        .focused($isDatabaseSearchFocused)
+                        .onChange(of: databaseSearchText) { _, newValue in
+                            // Debounce search to avoid excessive API calls
+                            searchDebouncer.debounce {
+                                await performDatabaseSearch(query: newValue)
+                            }
+                        }
+
+                    if !databaseSearchText.isEmpty {
+                        Button(action: {
+                            databaseSearchText = ""
+                            databaseSearchResults = []
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
                         }
                     }
+                }
+                .padding(14)
+                .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                .cornerRadius(12)
 
-                if !databaseSearchText.isEmpty {
-                    Button(action: {
-                        databaseSearchText = ""
-                        databaseSearchResults = []
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                    }
+                // Barcode scan button
+                Button(action: {
+                    showingBarcodeScanner = true
+                }) {
+                    Image(systemName: "barcode.viewfinder")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.blue)
+                        .frame(width: 48, height: 48)
+                        .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                        .cornerRadius(12)
                 }
             }
-            .padding(14)
-            .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
-            .cornerRadius(12)
 
             // Search results dropdown
             if isDatabaseSearching {
@@ -3799,4 +3828,195 @@ struct MultiReactionPDFExportSheet: View {
 // @retroactive suppresses warning about conforming String to Identifiable
 extension String: @retroactive Identifiable {
     public var id: String { self }
+}
+
+// MARK: - Reaction Barcode Scanner Sheet
+
+struct ReactionBarcodeScannerSheet: View {
+    let onFoodFound: (FoodSearchResult) -> Void
+    let onCancel: () -> Void
+
+    @State private var isSearching = false
+    @State private var errorMessage: String?
+    @State private var showError = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                // Camera scanner
+                BarcodeScannerViewControllerRepresentable { barcode in
+                    handleBarcodeScanned(barcode)
+                }
+                .edgesIgnoringSafeArea(.all)
+
+                // Overlay UI
+                VStack {
+                    Spacer()
+
+                    // Bottom instruction text
+                    if !isSearching {
+                        VStack(spacing: 8) {
+                            Text("Position barcode within frame")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Scan a product to link with your reaction")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        .background(Color.black.opacity(0.7))
+                    }
+                }
+
+                // Searching overlay
+                if isSearching {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        Text("Looking up product...")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .padding(32)
+                    .background(Color.black.opacity(0.75))
+                    .cornerRadius(16)
+                }
+            }
+            .navigationTitle("Scan Barcode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                }
+            }
+            .alert("Product Not Found", isPresented: $showError) {
+                Button("Try Again") {
+                    errorMessage = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    onCancel()
+                }
+            } message: {
+                Text(errorMessage ?? "This product wasn't found in our database.")
+            }
+        }
+    }
+
+    // MARK: - Barcode Handling
+
+    private func handleBarcodeScanned(_ barcode: String) {
+        guard !isSearching else { return }
+
+        isSearching = true
+        errorMessage = nil
+
+        Task {
+            // Normalize barcode for format variations
+            let variations = normalizeBarcode(barcode)
+
+            // Try Algolia search first
+            var foundProduct: FoodSearchResult?
+            for variation in variations {
+                do {
+                    if let hit = try await AlgoliaSearchManager.shared.searchByBarcode(variation) {
+                        foundProduct = hit
+                        break
+                    }
+                } catch {
+                    continue
+                }
+            }
+
+            if let product = foundProduct {
+                await MainActor.run {
+                    isSearching = false
+                    onFoodFound(product)
+                }
+                return
+            }
+
+            // Fallback to Firebase cloud function
+            await searchProductCloud(barcode: barcode)
+        }
+    }
+
+    private func searchProductCloud(barcode: String) async {
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodByBarcode") else {
+            await MainActor.run {
+                isSearching = false
+                errorMessage = "Unable to search. Please try again."
+                showError = true
+            }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["barcode": barcode])
+
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let success = json["success"] as? Bool, success,
+               let foodData = json["food"] as? [String: Any] {
+
+                // Parse the food result
+                let product = FoodSearchResult(
+                    id: foodData["id"] as? String ?? UUID().uuidString,
+                    name: foodData["name"] as? String ?? "Unknown",
+                    brand: foodData["brand"] as? String,
+                    calories: foodData["calories"] as? Double ?? 0,
+                    protein: foodData["protein"] as? Double ?? 0,
+                    carbs: foodData["carbs"] as? Double ?? 0,
+                    fat: foodData["fat"] as? Double ?? 0,
+                    saturatedFat: foodData["saturatedFat"] as? Double,
+                    fiber: foodData["fiber"] as? Double ?? 0,
+                    sugar: foodData["sugar"] as? Double ?? 0,
+                    sodium: foodData["sodium"] as? Double ?? 0,
+                    ingredients: foodData["ingredients"] as? [String],
+                    barcode: foodData["barcode"] as? String ?? barcode
+                )
+
+                await MainActor.run {
+                    isSearching = false
+                    onFoodFound(product)
+                }
+            } else {
+                await MainActor.run {
+                    isSearching = false
+                    errorMessage = "This product wasn't found in our database."
+                    showError = true
+                }
+            }
+        } catch {
+            await MainActor.run {
+                isSearching = false
+                errorMessage = "Unable to search. Please try again."
+                showError = true
+            }
+        }
+    }
+
+    private func normalizeBarcode(_ barcode: String) -> [String] {
+        var variations = [barcode]
+
+        // EAN-13 to UPC-A
+        if barcode.count == 13 && barcode.hasPrefix("0") {
+            variations.append(String(barcode.dropFirst()))
+        }
+
+        // UPC-A to EAN-13
+        if barcode.count == 12 {
+            variations.append("0" + barcode)
+        }
+
+        return variations
+    }
 }

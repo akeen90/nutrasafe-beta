@@ -95,6 +95,19 @@ struct UseByTabView: View {
     @State private var showingPaywall = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
 
+    // MARK: - Inline Search State
+    @State private var isSearchExpanded = false
+    @State private var searchQuery = ""
+    @State private var searchResults: [FoodSearchResult] = []
+    @State private var isSearching = false
+    @State private var searchTask: Task<Void, Never>?
+    @FocusState private var isSearchFieldFocused: Bool
+    @State private var showingFoodDetailForSearch: FoodSearchResult?
+
+    // Barcode scanning state
+    @State private var showingBarcodeScanner = false
+    @State private var isBarcodeSearching = false
+
     // MARK: - Feature Tips
     @State private var showingUseByTip = false
     @State private var hasShownTip = false
@@ -174,61 +187,133 @@ struct UseByTabView: View {
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
-                // Header - Title with buttons
-                HStack(spacing: 12) {
-                    // Title
-                    Text("Use By Tracker")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.primary, .primary.opacity(0.8)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                // Header - Title with inline search
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        if isSearchExpanded {
+                            // Expanded search field
+                            HStack(spacing: 8) {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 16))
 
-                    Spacer()
+                                TextField("Search foods to add...", text: $searchQuery)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .autocorrectionDisabled(true)
+                                    .textInputAutocapitalization(.never)
+                                    .focused($isSearchFieldFocused)
+                                    .onChange(of: searchQuery) { _, newValue in
+                                        performUseBySearch(query: newValue)
+                                    }
 
-                    Button(action: { showingSettings = true }) {
-                        ZStack {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 40, height: 40)
-                                .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primary)
-                        }
-                    }
+                                if !searchQuery.isEmpty {
+                                    Button(action: {
+                                        searchQuery = ""
+                                        searchResults = []
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                            .cornerRadius(10)
 
-                    // Only show add button for premium users
-                    if subscriptionManager.hasAccess {
-                        Button(action: { showingAddSheet = true }) {
-                            ZStack {
-                                Circle()
-                                    .fill(AppColors.primary)
+                            // Barcode scan button
+                            Button(action: {
+                                showingBarcodeScanner = true
+                            }) {
+                                Image(systemName: "barcode.viewfinder")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.orange)
                                     .frame(width: 40, height: 40)
-                                Image(systemName: "plus")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.white)
+                                    .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                                    .cornerRadius(10)
+                            }
+
+                            // Cancel button
+                            Button("Cancel") {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isSearchExpanded = false
+                                    searchQuery = ""
+                                    searchResults = []
+                                    isSearchFieldFocused = false
+                                }
+                            }
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.blue)
+                        } else {
+                            // Title
+                            Text("Use By Tracker")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.primary, .primary.opacity(0.8)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+
+                            Spacer()
+
+                            Button(action: { showingSettings = true }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .frame(width: 40, height: 40)
+                                        .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
+                                    Image(systemName: "gearshape.fill")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                }
+                            }
+
+                            // Only show search/add button for premium users
+                            if subscriptionManager.hasAccess {
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isSearchExpanded = true
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                            isSearchFieldFocused = true
+                                        }
+                                    }
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(AppColors.primary)
+                                            .frame(width: 40, height: 40)
+                                        Image(systemName: "magnifyingglass")
+                                            .font(.system(size: 18, weight: .bold))
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                                .buttonStyle(SpringyButtonStyle())
                             }
                         }
-                        .buttonStyle(SpringyButtonStyle())
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+
+                    // Inline search results dropdown
+                    if isSearchExpanded && subscriptionManager.hasAccess {
+                        useBySearchResultsView
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
 
                 // Check premium access
                 if subscriptionManager.hasAccess {
                     // Premium users see full content
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            // Hero header section
-                            useByHeroHeader
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8)
+                            // Hero header section (hide when search is expanded)
+                            if !isSearchExpanded {
+                                useByHeroHeader
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 8)
+                            }
 
                             UseByExpiryView(
                                 showingScanner: $showingScanner,
@@ -259,6 +344,22 @@ struct UseByTabView: View {
             .tabGradientBackground(.useBy)
             .navigationBarHidden(true)
         }
+        .fullScreenCover(item: $showingFoodDetailForSearch) { food in
+            NavigationView {
+                UseByItemDetailView(
+                    item: nil,
+                    prefillFood: food,
+                    onComplete: {
+                        showingFoodDetailForSearch = nil
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isSearchExpanded = false
+                            searchQuery = ""
+                            searchResults = []
+                        }
+                    }
+                )
+            }
+        }
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddUseByItemSheet(onComplete: {
                 showingAddSheet = false
@@ -267,6 +368,17 @@ struct UseByTabView: View {
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
+        }
+        .fullScreenCover(isPresented: $showingBarcodeScanner) {
+            UseByBarcodeScannerSheet(
+                onFoodFound: { food in
+                    showingBarcodeScanner = false
+                    showingFoodDetailForSearch = food
+                },
+                onCancel: {
+                    showingBarcodeScanner = false
+                }
+            )
         }
         .fullScreenCover(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
@@ -303,6 +415,133 @@ struct UseByTabView: View {
             }
         }
         .trackScreen("Use By Tracker")
+        .onDisappear {
+            searchTask?.cancel()
+        }
+    }
+
+    // MARK: - Inline Search Results View
+
+    @ViewBuilder
+    private var useBySearchResultsView: some View {
+        VStack(spacing: 0) {
+            if isSearching {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Searching...")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            } else if !searchResults.isEmpty {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(searchResults.prefix(8), id: \.id) { food in
+                            Button(action: {
+                                showingFoodDetailForSearch = food
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(food.name)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+
+                                        if let brand = food.brand, !brand.isEmpty {
+                                            Text(brand)
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(12)
+                                .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if searchResults.count > 8 {
+                            Text("\(searchResults.count - 8) more results...")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                }
+                .frame(maxHeight: 300)
+            } else if !searchQuery.isEmpty && searchQuery.count >= 2 {
+                // No results message
+                VStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass.circle")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("No foods found")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    Text("Try different keywords")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            }
+        }
+        .background(Color.adaptiveBackground)
+    }
+
+    // MARK: - Search Helper
+
+    private func performUseBySearch(query: String) {
+        searchTask?.cancel()
+
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard trimmed.count >= 2 else {
+            searchResults = []
+            isSearching = false
+            return
+        }
+
+        isSearching = true
+
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+
+            guard !Task.isCancelled else { return }
+
+            do {
+                let results = try await FirebaseManager.shared.searchFoods(query: trimmed)
+                await MainActor.run {
+                    if !Task.isCancelled {
+                        searchResults = results
+                        isSearching = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    if !Task.isCancelled {
+                        searchResults = []
+                        isSearching = false
+                    }
+                }
+                print("Use By search error: \(error)")
+            }
+        }
     }
 }
 
@@ -3505,6 +3744,7 @@ struct UseByItemDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     let item: UseByInventoryItem? // Optional for add mode
+    let prefillFood: FoodSearchResult? // Optional food from search to prefill name/brand
     var onComplete: (() -> Void)? = nil
 
     @State private var editedName: String
@@ -3533,11 +3773,12 @@ struct UseByItemDetailView: View {
     @State private var uploadedImageURL: String?
 
     // Initializer to properly set initial values
-    init(item: UseByInventoryItem? = nil, onComplete: (() -> Void)? = nil) {
+    init(item: UseByInventoryItem? = nil, prefillFood: FoodSearchResult? = nil, onComplete: (() -> Void)? = nil) {
         self.item = item
+        self.prefillFood = prefillFood
         self.onComplete = onComplete
 
-        // Initialize @State properties based on item (edit mode) or defaults (add mode)
+        // Initialize @State properties based on item (edit mode), prefillFood (from search), or defaults (add mode)
         if let item = item {
             _editedName = State(initialValue: item.name)
             _editedBrand = State(initialValue: item.brand ?? "")
@@ -3545,6 +3786,14 @@ struct UseByItemDetailView: View {
             _editedExpiryDate = State(initialValue: item.expiryDate)
             _notes = State(initialValue: item.notes ?? "")
             _uploadedImageURL = State(initialValue: item.imageURL)
+        } else if let food = prefillFood {
+            // Prefill from search result
+            _editedName = State(initialValue: food.name)
+            _editedBrand = State(initialValue: food.brand ?? "")
+            _editedQuantity = State(initialValue: "")
+            _editedExpiryDate = State(initialValue: Date().addingTimeInterval(7 * 24 * 60 * 60)) // Default: 7 days from now
+            _notes = State(initialValue: "")
+            _uploadedImageURL = State(initialValue: nil)
         } else {
             _editedName = State(initialValue: "")
             _editedBrand = State(initialValue: "")
@@ -5559,5 +5808,196 @@ struct CompactStatPill: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(tint.opacity(0.25), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Use By Barcode Scanner Sheet
+
+struct UseByBarcodeScannerSheet: View {
+    let onFoodFound: (FoodSearchResult) -> Void
+    let onCancel: () -> Void
+
+    @State private var isSearching = false
+    @State private var errorMessage: String?
+    @State private var showError = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                // Camera scanner
+                BarcodeScannerViewControllerRepresentable { barcode in
+                    handleBarcodeScanned(barcode)
+                }
+                .edgesIgnoringSafeArea(.all)
+
+                // Overlay UI
+                VStack {
+                    Spacer()
+
+                    // Bottom instruction text
+                    if !isSearching {
+                        VStack(spacing: 8) {
+                            Text("Position barcode within frame")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Scan a product to add to Use By tracker")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        .background(Color.black.opacity(0.7))
+                    }
+                }
+
+                // Searching overlay
+                if isSearching {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        Text("Looking up product...")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .padding(32)
+                    .background(Color.black.opacity(0.75))
+                    .cornerRadius(16)
+                }
+            }
+            .navigationTitle("Scan Barcode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                }
+            }
+            .alert("Product Not Found", isPresented: $showError) {
+                Button("Try Again") {
+                    errorMessage = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    onCancel()
+                }
+            } message: {
+                Text(errorMessage ?? "This product wasn't found in our database.")
+            }
+        }
+    }
+
+    // MARK: - Barcode Handling
+
+    private func handleBarcodeScanned(_ barcode: String) {
+        guard !isSearching else { return }
+
+        isSearching = true
+        errorMessage = nil
+
+        Task {
+            // Normalize barcode for format variations
+            let variations = normalizeBarcode(barcode)
+
+            // Try Algolia search first
+            var foundProduct: FoodSearchResult?
+            for variation in variations {
+                do {
+                    if let hit = try await AlgoliaSearchManager.shared.searchByBarcode(variation) {
+                        foundProduct = hit
+                        break
+                    }
+                } catch {
+                    continue
+                }
+            }
+
+            if let product = foundProduct {
+                await MainActor.run {
+                    isSearching = false
+                    onFoodFound(product)
+                }
+                return
+            }
+
+            // Fallback to Firebase cloud function
+            await searchProductCloud(barcode: barcode)
+        }
+    }
+
+    private func searchProductCloud(barcode: String) async {
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodByBarcode") else {
+            await MainActor.run {
+                isSearching = false
+                errorMessage = "Unable to search. Please try again."
+                showError = true
+            }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["barcode": barcode])
+
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let success = json["success"] as? Bool, success,
+               let foodData = json["food"] as? [String: Any] {
+
+                // Parse the food result
+                let product = FoodSearchResult(
+                    id: foodData["id"] as? String ?? UUID().uuidString,
+                    name: foodData["name"] as? String ?? "Unknown",
+                    brand: foodData["brand"] as? String,
+                    calories: foodData["calories"] as? Double ?? 0,
+                    protein: foodData["protein"] as? Double ?? 0,
+                    carbs: foodData["carbs"] as? Double ?? 0,
+                    fat: foodData["fat"] as? Double ?? 0,
+                    saturatedFat: foodData["saturatedFat"] as? Double,
+                    fiber: foodData["fiber"] as? Double ?? 0,
+                    sugar: foodData["sugar"] as? Double ?? 0,
+                    sodium: foodData["sodium"] as? Double ?? 0,
+                    ingredients: foodData["ingredients"] as? [String],
+                    barcode: foodData["barcode"] as? String ?? barcode
+                )
+
+                await MainActor.run {
+                    isSearching = false
+                    onFoodFound(product)
+                }
+            } else {
+                await MainActor.run {
+                    isSearching = false
+                    errorMessage = "This product wasn't found in our database."
+                    showError = true
+                }
+            }
+        } catch {
+            await MainActor.run {
+                isSearching = false
+                errorMessage = "Unable to search. Please try again."
+                showError = true
+            }
+        }
+    }
+
+    private func normalizeBarcode(_ barcode: String) -> [String] {
+        var variations = [barcode]
+
+        // EAN-13 to UPC-A
+        if barcode.count == 13 && barcode.hasPrefix("0") {
+            variations.append(String(barcode.dropFirst()))
+        }
+
+        // UPC-A to EAN-13
+        if barcode.count == 12 {
+            variations.append("0" + barcode)
+        }
+
+        return variations
     }
 }

@@ -1444,7 +1444,7 @@ struct ReactionDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(.regularMaterial)
+                            .fill(Color(.secondarySystemGroupedBackground))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
@@ -1475,11 +1475,11 @@ struct ReactionDetailView: View {
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(.regularMaterial)
+                                .fill(Color.blue.opacity(0.08))
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.blue.opacity(0.1), lineWidth: 1)
+                                .stroke(Color.blue.opacity(0.15), lineWidth: 1)
                         )
 
                         // Severity Card
@@ -1513,11 +1513,11 @@ struct ReactionDetailView: View {
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(.regularMaterial)
+                                .fill(severityColor(for: reaction.severity).opacity(0.08))
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(severityColor(for: reaction.severity).opacity(0.1), lineWidth: 1)
+                                .stroke(severityColor(for: reaction.severity).opacity(0.15), lineWidth: 1)
                         )
                     }
 
@@ -1552,7 +1552,7 @@ struct ReactionDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(.regularMaterial)
+                            .fill(Color(.secondarySystemGroupedBackground))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
@@ -1618,7 +1618,7 @@ struct ReactionDetailView: View {
                         .padding(20)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(Color(.systemGray6).opacity(0.5))
+                                .fill(Color(.secondarySystemGroupedBackground))
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 20)
