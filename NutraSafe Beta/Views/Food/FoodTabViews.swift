@@ -253,16 +253,7 @@ struct FoodReactionsView: View {
         HStack(spacing: 0) {
             ForEach(ReactionSubTab.allCases, id: \.self) { tab in
                 Button(action: {
-                    let startTime = CFAbsoluteTimeGetCurrent()
-                    print("🔄 [ReactionTab] Switching to \(tab.rawValue) at \(Date())")
-                    print("🔄 [ReactionTab] Current reactions count: \(reactionManager.reactions.count)")
-
-                    // No animation - prevents crash from view reconstruction during animation
                     selectedSubTab = tab
-
-                    let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-                    print("🔄 [ReactionTab] State change took \(String(format: "%.2f", elapsed))ms")
-
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }) {
                     Text(tab.rawValue)
@@ -336,13 +327,6 @@ struct FoodReactionsView: View {
                     .fill(Color.clear)
                     .frame(height: 100)
             }
-        }
-        .onAppear {
-            let appearTime = CFAbsoluteTimeGetCurrent()
-            print("📱 [ReactionTab] Timeline view onAppear triggered at \(Date())")
-            print("📱 [ReactionTab] Timeline reactions count: \(reactionManager.reactions.count)")
-            let elapsed = (CFAbsoluteTimeGetCurrent() - appearTime) * 1000
-            print("📱 [ReactionTab] Timeline onAppear completed in \(String(format: "%.2f", elapsed))ms")
         }
     }
 
@@ -566,21 +550,9 @@ struct FoodReactionsView: View {
             including: .all
         )
         .onAppear {
-            let appearTime = CFAbsoluteTimeGetCurrent()
-            print("📱 [ReactionTab] Overview view onAppear triggered at \(Date())")
-
-            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
-            guard !hasLoadedOnce else {
-                print("📱 [ReactionTab] Overview already loaded, skipping reload")
-                return
-            }
+            guard !hasLoadedOnce else { return }
             hasLoadedOnce = true
-            print("📱 [ReactionTab] Overview first load, calling reloadIfAuthenticated")
-
             reactionManager.reloadIfAuthenticated()
-
-            let elapsed = (CFAbsoluteTimeGetCurrent() - appearTime) * 1000
-            print("📱 [ReactionTab] Overview onAppear completed in \(String(format: "%.2f", elapsed))ms")
         }
         .alert("Error", isPresented: $reactionManager.showingError) {
             Button("OK", role: .cancel) {
