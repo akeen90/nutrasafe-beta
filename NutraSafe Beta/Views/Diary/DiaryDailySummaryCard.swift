@@ -45,7 +45,9 @@ struct DiaryDailySummaryCard: View {
 
     // MARK: - Weekly Summary Sheet
     @State private var showWeeklySummary = false
-    
+    @State private var weeklyCaloriesConsumed: Int = 0
+    @State private var weeklyCalorieGoal: Int = 0
+
     // MARK: - Body
     var body: some View {
         VStack(spacing: 16) {
@@ -75,6 +77,9 @@ struct DiaryDailySummaryCard: View {
                 // Right side: Water glass visualization
                 waterGlassView
             }
+
+            // Weekly Summary Card - tappable to see full breakdown
+            weeklySummaryCard
 
             // Smart nutrition insights
             if let insight = generateNutritionInsight() {
@@ -267,6 +272,59 @@ struct DiaryDailySummaryCard: View {
             }
         }
         .frame(height: 24)
+    }
+
+    // MARK: - Weekly Summary Card
+    private var weeklySummaryCard: some View {
+        Button(action: {
+            showWeeklySummary = true
+        }) {
+            HStack(spacing: 8) {
+                // Weekly Summary label
+                Text("Weekly Summary")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(.blue)
+
+                Spacer()
+
+                // Calories: consumed / goal kcal
+                HStack(spacing: 2) {
+                    Text("\(formatNumber(weeklyCaloriesConsumed))")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text("/")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+
+                    Text("\(formatNumber(weeklyCalorieGoal))")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+
+                    Text("kcal")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.4))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(.systemGray6).opacity(0.5))
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private func formatNumber(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
 
     // MARK: - Nutrition Insights
@@ -745,6 +803,7 @@ struct DiaryDailySummaryCard: View {
     private func handleOnAppear() {
         Task {
             await loadNutritionGoals()
+            await loadWeeklyCalories()
         }
     }
 
@@ -752,6 +811,7 @@ struct DiaryDailySummaryCard: View {
         loadWaterData()
         Task {
             await loadNutritionGoals()
+            await loadWeeklyCalories()
         }
     }
 
@@ -777,6 +837,36 @@ struct DiaryDailySummaryCard: View {
             }
         } catch {
             // Keep cached values if loading fails
+        }
+    }
+
+    private func loadWeeklyCalories() async {
+        // Calculate week range (Monday to Sunday)
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: currentDate)
+        // weekday: 1 = Sunday, 2 = Monday, ..., 7 = Saturday
+        let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
+
+        guard let weekStart = calendar.date(byAdding: .day, value: daysFromMonday, to: currentDate),
+              let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
+            return
+        }
+
+        // Calculate weekly calorie goal (daily goal * 7)
+        let dailyGoal = Int(calorieGoal)
+        let weekGoal = dailyGoal * 7
+
+        // Fetch weekly summary using the provided function
+        if let summary = await fetchWeeklySummary(currentDate, calorieGoal, 0, 0, 0) {
+            await MainActor.run {
+                weeklyCaloriesConsumed = summary.totalCalories
+                weeklyCalorieGoal = weekGoal
+            }
+        } else {
+            await MainActor.run {
+                weeklyCaloriesConsumed = 0
+                weeklyCalorieGoal = weekGoal
+            }
         }
     }
 

@@ -17,11 +17,14 @@ struct FastingStartConfirmationSheet: View {
     let context: FastingConfirmationContext
     let onConfirmScheduledTime: () -> Void
     let onConfirmCustomTime: (Date) -> Void
-    let onNotStartedYet: () -> Void
+    let onSkipFast: () -> Void
+    let onSnoozeUntil: (Date) -> Void
     let onDismiss: () -> Void
 
     @State private var showingTimePicker = false
+    @State private var showingSnoozePicker = false
     @State private var selectedTime = Date()
+    @State private var snoozeTime = Date().addingTimeInterval(3600) // Default 1 hour
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -79,8 +82,11 @@ struct FastingStartConfirmationSheet: View {
                     .padding(.horizontal)
 
                     if showingTimePicker {
-                        // Custom time picker view
+                        // Custom start time picker view
                         timePickerView
+                    } else if showingSnoozePicker {
+                        // Snooze time picker view
+                        snoozePickerView
                     } else {
                         // Main actions
                         mainActionsView
@@ -157,19 +163,48 @@ struct FastingStartConfirmationSheet: View {
                 .cornerRadius(14)
             }
 
-            // Not started yet
+            // Remind me later
             Button(action: {
-                onNotStartedYet()
-                onDismiss()
+                snoozeTime = Date().addingTimeInterval(3600) // Default 1 hour
+                showingSnoozePicker = true
             }) {
                 HStack(spacing: 12) {
-                    Image(systemName: "clock.badge.questionmark.fill")
+                    Image(systemName: "bell.badge.clock.fill")
                         .font(.system(size: 22))
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Not Started Yet")
+                        Text("Remind Me Later")
                             .font(.system(size: 17, weight: .semibold))
-                        Text("I'll start later")
+                        Text("Choose when to be reminded")
+                            .font(.system(size: 13))
+                            .opacity(0.8)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color.orange)
+                .cornerRadius(14)
+            }
+
+            // Skip this fast
+            Button(action: {
+                onSkipFast()
+                onDismiss()
+            }) {
+                HStack(spacing: 12) {
+                    Image(systemName: "forward.fill")
+                        .font(.system(size: 22))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Skip This Fast")
+                            .font(.system(size: 17, weight: .semibold))
+                        Text("I won't fast today")
                             .font(.system(size: 13))
                             .opacity(0.8)
                     }
@@ -234,6 +269,69 @@ struct FastingStartConfirmationSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(Color.blue)
+                        .cornerRadius(12)
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    // MARK: - Snooze Picker View
+
+    private var snoozePickerView: some View {
+        VStack(spacing: 16) {
+            Text("When should we remind you?")
+                .font(.system(size: 18, weight: .semibold))
+
+            DatePicker(
+                "Reminder Time",
+                selection: $snoozeTime,
+                in: Date()...,
+                displayedComponents: [.date, .hourAndMinute]
+            )
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+
+            // Quick snooze options
+            HStack(spacing: 8) {
+                ForEach([1, 2, 4], id: \.self) { hours in
+                    Button(action: {
+                        snoozeTime = Date().addingTimeInterval(Double(hours) * 3600)
+                    }) {
+                        Text("\(hours)h")
+                            .font(.system(size: 14, weight: .medium))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color(.systemGray5))
+                            .foregroundColor(.primary)
+                            .cornerRadius(8)
+                    }
+                }
+            }
+
+            HStack(spacing: 12) {
+                Button(action: {
+                    showingSnoozePicker = false
+                }) {
+                    Text("Back")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(.systemGray5))
+                        .cornerRadius(12)
+                }
+
+                Button(action: {
+                    onSnoozeUntil(snoozeTime)
+                    onDismiss()
+                }) {
+                    Text("Set Reminder")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.orange)
                         .cornerRadius(12)
                 }
             }
@@ -519,7 +617,8 @@ struct FastingEndConfirmationSheet: View {
         ),
         onConfirmScheduledTime: {},
         onConfirmCustomTime: { _ in },
-        onNotStartedYet: {},
+        onSkipFast: {},
+        onSnoozeUntil: { _ in },
         onDismiss: {}
     )
 }

@@ -15,11 +15,15 @@ class OnboardingManager: ObservableObject {
 
     private let hasCompletedKey = "hasCompletedOnboarding"
     private let hasAcceptedDisclaimerKey = "hasAcceptedDisclaimer"
+    private let hasSeenWelcomeKey = "hasSeenWelcomeScreen"
     private let userGenderKey = "userGender"
     private let userBirthdayKey = "userBirthday"
 
     /// Tracks if onboarding was just completed in this session (for tip delay)
     @Published var justCompletedOnboarding = false
+
+    /// Tracks if welcome screen was just completed in this session
+    @Published var justCompletedWelcome = false
 
     /// Published user profile data
     @Published var userGender: UserGender = .notSet
@@ -53,6 +57,11 @@ class OnboardingManager: ObservableObject {
         UserDefaults.standard.bool(forKey: hasAcceptedDisclaimerKey)
     }
 
+    /// Check if user has seen the welcome screen
+    var hasSeenWelcome: Bool {
+        UserDefaults.standard.bool(forKey: hasSeenWelcomeKey)
+    }
+
     /// Mark onboarding as completed
     func completeOnboarding() {
         UserDefaults.standard.set(true, forKey: hasCompletedKey)
@@ -62,11 +71,18 @@ class OnboardingManager: ObservableObject {
     /// Mark disclaimer as accepted
     func acceptDisclaimer() {
         UserDefaults.standard.set(true, forKey: hasAcceptedDisclaimerKey)
-            }
+    }
+
+    /// Mark welcome screen as seen
+    func completeWelcome() {
+        UserDefaults.standard.set(true, forKey: hasSeenWelcomeKey)
+        justCompletedWelcome = true
+    }
 
     /// Reset onboarding (for restart from Settings)
     func resetOnboarding() {
         UserDefaults.standard.set(false, forKey: hasCompletedKey)
+        UserDefaults.standard.set(false, forKey: hasSeenWelcomeKey)
         // Note: We don't reset disclaimer acceptance - user has already agreed
         // Note: We don't reset gender/birthday - those are user profile data
     }

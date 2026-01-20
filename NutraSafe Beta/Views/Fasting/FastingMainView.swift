@@ -150,9 +150,14 @@ struct FastingMainView: View {
                             await viewModel.confirmStartAtCustomTime(customTime)
                         }
                     },
-                    onNotStartedYet: {
+                    onSkipFast: {
                         Task {
-                            await viewModel.confirmNotStartedYet()
+                            await viewModel.skipCurrentFast()
+                        }
+                    },
+                    onSnoozeUntil: { snoozeTime in
+                        Task {
+                            await viewModel.snoozeUntil(snoozeTime)
                         }
                     },
                     onDismiss: {
@@ -457,12 +462,12 @@ struct PlanDashboardView: View {
 
     private func phaseColor(for phase: FastingPhase) -> Color {
         switch phase {
-        case .postMeal: return .gray
-        case .fuelSwitching: return .orange
-        case .fatMobilization: return .red
-        case .mildKetosis: return .purple
-        case .autophagyPotential: return .blue
-        case .deepAdaptive: return .green
+        case .postMeal: return Color(red: 0.55, green: 0.55, blue: 0.6) // Soft gray-blue
+        case .fuelSwitching: return Color(red: 1.0, green: 0.6, blue: 0.2)  // Vibrant amber
+        case .fatMobilization: return Color(red: 1.0, green: 0.35, blue: 0.35) // Bright coral red
+        case .mildKetosis: return Color(red: 0.65, green: 0.35, blue: 0.95) // Vivid purple
+        case .autophagyPotential: return Color(red: 0.2, green: 0.6, blue: 1.0) // Bright blue
+        case .deepAdaptive: return Color(red: 0.2, green: 0.85, blue: 0.5) // Vibrant emerald
         }
     }
 
@@ -1249,12 +1254,12 @@ struct FastingStagesDetailView: View {
 
     private func phaseColor(for phase: FastingPhase) -> Color {
         switch phase {
-        case .postMeal: return .gray
-        case .fuelSwitching: return .orange
-        case .fatMobilization: return .red
-        case .mildKetosis: return .purple
-        case .autophagyPotential: return .blue
-        case .deepAdaptive: return .green
+        case .postMeal: return Color(red: 0.55, green: 0.55, blue: 0.6) // Soft gray-blue
+        case .fuelSwitching: return Color(red: 1.0, green: 0.6, blue: 0.2)  // Vibrant amber
+        case .fatMobilization: return Color(red: 1.0, green: 0.35, blue: 0.35) // Bright coral red
+        case .mildKetosis: return Color(red: 0.65, green: 0.35, blue: 0.95) // Vivid purple
+        case .autophagyPotential: return Color(red: 0.2, green: 0.6, blue: 1.0) // Bright blue
+        case .deepAdaptive: return Color(red: 0.2, green: 0.85, blue: 0.5) // Vibrant emerald
         }
     }
 
@@ -1414,12 +1419,12 @@ struct FastingStageDetailRow: View {
 
     private func phaseColor(for phase: FastingPhase) -> Color {
         switch phase {
-        case .postMeal: return .gray
-        case .fuelSwitching: return .orange
-        case .fatMobilization: return .red
-        case .mildKetosis: return .purple
-        case .autophagyPotential: return .blue
-        case .deepAdaptive: return .green
+        case .postMeal: return Color(red: 0.55, green: 0.55, blue: 0.6) // Soft gray-blue
+        case .fuelSwitching: return Color(red: 1.0, green: 0.6, blue: 0.2)  // Vibrant amber
+        case .fatMobilization: return Color(red: 1.0, green: 0.35, blue: 0.35) // Bright coral red
+        case .mildKetosis: return Color(red: 0.65, green: 0.35, blue: 0.95) // Vivid purple
+        case .autophagyPotential: return Color(red: 0.2, green: 0.6, blue: 1.0) // Bright blue
+        case .deepAdaptive: return Color(red: 0.2, green: 0.85, blue: 0.5) // Vibrant emerald
         }
     }
 
@@ -1698,12 +1703,12 @@ struct RegimeTimerCard: View {
 
     private func phaseColor(for phase: FastingPhase) -> Color {
         switch phase {
-        case .postMeal: return .gray
-        case .fuelSwitching: return .orange
-        case .fatMobilization: return .red
-        case .mildKetosis: return .purple
-        case .autophagyPotential: return .blue
-        case .deepAdaptive: return .green
+        case .postMeal: return Color(red: 0.55, green: 0.55, blue: 0.6) // Soft gray-blue
+        case .fuelSwitching: return Color(red: 1.0, green: 0.6, blue: 0.2)  // Vibrant amber
+        case .fatMobilization: return Color(red: 1.0, green: 0.35, blue: 0.35) // Bright coral red
+        case .mildKetosis: return Color(red: 0.65, green: 0.35, blue: 0.95) // Vivid purple
+        case .autophagyPotential: return Color(red: 0.2, green: 0.6, blue: 1.0) // Bright blue
+        case .deepAdaptive: return Color(red: 0.2, green: 0.85, blue: 0.5) // Vibrant emerald
         }
     }
 }

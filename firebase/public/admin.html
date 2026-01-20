@@ -5070,6 +5070,9 @@
                     <button class="btn btn-warning btn-large" id="tesco-pause-btn" onclick="app.pauseTescoBuild()" style="display: none;">
                         ⏸️ Pause
                     </button>
+                    <button class="btn btn-danger btn-large" id="tesco-stop-btn" onclick="app.stopTescoBuild()" style="display: none;">
+                        ⏹️ Stop
+                    </button>
                     <button class="btn btn-success btn-large" id="tesco-resume-btn" onclick="app.resumeTescoBuild()" style="display: none;">
                         ▶️ Resume
                     </button>
@@ -5213,10 +5216,6 @@
                             <input type="number" id="edit-sugar" step="0.1">
                         </div>
                         <div class="form-group">
-                            <label>Sodium (mg)</label>
-                            <input type="number" id="edit-sodium" step="0.1">
-                        </div>
-                        <div class="form-group">
                             <label>Salt (g)</label>
                             <input type="number" id="edit-salt" step="0.01">
                         </div>
@@ -5336,8 +5335,8 @@
                             <input type="number" id="report-sugar" step="0.1">
                         </div>
                         <div class="form-group">
-                            <label>Sodium (mg)</label>
-                            <input type="number" id="report-sodium" step="0.1">
+                            <label>Salt (g)</label>
+                            <input type="number" id="report-salt" step="0.01">
                         </div>
                         <div class="form-group">
                             <label>Saturated Fat (g)</label>
@@ -6198,7 +6197,6 @@
                 document.getElementById('edit-fat').value = nutrition.fat || food.fat || '';
                 document.getElementById('edit-fiber').value = nutrition.fiber || food.fiber || '';
                 document.getElementById('edit-sugar').value = nutrition.sugar || food.sugar || '';
-                document.getElementById('edit-sodium').value = nutrition.sodium || food.sodium || '';
                 document.getElementById('edit-salt').value = nutrition.salt || food.salt || '';
                 document.getElementById('edit-verified-by').value = food.verifiedBy || '';
             },
@@ -6265,8 +6263,9 @@
                     fat: parseFloat(document.getElementById('edit-fat').value) || 0,
                     fiber: parseFloat(document.getElementById('edit-fiber').value) || 0,
                     sugar: parseFloat(document.getElementById('edit-sugar').value) || 0,
-                    sodium: parseFloat(document.getElementById('edit-sodium').value) || 0,
-                    salt: parseFloat(document.getElementById('edit-salt').value) || 0
+                    salt: parseFloat(document.getElementById('edit-salt').value) || 0,
+                    // Calculate sodium from salt for database compatibility (sodium mg = salt g * 1000 / 2.5)
+                    sodium: Math.round((parseFloat(document.getElementById('edit-salt').value) || 0) * 1000 / 2.5)
                 };
 
                 // Also keep nested nutritionData for compatibility
@@ -6549,7 +6548,7 @@
                 document.getElementById('report-fat').value = food.fat || '';
                 document.getElementById('report-fiber').value = food.fiber || '';
                 document.getElementById('report-sugar').value = food.sugar || '';
-                document.getElementById('report-sodium').value = food.sodium || '';
+                document.getElementById('report-salt').value = food.salt || '';
                 document.getElementById('report-saturated-fat').value = food.saturatedFat || '';
 
                 // Reset AI state
@@ -6585,7 +6584,8 @@
                         fat: parseFloat(document.getElementById('report-fat').value) || 0,
                         fiber: parseFloat(document.getElementById('report-fiber').value) || 0,
                         sugar: parseFloat(document.getElementById('report-sugar').value) || 0,
-                        sodium: parseFloat(document.getElementById('report-sodium').value) || 0,
+                        salt: parseFloat(document.getElementById('report-salt').value) || 0,
+                        sodium: Math.round((parseFloat(document.getElementById('report-salt').value) || 0) * 1000 / 2.5),
                         ingredients: document.getElementById('report-ingredients').value.split(',').map(i => i.trim()).filter(i => i)
                     };
 
@@ -6644,7 +6644,7 @@
                     { key: 'fat', label: 'Fat', inputId: 'report-fat' },
                     { key: 'fiber', label: 'Fiber', inputId: 'report-fiber' },
                     { key: 'sugar', label: 'Sugar', inputId: 'report-sugar' },
-                    { key: 'sodium', label: 'Sodium', inputId: 'report-sodium' },
+                    { key: 'salt', label: 'Salt', inputId: 'report-salt' },
                     { key: 'saturatedFat', label: 'Saturated Fat', inputId: 'report-saturated-fat' }
                 ];
 
@@ -6728,7 +6728,7 @@
                 if (nutrition.fat !== undefined) document.getElementById('report-fat').value = nutrition.fat;
                 if (nutrition.fiber !== undefined) document.getElementById('report-fiber').value = nutrition.fiber;
                 if (nutrition.sugar !== undefined) document.getElementById('report-sugar').value = nutrition.sugar;
-                if (nutrition.sodium !== undefined) document.getElementById('report-sodium').value = nutrition.sodium;
+                if (nutrition.salt !== undefined) document.getElementById('report-salt').value = nutrition.salt;
                 if (nutrition.saturatedFat !== undefined) document.getElementById('report-saturated-fat').value = nutrition.saturatedFat;
 
                 this.showToast('All suggestions applied!', 'success');
@@ -6768,7 +6768,8 @@
                         fat: parseFloat(document.getElementById('report-fat').value) || null,
                         fiber: parseFloat(document.getElementById('report-fiber').value) || null,
                         sugar: parseFloat(document.getElementById('report-sugar').value) || null,
-                        sodium: parseFloat(document.getElementById('report-sodium').value) || null,
+                        salt: parseFloat(document.getElementById('report-salt').value) || null,
+                        sodium: Math.round((parseFloat(document.getElementById('report-salt').value) || 0) * 1000 / 2.5) || null,
                         saturatedFat: parseFloat(document.getElementById('report-saturated-fat').value) || null
                     }
                 };
@@ -10856,7 +10857,7 @@
                     { key: 'fat', label: 'Fat', unit: 'g' },
                     { key: 'fiber', label: 'Fiber', unit: 'g' },
                     { key: 'sugar', label: 'Sugar', unit: 'g' },
-                    { key: 'sodium', label: 'Sodium', unit: 'mg' },
+                    { key: 'salt', label: 'Salt', unit: 'g' },
                     { key: 'saturatedFat', label: 'Saturated Fat', unit: 'g' }
                 ];
 
@@ -12171,15 +12172,18 @@
                     // Show/hide buttons based on status
                     const startBtn = document.getElementById('tesco-start-btn');
                     const pauseBtn = document.getElementById('tesco-pause-btn');
+                    const stopBtn = document.getElementById('tesco-stop-btn');
                     const resumeBtn = document.getElementById('tesco-resume-btn');
 
                     if (status === 'running') {
                         if (startBtn) startBtn.style.display = 'none';
                         if (pauseBtn) pauseBtn.style.display = 'inline-flex';
+                        if (stopBtn) stopBtn.style.display = 'inline-flex';
                         if (resumeBtn) resumeBtn.style.display = 'none';
                     } else if (status === 'paused') {
                         if (startBtn) startBtn.style.display = 'none';
                         if (pauseBtn) pauseBtn.style.display = 'none';
+                        if (stopBtn) stopBtn.style.display = 'inline-flex';
                         if (resumeBtn) resumeBtn.style.display = 'inline-flex';
                     } else if (status === 'completed') {
                         if (startBtn) {
@@ -12187,6 +12191,7 @@
                             startBtn.innerHTML = '🔄 Restart Build';
                         }
                         if (pauseBtn) pauseBtn.style.display = 'none';
+                        if (stopBtn) stopBtn.style.display = 'none';
                         if (resumeBtn) resumeBtn.style.display = 'none';
                     } else {
                         if (startBtn) {
@@ -12194,6 +12199,7 @@
                             startBtn.innerHTML = '▶️ Start Build';
                         }
                         if (pauseBtn) pauseBtn.style.display = 'none';
+                        if (stopBtn) stopBtn.style.display = 'none';
                         if (resumeBtn) resumeBtn.style.display = 'none';
                     }
 
@@ -12229,9 +12235,11 @@
                     // Show start button only
                     const startBtn = document.getElementById('tesco-start-btn');
                     const pauseBtn = document.getElementById('tesco-pause-btn');
+                    const stopBtn = document.getElementById('tesco-stop-btn');
                     const resumeBtn = document.getElementById('tesco-resume-btn');
                     if (startBtn) startBtn.style.display = 'inline-flex';
                     if (pauseBtn) pauseBtn.style.display = 'none';
+                    if (stopBtn) stopBtn.style.display = 'none';
                     if (resumeBtn) resumeBtn.style.display = 'none';
                 }
             },
@@ -12418,6 +12426,36 @@
                     if (pauseBtn) {
                         pauseBtn.disabled = false;
                         pauseBtn.innerHTML = '⏸️ Pause';
+                    }
+                    this.refreshTescoProgress();
+                }
+            },
+
+            async stopTescoBuild() {
+                const stopBtn = document.getElementById('tesco-stop-btn');
+                if (stopBtn) {
+                    stopBtn.disabled = true;
+                    stopBtn.innerHTML = '<span class="spinner-small"></span> Stopping...';
+                }
+
+                try {
+                    const stopTescoBuild = firebase.functions().httpsCallable('stopTescoBuild');
+                    const result = await stopTescoBuild();
+
+                    if (result.data.success) {
+                        this.showToast('Tesco build STOPPED completely. Scheduler will not restart it.', 'success');
+                        this.addActivityLogEntry('Build stopped completely by user', 'warning');
+                        this.stopTescoProgressPolling();
+                    } else {
+                        throw new Error(result.data.error || 'Failed to stop build');
+                    }
+                } catch (error) {
+                    console.error('Error stopping Tesco build:', error);
+                    this.showToast('Failed to stop: ' + error.message, 'error');
+                } finally {
+                    if (stopBtn) {
+                        stopBtn.disabled = false;
+                        stopBtn.innerHTML = '⏹️ Stop';
                     }
                     this.refreshTescoProgress();
                 }

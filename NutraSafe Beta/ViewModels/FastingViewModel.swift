@@ -1922,23 +1922,69 @@ class FastingViewModel: ObservableObject {
         confirmationContext = nil
     }
 
-    /// User indicated they haven't started yet - snooze for 1 hour
-    func confirmNotStartedYet() async {
-        // Get plan context for snooze notification
+    /// User wants to skip this fast entirely
+    /// Also cancels any auto-started session that may have been created
+    func skipCurrentFast() async {
         guard let plan = activePlan else {
             confirmationContext = nil
             return
         }
 
-        // Calculate snooze until 1 hour from now
-        let snoozeUntil = Date().addingTimeInterval(3600) // 1 hour
+        // If there's an active session (auto-started), delete it as if it never happened
+        if let session = activeSession, let sessionId = session.id {
+            do {
+                try await firebaseManager.deleteFastingSession(id: sessionId)
+                self.activeSession = nil
+                await loadRecentSessions()
+            } catch {
+                // Non-critical - session deletion failed but continue with skip
+            }
+        }
 
-        // If we're in regime mode, mark this fasting window as skipped for now
-        // by storing a snooze marker - the fast will auto-resume when snooze expires
+        // If we're in regime mode, mark this fasting window as skipped
+        if plan.regimeActive {
+            // Mark current window end so auto-record doesn't create a session
+            if case .fasting(_, let ends) = currentRegimeState {
+                lastEndedWindowEnd = ends
+            }
+
+            // Clear any existing snooze
+            UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
+            cachedSnoozeUntil = nil
+
+            // Store skip marker until next fasting window
+            UserDefaults.standard.set(Date(), forKey: "regimeSkippedAt_\(plan.id ?? "")")
+        }
+
+        // Trigger UI refresh
+        objectWillChange.send()
+
+        confirmationContext = nil
+    }
+
+    /// User wants to be reminded at a specific time
+    func snoozeUntil(_ snoozeTime: Date) async {
+        guard let plan = activePlan else {
+            confirmationContext = nil
+            return
+        }
+
+        // If there's an active session (auto-started), delete it as if it never happened
+        if let session = activeSession, let sessionId = session.id {
+            do {
+                try await firebaseManager.deleteFastingSession(id: sessionId)
+                self.activeSession = nil
+                await loadRecentSessions()
+            } catch {
+                // Non-critical - session deletion failed but continue with snooze
+            }
+        }
+
+        // If we're in regime mode, mark this fasting window as snoozed
         if plan.regimeActive {
             // Store snooze time in UserDefaults and update cache
-            UserDefaults.standard.set(snoozeUntil, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
-            cachedSnoozeUntil = snoozeUntil
+            UserDefaults.standard.set(snoozeTime, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
+            cachedSnoozeUntil = snoozeTime
 
             // Mark current window end so auto-record doesn't create a session
             if case .fasting(_, let ends) = currentRegimeState {
@@ -1946,7 +1992,7 @@ class FastingViewModel: ObservableObject {
             }
         }
 
-        // Schedule a snooze reminder notification for 1 hour
+        // Schedule a snooze reminder notification
         let center = UNUserNotificationCenter.current()
         do {
             let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
@@ -1965,18 +2011,21 @@ class FastingViewModel: ObservableObject {
                     "durationHours": plan.durationHours
                 ]
 
-                let trigger = UNTimeIntervalNotificationTrigger(
-                    timeInterval: 3600, // 1 hour
-                    repeats: false
-                )
+                let timeInterval = snoozeTime.timeIntervalSinceNow
+                if timeInterval > 0 {
+                    let trigger = UNTimeIntervalNotificationTrigger(
+                        timeInterval: timeInterval,
+                        repeats: false
+                    )
 
-                let request = UNNotificationRequest(
-                    identifier: "fast_start_snooze_\(plan.id ?? "")_\(Date().timeIntervalSince1970)",
-                    content: content,
-                    trigger: trigger
-                )
+                    let request = UNNotificationRequest(
+                        identifier: "fast_start_snooze_\(plan.id ?? "")_\(Date().timeIntervalSince1970)",
+                        content: content,
+                        trigger: trigger
+                    )
 
-                try await center.add(request)
+                    try await center.add(request)
+                }
             }
         } catch {
             // Non-critical - notification scheduling failed but continue

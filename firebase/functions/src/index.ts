@@ -59,4 +59,4 @@ export { discoverUKProductPage, generateManualSearchLinks } from './uk-discovery
 export { extractUKProductData, extractWithPuppeteer, lookupTescoProduct } from './uk-extractor';
 
 // Tesco Database Builder - builds comprehensive UK food database from Tesco API
-export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, resetTescoDatabase, getTescoDatabaseStats, configureTescoAlgoliaIndex, syncTescoToAlgolia, scheduledTescoBuild, cleanupTescoDatabase } from './tesco-database-builder';
+export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, stopTescoBuild, resetTescoDatabase, getTescoDatabaseStats, configureTescoAlgoliaIndex, syncTescoToAlgolia, scheduledTescoBuild, cleanupTescoDatabase } from './tesco-database-builder';

@@ -429,6 +429,7 @@ struct ContentView: View {
     @State private var deleteTrigger = false
     @StateObject private var healthKitManager = HealthKitManager.shared
     @State private var showOnboarding = !OnboardingManager.shared.hasCompletedOnboarding
+    @State private var showWelcomeScreen = false
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var showingPaywall = false
@@ -667,8 +668,8 @@ struct ContentView: View {
                 Task {
                     do {
                         try await firebaseManager.updateEmailMarketingConsent(hasConsented: emailMarketingConsent)
-                                            } catch {
-                                                // Save to UserDefaults as fallback
+                    } catch {
+                        // Save to UserDefaults as fallback
                         UserDefaults.standard.set(emailMarketingConsent, forKey: "emailMarketingConsent")
                         if emailMarketingConsent {
                             UserDefaults.standard.set(Date(), forKey: "emailMarketingConsentDate")
@@ -677,8 +678,22 @@ struct ContentView: View {
                 }
 
                 showOnboarding = false
+
+                // Show welcome screen after onboarding if not seen before
+                if !OnboardingManager.shared.hasSeenWelcome {
+                    // Small delay to ensure onboarding dismisses first
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showWelcomeScreen = true
+                    }
+                }
                 // SOFT PAYWALL: Don't show paywall after onboarding
                 // Users can explore the free tier first; paywall shows when they hit limits
+            })
+        }
+        .fullScreenCover(isPresented: $showWelcomeScreen) {
+            WelcomeScreenView(onContinue: {
+                OnboardingManager.shared.completeWelcome()
+                showWelcomeScreen = false
             })
         }
         .fullScreenCover(isPresented: $showingDiaryAdd) {

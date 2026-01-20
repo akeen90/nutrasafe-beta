@@ -312,14 +312,12 @@ function detectIssues(food) {
     if (sugar > 100) {
         impossibleIssues.push(`sugar: ${sugar}g (max 100g)`);
     }
-    // Sugar can't exceed carbs
+    // Sugar can't exceed carbs (sugar is "of which sugars" under carbs in UK labels)
     if (sugar > carbs && carbs > 0) {
         impossibleIssues.push(`sugar (${sugar}g) > carbs (${carbs}g)`);
     }
-    // Fiber can't exceed carbs
-    if (fiber > carbs && carbs > 0) {
-        impossibleIssues.push(`fiber (${fiber}g) > carbs (${carbs}g)`);
-    }
+    // Note: Fiber/fibre check removed - UK labels list fiber SEPARATELY from carbs,
+    // unlike US labels where fiber is part of total carbs. So fiber > carbs is valid in UK.
     // Total macros can't exceed 100g (with small tolerance for rounding)
     const totalMacros = protein + carbs + fat;
     if (totalMacros > 105) {
@@ -336,9 +334,12 @@ function detectIssues(food) {
             impossibleIssues.push(`calories mismatch: stated ${calories} vs calculated ${calculatedCals.toFixed(0)}`);
         }
     }
-    // Sodium: typically measured in mg, > 10000mg (10g) is extreme
-    if (sodium > 10000) {
-        impossibleIssues.push(`sodium: ${sodium}mg (extremely high)`);
+    // Salt check (UK labels use salt in grams, not sodium in mg)
+    // Convert sodium (mg) to salt (g): salt = sodium × 2.5 / 1000
+    // > 10g salt per 100g is impossibly high
+    const saltGrams = (sodium * 2.5) / 1000;
+    if (saltGrams > 10) {
+        impossibleIssues.push(`salt: ${saltGrams.toFixed(1)}g (extremely high)`);
     }
     if (impossibleIssues.length > 0) {
         issues.push({

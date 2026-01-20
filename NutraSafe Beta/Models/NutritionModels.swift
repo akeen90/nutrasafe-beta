@@ -311,7 +311,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         let servingLower = (servingDescription ?? "").lowercased()
 
         // Drink brands
-        let softDrinkBrands = ["coca-cola", "coca cola", "pepsi", "fanta", "sprite", "7up", "7-up", "dr pepper", "irn-bru", "irn bru", "lucozade", "red bull", "monster", "relentless", "rockstar", "tango", "oasis", "ribena", "vimto", "schweppes", "san pellegrino", "fever-tree"]
+        let softDrinkBrands = ["coca-cola", "coca cola", "coke", "diet coke", "coke zero", "pepsi", "pepsi max", "fanta", "sprite", "7up", "7-up", "dr pepper", "irn-bru", "irn bru", "lucozade", "red bull", "monster", "relentless", "rockstar", "tango", "oasis", "ribena", "vimto", "schweppes", "san pellegrino", "fever-tree"]
         let juiceBrands = ["tropicana", "innocent", "naked", "copella", "del monte"]
         let hotDrinkBrands = ["nescafe", "kenco", "douwe egberts", "twinings", "pg tips", "yorkshire tea", "tetley"]
         let waterBrands = ["evian", "volvic", "buxton", "highland spring", "perrier", "badoit"]
