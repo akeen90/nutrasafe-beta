@@ -15,6 +15,7 @@
 		1844CFD1E3BF18E3B1F4B94C /* FastingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F10FFBFB4E351F43FDBC8F2 /* FastingService.swift */; };
 		226CBF05F11F465EB3B00335 /* SecureStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E3B509554C438DB764FD12 /* SecureStorage.swift */; };
 		24D3ACC266DD4F91AE1F1045B7BE8F34 /* BarcodeScanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D2ABE73E734F6F8D147178AE588182 /* BarcodeScanningViews.swift */; };
+		25DFD742946D899129F72798 /* DiaryMetricCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE66DFC8777762545539ED47 /* DiaryMetricCards.swift */; };
 		26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */; };
 		28291D8E59C24DBEEC0CB4B3 /* SearchNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EF393E4B5FC384966969A5 /* SearchNormalization.swift */; };
 		2DA31381E3C0ED7887D04FBF /* PremiumOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */; };
@@ -240,6 +241,7 @@
 		E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/ReactionLogView.swift"; sourceTree = SOURCE_ROOT; };
 		E4E289D96672BF3F6322CE44 /* FastingConfirmationSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingConfirmationSheet.swift; sourceTree = "<group>"; };
 		EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryDailySummaryCard.swift; sourceTree = "<group>"; };
+		EE66DFC8777762545539ED47 /* DiaryMetricCards.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryMetricCards.swift"; sourceTree = SOURCE_ROOT; };
 		EF86AB54327E46EA98DD76AB /* FoodManagementViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodManagementViews.swift; sourceTree = "<group>"; };
 		F424654E4CD941D1B3565C0B /* FoodSearchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchViews.swift; sourceTree = "<group>"; };
 		F6794A3B8C5E40B74BFFC944 /* NutrientTrackingTypes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutrientTrackingTypes.swift; path = "NutraSafe Beta/Views/Components/NutrientTrackingTypes.swift"; sourceTree = "<group>"; };
@@ -390,6 +392,7 @@
 				EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */,
 				382580B0102C42B88767E7A2 /* WeeklySummarySheet.swift */,
 				760CD77654AC93ADD8BE558E /* AdditiveTrackerView.swift */,
+				EE66DFC8777762545539ED47 /* DiaryMetricCards.swift */,
 			);
 			path = Diary;
 			sourceTree = "<group>";
@@ -779,6 +782,7 @@
 				2DA31381E3C0ED7887D04FBF /* PremiumOnboardingView.swift in Sources */,
 				5C276317BD666021E0680AC7 /* AppDesignSystem.swift in Sources */,
 				6E87137381554C34FDC70BAE /* NutraSafeComponents.swift in Sources */,
+				25DFD742946D899129F72798 /* DiaryMetricCards.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

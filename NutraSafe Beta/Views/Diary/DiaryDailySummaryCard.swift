@@ -57,48 +57,72 @@ struct DiaryDailySummaryCard: View {
     @State private var weeklyCaloriesConsumed: Int = 0
     @State private var weeklyCalorieGoal: Int = 0
 
-    // MARK: - Body
+    // MARK: - Body (Redesigned Premium Layout)
     var body: some View {
-        VStack(spacing: 16) {
-            // Calorie ring and micro macros
-            HStack(spacing: 20) {
-                calorieRingView
+        VStack(spacing: DiaryLayoutTokens.sectionSpacing) {
+            // MARK: Hero Section - Calorie Ring
+            HeroCalorieRing(calories: totalCalories, goal: calorieGoal)
+                .padding(.top, 8)
 
-                Divider()
-                    .frame(height: 80)
-
-                microMacrosView
-            }
-            .padding(.vertical, 4)
-
-            // Separator line
-            Divider()
-                .padding(.horizontal, -AppSpacing.medium)
-
-            // Activity row: Steps + Cals burned on left, Water glass on right
-            HStack(spacing: 12) {
-                // Left side: Steps and Cals burned bars stacked
-                VStack(spacing: 8) {
-                    stepsProgressView
-                    caloriesBurnedProgressView
+            // MARK: Macro Capsules (Horizontal Pills)
+            VStack(spacing: 8) {
+                ForEach(macroGoals.prefix(4), id: \.macroType) { macroGoal in
+                    MacroCapsule(
+                        name: macroGoal.macroType.displayName,
+                        current: calculateMacroTotal(for: macroGoal.macroType),
+                        goal: macroGoal.calculateGramGoal(from: calorieGoal),
+                        color: macroGoal.macroType.color
+                    )
                 }
-
-                // Right side: Water glass visualization
-                waterGlassView
             }
 
-            // Weekly Summary Card - tappable to see full breakdown
-            weeklySummaryCard
+            // MARK: Activity Metrics Row (Glass Cards)
+            HStack(spacing: 10) {
+                WaterMetricCard(
+                    waterCount: waterCount,
+                    dailyGoal: dailyWaterGoal,
+                    streak: waterStreak,
+                    onTap: addWater
+                )
 
-            // Smart nutrition insights
+                StepsMetricCard(
+                    steps: healthKitManager.stepCount,
+                    goal: stepGoal
+                )
+
+                CaloriesBurnedMetricCard(
+                    burned: healthKitManager.activeEnergyBurned,
+                    goal: exerciseGoal
+                )
+            }
+
+            // MARK: Weekly Summary Pill
+            WeeklySummaryPill(
+                consumed: weeklyCaloriesConsumed,
+                goal: weeklyCalorieGoal,
+                onTap: { showWeeklySummary = true }
+            )
+
+            // MARK: Coaching Banner (Smart Nutrition Insights)
             if let insight = generateNutritionInsight() {
-                nutritionInsightView(insight)
+                CoachingBanner(
+                    icon: insight.icon,
+                    message: insight.message,
+                    color: insight.color,
+                    isPositive: insight.isPositive
+                )
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: insight.message)
             }
 
+            // Water celebration overlay
+            if showingWaterCelebration {
+                waterCelebrationBanner
+            }
         }
-        .padding(AppSpacing.medium)
+        .padding(DesignTokens.Spacing.md)
         .background(cardBackground)
-        .cardShadow()
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xl))
+        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
         .onAppear { handleOnAppear(); loadWaterData() }
         .onChange(of: currentDate) { handleDateChange() }
         .onChange(of: healthKitRingsEnabled) { _, enabled in handleHealthKitToggle(enabled) }
@@ -119,239 +143,24 @@ struct DiaryDailySummaryCard: View {
         }
     }
 
-    // MARK: - View Components (Hero: Calorie Ring)
+    // MARK: - Water Celebration Banner
+    private var waterCelebrationBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "hands.clap.fill")
+                .font(.system(size: 18))
+                .foregroundColor(.green)
 
-    private var calorieRingView: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                // Outer glow for hero emphasis
-                Circle()
-                    .fill(palette.accent.opacity(0.06))
-                    .frame(width: 160, height: 160)
-                    .blur(radius: 10)
-
-                // Background circle with subtle palette tint
-                Circle()
-                    .stroke(palette.tertiary.opacity(0.15), lineWidth: 16)
-                    .frame(width: 145, height: 145)
-
-                // Progress circle with palette gradient - HERO element
-                Circle()
-                    .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
-                    .stroke(
-                        LinearGradient(
-                            colors: [palette.accent, palette.primary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
-                    )
-                    .frame(width: 145, height: 145)
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: palette.accent.opacity(0.4), radius: 12, x: 0, y: 6)
-                    .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
-
-                // Center text - stacked vertically with stronger presence
-                VStack(spacing: 0) {
-                    Text("\(totalCalories)")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
-
-                    Text("/\(Int(calorieGoal))")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(palette.textTertiary)
-
-                    Text("Cals")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(palette.textTertiary)
-                        .padding(.top, 2)
-                }
-            }
-            // Breathing animation for the ring - hero emphasis
-            .scaleEffect(isBreathing ? 1.03 : 1.0)
-            .onAppear {
-                withAnimation(DesignTokens.Animation.breathing) {
-                    isBreathing = true
-                }
-            }
+            Text("Well done! You've hit your water goal!")
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(.green)
         }
-    }
-
-    private var microMacrosView: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(macroGoals, id: \.macroType) { macroGoal in
-                HStack(spacing: 3) {
-                    Circle()
-                        .fill(macroGoal.macroType.color)
-                        .frame(width: 8, height: 8)
-
-                    Text(macroGoal.macroType.displayName)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-                        .fixedSize()
-
-                    Spacer()
-
-                    // Achieved value (fixed width for alignment)
-                    Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))g")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(macroGoal.macroType.color)
-                        .frame(width: 50, alignment: .trailing)
-
-                    // Vertical divider
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.3))
-                        .frame(width: 1, height: 14)
-                        .padding(.horizontal, 4)
-
-                    // Goal value (fixed width for alignment)
-                    Text("\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))g")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .frame(width: 45, alignment: .leading)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var stepsProgressView: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                // Background bar (fully rounded)
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray5))
-                    .frame(height: 24)
-
-                // Progress bar (fully rounded) - only show sky blue if there are steps
-                if healthKitManager.stepCount > 0 {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 0.4, green: 0.7, blue: 1.0))
-                        .frame(
-                            width: max(24, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
-                            height: 24
-                        )
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.stepCount)
-                }
-
-                // Text overlay on top of bar
-                HStack {
-                    Text("Steps")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text(formatStepCount(healthKitManager.stepCount))
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-
-                        Text("/\(formatStepCount(stepGoal))")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.horizontal, 12)
-            }
-        }
-        .frame(height: 24)
-    }
-
-    private var caloriesBurnedProgressView: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                // Background bar (fully rounded)
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray5))
-                    .frame(height: 24)
-
-                // Progress bar (fully rounded) - only show orange if calories burned
-                if healthKitManager.activeEnergyBurned > 0 {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 1.0, green: 0.4, blue: 0.3))
-                        .frame(
-                            width: max(24, geometry.size.width * min(1.0, healthKitManager.activeEnergyBurned / exerciseGoal)),
-                            height: 24
-                        )
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.activeEnergyBurned)
-                }
-
-                // Text overlay on top of bar
-                HStack {
-                    Text("Calories Burned")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text("\(Int(healthKitManager.activeEnergyBurned))")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-
-                        Text("/\(Int(exerciseGoal))")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.horizontal, 12)
-            }
-        }
-        .frame(height: 24)
-    }
-
-    // MARK: - Weekly Summary Card (Palette-Aware)
-    private var weeklySummaryCard: some View {
-        Button(action: {
-            showWeeklySummary = true
-        }) {
-            HStack(spacing: 8) {
-                // Weekly Summary label
-                Text("Weekly Summary")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(palette.accent)
-
-                Spacer()
-
-                // Calories: consumed / goal kcal
-                HStack(spacing: 2) {
-                    Text("\(formatNumber(weeklyCaloriesConsumed))")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    Text("/")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    Text("\(formatNumber(weeklyCalorieGoal))")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    Text("kcal")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
-
-                // Chevron
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.4))
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(.systemGray6).opacity(0.5))
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-
-    private func formatNumber(_ number: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.green.opacity(0.12))
+        )
+        .transition(.scale.combined(with: .opacity))
     }
 
     // MARK: - Nutrition Insights
@@ -442,195 +251,7 @@ struct DiaryDailySummaryCard: View {
         return nil
     }
 
-    @ViewBuilder
-    private func nutritionInsightView(_ insight: NutritionInsight) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: insight.icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(insight.color)
-
-            Text(insight.message)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundColor(insight.isPositive ? .primary : insight.color)
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(insight.color.opacity(0.12))
-        )
-        .transition(.opacity.combined(with: .scale(scale: 0.95)))
-        .animation(.easeInOut(duration: 0.3), value: insight.message)
-    }
-
-    // MARK: - Water Glass Visualization
-    private var waterGlassView: some View {
-        Button(action: addWater) {
-            VStack(spacing: 4) {
-                // Glass container
-                ZStack(alignment: .bottom) {
-                    // Glass outline (tapered cup shape)
-                    GlassShape()
-                        .stroke(Color(.systemGray3), lineWidth: 2)
-                        .frame(width: 50, height: 56)
-
-                    // Water fill level
-                    let fillPercent = min(1.0, Double(waterCount) / Double(dailyWaterGoal))
-                    GlassShape()
-                        .fill(
-                            LinearGradient(
-                                colors: waterCount >= dailyWaterGoal
-                                    ? [Color.green.opacity(0.7), Color.green]
-                                    : [Color.cyan.opacity(0.6), Color.cyan],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(width: 50, height: 56)
-                        .mask(
-                            VStack {
-                                Spacer()
-                                Rectangle()
-                                    .frame(height: 56 * fillPercent)
-                            }
-                            .frame(height: 56)
-                        )
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: waterCount)
-
-                    // Checkmark overlay when complete
-                    if waterCount >= dailyWaterGoal {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                            .offset(y: -16)
-                    }
-                }
-
-                // Water count text
-                HStack(spacing: 2) {
-                    Text("\(waterCount)")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(waterCount >= dailyWaterGoal ? .green : .primary)
-                    Text("/\(dailyWaterGoal)")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
-
-                // Streak badge (compact)
-                if waterStreak > 1 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 8))
-                        Text("\(waterStreak)")
-                            .font(.system(size: 9, weight: .semibold))
-                    }
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 2)
-                    .background(Color.orange.opacity(0.15))
-                    .clipShape(Capsule())
-                }
-            }
-        }
-        .buttonStyle(PlainButtonStyle())
-        // Show celebration
-        .overlay(alignment: .top) {
-            if showingWaterCelebration {
-                Image(systemName: "hands.clap.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.green)
-                    .offset(y: -24)
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-    }
-
-    // MARK: - Water Tracking (Legacy bar - kept for reference)
-    private var waterProgressView: some View {
-        VStack(spacing: 6) {
-            Button(action: addWater) {
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        // Background bar (fully rounded)
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray5))
-                            .frame(height: 24)
-
-                        // Progress bar (fully rounded) - show cyan, green when complete
-                        if waterCount > 0 {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(waterCount >= dailyWaterGoal ? Color.green : Color.cyan)
-                                .frame(
-                                    width: max(24, geometry.size.width * min(1.0, Double(waterCount) / Double(dailyWaterGoal))),
-                                    height: 24
-                                )
-                                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: waterCount)
-                        }
-
-                        // Text overlay on top of bar
-                        HStack {
-                            HStack(spacing: 4) {
-                                Image(systemName: waterCount >= dailyWaterGoal ? "checkmark.circle.fill" : "drop.fill")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(waterCount >= dailyWaterGoal ? .green : .cyan)
-                                Text("Water")
-                                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                                Text("\(waterCount)")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-
-                                Text("/\(dailyWaterGoal) glasses")
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary)
-
-                                // Streak badge
-                                if waterStreak > 1 {
-                                    HStack(spacing: 2) {
-                                        Image(systemName: "flame.fill")
-                                            .font(.system(size: 9))
-                                        Text("\(waterStreak)")
-                                            .font(.system(size: 10, weight: .semibold))
-                                    }
-                                    .foregroundColor(.orange)
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 2)
-                                    .background(Color.orange.opacity(0.15))
-                                    .clipShape(Capsule())
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                    }
-                }
-                .frame(height: 24)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            // Celebration message when goal hit
-            if showingWaterCelebration {
-                HStack(spacing: 6) {
-                    Image(systemName: "hands.clap.fill")
-                        .font(.system(size: 12))
-                    Text("Well done! You've hit your water goal!")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .foregroundColor(.green)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 12)
-                .background(Color.green.opacity(0.15))
-                .clipShape(Capsule())
-                .transition(.scale.combined(with: .opacity))
-            }
-        }
-    }
+    // MARK: - Water Tracking Actions
 
     private func addWater() {
         let previousCount = waterCount
@@ -736,100 +357,9 @@ struct DiaryDailySummaryCard: View {
         DateHelper.isoDateFormatter.string(from: date)
     }
 
-    private var stepsTextView: some View {
-        VStack(spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text(formatStepCount(healthKitManager.stepCount))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                Text("/ \(formatStepCount(stepGoal))")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(minWidth: 100)
-
-            Text("steps")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
-        }
-    }
-
-    private func formatStepCount(_ steps: Double) -> String {
-        if steps >= 10000 {
-            return String(format: "%.1fK", steps / 1000)
-        } else if steps >= 1000 {
-            return String(format: "%.1fK", steps / 1000)
-        } else {
-            return String(format: "%.0f", steps)
-        }
-    }
-
-    private var progressBarsView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            dateHeaderView
-            macroProgressBarsView
-        }
-    }
-
-    private var dateHeaderView: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 8) {
-                Text(formatDateForDaily(currentDate))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                viewWeekButton
-            }
-
-            Text("of \(Int(calorieGoal)) calories")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary.opacity(0.9))
-        }
-    }
-
-    private var viewWeekButton: some View {
-        Button(action: {
-            showWeeklySummary = true
-        }) {
-            HStack(spacing: 4) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("Week")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-            }
-            .foregroundColor(AppPalette.standard.accent)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(AppPalette.standard.accent.opacity(0.1))
-            )
-        }
-    }
-
-    private var macroProgressBarsView: some View {
-        VStack(spacing: 10) {
-            ForEach(macroGoals, id: \.macroType) { macroGoal in
-                PremiumMacroProgressView(
-                    name: macroGoal.macroType.displayName,
-                    current: calculateMacroTotal(for: macroGoal.macroType),
-                    goal: macroGoal.calculateGramGoal(from: calorieGoal),
-                    unit: macroGoal.macroType.unit,
-                    color: macroGoal.macroType.color
-                )
-            }
-        }
-    }
-
+    // MARK: - Card Background
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.large)
+        RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
             .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
     }
 

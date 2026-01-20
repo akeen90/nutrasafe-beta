@@ -181,6 +181,9 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/app-icon.png">
     <link rel="shortcut icon" href="/app-icon.png">
 
+    <!-- Preload critical resources -->
+    <link rel="preload" href="nutrition-dashboard.webp" as="image" type="image/webp">
+
     <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1224,7 +1227,10 @@
         <nav>
             <a href="/" class="logo">
                 <div class="logo-icon">
-                    <img src="app-icon.png" alt="NutraSafe food diary and nutrition tracker app icon">
+                    <picture>
+                        <source srcset="app-icon.webp" type="image/webp">
+                        <img src="app-icon.png" alt="NutraSafe food diary and nutrition tracker app icon" width="44" height="44">
+                    </picture>
                 </div>
                 <span>NutraSafe</span>
             </a>
@@ -1262,7 +1268,10 @@
 
             <div class="hero-visual">
                 <div class="phone-hero">
-                    <img src="nutrition-dashboard.png" alt="NutraSafe food diary app showing daily meal tracking">
+                    <picture>
+                        <source srcset="nutrition-dashboard.webp" type="image/webp">
+                        <img src="nutrition-dashboard.png" alt="NutraSafe food diary app showing daily meal tracking" width="320" height="631" fetchpriority="high">
+                    </picture>
                     <div class="phone-glow"></div>
                 </div>
             </div>
@@ -1417,7 +1426,10 @@
                     <div class="phone-mockup-wrapper">
                         <div class="feature-blob blob-purple"></div>
                         <div class="feature-blob blob-pink"></div>
-                        <img src="allergy-alerts.png" alt="NutraSafe food reaction tracker showing allergen patterns" class="phone-mockup">
+                        <picture>
+                            <source srcset="allergy-alerts.webp" type="image/webp">
+                            <img src="allergy-alerts.png" alt="NutraSafe food reaction tracker showing allergen patterns" class="phone-mockup" width="300" height="591" loading="lazy">
+                        </picture>
                     </div>
                 </div>
             </div>
@@ -1449,7 +1461,10 @@
                     <div class="phone-mockup-wrapper">
                         <div class="feature-blob blob-purple"></div>
                         <div class="feature-blob blob-pink"></div>
-                        <img src="nutrition-dashboard.png" alt="NutraSafe food diary showing daily meal tracking" class="phone-mockup">
+                        <picture>
+                            <source srcset="nutrition-dashboard.webp" type="image/webp">
+                            <img src="nutrition-dashboard.png" alt="NutraSafe food diary showing daily meal tracking" class="phone-mockup" width="300" height="591" loading="lazy">
+                        </picture>
                     </div>
                 </div>
             </div>
@@ -1481,7 +1496,10 @@
                     <div class="phone-mockup-wrapper">
                         <div class="feature-blob blob-purple"></div>
                         <div class="feature-blob blob-pink"></div>
-                        <img src="ingredients-view.png" alt="NutraSafe nutrition tracker showing ingredient analysis" class="phone-mockup">
+                        <picture>
+                            <source srcset="ingredients-view.webp" type="image/webp">
+                            <img src="ingredients-view.png" alt="NutraSafe nutrition tracker showing ingredient analysis" class="phone-mockup" width="300" height="591" loading="lazy">
+                        </picture>
                     </div>
                 </div>
             </div>
@@ -1513,7 +1531,10 @@
                     <div class="phone-mockup-wrapper">
                         <div class="feature-blob blob-purple"></div>
                         <div class="feature-blob blob-pink"></div>
-                        <img src="use-by-screen.png" alt="NutraSafe use by date tracker showing expiry reminders" class="phone-mockup">
+                        <picture>
+                            <source srcset="use-by-screen.webp" type="image/webp">
+                            <img src="use-by-screen.png" alt="NutraSafe use by date tracker showing expiry reminders" class="phone-mockup" width="300" height="591" loading="lazy">
+                        </picture>
                     </div>
                 </div>
             </div>
