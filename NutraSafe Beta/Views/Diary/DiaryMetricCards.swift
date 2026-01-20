@@ -485,42 +485,45 @@ struct WeeklySummaryPill: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 // Left side: icon + label
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: "calendar")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(palette.accent)
 
                     Text("Weekly Summary")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(palette.accent)
+                        .lineLimit(1)
                 }
 
                 Spacer()
 
-                // Right side: calorie summary
-                HStack(spacing: 3) {
+                // Right side: calorie summary - compact
+                HStack(spacing: 2) {
                     Text(formatNumber(consumed))
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(palette.textPrimary)
                     Text("/")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(palette.textTertiary)
-                    Text(formatNumber(goal))
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(palette.textTertiary)
-                    Text("kcal")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(palette.textTertiary)
+                    Text(formatNumber(goal))
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(palette.textTertiary)
+                    Text("kcal")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(palette.textTertiary)
                 }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
                 // Chevron
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(palette.textTertiary.opacity(0.6))
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
             .frame(height: DiaryLayoutTokens.weeklySummaryHeight)
             .background(
                 RoundedRectangle(cornerRadius: 14)
