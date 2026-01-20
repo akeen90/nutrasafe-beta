@@ -646,8 +646,9 @@ struct ContentView: View {
                 .environmentObject(subscriptionManager)
         }
         .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView(onComplete: { emailMarketingConsent in
-                OnboardingManager.shared.completeOnboarding()
+            // Premium onboarding experience with emotional journey
+            PremiumOnboardingView(onComplete: { emailMarketingConsent in
+                // Note: PremiumOnboardingView already calls OnboardingManager.completeOnboarding()
 
                 // Save email consent to Firestore
                 Task {
@@ -664,16 +665,11 @@ struct ContentView: View {
 
                 showOnboarding = false
 
-                // Show welcome screen after onboarding if not seen before
-                if !OnboardingManager.shared.hasSeenWelcome {
-                    // Small delay to ensure onboarding dismisses first
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        showWelcomeScreen = true
-                    }
-                }
-                // SOFT PAYWALL: Don't show paywall after onboarding
-                // Users can explore the free tier first; paywall shows when they hit limits
+                // Premium onboarding already provides comprehensive introduction,
+                // so we skip the additional welcome screen
+                OnboardingManager.shared.completeWelcome()
             })
+            .environmentObject(healthKitManager)
         }
         .fullScreenCover(isPresented: $showWelcomeScreen) {
             WelcomeScreenView(onContinue: {

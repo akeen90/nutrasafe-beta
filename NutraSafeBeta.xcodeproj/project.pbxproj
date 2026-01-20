@@ -8,13 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */; };
+		04FCA287EF973A67D3EC636D /* OnboardingTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB26CC91C3113543F557B3F /* OnboardingTheme.swift */; };
 		137DEFF6ED4844EDAB7A2667 /* PrivacyLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D010044E9A4163897EA548 /* PrivacyLogger.swift */; };
 		170B8500767E821043D1D6E5 /* FastingPlanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CC825B3113A674F68A6B62 /* FastingPlanViews.swift */; };
+		17BDBE5F1F972B8D2A455AC1 /* OrganicShapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8777C7021556545BB35DF7D8 /* OrganicShapes.swift */; };
 		1844CFD1E3BF18E3B1F4B94C /* FastingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F10FFBFB4E351F43FDBC8F2 /* FastingService.swift */; };
 		226CBF05F11F465EB3B00335 /* SecureStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E3B509554C438DB764FD12 /* SecureStorage.swift */; };
 		24D3ACC266DD4F91AE1F1045B7BE8F34 /* BarcodeScanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D2ABE73E734F6F8D147178AE588182 /* BarcodeScanningViews.swift */; };
 		26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */; };
 		28291D8E59C24DBEEC0CB4B3 /* SearchNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EF393E4B5FC384966969A5 /* SearchNormalization.swift */; };
+		2DA31381E3C0ED7887D04FBF /* PremiumOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */; };
 		3AB0945DA7E34CDA8CF326D8 /* DiaryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2F7F8ABA91448198A8CB77 /* DiaryComponents.swift */; };
 		3B8228DB0918054597694FC4 /* MicronutrientDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151F33BF94E6DC1B4BA66ED0 /* MicronutrientDashboard.swift */; };
 		41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */ = {isa = PBXBuildFile; fileRef = E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */; };
@@ -164,12 +167,16 @@
 		57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientTrackingManager.swift; sourceTree = "<group>"; };
 		58C0E084EB93A5E882900C67 /* NutrientGapsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutrientGapsView.swift; path = "NutraSafe Beta/Views/Components/NutrientGapsView.swift"; sourceTree = "<group>"; };
 		760CD77654AC93ADD8BE558E /* AdditiveTrackerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdditiveTrackerView.swift; sourceTree = "<group>"; };
+		7C78CD02C195F874C9B3D400 /* OnboardingTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingTheme.swift; path = "NutraSafe Beta/Views/Onboarding/Premium/OnboardingTheme.swift"; sourceTree = "<group>"; };
 		7CE2465CED35D0FAE99CCB17 /* AdditiveTrackerViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdditiveTrackerViewModel.swift; sourceTree = "<group>"; };
 		800A45E9-3EDE-4391-B526- /* FastingCitationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingCitationsView.swift; sourceTree = "<group>"; };
+		8777C7021556545BB35DF7D8 /* OrganicShapes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrganicShapes.swift; sourceTree = "<group>"; };
 		8F10FFBFB4E351F43FDBC8F2 /* FastingService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingService.swift; sourceTree = "<group>"; };
 		8F5A6F0D63BA4C07B7D06EA6 /* AppConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/AppConstants.swift"; sourceTree = SOURCE_ROOT; };
+		90CE1F03F147D75A0EEF27E3 /* PremiumOnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PremiumOnboardingView.swift; path = "NutraSafe Beta/Views/Onboarding/Premium/PremiumOnboardingView.swift"; sourceTree = "<group>"; };
 		92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientTrackingManager.swift; sourceTree = "<group>"; };
 		95FB33855679471485B474B4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = Settings/SettingsView.swift; sourceTree = "<group>"; };
+		97EE06994BC7AB344E270943 /* OrganicShapes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OrganicShapes.swift; path = "NutraSafe Beta/Views/Onboarding/Premium/OrganicShapes.swift"; sourceTree = "<group>"; };
 		98B68ABA9D7B4CBCB6E31FC7 /* AddActionMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/AddActionMenu.swift"; sourceTree = "<group>"; };
 		9DE8FF1321AD41AE8218BF92 /* NutritionValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/NutritionValidator.swift"; sourceTree = SOURCE_ROOT; };
 		9EA14171316486136D376E50 /* DiarySegmentedControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiarySegmentedControl.swift; path = "NutraSafe Beta/Views/Components/DiarySegmentedControl.swift"; sourceTree = "<group>"; };
@@ -194,6 +201,7 @@
 		ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe Beta.entitlements"; sourceTree = "<group>"; };
 		ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = NutraSafe.storekit; sourceTree = "<group>"; };
 		ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummarySheet.swift; sourceTree = "<group>"; };
+		AEB26CC91C3113543F557B3F /* OnboardingTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingTheme.swift; sourceTree = "<group>"; };
 		ALGOLIA001FILE /* AlgoliaSearchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/AlgoliaSearchManager.swift; sourceTree = "<group>"; };
 		ANALYTICS001FILE /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/AnalyticsManager.swift; sourceTree = "<group>"; };
 		AUTH1234567890123456789002 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
@@ -207,6 +215,7 @@
 		B1234567890123456789UM01 /* UserModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UserModels.swift; path = "NutraSafe Beta/Models/UserModels.swift"; sourceTree = "<group>"; };
 		B1E4A63C54154D289C990AE1BEA07BB8 /* FoodTabViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTabViews.swift; sourceTree = "<group>"; };
 		B2E3B509554C438DB764FD12 /* SecureStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/SecureStorage.swift"; sourceTree = SOURCE_ROOT; };
+		B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PremiumOnboardingView.swift; sourceTree = "<group>"; };
 		B45D6F2FD4A7496BA9C12D66 /* NutritionScoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/NutritionScoreViews.swift"; sourceTree = "<group>"; };
 		B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientScoringModels.swift; sourceTree = "<group>"; };
 		B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AddFoodManualViews.swift; sourceTree = "<group>"; };
@@ -304,6 +313,17 @@
 				D4841D8FB19F4A7091A7DD0A429B645E /* UseByTabViews.swift */,
 			);
 			path = "Use By";
+			sourceTree = "<group>";
+		};
+		1D4CC3D457268DEF1B464622 /* Premium */ = {
+			isa = PBXGroup;
+			children = (
+				AEB26CC91C3113543F557B3F /* OnboardingTheme.swift */,
+				8777C7021556545BB35DF7D8 /* OrganicShapes.swift */,
+				B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */,
+			);
+			name = Premium;
+			path = Premium;
 			sourceTree = "<group>";
 		};
 		1E2302F2CAB144499FF8B394 /* Views */ = {
@@ -538,6 +558,7 @@
 		E6EE4AA42DCA4714956F3A1D /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				1D4CC3D457268DEF1B464622 /* Premium */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -741,6 +762,9 @@
 				INFERREDINGMGR001BUILD /* InferredIngredientManager.swift in Sources */,
 				INFERREDINGSHEET001BUILD /* InferredIngredientsSheet.swift in Sources */,
 				28291D8E59C24DBEEC0CB4B3 /* SearchNormalization.swift in Sources */,
+				04FCA287EF973A67D3EC636D /* OnboardingTheme.swift in Sources */,
+				17BDBE5F1F972B8D2A455AC1 /* OrganicShapes.swift in Sources */,
+				2DA31381E3C0ED7887D04FBF /* PremiumOnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

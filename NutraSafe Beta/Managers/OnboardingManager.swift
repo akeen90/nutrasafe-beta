@@ -18,6 +18,8 @@ class OnboardingManager: ObservableObject {
     private let hasSeenWelcomeKey = "hasSeenWelcomeScreen"
     private let userGenderKey = "userGender"
     private let userBirthdayKey = "userBirthday"
+    private let userIntentKey = "userIntent"
+    private let userSensitivitiesKey = "userSensitivities"
 
     /// Tracks if onboarding was just completed in this session (for tip delay)
     @Published var justCompletedOnboarding = false
@@ -28,6 +30,12 @@ class OnboardingManager: ObservableObject {
     /// Published user profile data
     @Published var userGender: UserGender = .notSet
     @Published var userBirthday: Date?
+
+    /// User's selected intent from premium onboarding
+    @Published var userIntent: String?
+
+    /// User's selected food sensitivities from premium onboarding
+    @Published var userSensitivities: [String] = []
 
     private init() {
         // Load saved values
@@ -44,6 +52,16 @@ class OnboardingManager: ObservableObject {
         // Load birthday
         if let savedBirthday = UserDefaults.standard.object(forKey: userBirthdayKey) as? Date {
             userBirthday = savedBirthday
+        }
+
+        // Load intent (from premium onboarding)
+        if let savedIntent = UserDefaults.standard.string(forKey: userIntentKey) {
+            userIntent = savedIntent
+        }
+
+        // Load sensitivities (from premium onboarding)
+        if let savedSensitivities = UserDefaults.standard.stringArray(forKey: userSensitivitiesKey) {
+            userSensitivities = savedSensitivities
         }
     }
 
@@ -103,6 +121,22 @@ class OnboardingManager: ObservableObject {
         } else {
             UserDefaults.standard.removeObject(forKey: userBirthdayKey)
         }
+    }
+
+    /// Save user intent (from premium onboarding)
+    func saveIntent(_ intent: String?) {
+        userIntent = intent
+        if let intent = intent {
+            UserDefaults.standard.set(intent, forKey: userIntentKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: userIntentKey)
+        }
+    }
+
+    /// Save user sensitivities (from premium onboarding)
+    func saveSensitivities(_ sensitivities: [String]) {
+        userSensitivities = sensitivities
+        UserDefaults.standard.set(sensitivities, forKey: userSensitivitiesKey)
     }
 
     /// Calculate user's age from birthday
