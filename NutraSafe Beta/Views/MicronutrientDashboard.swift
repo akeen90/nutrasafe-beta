@@ -506,14 +506,12 @@ struct MicronutrientDashboard: View {
             }
         } label: {
             HStack(alignment: .top, spacing: 12) {
-                // Warning icon with prominent colour
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.orange)
+                // Signal icon instead of warning triangle
+                NutraSafeSignalIcon(color: .orange, size: 18)
 
-                // Insight text with better visibility
+                // Insight text - observational
                 Text(text)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -528,10 +526,10 @@ struct MicronutrientDashboard: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.orange.opacity(0.25), lineWidth: 1.5)
+                    .stroke(Color.orange.opacity(0.2), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(InsightBadgeButtonStyle())
         .transition(.opacity.combined(with: .scale(scale: 0.95)).animation(.easeInOut(duration: 0.25)))
     }
 
@@ -890,22 +888,22 @@ struct MicronutrientDashboard: View {
 
         if totalMeals == 0 {
             if isViewingPastWeek {
-                return "No meals were logged during this week."
+                return "No meals logged this week."
             }
-            return "As you log more meals, your nutrient trends will start to appear here."
+            return "Nutrient patterns will appear as you log more meals."
         }
 
         if !hasSufficientData {
             if totalMeals >= 2 {
                 if isViewingPastWeek {
-                    return "Limited data logged this week — \(totalMeals) meals tracked."
+                    return "Limited data this week — \(totalMeals) meals logged."
                 }
-                return "Good start — log \(5 - totalMeals) more meals to reveal your full nutrient rhythm."
+                return "Log \(5 - totalMeals) more meals to see your nutrient patterns."
             } else {
                 if isViewingPastWeek {
-                    return "Only 1 meal was logged this week."
+                    return "1 meal logged this week."
                 }
-                return "As you log more meals, your nutrient trends will start to appear here."
+                return "Nutrient patterns will appear as you log more meals."
             }
         }
 
@@ -916,14 +914,14 @@ struct MicronutrientDashboard: View {
 
         if daysWithData >= 5 {
             if isViewingPastWeek {
-                return "Solid nutrient rhythm that week with \(daysWithData) days logged."
+                return "\(daysWithData) days logged that week."
             }
-            return "You're building a solid nutrient rhythm — keep it up this week."
+            return "\(daysWithData) days logged this week."
         } else {
             if isViewingPastWeek {
                 return "\(daysWithData) days logged that week."
             }
-            return "Off to a good start — continue logging to strengthen your rhythm."
+            return "\(daysWithData) days logged so far this week."
         }
     }
 
@@ -938,17 +936,15 @@ struct MicronutrientDashboard: View {
         VStack(spacing: 10) {
             // What are micronutrients explanation
             HStack(spacing: 12) {
-                Image(systemName: "leaf.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(.green)
+                NutraSafeSignalIcon(color: .green, size: 16)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("What are micronutrients?")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
 
                     Text("Vitamins and minerals your body needs in small amounts. We estimate these from the foods you log based on standard nutritional data.")
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .rounded))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -958,22 +954,20 @@ struct MicronutrientDashboard: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.green.opacity(0.1))
+                    .fill(Color.green.opacity(0.08))
             )
 
             // Disclaimer
             HStack(spacing: 12) {
-                Image(systemName: "info.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(AppPalette.standard.accent)
+                NutraSafeSignalIcon(color: AppPalette.standard.accent, size: 16)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Estimates Only — Not Medical Advice")
-                        .font(.system(size: 13, weight: .semibold))
+                    Text("Estimates only")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
 
-                    Text("These figures are approximations. For personalised dietary advice, please consult your GP or a registered dietitian.")
-                        .font(.system(size: 11))
+                    Text("These figures are approximations based on ingredient analysis. For personalised dietary advice, please consult a healthcare professional.")
+                        .font(.system(size: 11, design: .rounded))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -983,19 +977,17 @@ struct MicronutrientDashboard: View {
                 Button(action: {
                     showingSources = true
                 }) {
-                    Image(systemName: "doc.text")
-                        .font(.system(size: 14))
-                        .foregroundColor(AppPalette.standard.accent)
+                    NutraSafeSignalIcon(color: AppPalette.standard.accent, size: 14)
                 }
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(AppPalette.standard.accent.opacity(0.1))
+                    .fill(AppPalette.standard.accent.opacity(0.08))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
+                    .stroke(AppPalette.standard.accent.opacity(0.2), lineWidth: 1)
             )
         }
     }

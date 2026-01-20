@@ -28,34 +28,33 @@ struct AdditiveTrackerSection: View {
         viewModel.additiveAggregates.filter { $0.effectsVerdict.lowercased() == "neutral" || $0.effectsVerdict.isEmpty }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header
+            // Header - observational tone
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isExpanded.toggle()
                 }
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "flask.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.orange, .red],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                    // Signal icon instead of flask
+                    SignalIconContainer(color: palette.accent, size: 32)
 
-                    Text("Additive Exposure")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.primary)
+                    Text("Additives this week")
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
 
                     Spacer()
 
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textTertiary)
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -72,12 +71,11 @@ struct AdditiveTrackerSection: View {
                         // Summary Card
                         summaryCard
 
-                        // Additives grouped by health verdict
+                        // Additives grouped by observation category
                         if !avoidAdditives.isEmpty {
                             verdictSection(
-                                title: "Avoid",
-                                subtitle: "Health concerns identified",
-                                icon: "exclamationmark.octagon.fill",
+                                title: "Worth noting",
+                                subtitle: "Some studies suggest limiting these",
                                 color: .red,
                                 additives: avoidAdditives
                             )
@@ -85,9 +83,8 @@ struct AdditiveTrackerSection: View {
 
                         if !cautionAdditives.isEmpty {
                             verdictSection(
-                                title: "Caution",
-                                subtitle: "Use in moderation",
-                                icon: "exclamationmark.triangle.fill",
+                                title: "In moderation",
+                                subtitle: "Generally fine in small amounts",
                                 color: .orange,
                                 additives: cautionAdditives
                             )
@@ -95,10 +92,9 @@ struct AdditiveTrackerSection: View {
 
                         if !neutralAdditives.isEmpty {
                             verdictSection(
-                                title: "Generally Safe",
-                                subtitle: "No significant concerns",
-                                icon: "checkmark.circle.fill",
-                                color: .green,
+                                title: "Generally safe",
+                                subtitle: "No significant concerns noted",
+                                color: palette.accent,
                                 additives: neutralAdditives
                             )
                         }
@@ -181,66 +177,58 @@ struct AdditiveTrackerSection: View {
         HStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(viewModel.totalAdditiveCount)")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
-                Text("additive\(viewModel.totalAdditiveCount == 1 ? "" : "s") logged")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+                Text("additive\(viewModel.totalAdditiveCount == 1 ? "" : "s") detected")
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundColor(palette.textTertiary)
             }
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
                 Text("\(viewModel.foodItemCount)")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
                 Text("food\(viewModel.foodItemCount == 1 ? "" : "s") with additives")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundColor(palette.textTertiary)
             }
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.orange.opacity(0.1), Color.red.opacity(0.1)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(palette.tertiary.opacity(colorScheme == .dark ? 0.1 : 0.06))
         )
     }
 
-    // MARK: - Verdict Section
+    // MARK: - Observation Section (formerly Verdict Section)
 
-    private func verdictSection(title: String, subtitle: String, icon: String, color: Color, additives: [AdditiveAggregate]) -> some View {
+    private func verdictSection(title: String, subtitle: String, color: Color, additives: [AdditiveAggregate]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(color)
+            // Section header with signal icon
+            HStack(spacing: 10) {
+                NutraSafeSignalIcon(color: color, size: 18)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
                     Text(subtitle)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundColor(palette.textTertiary)
                 }
 
                 Spacer()
 
                 Text("\(additives.count)")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(color)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(
                         Capsule()
-                            .fill(color.opacity(0.15))
+                            .fill(color.opacity(0.12))
                     )
             }
 
@@ -250,6 +238,7 @@ struct AdditiveTrackerSection: View {
                     ExpandableAdditiveRow(
                         additive: additive,
                         isExpanded: expandedAdditiveId == additive.id,
+                        palette: palette,
                         onTap: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 if expandedAdditiveId == additive.id {
@@ -271,7 +260,7 @@ struct AdditiveTrackerSection: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
+                .fill(palette.tertiary.opacity(colorScheme == .dark ? 0.08 : 0.05))
         )
     }
 
@@ -291,17 +280,15 @@ struct AdditiveTrackerSection: View {
 
     private var emptyStateView: some View {
         VStack(spacing: 12) {
-            Image(systemName: "flask")
-                .font(.system(size: 40))
-                .foregroundColor(.secondary.opacity(0.5))
+            NutraSafeSignalIcon(color: palette.textTertiary.opacity(0.5), size: 40)
 
             Text("No additives detected")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(palette.textTertiary)
 
-            Text("Log foods with ingredients to track additive exposure")
-                .font(.system(size: 13))
-                .foregroundColor(.secondary.opacity(0.8))
+            Text("Log foods with ingredients to see what's in them")
+                .font(.system(size: 13, design: .rounded))
+                .foregroundColor(palette.textTertiary.opacity(0.8))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -314,6 +301,7 @@ struct AdditiveTrackerSection: View {
 private struct ExpandableAdditiveRow: View {
     let additive: AdditiveAggregate
     let isExpanded: Bool
+    let palette: AppPalette
     let onTap: () -> Void
 
     var body: some View {
@@ -321,7 +309,7 @@ private struct ExpandableAdditiveRow: View {
             // Main row (always visible)
             Button(action: onTap) {
                 HStack(spacing: 12) {
-                    // Verdict indicator
+                    // Status indicator dot
                     Circle()
                         .fill(additive.verdictColor)
                         .frame(width: 8, height: 8)
@@ -331,29 +319,27 @@ private struct ExpandableAdditiveRow: View {
                         HStack(spacing: 6) {
                             if !additive.code.isEmpty {
                                 Text(additive.code)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.orange)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundColor(palette.accent)
                             }
                             Text(additive.name)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.primary)
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundColor(palette.textPrimary)
                                 .lineLimit(1)
                         }
 
                         // Category
                         HStack(spacing: 4) {
                             Text(additive.category)
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundColor(palette.textTertiary)
 
                             if additive.childWarning {
                                 Text("·")
-                                    .foregroundColor(.secondary)
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.orange)
-                                Text("Child warning")
-                                    .font(.system(size: 11))
+                                    .foregroundColor(palette.textTertiary)
+                                NutraSafeSignalIcon(color: .orange, size: 10)
+                                Text("Note for children")
+                                    .font(.system(size: 11, design: .rounded))
                                     .foregroundColor(.orange)
                             }
                         }
@@ -363,12 +349,12 @@ private struct ExpandableAdditiveRow: View {
 
                     // Occurrence count
                     Text("×\(additive.occurrenceCount)")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
 
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textTertiary)
                 }
                 .padding(.vertical, 10)
                 .contentShape(Rectangle())
@@ -380,108 +366,63 @@ private struct ExpandableAdditiveRow: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Divider()
 
-                    // What is it
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "questionmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.purple)
-                            .frame(width: 20)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("What is it?")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-                            Text(additive.whatIsIt)
-                                .font(.system(size: 13))
-                                .foregroundColor(.primary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+                    // What is it - using signal icon
+                    detailRow(
+                        color: .purple,
+                        title: "What is it?",
+                        content: additive.whatIsIt
+                    )
 
                     // Where is it from
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "globe.europe.africa.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.teal)
-                            .frame(width: 20)
+                    detailRow(
+                        color: .teal,
+                        title: "Origin",
+                        content: additive.whereIsItFrom
+                    )
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Where does it come from?")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-                            Text(additive.whereIsItFrom)
-                                .font(.system(size: 13))
-                                .foregroundColor(.primary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    // Health verdict explanation
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: verdictIcon)
-                            .font(.system(size: 14))
-                            .foregroundColor(additive.verdictColor)
-                            .frame(width: 20)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Health Assessment")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-                            Text(verdictDescription)
-                                .font(.system(size: 13))
-                                .foregroundColor(.primary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+                    // Research notes (formerly Health Assessment)
+                    detailRow(
+                        color: additive.verdictColor,
+                        title: "Research notes",
+                        content: observationDescription
+                    )
 
                     // Foods containing this additive
                     if !additive.foodItems.isEmpty {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "fork.knife")
-                                .font(.system(size: 14))
-                                .foregroundColor(AppPalette.standard.accent)
-                                .frame(width: 20)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Found in")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                                Text(additive.foodItems.joined(separator: ", "))
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.primary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
+                        detailRow(
+                            color: palette.accent,
+                            title: "Found in",
+                            content: additive.foodItems.joined(separator: ", ")
+                        )
                     }
 
-                    // Health score
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(healthScoreColor)
+                    // Safety rating bar (observational, not judgmental)
+                    HStack(alignment: .center, spacing: 10) {
+                        NutraSafeSignalIcon(color: safetyColor, size: 14)
                             .frame(width: 20)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Health Score")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
+                            Text("Safety rating")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(palette.textTertiary)
+
                             HStack(spacing: 8) {
                                 Text("\(additive.healthScore)/100")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(healthScoreColor)
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(safetyColor)
 
                                 // Progress bar
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .fill(Color(.systemGray5))
-                                            .frame(height: 6)
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .fill(healthScoreColor)
-                                            .frame(width: geo.size.width * CGFloat(additive.healthScore) / 100, height: 6)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(palette.tertiary.opacity(0.15))
+                                            .frame(height: 4)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(safetyColor)
+                                            .frame(width: geo.size.width * CGFloat(additive.healthScore) / 100, height: 4)
                                     }
                                 }
-                                .frame(height: 6)
+                                .frame(height: 4)
                             }
                         }
                     }
@@ -492,26 +433,37 @@ private struct ExpandableAdditiveRow: View {
         }
     }
 
-    private var verdictIcon: String {
-        switch additive.effectsVerdict.lowercased() {
-        case "avoid": return "xmark.octagon.fill"
-        case "caution": return "exclamationmark.triangle.fill"
-        default: return "checkmark.circle.fill"
+    // Reusable detail row with signal icon
+    private func detailRow(color: Color, title: String, content: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            NutraSafeSignalIcon(color: color, size: 14)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(palette.textTertiary)
+                Text(content)
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
-    private var verdictDescription: String {
+    // Observational description (not judgmental)
+    private var observationDescription: String {
         switch additive.effectsVerdict.lowercased() {
         case "avoid":
-            return "Studies suggest potential health concerns. Consider limiting intake or choosing alternatives."
+            return "Some studies suggest limiting intake. Consider alternatives if you're concerned."
         case "caution":
-            return "May cause issues for some individuals. Use in moderation and monitor for any reactions."
+            return "Generally fine in small amounts. Some people may prefer to limit consumption."
         default:
-            return "Generally recognised as safe by food safety authorities when used within approved limits."
+            return "Recognised as safe by food safety authorities (EFSA, FSA, FDA) within approved limits."
         }
     }
 
-    private var healthScoreColor: Color {
+    private var safetyColor: Color {
         if additive.healthScore >= 70 {
             return .green
         } else if additive.healthScore >= 40 {

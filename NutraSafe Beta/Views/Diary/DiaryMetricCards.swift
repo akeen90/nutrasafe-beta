@@ -708,6 +708,57 @@ struct InsightBadgeButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - NutraSafe Signal Icon
+
+/// Abstract signal icon (dot + ripple arcs) used across NutraSafe insight system
+/// Represents "the app noticed something" without implying success/failure
+/// Use this icon for: additive detection, nutrient observations, status messages
+struct NutraSafeSignalIcon: View {
+    let color: Color
+    var size: CGFloat = 18
+
+    var body: some View {
+        ZStack {
+            // Inner dot
+            Circle()
+                .fill(color)
+                .frame(width: size * 0.33, height: size * 0.33)
+
+            // Middle arc
+            Circle()
+                .trim(from: 0.0, to: 0.25)
+                .stroke(color, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
+                .frame(width: size * 0.72, height: size * 0.72)
+                .rotationEffect(.degrees(-45))
+
+            // Outer arc
+            Circle()
+                .trim(from: 0.0, to: 0.25)
+                .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
+                .frame(width: size, height: size)
+                .rotationEffect(.degrees(-45))
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Rounded container for signal icon with background
+struct SignalIconContainer: View {
+    let color: Color
+    var size: CGFloat = 32
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                .frame(width: size, height: size)
+
+            NutraSafeSignalIcon(color: color, size: size * 0.55)
+        }
+    }
+}
+
 // MARK: - Hero Calorie Ring
 
 struct HeroCalorieRing: View {
