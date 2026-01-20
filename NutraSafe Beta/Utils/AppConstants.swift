@@ -256,6 +256,7 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
                                     }
                                 }
                             )
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
                 }

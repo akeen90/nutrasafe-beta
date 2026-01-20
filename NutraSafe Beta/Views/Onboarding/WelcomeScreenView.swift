@@ -51,23 +51,23 @@ struct WelcomeScreenView: View {
                                 .padding(.horizontal, 4)
 
                             TabExplanationCard(
-                                icon: "fork.knife",
+                                icon: "fork.knife.circle",
                                 iconColor: .orange,
                                 tabName: "Diary",
-                                description: "Log meals and track daily nutrition",
+                                description: "Log meals; Insights shows additives and vitamins",
                                 subTabs: ["Overview", "Insights"]
                             )
 
                             TabExplanationCard(
-                                icon: "figure.run",
-                                iconColor: .blue,
+                                icon: "figure.run.treadmill.circle",
+                                iconColor: .teal,
                                 tabName: "Progress",
-                                description: "Track weight and fitness over time",
+                                description: "Track weight and set your diet preference",
                                 subTabs: nil
                             )
 
                             TabExplanationCard(
-                                icon: "heart.fill",
+                                icon: "heart.circle",
                                 iconColor: .pink,
                                 tabName: "Health",
                                 description: "Monitor reactions and intermittent fasting",
@@ -75,47 +75,13 @@ struct WelcomeScreenView: View {
                             )
 
                             TabExplanationCard(
-                                icon: "calendar",
+                                icon: "calendar.circle",
                                 iconColor: .cyan,
                                 tabName: "Use By",
-                                description: "Track what's in your fridge and expiry dates",
+                                description: "Get reminders before opened food goes off",
                                 subTabs: nil
                             )
                         }
-                        .padding(.horizontal, 24)
-
-                        // Add button explanation
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 10) {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [.blue, .purple],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .frame(width: 32, height: 32)
-
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 16, weight: .bold))
-                                        .foregroundColor(.white)
-                                }
-
-                                Text("The + button")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundColor(.primary)
-                            }
-
-                            Text("Tap the big + button at the bottom to add food. Search by name, scan a barcode, or take a photo and let AI analyse it.")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(16)
-                        .background(Color.blue.opacity(colorScheme == .dark ? 0.15 : 0.08))
-                        .cornerRadius(14)
                         .padding(.horizontal, 24)
 
                         // Tips notice

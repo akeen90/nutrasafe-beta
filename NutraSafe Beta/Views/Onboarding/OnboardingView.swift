@@ -124,25 +124,25 @@ struct LeanWelcomePage: View {
                             .padding(.top, 4)
                     }
 
-                    // Feature list - clean and simple
+                    // Feature list - clean and simple (icons match actual tab bar)
                     VStack(spacing: 12) {
                         FeatureRow(
-                            icon: "magnifyingglass",
-                            color: .blue,
-                            title: "Search & Scan",
-                            description: "Find food by name, barcode, or photo"
-                        )
-                        FeatureRow(
-                            icon: "chart.bar.fill",
-                            color: .green,
-                            title: "Track Everything",
-                            description: "Calories, nutrients, reactions & weight"
-                        )
-                        FeatureRow(
-                            icon: "bell.badge.fill",
+                            icon: "fork.knife.circle.fill",
                             color: .orange,
-                            title: "Smart Reminders",
-                            description: "Food expiry and fasting notifications"
+                            title: "Diary & Insights",
+                            description: "Log meals, track additives and monitor vitamins"
+                        )
+                        FeatureRow(
+                            icon: "figure.run.treadmill.circle.fill",
+                            color: .teal,
+                            title: "Progress",
+                            description: "Track weight, set goals and build healthy habits"
+                        )
+                        FeatureRow(
+                            icon: "calendar.circle.fill",
+                            color: .cyan,
+                            title: "Use By",
+                            description: "Get alerts before opened food goes off"
                         )
                     }
                     .padding(.horizontal, 24)

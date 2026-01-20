@@ -56,21 +56,23 @@ struct FoodTabView: View {
                     selectedTab: $selectedFoodSubTab,
                     onSettingsTapped: { showingSettings = true }
                 )
-        Group {
-            switch selectedFoodSubTab {
-            case .reactions:
-                FoodReactionsView(selectedTab: $selectedTab)
-            case .fasting:
-                if let viewModel = fastingViewModelWrapper.viewModel {
-                    FastingMainView(viewModel: viewModel)
-                } else {
-                    ProgressView()
+                // PERFORMANCE: Use opacity-based switching to keep views loaded and avoid re-initialization delays
+                ZStack {
+                    FoodReactionsView(selectedTab: $selectedTab)
+                        .opacity(selectedFoodSubTab == .reactions ? 1 : 0)
+                        .allowsHitTesting(selectedFoodSubTab == .reactions)
+
+                    Group {
+                        if let viewModel = fastingViewModelWrapper.viewModel {
+                            FastingMainView(viewModel: viewModel)
+                        } else {
+                            ProgressView()
+                        }
+                    }
+                    .opacity(selectedFoodSubTab == .fasting ? 1 : 0)
+                    .allowsHitTesting(selectedFoodSubTab == .fasting)
                 }
-            }
-        }
-        .animation(nil, value: selectedFoodSubTab)
-        .transaction { $0.disablesAnimations = true }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .tabGradientBackground(.health)
             .navigationBarHidden(true)
@@ -274,6 +276,7 @@ struct FoodReactionsView: View {
                             : LinearGradient(colors: [Color.clear], startPoint: .leading, endPoint: .trailing)
                         )
                         .cornerRadius(8)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
