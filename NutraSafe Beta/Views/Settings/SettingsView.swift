@@ -561,9 +561,10 @@ struct AboutSection: View {
     }
 }
 
-// MARK: - Reusable Components
+// MARK: - Reusable Components (Updated with Onboarding Design Language)
 
 struct SettingsSection<Content: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
     let title: String
     let content: Content
 
@@ -573,17 +574,21 @@ struct SettingsSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            // Serif section title (from onboarding)
             Text(title)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.primary)
-                .padding(.horizontal, 16)
+                .font(AppTypography.sectionTitle(18))
+                .foregroundColor(Color.textPrimary)
+                .padding(.horizontal, AppSpacing.medium)
 
             VStack(spacing: 0) {
                 content
             }
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.large)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+            )
+            .cardShadow()
         }
     }
 }
@@ -596,24 +601,30 @@ struct SettingsRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(iconColor)
-                    .frame(width: 24)
+            HStack(spacing: AppSpacing.medium) {
+                // Icon with subtle circular background (from onboarding)
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.12))
+                        .frame(width: 36, height: 36)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(iconColor)
+                }
 
                 Text(title)
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(Color.textPrimary)
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.textTertiary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, AppSpacing.medium)
+            .padding(.vertical, AppSpacing.medium - 2)
         }
         .buttonStyle(PlainButtonStyle())
     }

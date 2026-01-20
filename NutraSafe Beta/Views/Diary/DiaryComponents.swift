@@ -52,20 +52,26 @@ struct DiaryMealCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Rounded pill-style meal header like MyFitnessPal
+            // Rounded pill-style meal header - refined with onboarding patterns
             HStack {
-                HStack(spacing: 8) {
-                    // Add button replaces colored dot
+                HStack(spacing: 10) {
+                    // Add button with subtle background
                     Button(action: onAdd) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(color)
+                        ZStack {
+                            Circle()
+                                .fill(color.opacity(0.12))
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(color)
+                        }
                     }
                     .buttonStyle(PlainButtonStyle())
 
-                    Text(mealType.uppercased())
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
+                    // Meal name with serif styling
+                    Text(mealType)
+                        .font(AppTypography.sectionTitle(16))
+                        .foregroundColor(Color.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -75,30 +81,30 @@ struct DiaryMealCard: View {
                 // Calories and macros in header
                 HStack(spacing: 0) {
                     Text("\(currentCalories)")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.textSecondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalProtein))")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color.textTertiary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalCarbs))")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color.textTertiary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalFat))")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color.textTertiary)
                         .frame(width: 50, alignment: .trailing)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-            .cornerRadius(8)
+            .padding(.horizontal, AppSpacing.medium)
+            .padding(.vertical, 12)
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground).opacity(0.8))
+            .cornerRadius(AppRadius.medium)
 
             // Food items section - directly under header
             if !foods.isEmpty {
@@ -144,8 +150,8 @@ struct DiaryMealCard: View {
         }
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
         )
         .cardShadow()
         .onChange(of: foods) { _, newFoods in
@@ -178,46 +184,44 @@ struct DiaryFoodRow: View {
 
     var body: some View {
         Button(action: {
-            // Tap always tog gles selection
+            // Tap always toggles selection
             onTap()
         }) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 // Selection circle (show when any item is selected)
                 if hasAnySelection {
-                    Circle()
-                        .fill(isSelected ? Color.blue : Color.clear)
-                        .frame(width: 20, height: 20)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1.5)
-                        )
-                        .overlay(
+                    ZStack {
+                        Circle()
+                            .fill(isSelected ? Color.blue : Color.clear)
+                            .frame(width: 22, height: 22)
+                        Circle()
+                            .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 1.5)
+                            .frame(width: 22, height: 22)
+                        if isSelected {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.white)
-                                .opacity(isSelected ? 1 : 0)
-                        )
+                        }
+                    }
                 }
 
                 // Food name and details
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(food.name)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color.textPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     // Serving size and quantity
                     HStack(spacing: 4) {
                         Text(food.servingDescription)
-                            .font(.system(size: 11, weight: .regular))
-                            .foregroundColor(.secondary)
-                            .onAppear {
-                                                            }
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(Color.textTertiary)
 
                         if food.quantity > 1 {
                             Text("× \(String(format: "%.0f", food.quantity))")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(.blue)
                         }
                     }
@@ -226,30 +230,30 @@ struct DiaryFoodRow: View {
 
                 Spacer()
 
-                // Macros aligned with headers like MyFitnessPal
+                // Macros aligned with headers - refined typography
                 HStack(spacing: 0) {
                     Text("\(food.calories)")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.textPrimary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", food.protein))")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color.textSecondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", food.carbs))")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color.textSecondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", food.fat))")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color.textSecondary)
                         .frame(width: 50, alignment: .trailing)
                 }
             }
-            .animation(nil, value: hasAnySelection)  // Disable all implicit animations on layout changes
+            .animation(nil, value: hasAnySelection)
         }
         .buttonStyle(PlainButtonStyle())
         .onLongPressGesture {

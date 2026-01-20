@@ -1158,48 +1158,37 @@ struct UseByExpiryView: View {
                             .padding(.top, 18)
                             .padding(.bottom, 14)
 
-                            // Items list
+                            // Items list - Empty State (Onboarding Design Language)
                             if sortedItems.isEmpty {
-                                VStack(spacing: 16) {
+                                VStack(spacing: AppSpacing.large) {
                                     Image(systemName: "calendar.badge.clock")
-                                        .font(.system(size: 60))
-                                        .foregroundColor(.secondary.opacity(0.4))
-                                        .padding(.top, 20)
+                                        .font(.system(size: 60, weight: .light))
+                                        .foregroundColor(Color.textTertiary.opacity(0.4))
+                                        .padding(.top, AppSpacing.large)
 
-                                    VStack(spacing: 8) {
+                                    VStack(spacing: AppSpacing.small) {
                                         Text("No items tracked")
-                                            .font(.system(size: 18, weight: .medium))
-                                            .foregroundColor(.primary)
+                                            .font(AppTypography.sectionTitle(20))
+                                            .foregroundColor(Color.textSecondary)
 
                                         Text("Add use-by dates when logging food to avoid waste")
-                                            .font(.system(size: 15))
-                                            .foregroundColor(.secondary)
+                                            .font(AppTypography.body)
+                                            .foregroundColor(Color.textTertiary)
                                             .multilineTextAlignment(.center)
-                                            .padding(.horizontal, 40)
+                                            .padding(.horizontal, AppSpacing.xl)
+                                            .lineSpacing(AppSpacing.lineSpacing)
                                     }
 
-                                    // Helpful tip
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        HStack(alignment: .top, spacing: 12) {
-                                            Image(systemName: "lightbulb.fill")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.orange)
-                                                .frame(width: 20)
-
-                                            Text("Tap the + button above to start tracking items and get notified before they expire")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.secondary)
-                                                .fixedSize(horizontal: false, vertical: true)
-                                        }
-                                    }
-                                    .padding(14)
-                                    .background(Color(.systemGray6))
-                                    .cornerRadius(10)
-                                    .padding(.horizontal, 30)
-                                    .padding(.bottom, 20)
+                                    // Helpful tip using onboarding InfoCard pattern
+                                    NSInfoCard(
+                                        icon: "lightbulb.fill",
+                                        text: "Tap the + button above to start tracking items and get notified before they expire",
+                                        iconColor: .orange
+                                    )
+                                    .padding(.horizontal, AppSpacing.large)
                                 }
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 40)
+                                .padding(.vertical, AppSpacing.section)
                             } else {
                                 LazyVStack(spacing: 8) {
                                     ForEach(sortedItems, id: \.id) { item in

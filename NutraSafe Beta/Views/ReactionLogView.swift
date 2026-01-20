@@ -395,84 +395,81 @@ struct ReactionLogView: View {
         )
     }
 
-    // MARK: - Log Reaction Button
+    // MARK: - Log Reaction Button (Onboarding Design Language)
     private var logReactionButton: some View {
         Button(action: { showingLogSheet = true }) {
             HStack(spacing: 12) {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(.white)
 
                 Text("Log Reaction")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(AppTypography.button)
                     .foregroundColor(.white)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
+            .frame(height: 56)
             .background(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.3, green: 0.5, blue: 1.0),
-                        Color(red: 0.5, green: 0.3, blue: 0.9)
+                        Color(red: 0.20, green: 0.45, blue: 0.50),
+                        Color(red: 0.15, green: 0.35, blue: 0.42)
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             )
-            .cornerRadius(14)
-            .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+            .cornerRadius(AppRadius.large)
+            .accentShadow(Color(red: 0.20, green: 0.45, blue: 0.50))
         }
     }
 
-    // MARK: - Export PDF Button
+    // MARK: - Export PDF Button (Onboarding Design Language)
     private var exportPDFButton: some View {
         Button(action: { showingPDFExportSheet = true }) {
             HStack(spacing: 12) {
                 Image(systemName: "doc.text.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Color.textSecondary)
 
                 Text("Export PDF Report")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(Color.textSecondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, AppSpacing.medium)
             .background(
-                LinearGradient(
-                    colors: [
-                        Color.green.opacity(0.8),
-                        Color.blue.opacity(0.6)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
+                RoundedRectangle(cornerRadius: AppRadius.large)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
             )
-            .cornerRadius(12)
-            .shadow(color: .green.opacity(0.2), radius: 6, x: 0, y: 3)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.large)
+                    .stroke(Color.textTertiary.opacity(0.3), lineWidth: 1)
+            )
+            .cardShadow()
         }
     }
 
-    // MARK: - Analysis Tab Picker
+    // MARK: - Analysis Tab Picker (Onboarding Design Language)
     private var analysisTabPicker: some View {
         HStack(spacing: 0) {
             ForEach(AnalysisTab.allCases, id: \.self) { tab in
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.easeOut(duration: 0.2)) {
                         selectedTab = tab
                     }
                 }) {
                     Text(tab.rawValue)
                         .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
-                        .foregroundColor(selectedTab == tab ? .white : .secondary)
+                        .foregroundColor(selectedTab == tab ? .white : Color.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(
                             selectedTab == tab ?
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.3, green: 0.5, blue: 1.0),
-                                        Color(red: 0.5, green: 0.3, blue: 0.9)
+                                        Color(red: 0.20, green: 0.45, blue: 0.50),
+                                        Color(red: 0.15, green: 0.35, blue: 0.42)
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -483,15 +480,17 @@ struct ReactionLogView: View {
                                     endPoint: .trailing
                                 )
                         )
-                        .cornerRadius(10)
+                        .cornerRadius(AppRadius.medium)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(4)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemGray6))
+        )
     }
 
     // MARK: - Tab Content
@@ -756,60 +755,52 @@ struct ReactionLogView: View {
         }
     }
 
-    // MARK: - Empty State
+    // MARK: - Empty State (Onboarding Design Language)
     private func emptyStateView(icon: String, title: String, message: String) -> some View {
-        VStack(spacing: 20) {
+        VStack(spacing: AppSpacing.large) {
+            // Abstract icon - light weight, subtle
             Image(systemName: icon)
-                .font(.system(size: 70))
-                .foregroundColor(.secondary.opacity(0.4))
-                .padding(.top, 20)
+                .font(.system(size: 60, weight: .light))
+                .foregroundColor(Color.textTertiary.opacity(0.4))
+                .padding(.top, AppSpacing.large)
 
-            VStack(spacing: 8) {
+            VStack(spacing: AppSpacing.small) {
                 Text(title)
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.primary)
+                    .font(AppTypography.sectionTitle(20))
+                    .foregroundColor(Color.textSecondary)
 
                 Text(message)
-                    .font(.system(size: 16))
-                    .foregroundColor(.secondary)
+                    .font(AppTypography.body)
+                    .foregroundColor(Color.textTertiary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                    .padding(.horizontal, AppSpacing.xl)
                     .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(AppSpacing.lineSpacing)
             }
 
-            // Helpful tip
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "lightbulb.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.orange)
-                        .frame(width: 20)
-
-                    Text("Track reactions to help identify patterns and potential food sensitivities over time")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(16)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-            .padding(.horizontal, 32)
+            // Helpful tip using onboarding InfoCard pattern
+            NSInfoCard(
+                icon: "lightbulb.fill",
+                text: "Track reactions to help identify patterns and potential food sensitivities over time",
+                iconColor: .orange
+            )
+            .padding(.horizontal, AppSpacing.large)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, AppSpacing.section)
     }
 
     // MARK: - Common Foods View (Flagged Foods)
     private var commonFoodsView: some View {
         // Using cached values for performance (no recalculation on tab switch)
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            HStack(spacing: AppSpacing.small) {
                 Image(systemName: "flag.fill")
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.orange)
                 Text("Flagged Foods")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                    .font(AppTypography.sectionTitle(18))
+                    .foregroundColor(Color.textPrimary)
             }
 
             Text("These specific foods appear frequently before your reactions. Track these items to identify patterns.")

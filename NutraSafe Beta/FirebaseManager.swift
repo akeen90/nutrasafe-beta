@@ -2913,6 +2913,19 @@ class FirebaseManager: ObservableObject {
         if let barcode = food.barcode {
             foodData["barcode"] = barcode
         }
+        if let source = food.source {
+            foodData["source"] = source
+            // Map Algolia index to Firestore collection for editing
+            let indexToCollection: [String: String] = [
+                "tesco_products": "tesco_products",
+                "verified_foods": "verifiedFoods",
+                "foods": "foods",
+                "user_added": "userAdded",
+                "ai_enhanced": "aiEnhanced",
+                "ai_manually_added": "aiManuallyAdded"
+            ]
+            foodData["collection"] = indexToCollection[source] ?? "verifiedFoods"
+        }
 
         // Add to incomplete_foods collection
         // Use sanitized food name as document ID for easier identification

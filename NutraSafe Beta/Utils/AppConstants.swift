@@ -1,18 +1,30 @@
 import SwiftUI
 
 // MARK: - App Design Constants
-// Minimal constants extracted from deleted DesignSystem.swift
+// Unified design system extending onboarding patterns across the app
 
 enum AppSpacing {
+    static let xs: CGFloat = 4
     static let small: CGFloat = 8
     static let medium: CGFloat = 16
     static let large: CGFloat = 24
+    static let xl: CGFloat = 32
+    static let xxl: CGFloat = 40
+    static let section: CGFloat = 60
+
+    // Semantic aliases
+    static let screenEdge: CGFloat = 24
+    static let cardInternal: CGFloat = 20
+    static let betweenCards: CGFloat = 16
+    static let lineSpacing: CGFloat = 6
 }
 
 enum AppRadius {
     static let small: CGFloat = 8
     static let medium: CGFloat = 12
     static let large: CGFloat = 16
+    static let xl: CGFloat = 20
+    static let pill: CGFloat = 28
 }
 
 // MARK: - App Colors
@@ -24,7 +36,7 @@ enum AppColors {
     static let primary = Color.accentColor
 }
 
-// MARK: - App Typography
+// MARK: - App Typography (Extended with Onboarding Patterns)
 enum AppTypography {
     static func largeTitle() -> Font {
         .largeTitle
@@ -37,6 +49,35 @@ enum AppTypography {
     static func caption2(weight: Font.Weight = .regular) -> Font {
         .caption2.weight(weight)
     }
+
+    // Editorial headline - serif, impactful (from onboarding)
+    static func headline(_ size: CGFloat = 28) -> Font {
+        .system(size: size, weight: .bold, design: .serif)
+    }
+
+    // Section title - serif warmth
+    static func sectionTitle(_ size: CGFloat = 22) -> Font {
+        .system(size: size, weight: .semibold, design: .serif)
+    }
+
+    // Body with proper line height
+    static let body: Font = .system(size: 17, weight: .regular)
+
+    // Caption for subtle text
+    static let caption: Font = .system(size: 14, weight: .regular)
+
+    // Button label
+    static let button: Font = .system(size: 17, weight: .semibold)
+
+    // Small label
+    static let label: Font = .system(size: 13, weight: .medium)
+}
+
+// MARK: - Onboarding-Style Text Colors
+extension Color {
+    static let textPrimary = Color(white: 0.2)
+    static let textSecondary = Color(white: 0.4)
+    static let textTertiary = Color(white: 0.5)
 }
 
 // MARK: - App Animation
@@ -73,10 +114,21 @@ extension Color {
     }
 }
 
-// MARK: - Card Shadow Modifier
+// MARK: - Card Shadow Modifiers (Extended with Onboarding Patterns)
 extension View {
+    /// Standard card shadow - subtle lift
     func cardShadow() -> some View {
-        self.shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+        self.shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+    }
+
+    /// Elevated card shadow - more prominent
+    func elevatedShadow() -> some View {
+        self.shadow(color: Color.black.opacity(0.08), radius: 15, x: 0, y: 6)
+    }
+
+    /// Accent shadow - colored glow for selected states
+    func accentShadow(_ color: Color) -> some View {
+        self.shadow(color: color.opacity(0.3), radius: 15, x: 0, y: 5)
     }
 }
 
@@ -285,5 +337,468 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 8)
+    }
+}
+
+// MARK: - Onboarding-Style Components
+
+/// Premium Info Card (from onboarding InfoBullet pattern)
+struct NSInfoCard: View {
+    let icon: String
+    let text: String
+    var iconColor: Color
+    var backgroundColor: Color
+
+    init(
+        icon: String,
+        text: String,
+        iconColor: Color = .blue,
+        backgroundColor: Color? = nil
+    ) {
+        self.icon = icon
+        self.text = text
+        self.iconColor = iconColor
+        self.backgroundColor = backgroundColor ?? iconColor.opacity(0.08)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AppSpacing.medium) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(iconColor)
+
+            Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(AppSpacing.lineSpacing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.medium)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(backgroundColor)
+        )
+    }
+}
+
+/// Premium Warning Card (from onboarding pattern)
+struct NSWarningCard: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AppSpacing.medium) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.orange)
+
+            Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(AppSpacing.lineSpacing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.medium)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(Color.orange.opacity(0.08))
+        )
+    }
+}
+
+/// Premium Empty State (calm, not alarming)
+struct EmptyStateView: View {
+    let icon: String
+    let title: String
+    var subtitle: String?
+    var actionTitle: String?
+    var action: (() -> Void)?
+
+    var body: some View {
+        VStack(spacing: AppSpacing.large) {
+            Image(systemName: icon)
+                .font(.system(size: 60, weight: .light))
+                .foregroundColor(Color.textTertiary.opacity(0.4))
+
+            VStack(spacing: AppSpacing.small) {
+                Text(title)
+                    .font(AppTypography.sectionTitle(20))
+                    .foregroundColor(Color.textSecondary)
+
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(AppTypography.body)
+                        .foregroundColor(Color.textTertiary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+
+            if let actionTitle = actionTitle, let action = action {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(AppTypography.button)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, AppSpacing.large)
+                        .padding(.vertical, AppSpacing.medium)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppRadius.large)
+                                .fill(Color.blue)
+                        )
+                }
+            }
+        }
+        .padding(.vertical, AppSpacing.section)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// Section Header with serif typography (from onboarding)
+struct NSSectionHeader: View {
+    let title: String
+    var subtitle: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Text(title)
+                .font(AppTypography.sectionTitle())
+                .foregroundColor(Color.textPrimary)
+
+            if let subtitle = subtitle {
+                Text(subtitle)
+                    .font(AppTypography.caption)
+                    .foregroundColor(Color.textTertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Feature Row with icon (from onboarding InfoBullet)
+struct NSFeatureRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    var iconColor: Color
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(
+        icon: String,
+        title: String,
+        description: String,
+        iconColor: Color = .blue
+    ) {
+        self.icon = icon
+        self.title = title
+        self.description = description
+        self.iconColor = iconColor
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AppSpacing.medium) {
+            // Icon with gradient background
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [iconColor, iconColor.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(AppRadius.medium)
+
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(Color.textPrimary)
+
+                Text(description)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.medium)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+        )
+        .cardShadow()
+    }
+}
+
+/// Insight Card with trend indicator
+struct InsightCard: View {
+    let icon: String
+    let title: String
+    let value: String
+    var trend: InsightTrend?
+    var iconColor: Color
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    enum InsightTrend {
+        case up, down, neutral
+
+        var icon: String {
+            switch self {
+            case .up: return "arrow.up.right"
+            case .down: return "arrow.down.right"
+            case .neutral: return "arrow.right"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .up: return .green
+            case .down: return .red
+            case .neutral: return .gray
+            }
+        }
+    }
+
+    init(
+        icon: String,
+        title: String,
+        value: String,
+        trend: InsightTrend? = nil,
+        iconColor: Color = .blue
+    ) {
+        self.icon = icon
+        self.title = title
+        self.value = value
+        self.trend = trend
+        self.iconColor = iconColor
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(iconColor)
+
+                Spacer()
+
+                if let trend = trend {
+                    Image(systemName: trend.icon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(trend.color)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text(value)
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textPrimary)
+
+                Text(title)
+                    .font(AppTypography.caption)
+                    .foregroundColor(Color.textTertiary)
+            }
+        }
+        .padding(AppSpacing.cardInternal)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+        )
+        .cardShadow()
+    }
+}
+
+/// Breathing animation modifier (from onboarding)
+struct BreathingModifier: ViewModifier {
+    let intensity: CGFloat
+    @State private var isBreathing = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isBreathing ? 1 + intensity : 1 - intensity * 0.5)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+                    isBreathing = true
+                }
+            }
+    }
+}
+
+extension View {
+    /// Apply breathing animation (from onboarding)
+    func breathing(intensity: CGFloat = 0.05) -> some View {
+        modifier(BreathingModifier(intensity: intensity))
+    }
+}
+
+/// Premium list row (from onboarding patterns)
+struct ListRow<Content: View>: View {
+    let icon: String
+    let iconColor: Color
+    let content: Content
+    var showChevron: Bool
+    var action: (() -> Void)?
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(
+        icon: String,
+        iconColor: Color = .blue,
+        showChevron: Bool = true,
+        action: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.icon = icon
+        self.iconColor = iconColor
+        self.showChevron = showChevron
+        self.action = action
+        self.content = content()
+    }
+
+    var body: some View {
+        Button(action: { action?() }) {
+            HStack(spacing: AppSpacing.medium) {
+                // Icon with subtle circular background
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.12))
+                        .frame(width: 36, height: 36)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(iconColor)
+                }
+
+                content
+
+                Spacer()
+
+                if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(white: 0.7))
+                }
+            }
+            .padding(.horizontal, AppSpacing.medium)
+            .padding(.vertical, AppSpacing.medium - 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(action == nil)
+    }
+}
+
+/// Tag / Chip component (from onboarding patterns)
+struct TagView: View {
+    let text: String
+    var isSelected: Bool
+    var color: Color
+    var action: (() -> Void)?
+
+    init(
+        _ text: String,
+        isSelected: Bool = false,
+        color: Color = .blue,
+        action: (() -> Void)? = nil
+    ) {
+        self.text = text
+        self.isSelected = isSelected
+        self.color = color
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: { action?() }) {
+            Text(text)
+                .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
+                .foregroundColor(isSelected ? .white : Color.textSecondary)
+                .padding(.horizontal, AppSpacing.medium)
+                .padding(.vertical, AppSpacing.small + 2)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? color : Color.white.opacity(0.7))
+                        .shadow(
+                            color: isSelected ? color.opacity(0.3) : Color.black.opacity(0.05),
+                            radius: isSelected ? 8 : 3,
+                            y: 2
+                        )
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.clear : Color.white.opacity(0.5), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(action == nil)
+    }
+}
+
+/// Primary button matching onboarding style
+struct PrimaryButton: View {
+    let text: String
+    let action: () -> Void
+    var isEnabled: Bool
+    var showShimmer: Bool
+    var gradient: [Color]
+
+    @State private var shimmerOffset: CGFloat = -200
+
+    init(
+        _ text: String,
+        isEnabled: Bool = true,
+        showShimmer: Bool = false,
+        gradient: [Color]? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.text = text
+        self.isEnabled = isEnabled
+        self.showShimmer = showShimmer
+        self.gradient = gradient ?? [
+            Color(red: 0.20, green: 0.45, blue: 0.50),
+            Color(red: 0.15, green: 0.35, blue: 0.42)
+        ]
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: AppRadius.large)
+                    .fill(
+                        isEnabled
+                            ? LinearGradient(colors: gradient, startPoint: .leading, endPoint: .trailing)
+                            : LinearGradient(colors: [Color.gray.opacity(0.3)], startPoint: .leading, endPoint: .trailing)
+                    )
+
+                if showShimmer && isEnabled {
+                    RoundedRectangle(cornerRadius: AppRadius.large)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.clear, Color.white.opacity(0.3), Color.clear],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .offset(x: shimmerOffset)
+                        .mask(RoundedRectangle(cornerRadius: AppRadius.large))
+                }
+
+                Text(text)
+                    .font(AppTypography.button)
+                    .foregroundColor(isEnabled ? .white : .gray)
+            }
+            .frame(height: 56)
+        }
+        .disabled(!isEnabled)
+        .onAppear {
+            if showShimmer {
+                withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
+                    shimmerOffset = 400
+                }
+            }
+        }
     }
 }

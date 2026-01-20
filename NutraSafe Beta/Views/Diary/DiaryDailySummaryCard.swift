@@ -804,8 +804,8 @@ struct DiaryDailySummaryCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.medium)
-            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+        RoundedRectangle(cornerRadius: AppRadius.large)
+            .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
     }
 
     // MARK: - Event Handlers
