@@ -1006,38 +1006,68 @@ struct DiaryTabView: View {
         }
     }
 
+    /// Contextual accent color for each insights sub-tab
+    private func accentColor(for tab: InsightsSubTab) -> Color {
+        switch tab {
+        case .additives:
+            return .orange
+        case .nutrients:
+            return Color(hex: "#3FD17C") // Green/teal for nutrients
+        }
+    }
+
     private var insightsSubTabPicker: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             ForEach(InsightsSubTab.allCases, id: \.self) { tab in
+                let isSelected = insightsSubTab == tab
+                let tabAccent = accentColor(for: tab)
+
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         insightsSubTab = tab
                     }
                 } label: {
                     Text(tab.rawValue)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(insightsSubTab == tab ? .white : .secondary)
-                        .padding(.horizontal, 16)
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .medium, design: .rounded))
+                        .foregroundColor(isSelected ? tabAccent : .secondary.opacity(0.7))
+                        .padding(.horizontal, 18)
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
                         .background(
-                            insightsSubTab == tab
-                                ? Capsule().fill(Color.orange)
-                                : Capsule().fill(Color(.systemGray6))
+                            ZStack {
+                                if isSelected {
+                                    // Soft gradient tint for selected - very subtle
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    tabAccent.opacity(0.12),
+                                                    tabAccent.opacity(0.06)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                    // Subtle border glow
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(tabAccent.opacity(0.25), lineWidth: 1)
+                                } else {
+                                    // Frosted neutral background for unselected
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemGray6).opacity(0.4))
+                                }
+                            }
                         )
-                        .contentShape(Capsule())
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .buttonStyle(PlainButtonStyle())
-
-                if tab != InsightsSubTab.allCases.last {
-                    Spacer(minLength: 8)
-                }
+                .buttonStyle(SubTabButtonStyle())
             }
         }
-        .padding(4)
+        .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(.systemGray6).opacity(0.5))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
         )
     }
 
@@ -1343,6 +1373,17 @@ struct DiaryTabView: View {
     }
 }
 
+// MARK: - Sub-Tab Button Style
+
+/// Subtle scale effect for insights sub-tab buttons
+private struct SubTabButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Categorical Nutrient Tracking with Rhythm Bar
 
 @available(iOS 16.0, *)
@@ -1498,8 +1539,11 @@ struct CategoricalNutrientTrackingView: View {
                 .transition(.opacity)
             }
 
-            // Week navigation buttons
-            HStack(spacing: 12) {
+            // Week navigation buttons - soft, secondary styling
+            let nutrientAccent = Color(hex: "#3FD17C")
+            let isCurrentWeek = weekOffset == 0
+
+            HStack(spacing: 8) {
                 // Previous week button
                 Button(action: {
                     weekOffset -= 1
@@ -1507,18 +1551,21 @@ struct CategoricalNutrientTrackingView: View {
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                         Text("Previous")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.secondary.opacity(vm.isLoading ? 0.4 : 0.7))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(hex: "#5856D6").opacity(vm.isLoading ? 0.6 : 1.0))
-                    .cornerRadius(10)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(.systemGray6).opacity(0.5))
+                    )
                 }
+                .buttonStyle(SubTabButtonStyle())
 
-                // This week button (always visible)
+                // This week button - highlighted when current
                 Button(action: {
                     weekOffset = 0
                     loadWeekData()
@@ -1527,25 +1574,36 @@ struct CategoricalNutrientTrackingView: View {
                     HStack(spacing: 6) {
                         if vm.isLoading {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(0.8)
+                                .progressViewStyle(CircularProgressViewStyle(tint: nutrientAccent))
+                                .scaleEffect(0.7)
                         }
                         Text(vm.isLoading ? "Loading..." : "This Week")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 13, weight: isCurrentWeek ? .semibold : .medium, design: .rounded))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(isCurrentWeek ? nutrientAccent : .secondary.opacity(0.7))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 10)
                     .background(
-                        LinearGradient(
-                            colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        .opacity(vm.isLoading ? 0.6 : 1.0)
+                        ZStack {
+                            if isCurrentWeek {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [nutrientAccent.opacity(0.12), nutrientAccent.opacity(0.06)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(nutrientAccent.opacity(0.25), lineWidth: 1)
+                            } else {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(.systemGray6).opacity(0.5))
+                            }
+                        }
                     )
-                    .cornerRadius(10)
                 }
+                .buttonStyle(SubTabButtonStyle())
 
                 // Next week button
                 Button(action: {
@@ -1554,19 +1612,29 @@ struct CategoricalNutrientTrackingView: View {
                 }) {
                     HStack(spacing: 4) {
                         Text("Next")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.secondary.opacity(vm.isLoading ? 0.4 : 0.7))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(hex: "#5856D6").opacity(vm.isLoading ? 0.6 : 1.0))
-                    .cornerRadius(10)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(.systemGray6).opacity(0.5))
+                    )
                 }
+                .buttonStyle(SubTabButtonStyle())
             }
-            .padding(.horizontal, 20)
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
+            )
+            .padding(.horizontal, 16)
             .animation(.easeInOut(duration: 0.2), value: vm.isLoading)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: weekOffset)
         }
         .padding(.top, 8)
         .padding(.bottom, 4)

@@ -138,36 +138,53 @@ struct AdditiveTrackerSection: View {
     // MARK: - Time Period Picker
 
     private var timePeriodPicker: some View {
-        HStack(spacing: 0) {
+        let additiveAccent = Color.orange
+
+        return HStack(spacing: 8) {
             ForEach(AdditiveTimePeriod.allCases, id: \.self) { period in
+                let isSelected = viewModel.selectedPeriod == period
+
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         viewModel.selectPeriod(period)
                     }
                 } label: {
                     Text(period.rawValue)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(viewModel.selectedPeriod == period ? .white : .secondary)
-                        .padding(.horizontal, 12)
+                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium, design: .rounded))
+                        .foregroundColor(isSelected ? additiveAccent : .secondary.opacity(0.7))
+                        .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(
-                            viewModel.selectedPeriod == period
-                                ? Capsule().fill(Color.orange)
-                                : Capsule().fill(Color(.systemGray6))
+                            ZStack {
+                                if isSelected {
+                                    // Soft gradient tint for selected
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [additiveAccent.opacity(0.12), additiveAccent.opacity(0.06)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(additiveAccent.opacity(0.25), lineWidth: 1)
+                                } else {
+                                    // Frosted neutral background
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(.systemGray6).opacity(0.4))
+                                }
+                            }
                         )
-                        .contentShape(Capsule())
+                        .contentShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .buttonStyle(PlainButtonStyle())
-
-                if period != AdditiveTimePeriod.allCases.last {
-                    Spacer(minLength: 4)
-                }
+                .buttonStyle(AdditiveTabButtonStyle())
             }
         }
-        .padding(4)
+        .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6).opacity(0.5))
+            RoundedRectangle(cornerRadius: 14)
+                .fill(.ultraThinMaterial)
+                .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
         )
     }
 
@@ -471,6 +488,17 @@ private struct ExpandableAdditiveRow: View {
         } else {
             return .red
         }
+    }
+}
+
+// MARK: - Additive Tab Button Style
+
+/// Subtle scale effect for additive time period buttons
+private struct AdditiveTabButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
