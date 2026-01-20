@@ -74,7 +74,7 @@ struct FoodTabView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .tabGradientBackground(.health)
+            .background(AppAnimatedBackground())
             .navigationBarHidden(true)
         }
         .onAppear {

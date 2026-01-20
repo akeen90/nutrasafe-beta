@@ -272,19 +272,21 @@ extension View {
 
 // MARK: - Modern Tab Header View
 /// Redesigned tab header with unified pill containing both tabs and settings cog
-/// Design: Single wide pill with tabs on left and cog integrated on right - creates balanced, centered appearance
+/// Now palette-aware - uses user's onboarding intent colors
 struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View where Tab.RawValue == String {
     @Environment(\.colorScheme) var colorScheme
     let tabs: [Tab]
     @Binding var selectedTab: Tab
     let onSettingsTapped: () -> Void
-    var actionIcon: String = "gearshape.fill"  // Customizable: "xmark" for close button
+    var actionIcon: String = "gearshape.fill"
     @Namespace private var animation
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
-        // Single unified pill container spanning full width
         HStack(spacing: 0) {
-            // Tab buttons section
             HStack(spacing: 0) {
                 ForEach(tabs, id: \.self) { tab in
                     Button(action: {
@@ -295,7 +297,7 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
                     }) {
                         Text(tab.rawValue)
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(selectedTab == tab ? .blue : .gray)
+                            .foregroundColor(selectedTab == tab ? palette.accent : palette.textTertiary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background(
@@ -303,7 +305,7 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
                                     if selectedTab == tab {
                                         RoundedRectangle(cornerRadius: 10)
                                             .fill(colorScheme == .dark ? Color(.systemGray5) : Color.white)
-                                            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                                            .shadow(color: palette.accent.opacity(0.15), radius: 4, x: 0, y: 2)
                                             .matchedGeometryEffect(id: "tabHeaderSelection", in: animation)
                                     }
                                 }
@@ -314,7 +316,6 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
                 }
             }
 
-            // Settings button integrated into the pill
             Button(action: onSettingsTapped) {
                 ZStack {
                     Circle()
@@ -323,7 +324,7 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
                         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
                     Image(systemName: actionIcon)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.gray)
+                        .foregroundColor(palette.textTertiary)
                 }
                 .padding(.trailing, 4)
                 .padding(.leading, 8)
@@ -332,7 +333,11 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6))
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
         )
         .padding(.horizontal, 16)
         .padding(.top, 8)

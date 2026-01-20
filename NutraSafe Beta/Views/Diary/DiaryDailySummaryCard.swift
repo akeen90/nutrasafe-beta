@@ -119,17 +119,23 @@ struct DiaryDailySummaryCard: View {
         }
     }
 
-    // MARK: - View Components (3 Rings)
+    // MARK: - View Components (Hero: Calorie Ring)
 
     private var calorieRingView: some View {
         VStack(spacing: 6) {
             ZStack {
+                // Outer glow for hero emphasis
+                Circle()
+                    .fill(palette.accent.opacity(0.06))
+                    .frame(width: 160, height: 160)
+                    .blur(radius: 10)
+
                 // Background circle with subtle palette tint
                 Circle()
-                    .stroke(palette.tertiary.opacity(0.2), lineWidth: 14)
-                    .frame(width: 130, height: 130)
+                    .stroke(palette.tertiary.opacity(0.15), lineWidth: 16)
+                    .frame(width: 145, height: 145)
 
-                // Progress circle with palette gradient
+                // Progress circle with palette gradient - HERO element
                 Circle()
                     .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
                     .stroke(
@@ -138,22 +144,22 @@ struct DiaryDailySummaryCard: View {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        style: StrokeStyle(lineWidth: 14, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
                     )
-                    .frame(width: 130, height: 130)
+                    .frame(width: 145, height: 145)
                     .rotationEffect(.degrees(-90))
-                    .shadow(color: palette.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+                    .shadow(color: palette.accent.opacity(0.4), radius: 12, x: 0, y: 6)
                     .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
 
-                // Center text - stacked vertically
+                // Center text - stacked vertically with stronger presence
                 VStack(spacing: 0) {
                     Text("\(totalCalories)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(palette.textPrimary)
 
                     Text("/\(Int(calorieGoal))")
                         .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(palette.textSecondary)
+                        .foregroundColor(palette.textTertiary)
 
                     Text("Cals")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -161,8 +167,8 @@ struct DiaryDailySummaryCard: View {
                         .padding(.top, 2)
                 }
             }
-            // Breathing animation for the ring
-            .scaleEffect(isBreathing ? 1.02 : 1.0)
+            // Breathing animation for the ring - hero emphasis
+            .scaleEffect(isBreathing ? 1.03 : 1.0)
             .onAppear {
                 withAnimation(DesignTokens.Animation.breathing) {
                     isBreathing = true

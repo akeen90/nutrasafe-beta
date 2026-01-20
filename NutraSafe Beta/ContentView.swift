@@ -954,7 +954,7 @@ enum JourneyTimeRange: String, CaseIterable {
 struct WeightTrackingView: View {
     @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
-    var isPresentedAsModal: Bool = false  // When true, shows close button instead of settings
+    var isPresentedAsModal: Bool = false
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -962,30 +962,29 @@ struct WeightTrackingView: View {
 
     @State private var currentWeight: Double = 0
     @State private var goalWeight: Double = 0
-    @State private var userHeight: Double = 0 // 0 means not set
+    @State private var userHeight: Double = 0
     @State private var showingAddWeight = false
     @State private var weightHistory: [WeightEntry] = []
     @State private var showingHeightSetup = false
     @State private var isLoadingData = false
     @State private var hasCheckedHeight = false
-    @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
+    @State private var hasLoadedOnce = false
 
-    // Sub-tab selection
     @State private var progressSubTab: ProgressSubTab = .weight
-
-    // Entry management
-    @State private var editingEntry: WeightEntry?  // Changed from selectedEntry to editingEntry for clarity
+    @State private var editingEntry: WeightEntry?
     @State private var entryToDelete: WeightEntry?
     @State private var showingDeleteConfirmation = false
     @State private var showAllWeightEntries = false
     @State private var showingGoalWeightEditor = false
     @State private var journeyTimeRange: JourneyTimeRange = .thirtyDays
 
-    // MARK: - Feature Tips
     @State private var showingProgressTip = false
-
-    // MARK: - Paywall
     @State private var showingPaywall = false
+
+    // MARK: - Palette Integration
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     /// Free users can see limited entries
     private var hasFullAccess: Bool {
@@ -1008,14 +1007,15 @@ struct WeightTrackingView: View {
 
     private var bmiCategory: (String, Color) {
         let bmi = currentBMI
+        // Use palette accent instead of semantic colors
         if bmi < 18.5 {
-            return ("Underweight", .orange)
+            return ("Underweight", palette.textSecondary)
         } else if bmi < 25 {
-            return ("Healthy", .green)
+            return ("Healthy", palette.accent)
         } else if bmi < 30 {
-            return ("Overweight", .orange)
+            return ("Overweight", palette.textSecondary)
         } else {
-            return ("Obese", .red)
+            return ("Obese", palette.textTertiary)
         }
     }
 
@@ -1071,11 +1071,11 @@ struct WeightTrackingView: View {
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.2)
-                            .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                            .progressViewStyle(CircularProgressViewStyle(tint: palette.accent))
 
                         Text("Loading your progress...")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(palette.textSecondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -1097,35 +1097,30 @@ struct WeightTrackingView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Current")
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(palette.textSecondary)
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                                     Text(formatWeight(currentWeight))
                                         .font(.system(size: 32, weight: .bold))
                                         .foregroundStyle(
                                             LinearGradient(
-                                                colors: [
-                                                    Color(red: 0.3, green: 0.5, blue: 1.0),
-                                                    Color(red: 0.5, green: 0.3, blue: 0.9)
-                                                ],
+                                                colors: [palette.accent, palette.primary],
                                                 startPoint: .leading,
                                                 endPoint: .trailing
                                             )
                                         )
                                     Text(weightUnit)
                                         .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(palette.textSecondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .stroke(Color(.systemGray4), lineWidth: 1)
-                                    )
-                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                    .fill(Color.nutraSafeCard)
+                                    .shadow(color: DesignTokens.Shadow.subtle.color,
+                                            radius: DesignTokens.Shadow.subtle.radius,
+                                            y: DesignTokens.Shadow.subtle.y)
                             )
 
                             // Goal Weight - Tappable to edit
@@ -1134,31 +1129,29 @@ struct WeightTrackingView: View {
                                     HStack {
                                         Text("Goal")
                                             .font(.system(size: 13, weight: .medium))
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(palette.textSecondary)
                                         Spacer()
                                         Image(systemName: "pencil.circle.fill")
                                             .font(.system(size: 16))
-                                            .foregroundColor(.green.opacity(0.6))
+                                            .foregroundColor(palette.accent.opacity(0.6))
                                     }
                                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                                         Text(goalWeight > 0 ? formatWeight(goalWeight) : "--")
                                             .font(.system(size: 32, weight: .bold))
-                                            .foregroundColor(.green)
+                                            .foregroundColor(palette.accent)
                                         Text(weightUnit)
                                             .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(palette.textSecondary)
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(16)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 20)
-                                                .stroke(Color(.systemGray4), lineWidth: 1)
-                                        )
-                                        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                        .fill(Color.nutraSafeCard)
+                                        .shadow(color: DesignTokens.Shadow.subtle.color,
+                                                radius: DesignTokens.Shadow.subtle.radius,
+                                                y: DesignTokens.Shadow.subtle.y)
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -1170,55 +1163,51 @@ struct WeightTrackingView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Progress")
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(palette.textSecondary)
                                 let startWeight = weightHistory.last?.weight ?? currentWeight
                                 let lost = max(startWeight - currentWeight, 0)
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                                     Text(formatWeight(lost))
                                         .font(.system(size: 28, weight: .bold))
-                                        .foregroundColor(.green)
+                                        .foregroundColor(palette.accent)
                                     Text(weightUnit)
                                         .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(palette.textSecondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .stroke(Color(.systemGray4), lineWidth: 1)
-                                    )
-                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                    .fill(Color.nutraSafeCard)
+                                    .shadow(color: DesignTokens.Shadow.subtle.color,
+                                            radius: DesignTokens.Shadow.subtle.radius,
+                                            y: DesignTokens.Shadow.subtle.y)
                             )
 
                             // Remaining
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("To Go")
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(palette.textSecondary)
                                 let remaining = goalWeight > 0 ? max(currentWeight - goalWeight, 0) : 0
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                                     Text(formatWeight(remaining))
                                         .font(.system(size: 28, weight: .bold))
-                                        .foregroundColor(.orange)
+                                        .foregroundColor(palette.textTertiary)
                                     Text(weightUnit)
                                         .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(palette.textSecondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .stroke(Color(.systemGray4), lineWidth: 1)
-                                    )
-                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                    .fill(Color.nutraSafeCard)
+                                    .shadow(color: DesignTokens.Shadow.subtle.color,
+                                            radius: DesignTokens.Shadow.subtle.radius,
+                                            y: DesignTokens.Shadow.subtle.y)
                             )
                         }
                         .padding(.horizontal, 16)
@@ -1274,22 +1263,22 @@ struct WeightTrackingView: View {
                                     HStack(spacing: 6) {
                                         Image(systemName: totalChange <= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
                                             .font(.system(size: 16))
-                                            .foregroundColor(totalChange <= 0 ? .green : .red)
+                                            .foregroundColor(totalChange <= 0 ? palette.accent : palette.textTertiary)
 
                                         VStack(alignment: .leading, spacing: 1) {
                                             Text(totalChange <= 0 ? "Down" : "Up")
                                                 .font(.system(size: 11, weight: .medium))
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(palette.textSecondary)
                                             Text("\(formatWeight(abs(totalChange))) \(weightUnit)")
                                                 .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(totalChange <= 0 ? .green : .red)
+                                                .foregroundColor(totalChange <= 0 ? palette.accent : palette.textTertiary)
                                         }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(10)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .fill((totalChange <= 0 ? Color.green : Color.red).opacity(0.1))
+                                        RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                            .fill(palette.accent.opacity(0.08))
                                     )
 
                                     // To goal
@@ -1297,22 +1286,22 @@ struct WeightTrackingView: View {
                                         HStack(spacing: 6) {
                                             Image(systemName: "target")
                                                 .font(.system(size: 16))
-                                                .foregroundColor(toGoal <= 0 ? .green : .orange)
+                                                .foregroundColor(toGoal <= 0 ? palette.accent : palette.textSecondary)
 
                                             VStack(alignment: .leading, spacing: 1) {
                                                 Text(toGoal <= 0 ? "Goal reached!" : "To goal")
                                                     .font(.system(size: 11, weight: .medium))
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(palette.textSecondary)
                                                 Text(toGoal <= 0 ? "🎉" : "\(formatWeight(toGoal)) \(weightUnit)")
                                                     .font(.system(size: 14, weight: .bold))
-                                                    .foregroundColor(toGoal <= 0 ? .green : .orange)
+                                                    .foregroundColor(toGoal <= 0 ? palette.accent : palette.textSecondary)
                                             }
                                         }
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(10)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill((toGoal <= 0 ? Color.green : Color.orange).opacity(0.1))
+                                            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                                .fill(palette.primary.opacity(0.08))
                                         )
                                     }
                                 }
@@ -1321,9 +1310,11 @@ struct WeightTrackingView: View {
                         }
                         .padding(.vertical, 12)
                         .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                .fill(Color.nutraSafeCard)
+                                .shadow(color: DesignTokens.Shadow.subtle.color,
+                                        radius: DesignTokens.Shadow.subtle.radius,
+                                        y: DesignTokens.Shadow.subtle.y)
                         )
                         .padding(.horizontal, 16)
                     }
@@ -1341,16 +1332,13 @@ struct WeightTrackingView: View {
                         .padding(.vertical, 16)
                         .background(
                             LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.7, blue: 0.5),
-                                    Color(red: 1.0, green: 0.6, blue: 0.7),
-                                    Color(red: 0.7, green: 0.6, blue: 1.0)
-                                ],
+                                colors: [palette.accent, palette.primary],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
                         .cornerRadius(30)
+                        .shadow(color: palette.accent.opacity(0.3), radius: 10, y: 4)
                     }
                     .padding(.horizontal, 40)
                     .padding(.top, 20)
@@ -1383,12 +1371,12 @@ struct WeightTrackingView: View {
                                         Text("\(formatWeight(abs(change))) \(weightUnit)")
                                             .font(.system(size: 14, weight: .semibold))
                                     }
-                                    .foregroundColor(change < 0 ? .green : change > 0 ? .red : .secondary)
+                                    .foregroundColor(change < 0 ? palette.accent : change > 0 ? palette.textTertiary : palette.textSecondary)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill((change < 0 ? Color.green : change > 0 ? Color.red : Color.secondary).opacity(0.1))
+                                        RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                            .fill(palette.accent.opacity(0.08))
                                     )
                                 }
                             }
@@ -1443,11 +1431,11 @@ struct WeightTrackingView: View {
                                         HStack(spacing: 10) {
                                             Image(systemName: "lock.fill")
                                                 .font(.system(size: 14))
-                                                .foregroundColor(.blue)
+                                                .foregroundColor(palette.accent)
 
                                             Text("+\(weightHistory.count - SubscriptionManager.freeWeightHistoryLimit) more entries")
                                                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                                                .foregroundColor(.primary)
+                                                .foregroundColor(palette.textPrimary)
 
                                             Spacer()
 
@@ -1456,12 +1444,12 @@ struct WeightTrackingView: View {
                                                 .foregroundColor(.white)
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 6)
-                                                .background(Capsule().fill(Color.blue))
+                                                .background(Capsule().fill(palette.accent))
                                         }
                                         .padding(14)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .fill(Color.blue.opacity(0.08))
+                                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                                .fill(palette.accent.opacity(0.08))
                                         )
                                     }
                                     .buttonStyle(PlainButtonStyle())
@@ -1479,7 +1467,7 @@ struct WeightTrackingView: View {
                                     }) {
                                         Text(showAllWeightEntries ? "Show less" : "View all \(weightHistory.count) entries")
                                             .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(palette.accent)
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 12)
                                     }
@@ -1502,14 +1490,12 @@ struct WeightTrackingView: View {
                         .padding(.top, 12)
                         .padding(12)
                         .background(
-                            RoundedRectangle(cornerRadius: 22)
-                                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 22)
-                                        .stroke(Color(.systemGray4), lineWidth: 1)
-                                )
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                                .fill(Color.nutraSafeCard)
+                                .shadow(color: DesignTokens.Shadow.subtle.color,
+                                        radius: DesignTokens.Shadow.subtle.radius,
+                                        y: DesignTokens.Shadow.subtle.y)
                         )
-                        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                             .padding(.horizontal, 0)
                     } else {
                         // Empty State
@@ -1518,10 +1504,7 @@ struct WeightTrackingView: View {
                                 Circle()
                                     .fill(
                                         LinearGradient(
-                                            colors: [
-                                                Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.1),
-                                                Color(red: 0.5, green: 0.3, blue: 0.9).opacity(0.1)
-                                            ],
+                                            colors: [palette.accent.opacity(0.1), palette.primary.opacity(0.1)],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
@@ -1532,10 +1515,7 @@ struct WeightTrackingView: View {
                                     .font(.system(size: 48, weight: .light))
                                     .foregroundStyle(
                                         LinearGradient(
-                                            colors: [
-                                                Color(red: 0.3, green: 0.5, blue: 1.0),
-                                                Color(red: 0.5, green: 0.3, blue: 0.9)
-                                            ],
+                                            colors: [palette.accent, palette.primary],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
@@ -1545,12 +1525,13 @@ struct WeightTrackingView: View {
 
                             VStack(spacing: 8) {
                                 Text("Track Your Weight Journey")
-                                    .font(.system(size: 20, weight: .semibold))
+                                    .font(.system(size: 20, weight: .semibold, design: .serif))
+                                    .foregroundColor(palette.textPrimary)
                                     .multilineTextAlignment(.center)
 
                                 Text("Tap 'Update Weight' above to log your first entry and see your progress over time")
                                     .font(.system(size: 15))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(palette.textSecondary)
                                     .multilineTextAlignment(.center)
                             }
                             .padding(.horizontal, 40)
@@ -1558,10 +1539,10 @@ struct WeightTrackingView: View {
                         .frame(height: 280)
                         .frame(maxWidth: .infinity)
                         .background(
-                            RoundedRectangle(cornerRadius: 20)
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
                                 .fill(.ultraThinMaterial)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 20)
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
                                         .stroke(
                                             LinearGradient(
                                                 colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
@@ -1572,7 +1553,7 @@ struct WeightTrackingView: View {
                                         )
                                 )
                         )
-                        .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+                        .shadow(color: DesignTokens.Shadow.subtle.color, radius: DesignTokens.Shadow.subtle.radius, y: DesignTokens.Shadow.subtle.y)
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
                     }
@@ -1593,7 +1574,7 @@ struct WeightTrackingView: View {
                     } // End of ZStack
                 } // End of loading else block
             }
-            .tabGradientBackground(.progress)
+            .background(AppAnimatedBackground())
         .fullScreenCover(isPresented: $showingAddWeight) {
             AddWeightView(
                 currentWeight: $currentWeight,

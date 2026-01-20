@@ -1738,6 +1738,10 @@ struct UseByItemsListCard: View {
 struct UseByCriticalExpiryCard: View {
     @Environment(\.colorScheme) var colorScheme
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -1746,27 +1750,27 @@ struct UseByCriticalExpiryCard: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [.red, .red.opacity(0.85)],
+                                    colors: [palette.accent, palette.primary],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 32, height: 32)
+                            .frame(width: 36, height: 36)
                             .overlay(
                                 Circle()
                                     .stroke(Color.white.opacity(0.25), lineWidth: 1)
                             )
-                            .shadow(color: .red.opacity(0.25), radius: 6, x: 0, y: 3)
+                            .shadow(color: palette.accent.opacity(0.3), radius: 8, x: 0, y: 4)
 
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(.white)
                             .symbolRenderingMode(.hierarchical)
                     }
 
-                    Text("Expired Items")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
+                    Text("Needs Attention")
+                        .font(.system(size: 17, weight: .semibold, design: .serif))
+                        .foregroundColor(palette.textPrimary)
                 }
 
                 Spacer()
@@ -1774,8 +1778,8 @@ struct UseByCriticalExpiryCard: View {
                 Button("View All") {
                     // Action
                 }
-                .font(.system(size: 14))
-                .foregroundColor(.blue)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(palette.accent)
             }
 
             VStack(spacing: 0) {
@@ -1822,6 +1826,10 @@ struct UseByWeeklyExpiryCard: View {
     @State private var expandedSections: Set<String> = []
     @Environment(\.colorScheme) var colorScheme
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -1830,7 +1838,7 @@ struct UseByWeeklyExpiryCard: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [.orange, .orange.opacity(0.85)],
+                                    colors: [palette.primary, palette.tertiary],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -1840,7 +1848,7 @@ struct UseByWeeklyExpiryCard: View {
                                 Circle()
                                     .stroke(Color.white.opacity(0.25), lineWidth: 1)
                             )
-                            .shadow(color: .orange.opacity(0.25), radius: 6, x: 0, y: 3)
+                            .shadow(color: palette.primary.opacity(0.2), radius: 6, x: 0, y: 3)
 
                         Image(systemName: "calendar")
                             .font(.system(size: 14, weight: .semibold))
@@ -1850,14 +1858,14 @@ struct UseByWeeklyExpiryCard: View {
 
                     Text("Days Left")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
 
                 Spacer()
 
                 Text("8 items")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(palette.textSecondary)
             }
 
             VStack(spacing: 0) {

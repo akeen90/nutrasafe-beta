@@ -570,13 +570,13 @@ struct ReactionLogView: View {
                     // Show count
                     Text("\(filteredLogs.count) \(filteredLogs.count == 1 ? "reaction" : "reactions")")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textSecondary)
 
-                    ForEach(filteredLogs) { entry in
+                    ForEach(Array(filteredLogs.enumerated()), id: \.element.id) { index, entry in
                         Button(action: {
                             selectedEntry = entry
                         }) {
-                            ReactionLogCard(entry: entry)
+                            ReactionLogCard(entry: entry, isHero: index == 0)
                         }
                         .buttonStyle(.plain)
                     }
@@ -1104,46 +1104,54 @@ struct CommonFoodRow: View {
 struct ReactionLogCard: View {
     @Environment(\.colorScheme) private var colorScheme
     let entry: ReactionLogEntry
+    var isHero: Bool = false
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                // Reaction type icon
+                // Reaction type icon - uses palette for hero
                 Image(systemName: reactionIcon)
-                    .font(.title3)
-                    .foregroundColor(.orange)
-                    .frame(width: 32, height: 32)
-                    .background(Color.orange.opacity(0.15))
-                    .cornerRadius(8)
+                    .font(isHero ? .title2 : .title3)
+                    .foregroundColor(isHero ? palette.accent : palette.textSecondary)
+                    .frame(width: isHero ? 40 : 32, height: isHero ? 40 : 32)
+                    .background(
+                        RoundedRectangle(cornerRadius: isHero ? DesignTokens.Radius.md : 8)
+                            .fill(palette.accent.opacity(isHero ? 0.15 : 0.08))
+                    )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.reactionType)
-                        .font(.headline)
+                        .font(isHero ? .system(size: 18, weight: .semibold) : .headline)
+                        .foregroundColor(palette.textPrimary)
 
                     Text(entry.reactionDate, style: .date)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textSecondary)
                     +
                     Text(" at ")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textSecondary)
                     +
                     Text(entry.reactionDate, style: .time)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(palette.textTertiary)
             }
 
             if let notes = entry.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(palette.textSecondary)
                     .lineLimit(2)
             }
 
@@ -1151,18 +1159,31 @@ struct ReactionLogCard: View {
                 HStack(spacing: 16) {
                     Label("\(analysis.mealCount) meals analyzed", systemImage: "fork.knife")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textSecondary)
 
                     Label("\(analysis.topFoods.count) foods identified", systemImage: "list.bullet")
                         .font(.caption)
-                        .foregroundColor(.blue)
+                        .foregroundColor(palette.accent)
                 }
             }
         }
-        .padding(12)
-        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-        .cornerRadius(10)
-        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+        .padding(isHero ? 16 : 12)
+        .background(
+            RoundedRectangle(cornerRadius: isHero ? DesignTokens.Radius.lg : 10)
+                .fill(Color.nutraSafeCard)
+                .shadow(
+                    color: isHero ? palette.accent.opacity(0.15) : .black.opacity(0.05),
+                    radius: isHero ? 12 : 3,
+                    x: 0,
+                    y: isHero ? 4 : 2
+                )
+        )
+        .overlay(
+            isHero ?
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .stroke(palette.accent.opacity(0.2), lineWidth: 1)
+            : nil
+        )
     }
 
     private var reactionIcon: String {
