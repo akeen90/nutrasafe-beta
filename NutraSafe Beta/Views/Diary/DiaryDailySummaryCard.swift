@@ -57,61 +57,79 @@ struct DiaryDailySummaryCard: View {
     @State private var weeklyCaloriesConsumed: Int = 0
     @State private var weeklyCalorieGoal: Int = 0
 
-    // MARK: - Body (Redesigned Premium Layout)
+    // MARK: - Body (Compact Premium Layout)
     var body: some View {
         VStack(spacing: DiaryLayoutTokens.sectionSpacing) {
-            // MARK: Hero Section - Calorie Ring
-            HeroCalorieRing(calories: totalCalories, goal: calorieGoal)
-                .padding(.top, 8)
+            // MARK: Hero Row - Ring + Macros side by side
+            HStack(alignment: .center, spacing: 16) {
+                // Calorie ring (left)
+                HeroCalorieRing(calories: totalCalories, goal: calorieGoal)
 
-            // MARK: Macro Capsules (Horizontal Pills)
-            VStack(spacing: 8) {
-                ForEach(macroGoals.prefix(4), id: \.macroType) { macroGoal in
-                    MacroCapsule(
-                        name: macroGoal.macroType.displayName,
-                        current: calculateMacroTotal(for: macroGoal.macroType),
-                        goal: macroGoal.calculateGramGoal(from: calorieGoal),
-                        color: macroGoal.macroType.color
-                    )
+                // Macros grid (right) - 2x2 compact
+                VStack(spacing: 6) {
+                    let macros = Array(macroGoals.prefix(4))
+                    if macros.count >= 2 {
+                        HStack(spacing: 6) {
+                            MacroCapsule(
+                                name: macros[0].macroType.displayName,
+                                current: calculateMacroTotal(for: macros[0].macroType),
+                                goal: macros[0].calculateGramGoal(from: calorieGoal),
+                                color: macros[0].macroType.color
+                            )
+                            MacroCapsule(
+                                name: macros[1].macroType.displayName,
+                                current: calculateMacroTotal(for: macros[1].macroType),
+                                goal: macros[1].calculateGramGoal(from: calorieGoal),
+                                color: macros[1].macroType.color
+                            )
+                        }
+                    }
+                    if macros.count >= 4 {
+                        HStack(spacing: 6) {
+                            MacroCapsule(
+                                name: macros[2].macroType.displayName,
+                                current: calculateMacroTotal(for: macros[2].macroType),
+                                goal: macros[2].calculateGramGoal(from: calorieGoal),
+                                color: macros[2].macroType.color
+                            )
+                            MacroCapsule(
+                                name: macros[3].macroType.displayName,
+                                current: calculateMacroTotal(for: macros[3].macroType),
+                                goal: macros[3].calculateGramGoal(from: calorieGoal),
+                                color: macros[3].macroType.color
+                            )
+                        }
+                    }
                 }
             }
+            .padding(.top, 4)
 
-            // MARK: Activity Metrics Row (Glass Cards)
-            HStack(spacing: 10) {
-                WaterMetricCard(
-                    waterCount: waterCount,
-                    dailyGoal: dailyWaterGoal,
-                    streak: waterStreak,
-                    onTap: addWater
-                )
-
-                StepsMetricCard(
-                    steps: healthKitManager.stepCount,
-                    goal: stepGoal
-                )
-
-                CaloriesBurnedMetricCard(
-                    burned: healthKitManager.activeEnergyBurned,
-                    goal: exerciseGoal
-                )
-            }
-
-            // MARK: Weekly Summary Pill
-            WeeklySummaryPill(
-                consumed: weeklyCaloriesConsumed,
-                goal: weeklyCalorieGoal,
-                onTap: { showWeeklySummary = true }
+            // MARK: Compact Activity Strip (Water, Steps, Burned)
+            CompactActivityStrip(
+                waterCount: waterCount,
+                waterGoal: dailyWaterGoal,
+                waterStreak: waterStreak,
+                steps: healthKitManager.stepCount,
+                stepGoal: stepGoal,
+                caloriesBurned: healthKitManager.activeEnergyBurned,
+                caloriesGoal: exerciseGoal,
+                onWaterTap: addWater
             )
 
-            // MARK: Coaching Banner (Smart Nutrition Insights)
-            if let insight = generateNutritionInsight() {
-                CoachingBanner(
-                    icon: insight.icon,
-                    message: insight.message,
-                    color: insight.color,
-                    isPositive: insight.isPositive
+            // MARK: Bottom Row - Weekly Summary + Insight inline
+            HStack(spacing: 8) {
+                // Weekly summary (compact)
+                WeeklySummaryPill(
+                    consumed: weeklyCaloriesConsumed,
+                    goal: weeklyCalorieGoal,
+                    onTap: { showWeeklySummary = true }
                 )
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: insight.message)
+                .frame(maxWidth: .infinity)
+
+                // Coaching insight (if any) - compact icon-only version
+                if let insight = generateNutritionInsight() {
+                    CompactInsightBadge(icon: insight.icon, color: insight.color, message: insight.message)
+                }
             }
 
             // Water celebration overlay
@@ -119,10 +137,11 @@ struct DiaryDailySummaryCard: View {
                 waterCelebrationBanner
             }
         }
-        .padding(DesignTokens.Spacing.md)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xl))
-        .shadow(color: Color.black.opacity(0.06), radius: 12, y: 4)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 3)
         .onAppear { handleOnAppear(); loadWaterData() }
         .onChange(of: currentDate) { handleDateChange() }
         .onChange(of: healthKitRingsEnabled) { _, enabled in handleHealthKitToggle(enabled) }

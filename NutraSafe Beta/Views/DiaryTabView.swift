@@ -593,8 +593,9 @@ struct DiaryTabView: View {
         if !(isLoadingData && !hasLoadedOnce) {
             ZStack {
                 // Overview tab - show/hide with opacity (no animation)
+                // Reduced spacing for tighter layout - foods feel more immediate
                 ScrollView {
-                    LazyVStack(spacing: 16) {
+                    LazyVStack(spacing: 10) {
                         overviewTabContent
                     }
                 }
@@ -849,18 +850,17 @@ struct DiaryTabView: View {
                 selectedDate = date
             }
         )
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
 
-        // Standalone column headers in glass card
+        // Column headers - compact, visually connected to meals below
         HStack {
             HStack(spacing: 8) {
-                // Spacer for alignment with food items
                 Spacer()
-                    .frame(width: 12)
+                    .frame(width: 10)
 
                 Text("FOOD/DRINK")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
             }
 
@@ -868,34 +868,33 @@ struct DiaryTabView: View {
 
             HStack(spacing: 0) {
                 Text("KCAL")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .frame(width: 50, alignment: .trailing)
+                    .frame(width: 48, alignment: .trailing)
                 Text("PROT")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .frame(width: 50, alignment: .trailing)
+                    .frame(width: 48, alignment: .trailing)
                 Text("CARB")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .frame(width: 50, alignment: .trailing)
+                    .frame(width: 48, alignment: .trailing)
                 Text("FAT")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .frame(width: 50, alignment: .trailing)
+                    .frame(width: 48, alignment: .trailing)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.8) : Color(.secondarySystemBackground).opacity(0.9))
         )
-        .cardShadow()
-        .padding(.horizontal, 16)
-        .padding(.bottom, -8)
+        .padding(.horizontal, 12)
+        .padding(.bottom, -6)
 
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             DiaryMealCard(
                 mealType: "Breakfast",
                 targetCalories: 450,
@@ -956,10 +955,10 @@ struct DiaryTabView: View {
                 onAdd: { addFoodToMeal("Snacks") }
             )
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
 
         Spacer()
-            .frame(height: 150)
+            .frame(height: 100)
     }
 
     @ViewBuilder

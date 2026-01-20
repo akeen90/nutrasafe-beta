@@ -11,14 +11,26 @@ import SwiftUI
 // MARK: - Layout Tokens for Diary Overview
 
 struct DiaryLayoutTokens {
-    static let heroRingSize: CGFloat = 160
-    static let heroGlowSize: CGFloat = 200
-    static let activityCardMinHeight: CGFloat = 110
-    static let macroCapsuleHeight: CGFloat = 40
-    static let weeklySummaryHeight: CGFloat = 52
-    static let insightBannerRadius: CGFloat = 16
-    static let sectionSpacing: CGFloat = 20
-    static let cardInternalPadding: CGFloat = 16
+    // Compact ring - reduced from 160 to allow more content above fold
+    static let heroRingSize: CGFloat = 140
+    static let heroGlowSize: CGFloat = 170
+
+    // Activity metrics - compact strip rather than tall cards
+    static let activityCardMinHeight: CGFloat = 110  // Legacy - for individual cards
+    static let activityStripHeight: CGFloat = 56     // New compact strip
+
+    // Macros - slightly tighter
+    static let macroCapsuleHeight: CGFloat = 36
+
+    // Utility sections
+    static let weeklySummaryHeight: CGFloat = 44
+    static let insightBannerRadius: CGFloat = 14
+
+    // Spacing - reduced for tighter layout
+    static let sectionSpacing: CGFloat = 12          // Reduced from 20
+    static let cardInternalPadding: CGFloat = 14     // Reduced from 16
+
+    // Arc rings for individual cards (legacy)
     static let arcRingSize: CGFloat = 56
     static let arcLineWidth: CGFloat = 6
 }
@@ -395,7 +407,7 @@ struct CaloriesBurnedMetricCard: View {
 
 // MARK: - Macro Capsule
 
-/// Horizontal pill showing single macro with gradient fill
+/// Compact horizontal pill showing single macro with progress
 struct MacroCapsule: View {
     let name: String
     let current: Double
@@ -414,63 +426,44 @@ struct MacroCapsule: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             // Color indicator dot
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [color.opacity(0.7), color],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 10, height: 10)
-                .shadow(color: color.opacity(0.4), radius: 2, y: 1)
+                .fill(color)
+                .frame(width: 8, height: 8)
 
-            // Macro name
-            Text(name)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+            // Macro name (short)
+            Text(name.prefix(4))
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundColor(palette.textPrimary)
 
-            Spacer()
-
-            // Progress indicator (mini bar)
+            // Inline progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
+                    RoundedRectangle(cornerRadius: 2.5)
                         .fill(color.opacity(0.15))
-                        .frame(height: 6)
+                        .frame(height: 5)
 
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(
-                            LinearGradient(
-                                colors: [color.opacity(0.7), color],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geometry.size.width * progress, height: 6)
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(color)
+                        .frame(width: geometry.size.width * progress, height: 5)
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: current)
                 }
             }
-            .frame(width: 50, height: 6)
+            .frame(width: 40, height: 5)
 
-            // Value
-            HStack(spacing: 2) {
+            // Value - compact
+            HStack(spacing: 1) {
                 Text("\(Int(current.rounded()))")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(color)
-                Text("/\(Int(goal))")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(palette.textTertiary)
-                Text("g")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                Text("/\(Int(goal))g")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(palette.textTertiary)
             }
-            .frame(width: 75, alignment: .trailing)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .frame(height: DiaryLayoutTokens.macroCapsuleHeight)
         .background(
             RoundedRectangle(cornerRadius: DiaryLayoutTokens.macroCapsuleHeight / 2)
@@ -618,6 +611,40 @@ struct CoachingBanner: View {
     }
 }
 
+// MARK: - Compact Insight Badge
+
+/// Compact icon badge that shows nutrition insight with tooltip on tap
+struct CompactInsightBadge: View {
+    let icon: String
+    let color: Color
+    let message: String
+
+    @State private var showingTooltip = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button(action: { showingTooltip.toggle() }) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(color)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .popover(isPresented: $showingTooltip, arrowEdge: .bottom) {
+            Text(message)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.primary)
+                .padding(12)
+                .presentationCompactAdaptation(.popover)
+        }
+    }
+}
+
 // MARK: - Hero Calorie Ring
 
 struct HeroCalorieRing: View {
@@ -638,15 +665,15 @@ struct HeroCalorieRing: View {
 
     var body: some View {
         ZStack {
-            // Outer ambient glow
+            // Outer ambient glow - reduced
             Circle()
-                .fill(palette.accent.opacity(0.06))
+                .fill(palette.accent.opacity(0.05))
                 .frame(width: DiaryLayoutTokens.heroGlowSize, height: DiaryLayoutTokens.heroGlowSize)
-                .blur(radius: 25)
+                .blur(radius: 20)
 
             // Background ring
             Circle()
-                .stroke(palette.tertiary.opacity(0.12), lineWidth: 18)
+                .stroke(palette.tertiary.opacity(0.12), lineWidth: 14)
                 .frame(width: DiaryLayoutTokens.heroRingSize, height: DiaryLayoutTokens.heroRingSize)
 
             // Progress ring
@@ -658,35 +685,183 @@ struct HeroCalorieRing: View {
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    style: StrokeStyle(lineWidth: 18, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .frame(width: DiaryLayoutTokens.heroRingSize, height: DiaryLayoutTokens.heroRingSize)
                 .rotationEffect(.degrees(-90))
-                .shadow(color: palette.accent.opacity(0.4), radius: 12, x: 0, y: 6)
+                .shadow(color: palette.accent.opacity(0.35), radius: 10, x: 0, y: 4)
                 .animation(.spring(response: 1.0, dampingFraction: 0.7), value: calories)
 
-            // Center content
-            VStack(spacing: 2) {
+            // Center content - tighter
+            VStack(spacing: 0) {
                 Text("\(calories)")
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(palette.textPrimary)
 
-                Text("/\(Int(goal))")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundColor(palette.textTertiary)
-
-                Text("kcal")
+                Text("/\(Int(goal)) kcal")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(palette.textTertiary)
-                    .padding(.top, 2)
             }
         }
-        .scaleEffect(isBreathing ? 1.02 : 1.0)
+        .scaleEffect(isBreathing ? 1.015 : 1.0)
         .onAppear {
             withAnimation(DesignTokens.Animation.breathing) {
                 isBreathing = true
             }
         }
+    }
+}
+
+// MARK: - Compact Activity Strip
+
+/// Single-row horizontal strip showing water, steps, and calories burned
+/// Replaces the three tall glass cards for a more compact layout
+struct CompactActivityStrip: View {
+    let waterCount: Int
+    let waterGoal: Int
+    let waterStreak: Int
+    let steps: Double
+    let stepGoal: Double
+    let caloriesBurned: Double
+    let caloriesGoal: Double
+    let onWaterTap: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Water (tappable)
+            Button(action: onWaterTap) {
+                CompactMetricItem(
+                    icon: "drop.fill",
+                    iconColor: waterCount >= waterGoal ? .green : .cyan,
+                    value: "\(waterCount)/\(waterGoal)",
+                    label: "glasses",
+                    progress: Double(waterCount) / Double(max(1, waterGoal)),
+                    progressColor: waterCount >= waterGoal ? .green : .cyan,
+                    streak: waterStreak > 1 ? waterStreak : nil
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Soft divider
+            Rectangle()
+                .fill(palette.tertiary.opacity(0.15))
+                .frame(width: 1, height: 32)
+
+            // Steps
+            CompactMetricItem(
+                icon: "figure.walk",
+                iconColor: Color(red: 0.4, green: 0.7, blue: 1.0),
+                value: formatCompactNumber(steps),
+                label: "steps",
+                progress: steps / max(1, stepGoal),
+                progressColor: Color(red: 0.4, green: 0.7, blue: 1.0)
+            )
+
+            // Soft divider
+            Rectangle()
+                .fill(palette.tertiary.opacity(0.15))
+                .frame(width: 1, height: 32)
+
+            // Calories burned
+            CompactMetricItem(
+                icon: "flame.fill",
+                iconColor: Color(red: 1.0, green: 0.5, blue: 0.3),
+                value: "\(Int(caloriesBurned))",
+                label: "burned",
+                progress: caloriesBurned / max(1, caloriesGoal),
+                progressColor: Color(red: 1.0, green: 0.5, blue: 0.3)
+            )
+        }
+        .frame(height: DiaryLayoutTokens.activityStripHeight)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.1 : 0.15), lineWidth: 1)
+                )
+        )
+    }
+
+    private func formatCompactNumber(_ value: Double) -> String {
+        if value >= 10000 {
+            return String(format: "%.0fK", value / 1000)
+        } else if value >= 1000 {
+            return String(format: "%.1fK", value / 1000)
+        }
+        return String(format: "%.0f", value)
+    }
+}
+
+// MARK: - Compact Metric Item (for strip)
+
+struct CompactMetricItem: View {
+    let icon: String
+    let iconColor: Color
+    let value: String
+    let label: String
+    let progress: Double
+    let progressColor: Color
+    var streak: Int? = nil
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 4) {
+                // Mini progress ring
+                ZStack {
+                    Circle()
+                        .stroke(progressColor.opacity(0.2), lineWidth: 3)
+                        .frame(width: 20, height: 20)
+
+                    Circle()
+                        .trim(from: 0, to: min(1.0, progress))
+                        .stroke(progressColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .frame(width: 20, height: 20)
+                        .rotationEffect(.degrees(-90))
+
+                    Image(systemName: icon)
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(iconColor)
+                }
+
+                // Value
+                Text(value)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+
+                // Streak badge (if applicable)
+                if let streak = streak {
+                    HStack(spacing: 2) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 8))
+                        Text("\(streak)")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.orange.opacity(0.15)))
+                }
+            }
+
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(palette.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
     }
 }
 

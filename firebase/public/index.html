@@ -176,10 +176,10 @@
     </script>
 
     <!-- Favicons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/app-icon.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/app-icon.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/app-icon.png">
-    <link rel="shortcut icon" href="/app-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/favicon-32.png">
 
     <!-- Preload critical resources -->
     <link rel="preload" href="nutrition-dashboard.webp" as="image" type="image/webp">
@@ -1739,7 +1739,10 @@
             <div class="footer-brand">
                 <a href="/" class="logo">
                     <div class="logo-icon">
-                        <img src="app-icon.png" alt="NutraSafe">
+                        <picture>
+                            <source srcset="app-icon.webp" type="image/webp">
+                            <img src="app-icon.png" alt="NutraSafe" width="44" height="44" loading="lazy">
+                        </picture>
                     </div>
                     <span>NutraSafe</span>
                 </a>
