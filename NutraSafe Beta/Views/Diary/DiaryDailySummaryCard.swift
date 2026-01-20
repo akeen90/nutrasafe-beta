@@ -65,8 +65,15 @@ struct DiaryDailySummaryCard: View {
                 // Calorie ring (left)
                 HeroCalorieRing(calories: totalCalories, goal: calorieGoal)
 
-                // Macros grid (right) - 2x2 compact
-                VStack(spacing: 6) {
+                // Macros grid (right) - 2x2 compact with section label
+                VStack(alignment: .leading, spacing: 4) {
+                    // Section label
+                    Text("Macros today")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(palette.textTertiary)
+                        .padding(.leading, 2)
+                        .padding(.bottom, 2)
+
                     let macros = Array(macroGoals.prefix(4))
                     if macros.count >= 2 {
                         HStack(spacing: 6) {
@@ -206,10 +213,13 @@ struct DiaryDailySummaryCard: View {
         let proteinProgress = totalProtein / proteinGoal
         let fatOverage = totalFat / fatGoal
 
+        // NOTE: Icons are kept for API compatibility but CompactInsightBadge uses its own
+        // abstract signal icon. Colors differentiate insight severity.
+
         // Massively over carbs (>150%)
         if carbsOverage > 1.5 {
             return NutritionInsight(
-                icon: "exclamationmark.triangle.fill",
+                icon: "waveform.path",  // Abstract signal icon
                 message: "Carb heavy day – \(Int((carbsOverage - 1) * 100))% over your goal",
                 color: .orange,
                 isPositive: false
@@ -219,7 +229,7 @@ struct DiaryDailySummaryCard: View {
         // High sugar warning (>50g)
         if totalSugar > 50 {
             return NutritionInsight(
-                icon: "cube.fill",
+                icon: "waveform.path",  // Abstract signal icon
                 message: "High sugar intake today – \(Int(totalSugar))g consumed",
                 color: .pink,
                 isPositive: false
@@ -229,7 +239,7 @@ struct DiaryDailySummaryCard: View {
         // Way over calories (>120%)
         if calorieOverage > 1.2 {
             return NutritionInsight(
-                icon: "flame.fill",
+                icon: "waveform.path",  // Abstract signal icon
                 message: "Over calorie goal by \(Int((calorieOverage - 1) * 100))%",
                 color: .red,
                 isPositive: false
@@ -239,7 +249,7 @@ struct DiaryDailySummaryCard: View {
         // Over fat (>130%)
         if fatOverage > 1.3 {
             return NutritionInsight(
-                icon: "drop.fill",
+                icon: "waveform.path",  // Abstract signal icon
                 message: "Fat intake \(Int((fatOverage - 1) * 100))% above target",
                 color: .yellow,
                 isPositive: false
@@ -250,7 +260,7 @@ struct DiaryDailySummaryCard: View {
         // Great protein day (>90%)
         if proteinProgress > 0.9 && proteinProgress <= 1.2 {
             return NutritionInsight(
-                icon: "bolt.fill",
+                icon: "waveform.path",  // Abstract signal icon
                 message: "Great protein day! \(Int(proteinProgress * 100))% of goal",
                 color: .green,
                 isPositive: true
@@ -260,7 +270,7 @@ struct DiaryDailySummaryCard: View {
         // Balanced day (all macros within range)
         if carbsOverage < 1.1 && fatOverage < 1.1 && calorieOverage < 1.05 && calorieOverage > 0.8 {
             return NutritionInsight(
-                icon: "checkmark.seal.fill",
+                icon: "waveform.path",  // Abstract signal icon
                 message: "Well balanced day – on track!",
                 color: .green,
                 isPositive: true

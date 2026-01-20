@@ -19,8 +19,8 @@ struct DiaryLayoutTokens {
     static let activityCardMinHeight: CGFloat = 110  // Legacy - for individual cards
     static let activityStripHeight: CGFloat = 56     // New compact strip
 
-    // Macros - slightly tighter
-    static let macroCapsuleHeight: CGFloat = 36
+    // Macros - stacked layout (label + bar + value)
+    static let macroCapsuleHeight: CGFloat = 48
 
     // Utility sections
     static let weeklySummaryHeight: CGFloat = 44
@@ -405,9 +405,10 @@ struct CaloriesBurnedMetricCard: View {
     }
 }
 
-// MARK: - Macro Capsule
+// MARK: - Macro Indicator
 
-/// Compact horizontal pill showing single macro with progress
+/// Compact informational indicator showing macro progress
+/// Non-interactive: displays label, progress bar, and current/goal values
 struct MacroCapsule: View {
     let name: String
     let current: Double
@@ -426,58 +427,45 @@ struct MacroCapsule: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            // Color indicator dot
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
+        VStack(alignment: .leading, spacing: 3) {
+            // Full macro name
+            Text(name)
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundColor(palette.textTertiary)
+                .lineLimit(1)
 
-            // Macro name (short)
-            Text(name.prefix(4))
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundColor(palette.textPrimary)
-
-            // Inline progress bar
+            // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2.5)
-                        .fill(color.opacity(0.15))
-                        .frame(height: 5)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(palette.tertiary.opacity(0.15))
+                        .frame(height: 4)
 
-                    RoundedRectangle(cornerRadius: 2.5)
+                    RoundedRectangle(cornerRadius: 2)
                         .fill(color)
-                        .frame(width: geometry.size.width * progress, height: 5)
+                        .frame(width: max(2, geometry.size.width * progress), height: 4)
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: current)
                 }
             }
-            .frame(width: 40, height: 5)
+            .frame(height: 4)
 
-            // Value - compact
-            HStack(spacing: 1) {
+            // Current / Goal values
+            HStack(spacing: 2) {
                 Text("\(Int(current.rounded()))")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(color)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
                 Text("/\(Int(goal))g")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(palette.textTertiary)
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .frame(height: DiaryLayoutTokens.macroCapsuleHeight)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: DiaryLayoutTokens.macroCapsuleHeight / 2)
-                .fill(
-                    LinearGradient(
-                        colors: [color.opacity(0.08), color.opacity(0.15)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: DiaryLayoutTokens.macroCapsuleHeight / 2)
-                        .stroke(color.opacity(0.2), lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 10)
+                .fill(palette.tertiary.opacity(colorScheme == .dark ? 0.08 : 0.05))
         )
     }
 }
@@ -613,35 +601,107 @@ struct CoachingBanner: View {
 
 // MARK: - Compact Insight Badge
 
-/// Compact icon badge that shows nutrition insight with tooltip on tap
+/// Tappable insight indicator using abstract signal icon
+/// Displays a neutral pulse/signal icon that implies "the system noticed something"
+/// Icon is reusable across all insight types (sugar, additives, reactions, positive feedback)
 struct CompactInsightBadge: View {
-    let icon: String
+    let icon: String  // Kept for API compatibility, but we use our own icon
     let color: Color
     let message: String
 
     @State private var showingTooltip = false
+    @State private var isPulsing = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: { showingTooltip.toggle() }) {
             ZStack {
+                // Outer pulse ring (subtle animation)
                 Circle()
-                    .fill(color.opacity(colorScheme == .dark ? 0.2 : 0.12))
-                    .frame(width: 40, height: 40)
+                    .stroke(color.opacity(0.2), lineWidth: 1.5)
+                    .frame(width: 44, height: 44)
+                    .scaleEffect(isPulsing ? 1.1 : 1.0)
+                    .opacity(isPulsing ? 0 : 0.6)
 
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(color)
+                // Main badge background
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                color.opacity(colorScheme == .dark ? 0.25 : 0.15),
+                                color.opacity(colorScheme == .dark ? 0.15 : 0.08)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Circle()
+                            .stroke(color.opacity(0.3), lineWidth: 1)
+                    )
+
+                // Abstract signal icon - three concentric arcs
+                ZStack {
+                    // Inner dot
+                    Circle()
+                        .fill(color)
+                        .frame(width: 6, height: 6)
+
+                    // Middle arc
+                    Circle()
+                        .trim(from: 0.0, to: 0.25)
+                        .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .frame(width: 16, height: 16)
+                        .rotationEffect(.degrees(-45))
+
+                    // Outer arc
+                    Circle()
+                        .trim(from: 0.0, to: 0.25)
+                        .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .frame(width: 24, height: 24)
+                        .rotationEffect(.degrees(-45))
+                }
             }
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(InsightBadgeButtonStyle())
         .popover(isPresented: $showingTooltip, arrowEdge: .bottom) {
-            Text(message)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.primary)
-                .padding(12)
-                .presentationCompactAdaptation(.popover)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 8, height: 8)
+                    Text("Insight")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+
+                Text(message)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(14)
+            .presentationCompactAdaptation(.popover)
         }
+        .onAppear {
+            // Subtle pulse animation to indicate tappability
+            withAnimation(
+                Animation.easeInOut(duration: 2.0)
+                    .repeatForever(autoreverses: false)
+            ) {
+                isPulsing = true
+            }
+        }
+    }
+}
+
+/// Custom button style for insight badge - scale on press to indicate interactivity
+struct InsightBadgeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
@@ -887,7 +947,7 @@ struct CompactMetricItem: View {
                 .padding(.horizontal)
 
             CoachingBanner(
-                icon: "cube.fill",
+                icon: "waveform.path",
                 message: "High sugar intake today – 65g consumed",
                 color: .pink,
                 isPositive: false
@@ -895,11 +955,19 @@ struct CompactMetricItem: View {
             .padding(.horizontal)
 
             CoachingBanner(
-                icon: "bolt.fill",
+                icon: "waveform.path",
                 message: "Great protein day! 95% of goal",
                 color: .green,
                 isPositive: true
             )
+            .padding(.horizontal)
+
+            // Compact insight badge preview
+            HStack(spacing: 20) {
+                CompactInsightBadge(icon: "waveform.path", color: .pink, message: "High sugar intake today – 65g")
+                CompactInsightBadge(icon: "waveform.path", color: .green, message: "Great protein day!")
+                CompactInsightBadge(icon: "waveform.path", color: .orange, message: "Carb heavy day")
+            }
             .padding(.horizontal)
         }
         .padding()
