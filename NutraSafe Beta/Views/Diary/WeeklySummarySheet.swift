@@ -423,8 +423,11 @@ struct WeeklySummarySheet: View {
     // MARK: - Hero Stats Card
     private func heroStatsCard(summary: WeeklySummary) -> some View {
         let calorieDifference = summary.totalCalories - weeklyCalorieGoal
-        let isOverGoal = calorieDifference > 0
-        let isOnTarget = abs(calorieDifference) < (weeklyCalorieGoal / 20) // Within 5%
+        let percentDiff = weeklyCalorieGoal > 0 ? Double(calorieDifference) / Double(weeklyCalorieGoal) : 0
+
+        // Healthier status calculation - doesn't celebrate extreme restriction
+        // Based on psychology research: avoid reinforcing restrictive eating patterns
+        let calorieStatus = getHealthyCalorieStatus(percentDiff: percentDiff, difference: calorieDifference, daysLogged: summary.daysLogged)
 
         return VStack(spacing: 20) {
             // Calorie Ring
@@ -468,22 +471,22 @@ struct WeeklySummarySheet: View {
             }
             .padding(.top, 8)
 
-            // Over/Under calorie indicator
+            // Healthy calorie status indicator
             if summary.daysLogged > 0 {
                 HStack(spacing: 6) {
-                    Image(systemName: isOnTarget ? "checkmark.circle.fill" : (isOverGoal ? "arrow.up.circle.fill" : "arrow.down.circle.fill"))
+                    Image(systemName: calorieStatus.icon)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(isOnTarget ? .green : (isOverGoal ? .red : .green))
+                        .foregroundColor(calorieStatus.color)
 
-                    Text(isOnTarget ? "On target" : (isOverGoal ? "\(formatNumber(calorieDifference)) over" : "\(formatNumber(abs(calorieDifference))) under"))
+                    Text(calorieStatus.message)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(isOnTarget ? .green : (isOverGoal ? .red : .green))
+                        .foregroundColor(calorieStatus.color)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(
                     Capsule()
-                        .fill((isOnTarget ? Color.green : (isOverGoal ? Color.red : Color.green)).opacity(0.12))
+                        .fill(calorieStatus.color.opacity(0.12))
                 )
             }
 
@@ -721,6 +724,68 @@ struct WeeklySummarySheet: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+    }
+
+    // MARK: - Healthy Calorie Status
+    // Psychology-informed messaging that doesn't reinforce restrictive eating patterns
+    // Based on research showing calorie apps can contribute to eating disorder symptoms
+    private func getHealthyCalorieStatus(percentDiff: Double, difference: Int, daysLogged: Int) -> (message: String, icon: String, color: Color) {
+        // Calculate expected progress based on days logged
+        // If 2 of 7 days logged, we expect ~28% of weekly calories consumed
+        let expectedProgress = Double(daysLogged) / 7.0
+
+        // Calculate what the difference SHOULD be at this point in the week
+        // e.g., on day 2, being 5/7 "under" the WEEKLY goal is perfectly normal
+        let expectedCaloriesAtThisPoint = Double(weeklyCalorieGoal) * expectedProgress
+        let actualVsExpected = expectedCaloriesAtThisPoint > 0
+            ? (Double(weeklyCalorieGoal) + Double(difference)) / expectedCaloriesAtThisPoint
+            : 1.0
+
+        // Full week completed (7 days logged) - show actual totals
+        if daysLogged == 7 {
+            let absDiff = abs(difference)
+            if abs(percentDiff) < 0.05 {
+                // Within 5% - on target
+                return ("On track", "checkmark.circle.fill", .green)
+            } else if difference < 0 {
+                // Under - show number but don't celebrate extreme deficits
+                if percentDiff < -0.20 {
+                    // More than 20% under - concerning
+                    return ("\(formatNumber(absDiff)) under", "arrow.down.circle.fill", .orange)
+                } else {
+                    return ("\(formatNumber(absDiff)) under", "arrow.down.circle.fill", .green)
+                }
+            } else {
+                // Over
+                if percentDiff > 0.15 {
+                    return ("\(formatNumber(difference)) over", "arrow.up.circle.fill", .red)
+                } else {
+                    return ("\(formatNumber(difference)) over", "arrow.up.circle.fill", .orange)
+                }
+            }
+        }
+
+        // Partial week - compare against expected progress
+        // actualVsExpected: 1.0 = exactly on pace, <1.0 = behind pace, >1.0 = ahead of pace
+        if actualVsExpected >= 0.85 && actualVsExpected <= 1.15 {
+            // Within 15% of expected pace - on track
+            return ("On track", "checkmark.circle.fill", .green)
+        } else if actualVsExpected < 0.85 {
+            // Behind pace - but don't celebrate restriction
+            if actualVsExpected < 0.60 {
+                // Significantly behind - concerning
+                return ("Below pace", "exclamationmark.circle.fill", .orange)
+            } else {
+                return ("Under pace", "arrow.down.circle.fill", .blue)
+            }
+        } else {
+            // Ahead of pace
+            if actualVsExpected > 1.30 {
+                return ("Over pace", "arrow.up.circle.fill", .red)
+            } else {
+                return ("Slightly ahead", "arrow.up.circle.fill", .orange)
+            }
+        }
     }
 }
 
