@@ -1582,15 +1582,8 @@ struct CategoricalNutrientTrackingView: View {
                 // Header inside the card
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .center, spacing: 8) {
-                        Image(systemName: "leaf.circle.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                        // Signal icon - abstract indicator of nutrient tracking
+                        SignalIconContainer(color: Color(hex: "#3FD17C"), size: 28)
 
                         Text("Your Daily Nutrients")
                             .font(.system(size: 20, weight: .bold))
@@ -1638,9 +1631,8 @@ struct CategoricalNutrientTrackingView: View {
         let summary = generateNutrientSummaryText()
 
         return HStack(spacing: 10) {
-            Image(systemName: summary.icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(summary.color)
+            // Signal icon - abstract indicator matching NutraSafe design system
+            NutraSafeSignalIcon(color: summary.color, size: 18)
 
             Text(summary.text)
                 .font(.system(size: 14, weight: .medium))
@@ -1728,19 +1720,19 @@ struct CategoricalNutrientTrackingView: View {
 
         // Below: Only for current week (weekOffset == 0)
 
-        // Data is stale (nothing logged in 4+ days) - encourage fresh logging
+        // Data is stale (nothing logged in 4+ days)
         if daysSinceLastLog >= 4 {
             return (
-                text: "Last logged \(daysSinceLastLog) days ago. Add today's meals for current insights.",
+                text: "Last meal logged \(daysSinceLastLog) days ago.",
                 icon: "clock.arrow.circlepath",
                 color: .secondary
             )
         }
 
-        // Data is getting old (3 days since last log) - gentle nudge
+        // Data is getting old (3 days since last log)
         if daysSinceLastLog == 3 {
             return (
-                text: "Haven't logged in a few days. Add meals to keep your profile current.",
+                text: "No meals logged in the last 3 days.",
                 icon: "calendar.badge.clock",
                 color: .orange
             )
@@ -1748,27 +1740,27 @@ struct CategoricalNutrientTrackingView: View {
 
         // Fresh data (logged within last 2 days) - provide meaningful insights
 
-        // Only 1 day logged - celebrate what they found
+        // Only 1 day logged - report what was found
         if daysLogged == 1 {
             if nutrientsFound > 0 {
                 return (
-                    text: "Great start! Found \(nutrientsFound) nutrients in your meals.",
+                    text: "Found \(nutrientsFound) nutrients from 1 day logged.",
                     icon: "leaf.fill",
                     color: Color(hex: "#3FD17C")
                 )
             } else {
                 return (
-                    text: "Keep logging to build your nutrient profile.",
+                    text: "1 day logged — nutrient data builds over time.",
                     icon: "chart.line.uptrend.xyaxis",
                     color: AppPalette.standard.accent
                 )
             }
         }
 
-        // 2 days logged - still building data, no gap suggestions
+        // 2 days logged - still building data
         if daysLogged == 2 {
             return (
-                text: "\(nutrientsFound) nutrients found so far. Log more days to see patterns.",
+                text: "\(nutrientsFound) nutrients found from 2 days logged.",
                 icon: "chart.line.uptrend.xyaxis",
                 color: AppPalette.standard.accent
             )
@@ -1779,7 +1771,7 @@ struct CategoricalNutrientTrackingView: View {
         // Excellent coverage (90%+ consistent)
         if totalNutrients > 0 && consistent.count >= totalNutrients * 9 / 10 {
             return (
-                text: "Excellent variety! \(consistent.count) nutrients appearing consistently.",
+                text: "\(consistent.count) nutrients appearing consistently this week.",
                 icon: "star.fill",
                 color: Color(hex: "#3FD17C")
             )
@@ -1788,30 +1780,30 @@ struct CategoricalNutrientTrackingView: View {
         // Good coverage (70%+ consistent)
         if totalNutrients > 0 && consistent.count >= totalNutrients * 7 / 10 {
             return (
-                text: "Good balance with \(consistent.count) nutrients this week.",
+                text: "\(consistent.count) consistent nutrients detected this week.",
                 icon: "checkmark.circle.fill",
                 color: Color(hex: "#3FD17C")
             )
         }
 
-        // With 3+ days of recent data, we can suggest improvements
-        // Only suggest gaps if user has found some nutrients (so we know they're logging properly)
+        // With 3+ days of recent data, we can note observations
+        // Only note gaps if user has found some nutrients (so we know they're logging properly)
         if nutrientsFound >= 3 {
             let inconsistent = vm.nutrientCoverageRows.filter { $0.status == .occasional || $0.status == .missing }
             if !inconsistent.isEmpty {
                 let gapNames = inconsistent.prefix(2).map { $0.name }.joined(separator: " and ")
                 return (
-                    text: "Good coverage! Try adding variety for \(gapNames).",
+                    text: "\(gapNames) appear less frequently in your meals.",
                     icon: "lightbulb.fill",
                     color: .orange
                 )
             }
         }
 
-        // Default - show positive summary of what we found
+        // Default - show summary of what was found
         if nutrientsFound > 0 {
             return (
-                text: "\(nutrientsFound) nutrients found across \(daysLogged) days of logging.",
+                text: "\(nutrientsFound) nutrients found across \(daysLogged) days.",
                 icon: "leaf.fill",
                 color: Color(hex: "#57A5FF")
             )
@@ -1819,7 +1811,7 @@ struct CategoricalNutrientTrackingView: View {
 
         // Fallback
         return (
-            text: "Add more foods to see your nutrient breakdown.",
+            text: "Nutrient data appears as you log meals.",
             icon: "plus.circle.fill",
             color: AppPalette.standard.accent
         )
@@ -1891,15 +1883,8 @@ struct CategoricalNutrientTrackingView: View {
     private var coverageMapSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 8) {
-                Image(systemName: "square.grid.3x3.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color(hex: "#3FD17C"), Color(hex: "#FFA93A")],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                // Signal icon - abstract indicator matching NutraSafe design system
+                SignalIconContainer(color: Color(hex: "#3FD17C"), size: 28)
 
                 Text("Nutrient Details")
                     .font(.system(size: 20, weight: .bold))
