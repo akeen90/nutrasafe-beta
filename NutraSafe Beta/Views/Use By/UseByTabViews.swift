@@ -96,6 +96,11 @@ struct UseByTabView: View {
     @State private var showingPaywall = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
 
+    // MARK: - Palette for Intent-Aware Colors
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     // MARK: - Inline Search State
     @State private var isSearchExpanded = false
     @State private var searchQuery = ""
@@ -117,11 +122,15 @@ struct UseByTabView: View {
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
 
-    // MARK: - Hero Header (Search Bar)
+    // MARK: - Hero Header (Glassmorphic Search Bar)
     private var useByHeroHeader: some View {
         VStack(spacing: 12) {
-            // Direct search text field
+            // Glassmorphic search text field
             HStack(spacing: 12) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(isSearchFieldFocused ? palette.accent : palette.textTertiary)
+
                 TextField("Search food to add...", text: $searchQuery)
                     .textFieldStyle(PlainTextFieldStyle())
                     .autocorrectionDisabled(true)
@@ -132,7 +141,7 @@ struct UseByTabView: View {
                         performUseBySearch(query: newValue)
                     }
                     .onChange(of: isSearchFieldFocused) { _, focused in
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(DesignTokens.Animation.standard) {
                             isSearchExpanded = focused
                         }
                     }
@@ -144,29 +153,39 @@ struct UseByTabView: View {
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(palette.textTertiary)
                     }
                 }
 
-                // Barcode icon
+                // Barcode icon with palette color
                 Button(action: {
                     showingBarcodeScanner = true
                 }) {
                     Image(systemName: "barcode.viewfinder")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.orange)
+                        .foregroundColor(palette.accent)
                 }
             }
-            .frame(height: 48) // Fixed height to prevent resize when typing
+            .frame(height: 48)
             .padding(.horizontal, 16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                            .stroke(
+                                isSearchFieldFocused ? palette.accent.opacity(0.6) : Color.white.opacity(0.2),
+                                lineWidth: isSearchFieldFocused ? 2 : 1
+                            )
+                    )
+                    .shadow(
+                        color: isSearchFieldFocused ? palette.accent.opacity(0.2) : Color.black.opacity(0.05),
+                        radius: isSearchFieldFocused ? 15 : 8,
+                        y: isSearchFieldFocused ? 6 : 3
+                    )
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(isSearchFieldFocused ? Color.orange.opacity(0.5) : Color(.systemGray4), lineWidth: 1)
-            )
+            .scaleEffect(isSearchFieldFocused ? 1.01 : 1.0)
+            .animation(DesignTokens.Animation.standard, value: isSearchFieldFocused)
 
             // Manual add option - show when focused (tapped into search) or has search query
             if isSearchFieldFocused || isSearchExpanded || !searchQuery.isEmpty {
@@ -178,17 +197,11 @@ struct UseByTabView: View {
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
-                // Header - Title only
+                // Header - Editorial serif title with palette accent
                 HStack(spacing: 12) {
                     Text("Use By Tracker")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.primary, .primary.opacity(0.8)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .font(DesignTokens.Typography.sectionTitle(24))
+                        .foregroundColor(palette.textPrimary)
 
                     Spacer()
 
@@ -197,14 +210,14 @@ struct UseByTabView: View {
                             Circle()
                                 .fill(.ultraThinMaterial)
                                 .frame(width: 40, height: 40)
-                                .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
+                                .overlay(Circle().stroke(palette.tertiary.opacity(0.2), lineWidth: 1))
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primary)
+                                .foregroundColor(palette.textPrimary)
                         }
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
 
@@ -234,10 +247,10 @@ struct UseByTabView: View {
                         .padding(.bottom, 80)
                     }
                 } else {
-                    // Free users see unlock card
+                    // Free users see unlock card (palette-aware)
                     PremiumUnlockCard(
                         icon: "calendar.badge.clock",
-                        iconColor: .orange,
+                        iconColor: palette.accent,
                         title: "Use By Tracker",
                         subtitle: "UK households waste £700+ of food yearly. Track opened items and get reminded before they go off",
                         benefits: [
@@ -250,7 +263,7 @@ struct UseByTabView: View {
                     )
                 }
             }
-            .tabGradientBackground(.useBy)
+            .background(AppAnimatedBackground())
             .navigationBarHidden(true)
         }
         .fullScreenCover(item: $showingFoodDetailForSearch) { food in

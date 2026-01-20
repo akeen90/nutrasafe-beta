@@ -12,6 +12,11 @@ struct ReactionLogView: View {
     @StateObject private var manager = ReactionLogManager.shared
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingLogSheet = false
+
+    // MARK: - Palette for Intent-Aware Colors
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
     @State private var selectedEntry: ReactionLogEntry?
     @State private var selectedDayRange: DayRange = .threeDays
     @State private var selectedTab: AnalysisTab = .potentialTriggers
@@ -88,7 +93,7 @@ struct ReactionLogView: View {
             .padding(.top, 16)
             .padding(.bottom, 32)
         }
-        .background(Color.adaptiveBackground)
+        .background(AppAnimatedBackground())
         .fullScreenCover(isPresented: $showingLogSheet) {
             LogReactionSheet(selectedDayRange: selectedDayRange)
         }
@@ -395,7 +400,7 @@ struct ReactionLogView: View {
         )
     }
 
-    // MARK: - Log Reaction Button (Onboarding Design Language)
+    // MARK: - Log Reaction Button (Palette-Aware, Onboarding Style)
     private var logReactionButton: some View {
         Button(action: { showingLogSheet = true }) {
             HStack(spacing: 12) {
@@ -404,83 +409,76 @@ struct ReactionLogView: View {
                     .foregroundColor(.white)
 
                 Text("Log Reaction")
-                    .font(AppTypography.button)
+                    .font(DesignTokens.Typography.button)
                     .foregroundColor(.white)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(
                 LinearGradient(
-                    colors: [
-                        Color(red: 0.20, green: 0.45, blue: 0.50),
-                        Color(red: 0.15, green: 0.35, blue: 0.42)
-                    ],
+                    colors: [palette.accent, palette.primary],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             )
-            .cornerRadius(AppRadius.large)
-            .accentShadow(Color(red: 0.20, green: 0.45, blue: 0.50))
+            .cornerRadius(DesignTokens.Radius.lg)
+            .shadow(color: palette.accent.opacity(0.3), radius: 15, y: 5)
         }
     }
 
-    // MARK: - Export PDF Button (Onboarding Design Language)
+    // MARK: - Export PDF Button (Palette-Aware, Glassmorphic)
     private var exportPDFButton: some View {
         Button(action: { showingPDFExportSheet = true }) {
             HStack(spacing: 12) {
                 Image(systemName: "doc.text.fill")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(Color.textSecondary)
+                    .foregroundColor(palette.textSecondary)
 
                 Text("Export PDF Report")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(Color.textSecondary)
+                    .foregroundColor(palette.textSecondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, AppSpacing.medium)
+            .padding(.vertical, DesignTokens.Spacing.md)
             .background(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                            .stroke(palette.tertiary.opacity(0.2), lineWidth: 1)
+                    )
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .stroke(Color.textTertiary.opacity(0.3), lineWidth: 1)
-            )
-            .cardShadow()
+            .shadow(color: DesignTokens.Shadow.subtle.color, radius: DesignTokens.Shadow.subtle.radius, y: DesignTokens.Shadow.subtle.y)
         }
     }
 
-    // MARK: - Analysis Tab Picker (Onboarding Design Language)
+    // MARK: - Analysis Tab Picker (Palette-Aware, Glassmorphic)
     private var analysisTabPicker: some View {
         HStack(spacing: 0) {
             ForEach(AnalysisTab.allCases, id: \.self) { tab in
                 Button(action: {
-                    withAnimation(.easeOut(duration: 0.2)) {
+                    withAnimation(DesignTokens.Animation.standard) {
                         selectedTab = tab
                     }
                 }) {
                     Text(tab.rawValue)
                         .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
-                        .foregroundColor(selectedTab == tab ? .white : Color.textSecondary)
+                        .foregroundColor(selectedTab == tab ? .white : palette.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(
                             selectedTab == tab ?
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.20, green: 0.45, blue: 0.50),
-                                        Color(red: 0.15, green: 0.35, blue: 0.42)
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                                : LinearGradient(
-                                    colors: [Color.clear],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [palette.accent, palette.primary],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .shadow(color: palette.accent.opacity(0.3), radius: 6, y: 2)
+                                : nil
                         )
-                        .cornerRadius(AppRadius.medium)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -488,8 +486,12 @@ struct ReactionLogView: View {
         }
         .padding(4)
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.large)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemGray6))
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
         )
     }
 
@@ -615,7 +617,7 @@ struct ReactionLogView: View {
         let isSelected = selectedSymptomFilter == symptom
 
         return Button(action: {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(DesignTokens.Animation.standard) {
                 selectedSymptomFilter = symptom
             }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -626,12 +628,21 @@ struct ReactionLogView: View {
                 Text(label)
                     .font(.system(size: 13, weight: .medium))
             }
-            .foregroundColor(isSelected ? .white : .primary)
+            .foregroundColor(isSelected ? .white : palette.textPrimary)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.blue : Color(.systemGray5))
+                Capsule()
+                    .fill(
+                        isSelected
+                            ? AnyShapeStyle(LinearGradient(colors: [palette.accent, palette.primary], startPoint: .leading, endPoint: .trailing))
+                            : AnyShapeStyle(palette.tertiary.opacity(0.15))
+                    )
+                    .shadow(
+                        color: isSelected ? palette.accent.opacity(0.3) : Color.clear,
+                        radius: isSelected ? 6 : 0,
+                        y: 2
+                    )
             )
         }
         .buttonStyle(.plain)

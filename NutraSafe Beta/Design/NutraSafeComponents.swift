@@ -231,20 +231,36 @@ struct NutraSafeInfoCard: View {
     }
 }
 
-// MARK: - NutraSafe Warning Card (from onboarding WarningCard)
+// MARK: - NutraSafe Warning Card (Palette-Aware)
 
 struct NutraSafeWarningCard: View {
     let text: String
+    var usePaletteColor: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    private var accentColor: Color {
+        usePaletteColor ? palette.accent : .orange
+    }
+
+    init(_ text: String, usePaletteColor: Bool = false) {
+        self.text = text
+        self.usePaletteColor = usePaletteColor
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 20))
-                .foregroundColor(.orange)
+                .foregroundColor(accentColor)
 
             Text(text)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundColor(Color(white: 0.3))
+                .foregroundColor(palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(DesignTokens.Spacing.lineSpacing)
         }
@@ -252,7 +268,11 @@ struct NutraSafeWarningCard: View {
         .padding(DesignTokens.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                .fill(Color.orange.opacity(0.08))
+                .fill(accentColor.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .stroke(accentColor.opacity(0.2), lineWidth: 1)
+                )
         )
     }
 }
@@ -396,14 +416,22 @@ struct NutraSafeHeadline: View {
     }
 }
 
-// MARK: - NutraSafe Insight Card
+// MARK: - NutraSafe Insight Card (Palette-Aware with Breathing)
 
 struct NutraSafeInsightCard: View {
     let icon: String
     let title: String
     let value: String
     var trend: InsightTrend?
-    var iconColor: Color
+    var usePaletteColor: Bool
+    var enableBreathing: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isBreathing = false
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     enum InsightTrend {
         case up, down, neutral
@@ -430,13 +458,19 @@ struct NutraSafeInsightCard: View {
         title: String,
         value: String,
         trend: InsightTrend? = nil,
-        iconColor: Color = .blue
+        usePaletteColor: Bool = true,
+        enableBreathing: Bool = false
     ) {
         self.icon = icon
         self.title = title
         self.value = value
         self.trend = trend
-        self.iconColor = iconColor
+        self.usePaletteColor = usePaletteColor
+        self.enableBreathing = enableBreathing
+    }
+
+    private var accentColor: Color {
+        usePaletteColor ? palette.accent : .blue
     }
 
     var body: some View {
@@ -444,7 +478,7 @@ struct NutraSafeInsightCard: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(iconColor)
+                    .foregroundColor(accentColor)
 
                 Spacer()
 
@@ -458,21 +492,42 @@ struct NutraSafeInsightCard: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(value)
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(white: 0.2))
+                    .foregroundColor(palette.textPrimary)
+                    .scaleEffect(enableBreathing && isBreathing ? 1.02 : 1.0)
 
                 Text(title)
                     .font(DesignTokens.Typography.caption)
-                    .foregroundColor(Color(white: 0.5))
+                    .foregroundColor(palette.textTertiary)
             }
         }
         .padding(DesignTokens.Spacing.cardInternal)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .fill(Color.nutraSafeCard)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accentColor.opacity(0.06),
+                            Color.nutraSafeCard
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                        .fill(Color.nutraSafeCard.opacity(0.85))
+                )
                 .shadow(color: DesignTokens.Shadow.subtle.color,
                         radius: DesignTokens.Shadow.subtle.radius,
                         y: DesignTokens.Shadow.subtle.y)
         )
+        .onAppear {
+            if enableBreathing {
+                withAnimation(DesignTokens.Animation.breathing) {
+                    isBreathing = true
+                }
+            }
+        }
     }
 }
 
@@ -626,7 +681,7 @@ struct NutraSafeListRow<Content: View>: View {
             )
 
             NutraSafeWarningCard(
-                text: "Important notice that requires attention but isn't alarming."
+                "Important notice that requires attention but isn't alarming."
             )
 
             NutraSafeSectionHeader(title: "Buttons")

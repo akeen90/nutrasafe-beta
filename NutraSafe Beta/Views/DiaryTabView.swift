@@ -204,7 +204,7 @@ struct DiaryTabView: View {
         )
     }
 
-    // MARK: - Horizontal Week Picker (centered selection design)
+    // MARK: - Horizontal Week Picker (Palette-Aware, Onboarding Style)
     // Selected day stays in center, days shift when navigating
     private var dateNavigationRow: some View {
         let calendar = Calendar.current
@@ -222,7 +222,7 @@ struct DiaryTabView: View {
             }) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
+                    .foregroundColor(palette.accent)
                     .frame(width: 36, height: 36)
             }
 
@@ -243,10 +243,17 @@ struct DiaryTabView: View {
                     }) {
                         ZStack {
                             if isCenter {
-                                // Blue pill background - centered in frame
+                                // Palette-colored pill background with gradient
                                 Capsule()
-                                    .fill(Color.blue)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [palette.accent, palette.primary],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .frame(width: 76, height: 32)
+                                    .shadow(color: palette.accent.opacity(0.3), radius: 6, y: 2)
 
                                 // Content centered inside pill
                                 HStack(spacing: 4) {
@@ -261,7 +268,7 @@ struct DiaryTabView: View {
                                 // Other days - just text
                                 Text(dayName)
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(palette.textSecondary)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.8)
                             }
@@ -283,17 +290,21 @@ struct DiaryTabView: View {
             }) {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
+                    .foregroundColor(palette.accent)
                     .frame(width: 36, height: 36)
             }
         }
         .frame(height: 44)
         .padding(.horizontal, 8)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
         )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, DesignTokens.Spacing.md)
     }
 
     // Get days centered around the selected date
@@ -358,22 +369,26 @@ struct DiaryTabView: View {
                     .padding(.bottom, 12)
             }
             .background(
-                Group {
-                    if colorScheme == .dark {
-                        Color.midnightBackground
-                    } else {
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.92, green: 0.96, blue: 1.0),
-                                Color(red: 0.93, green: 0.88, blue: 1.0)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    }
-                }
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        palette.primary.opacity(0.05),
+                                        palette.accent.opacity(0.03)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 12))
             .onAppear {
                 displayedMonth = selectedDate
                 loadDatesWithEntries()
@@ -417,7 +432,7 @@ struct DiaryTabView: View {
         }
     }
 
-    // MARK: - Calendar Day Cell
+    // MARK: - Calendar Day Cell (Palette-Aware)
     private func calendarDayCell(date: Date, day: Int) -> some View {
         let calendar = Calendar.current
         let isToday = calendar.isDateInToday(date)
@@ -437,11 +452,18 @@ struct DiaryTabView: View {
                 ZStack {
                     if isSelected {
                         Circle()
-                            .fill(Color.blue)
+                            .fill(
+                                LinearGradient(
+                                    colors: [palette.accent, palette.primary],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                             .frame(width: 32, height: 32)
+                            .shadow(color: palette.accent.opacity(0.3), radius: 4, y: 2)
                     } else if isToday {
                         Circle()
-                            .stroke(Color.blue, lineWidth: 2)
+                            .stroke(palette.accent, lineWidth: 2)
                             .frame(width: 32, height: 32)
                     }
 
@@ -457,7 +479,7 @@ struct DiaryTabView: View {
                 // Entry indicator dot
                 if hasEntries && !isFuture {
                     Circle()
-                        .fill(isSelected ? Color.white.opacity(0.8) : Color.green)
+                        .fill(isSelected ? Color.white.opacity(0.8) : palette.accent)
                         .frame(width: 6, height: 6)
                 } else {
                     Circle()
@@ -510,8 +532,8 @@ struct DiaryTabView: View {
     private var datePickerHeader: some View {
         HStack {
             Text(formatMonthYear(displayedMonth))
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.primary)
+                .font(DesignTokens.Typography.sectionTitle(20))
+                .foregroundColor(palette.textPrimary)
 
             Spacer()
 
@@ -521,13 +543,13 @@ struct DiaryTabView: View {
                 showingDatePicker = false
             }) {
                 Text("Today")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.blue)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(palette.accent)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.blue.opacity(0.1))
+                            .fill(palette.accent.opacity(0.12))
                     )
             }
         }
@@ -732,42 +754,14 @@ struct DiaryTabView: View {
         .background(diaryBlueBackground)
     }
 
-    // MARK: - Adaptive Background (gradient in light mode, midnight blue in dark mode)
+    // MARK: - Palette for Intent-Aware Colors
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    // MARK: - Adaptive Background (Intent-aware animated gradient)
     private var diaryBlueBackground: some View {
-        Group {
-            if colorScheme == .dark {
-                // Dark mode: Use midnight blue
-                Color.midnightBackground
-                    .ignoresSafeArea()
-            } else {
-                // Light mode: Use beautiful gradient
-                ZStack {
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.92, green: 0.96, blue: 1.0),
-                            Color(red: 0.93, green: 0.88, blue: 1.0)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    RadialGradient(
-                        colors: [Color.blue.opacity(0.10), Color.clear],
-                        center: .topLeading,
-                        startRadius: 0,
-                        endRadius: 300
-                    )
-                    RadialGradient(
-                        colors: [Color.purple.opacity(0.08), Color.clear],
-                        center: .bottomTrailing,
-                        startRadius: 0,
-                        endRadius: 280
-                    )
-                }
-                // PERFORMANCE: Flatten gradients to single Metal texture, preventing recalculation
-                .drawingGroup()
-                .ignoresSafeArea()
-            }
-        }
+        AppAnimatedBackground()
     }
 
     // MARK: - Helper Methods for onChange Handlers

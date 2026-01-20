@@ -48,7 +48,7 @@ struct FastingMainView: View {
         }
     }
 
-    // MARK: - Fasting Content (Premium)
+    // MARK: - Fasting Content (Premium with Animated Background)
     private var fastingContent: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -68,6 +68,7 @@ struct FastingMainView: View {
             }
             .padding()
         }
+        .background(AppAnimatedBackground())
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
@@ -266,89 +267,156 @@ struct IdleStateView: View {
     }
 }
 
-// MARK: - No Plan View
+// MARK: - No Plan View (Palette-Aware, Onboarding Style)
 struct NoPlanView: View {
     @ObservedObject var viewModel: FastingViewModel
     @Binding var showingEducation: Bool
     @Binding var showingPlanCreation: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Welcome Card with UK-friendly explanation
-            VStack(spacing: 16) {
-                Image(systemName: "timer")
-                    .font(.system(size: 60))
-                    .foregroundColor(.blue)
+        VStack(spacing: DesignTokens.Spacing.lg) {
+            // Welcome Card with UK-friendly explanation (Glassmorphic)
+            VStack(spacing: DesignTokens.Spacing.md) {
+                // Palette-tinted icon
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.accent.opacity(0.2), palette.primary.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 80, height: 80)
+
+                    Image(systemName: "timer")
+                        .font(.system(size: 36, weight: .medium))
+                        .foregroundColor(palette.accent)
+                }
 
                 Text("Get Started with Fasting")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(DesignTokens.Typography.sectionTitle(22))
+                    .foregroundColor(palette.textPrimary)
 
                 Text("Intermittent fasting means giving your body regular breaks from eating. Popular plans like 16:8 involve fasting for 16 hours (including sleep) and eating within an 8-hour window.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(DesignTokens.Typography.body)
+                    .foregroundColor(palette.textSecondary)
                     .multilineTextAlignment(.center)
+                    .lineSpacing(DesignTokens.Spacing.lineSpacing)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding()
+            .padding(DesignTokens.Spacing.cardInternal)
             .frame(maxWidth: .infinity)
-            .cardBackground(cornerRadius: 16)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                            .fill(
+                                LinearGradient(
+                                    colors: [palette.accent.opacity(0.05), palette.primary.opacity(0.03)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+            )
 
-            // Create Plan Button
+            // Create Plan Button (Premium gradient with shimmer potential)
             Button {
                 showingPlanCreation = true
             } label: {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "clock.badge.checkmark")
+                        .font(.system(size: 18, weight: .semibold))
                     Text("Create My Plan")
-                        .fontWeight(.semibold)
+                        .font(DesignTokens.Typography.button)
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
+                .frame(height: 56)
+                .background(
+                    LinearGradient(
+                        colors: [palette.accent, palette.primary],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .foregroundColor(.white)
-                .cornerRadius(12)
+                .cornerRadius(DesignTokens.Radius.lg)
+                .shadow(color: palette.accent.opacity(0.3), radius: 15, y: 5)
             }
             .buttonStyle(.plain)
 
-            // Education Button
+            // Education Button (Glassmorphic card style)
             Button {
                 showingEducation = true
             } label: {
-                HStack {
-                    Image(systemName: "graduationcap.fill")
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(palette.accent.opacity(0.12))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: "graduationcap.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(palette.accent)
+                    }
+
                     Text("What is Fasting? Learn More")
-                        .fontWeight(.medium)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(palette.textPrimary)
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(palette.textTertiary)
                 }
-                .padding()
-                .cardBackground(cornerRadius: 12)
+                .padding(DesignTokens.Spacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                        )
+                )
             }
             .buttonStyle(.plain)
 
-            // Simple benefit list for new users
-            VStack(alignment: .leading, spacing: 8) {
+            // Simple benefit list for new users (Glassmorphic card)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                 Text("Why people fast:")
-                    .font(.footnote)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.secondary)
+                    .font(DesignTokens.Typography.label)
+                    .foregroundColor(palette.textSecondary)
 
                 ForEach(["May support weight management", "Gives your digestive system a rest", "Many find it helps energy levels"], id: \.self) { benefit in
                     HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.system(size: 12))
+                        Circle()
+                            .fill(palette.accent)
+                            .frame(width: 6, height: 6)
                         Text(benefit)
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(palette.textSecondary)
                     }
                 }
             }
-            .padding()
+            .padding(DesignTokens.Spacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cardBackground(cornerRadius: 12)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+            )
         }
         .fullScreenCover(isPresented: $showingEducation) {
             FastingEducationView()

@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - Adaptive Card Color Extension
 
@@ -261,28 +262,6 @@ extension View {
     func appBackground() -> some View {
         self.background(AppAnimatedBackground())
     }
-
-    /// Apply breathing animation
-    func breathing(intensity: CGFloat = 0.05) -> some View {
-        modifier(BreathingModifier(intensity: intensity))
-    }
-}
-
-// MARK: - Breathing Animation Modifier
-
-struct BreathingModifier: ViewModifier {
-    let intensity: CGFloat
-    @State private var isBreathing = false
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isBreathing ? 1 + intensity : 1 - intensity * 0.5)
-            .onAppear {
-                withAnimation(DesignTokens.Animation.breathing) {
-                    isBreathing = true
-                }
-            }
-    }
 }
 
 // MARK: - App Animated Background
@@ -380,5 +359,394 @@ struct AmbientGradientBackground: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+// MARK: - Breathing Ring Component
+
+/// A circular progress ring with breathing animation - matches onboarding visual language
+struct BreathingRing: View {
+    let progress: Double
+    let size: CGFloat
+    let lineWidth: CGFloat
+    let enableBreathing: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isBreathing = false
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    init(
+        progress: Double,
+        size: CGFloat = 130,
+        lineWidth: CGFloat = 14,
+        enableBreathing: Bool = true
+    ) {
+        self.progress = min(max(progress, 0), 1)
+        self.size = size
+        self.lineWidth = lineWidth
+        self.enableBreathing = enableBreathing
+    }
+
+    var body: some View {
+        ZStack {
+            // Background ring with subtle glow
+            Circle()
+                .stroke(palette.tertiary.opacity(0.2), lineWidth: lineWidth)
+                .frame(width: size, height: size)
+
+            // Progress ring with palette accent
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(
+                    LinearGradient(
+                        colors: [palette.accent, palette.primary],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                )
+                .frame(width: size, height: size)
+                .rotationEffect(.degrees(-90))
+                .shadow(color: palette.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+        .scaleEffect(enableBreathing && isBreathing ? 1.03 : 1.0)
+        .onAppear {
+            if enableBreathing {
+                withAnimation(DesignTokens.Animation.breathing) {
+                    isBreathing = true
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Glassmorphic Search Field
+
+/// Premium search field with glassmorphic styling - matches onboarding cards
+struct GlassmorphicSearchField: View {
+    @Binding var text: String
+    let placeholder: String
+    var onSubmit: (() -> Void)?
+    var trailingIcon: String?
+    var trailingAction: (() -> Void)?
+
+    @Environment(\.colorScheme) private var colorScheme
+    @FocusState private var isFocused: Bool
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    init(
+        text: Binding<String>,
+        placeholder: String = "Search...",
+        onSubmit: (() -> Void)? = nil,
+        trailingIcon: String? = nil,
+        trailingAction: (() -> Void)? = nil
+    ) {
+        self._text = text
+        self.placeholder = placeholder
+        self.onSubmit = onSubmit
+        self.trailingIcon = trailingIcon
+        self.trailingAction = trailingAction
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(isFocused ? palette.accent : palette.textTertiary)
+
+            TextField(placeholder, text: $text)
+                .textFieldStyle(PlainTextFieldStyle())
+                .autocorrectionDisabled(true)
+                .textInputAutocapitalization(.never)
+                .font(.system(size: 16, weight: .regular))
+                .focused($isFocused)
+                .onSubmit { onSubmit?() }
+
+            if !text.isEmpty {
+                Button(action: { text = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(palette.textTertiary)
+                }
+            }
+
+            if let icon = trailingIcon {
+                Button(action: { trailingAction?() }) {
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(palette.accent)
+                }
+            }
+        }
+        .frame(height: 48)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                        .stroke(
+                            isFocused ? palette.accent.opacity(0.6) : Color.white.opacity(0.2),
+                            lineWidth: isFocused ? 2 : 1
+                        )
+                )
+                .shadow(
+                    color: isFocused ? palette.accent.opacity(0.2) : Color.black.opacity(0.05),
+                    radius: isFocused ? 15 : 8,
+                    y: isFocused ? 6 : 3
+                )
+        )
+        .scaleEffect(isFocused ? 1.01 : 1.0)
+        .animation(DesignTokens.Animation.standard, value: isFocused)
+    }
+}
+
+// MARK: - Premium Date Capsule
+
+/// Palette-aware date picker capsule - replaces system blue pills
+struct PremiumDateCapsule: View {
+    let text: String
+    let isSelected: Bool
+    var showCalendarIcon: Bool
+    var action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    init(
+        _ text: String,
+        isSelected: Bool,
+        showCalendarIcon: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.text = text
+        self.isSelected = isSelected
+        self.showCalendarIcon = showCalendarIcon
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(text)
+                    .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+
+                if showCalendarIcon {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+            }
+            .foregroundColor(isSelected ? .white : palette.textSecondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(
+                        isSelected
+                            ? LinearGradient(
+                                colors: [palette.accent, palette.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            : LinearGradient(colors: [Color.clear], startPoint: .leading, endPoint: .trailing)
+                    )
+                    .shadow(
+                        color: isSelected ? palette.accent.opacity(0.3) : Color.clear,
+                        radius: isSelected ? 8 : 0,
+                        y: 2
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Palette-Aware Tab Picker
+
+/// Segment control with onboarding glassmorphic styling
+struct PaletteTabPicker<T: Hashable & CaseIterable & RawRepresentable>: View where T.RawValue == String {
+    @Binding var selection: T
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(T.allCases), id: \.rawValue) { tab in
+                Button(action: {
+                    withAnimation(DesignTokens.Animation.standard) {
+                        selection = tab
+                    }
+                }) {
+                    Text(tab.rawValue)
+                        .font(.system(size: 14, weight: selection == tab ? .semibold : .medium))
+                        .foregroundColor(selection == tab ? .white : palette.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            selection == tab
+                                ? RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [palette.accent, palette.primary],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .shadow(color: palette.accent.opacity(0.3), radius: 6, y: 2)
+                                : nil
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Palette-Aware Gradient Card
+
+/// Card with gradient fill based on user's palette
+struct PaletteGradientCard<Content: View>: View {
+    let content: Content
+    var intensity: Double
+    var cornerRadius: CGFloat
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    init(
+        intensity: Double = 0.08,
+        cornerRadius: CGFloat = DesignTokens.Radius.lg,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.intensity = intensity
+        self.cornerRadius = cornerRadius
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(DesignTokens.Spacing.cardInternal)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                palette.primary.opacity(intensity),
+                                palette.secondary.opacity(intensity * 0.5)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .fill(Color.nutraSafeCard.opacity(0.85))
+                    )
+                    .shadow(color: DesignTokens.Shadow.subtle.color,
+                            radius: DesignTokens.Shadow.subtle.radius,
+                            y: DesignTokens.Shadow.subtle.y)
+            )
+    }
+}
+
+// MARK: - View Extension for Palette-Aware Backgrounds
+
+extension View {
+    /// Apply palette-aware gradient tint to background
+    func paletteTintedBackground(intensity: Double = 0.06) -> some View {
+        modifier(PaletteTintedBackgroundModifier(intensity: intensity))
+    }
+
+    /// Apply premium card styling with palette gradient
+    func premiumCard(
+        cornerRadius: CGFloat = DesignTokens.Radius.lg,
+        intensity: Double = 0.08
+    ) -> some View {
+        modifier(PremiumCardModifier(cornerRadius: cornerRadius, intensity: intensity))
+    }
+}
+
+struct PaletteTintedBackgroundModifier: ViewModifier {
+    let intensity: Double
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                LinearGradient(
+                    colors: [
+                        palette.primary.opacity(intensity),
+                        palette.accent.opacity(intensity * 0.5),
+                        Color.clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+    }
+}
+
+struct PremiumCardModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let intensity: Double
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .padding(DesignTokens.Spacing.cardInternal)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                palette.primary.opacity(intensity),
+                                palette.secondary.opacity(intensity * 0.5)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .fill(Color.nutraSafeCard.opacity(0.9))
+                    )
+                    .shadow(color: DesignTokens.Shadow.subtle.color,
+                            radius: DesignTokens.Shadow.subtle.radius,
+                            y: DesignTokens.Shadow.subtle.y)
+            )
     }
 }

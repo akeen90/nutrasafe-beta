@@ -25,6 +25,15 @@ struct DiaryDailySummaryCard: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
     @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    // MARK: - Palette for Intent-Aware Colors
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    // MARK: - Breathing Animation State
+    @State private var isBreathing = false
 
     // MARK: - Daily Goals (using AppStorage for instant load, no flash)
     @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 1800
@@ -115,36 +124,48 @@ struct DiaryDailySummaryCard: View {
     private var calorieRingView: some View {
         VStack(spacing: 6) {
             ZStack {
-                // Background circle
+                // Background circle with subtle palette tint
                 Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 14)
+                    .stroke(palette.tertiary.opacity(0.2), lineWidth: 14)
                     .frame(width: 130, height: 130)
 
-                // Progress circle (teal)
+                // Progress circle with palette gradient
                 Circle()
                     .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
                     .stroke(
-                        Color(.systemTeal),
+                        LinearGradient(
+                            colors: [palette.accent, palette.primary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
                         style: StrokeStyle(lineWidth: 14, lineCap: .round)
                     )
                     .frame(width: 130, height: 130)
                     .rotationEffect(.degrees(-90))
+                    .shadow(color: palette.accent.opacity(0.3), radius: 8, x: 0, y: 4)
                     .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
 
                 // Center text - stacked vertically
                 VStack(spacing: 0) {
                     Text("\(totalCalories)")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                        .foregroundColor(palette.textPrimary)
 
                     Text("/\(Int(calorieGoal))")
                         .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textSecondary)
 
                     Text("Cals")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(palette.textTertiary)
                         .padding(.top, 2)
+                }
+            }
+            // Breathing animation for the ring
+            .scaleEffect(isBreathing ? 1.02 : 1.0)
+            .onAppear {
+                withAnimation(DesignTokens.Animation.breathing) {
+                    isBreathing = true
                 }
             }
         }
@@ -274,7 +295,7 @@ struct DiaryDailySummaryCard: View {
         .frame(height: 24)
     }
 
-    // MARK: - Weekly Summary Card
+    // MARK: - Weekly Summary Card (Palette-Aware)
     private var weeklySummaryCard: some View {
         Button(action: {
             showWeeklySummary = true
@@ -283,7 +304,7 @@ struct DiaryDailySummaryCard: View {
                 // Weekly Summary label
                 Text("Weekly Summary")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(.blue)
+                    .foregroundColor(palette.accent)
 
                 Spacer()
 
@@ -800,8 +821,6 @@ struct DiaryDailySummaryCard: View {
             }
         }
     }
-
-    @Environment(\.colorScheme) private var colorScheme
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: AppRadius.large)
