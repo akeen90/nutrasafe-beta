@@ -552,17 +552,25 @@ struct WeeklySummarySheet: View {
 
     private func macroCard(name: String, value: Int, goal: Int, color: Color, icon: String) -> some View {
         let progress = goal > 0 ? min(Double(value) / Double(goal), 1.0) : 0
+        let difference = value - goal
+        let isOver = difference > 0
+        let isOnTarget = goal > 0 && abs(Double(difference) / Double(goal)) < 0.05 // Within 5%
 
-        return VStack(spacing: 10) {
+        return VStack(spacing: 8) {
             // Icon
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(color)
 
             // Value
             Text("\(value)g")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
+
+            // Goal text
+            Text("of \(goal)g goal")
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
 
             // Progress bar
             GeometryReader { geo in
@@ -577,13 +585,20 @@ struct WeeklySummarySheet: View {
             }
             .frame(height: 6)
 
+            // Over/Under indicator
+            if goal > 0 {
+                Text(isOnTarget ? "On target" : (isOver ? "\(difference)g over" : "\(abs(difference))g under"))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(isOnTarget ? .green : (isOver ? .red : .green))
+            }
+
             // Label
             Text(name)
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 16)
-        .padding(.horizontal, 12)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 10)
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16)
@@ -731,14 +746,14 @@ struct ModernDayCard: View {
         }
         let diff = day.calories - Int(calorieGoal)
         let percentDiff = abs(Double(diff)) / calorieGoal
-        if percentDiff < 0.1 {
-            // Within 10% of goal - on target
-            return ("✓", .green, true)
+        if percentDiff < 0.05 {
+            // Within 5% of goal - on target
+            return ("On target", .green, true)
         } else if diff > 0 {
-            // Over goal - red with + prefix
+            // Over goal - red
             return ("+\(diff)", .red, false)
         } else {
-            // Under goal - green with - prefix
+            // Under goal - green
             return ("\(diff)", .green, false)
         }
     }
@@ -800,9 +815,9 @@ struct ModernDayCard: View {
 
                         // Calorie difference indicator
                         Text(calorieStatus.text)
-                            .font(.system(size: calorieStatus.isOnTarget ? 18 : 12, weight: .bold, design: .rounded))
+                            .font(.system(size: calorieStatus.isOnTarget ? 10 : 12, weight: .bold, design: .rounded))
                             .foregroundColor(calorieStatus.color)
-                            .frame(minWidth: 44, alignment: .trailing)
+                            .frame(minWidth: 50, alignment: .trailing)
 
                         // Chevron
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
