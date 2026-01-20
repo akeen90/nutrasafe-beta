@@ -163,12 +163,6 @@ final class SubscriptionManager: ObservableObject {
         let eligible = await subscription.isEligibleForIntroOffer
         isEligibleForTrial = eligible
 
-        // Log trial configuration for debugging
-        if let introOffer = subscription.introductoryOffer {
-            if introOffer.paymentMode == .freeTrial {
-            }
-        } else {
-        }
     }
 
     func restore() async throws {

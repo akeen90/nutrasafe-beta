@@ -1152,7 +1152,6 @@ class ProcessingScorer {
         let range = NSRange(text.startIndex..., in: text)
         let matched = regex.firstMatch(in: text, range: range) != nil
 
-        // DEBUG: Log matches for problematic patterns
         return matched
     }
 
@@ -1207,14 +1206,6 @@ class ProcessingScorer {
                 break
             }
         }
-
-        // Debug logging for Tartrazine specifically
-        if additive.eNumber == "E102" && score > 0 {
-                    }
-
-        // DEBUG: Log Invert sugar false positives
-        if additive.name.lowercased() == "invert sugar" && score > 0 {
-                    }
 
         return min(score, 1.0)  // Cap at 100%
     }
