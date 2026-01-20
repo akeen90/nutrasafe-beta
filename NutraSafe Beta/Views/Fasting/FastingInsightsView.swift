@@ -112,7 +112,7 @@ struct KeyMetricsSection: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 Text("Key Metrics")
                     .font(.headline)
             }
@@ -329,7 +329,7 @@ struct ProgressChartSection: View {
         case .earlyEnd:
             colors = [Color.orange.opacity(0.7), Color.orange]
         case .active:
-            colors = [Color.blue.opacity(0.7), Color.blue]
+            colors = [AppPalette.standard.accent.opacity(0.7), AppPalette.standard.accent]
         default:
             colors = [Color.gray.opacity(0.5), Color.gray]
         }

@@ -109,7 +109,7 @@ struct SmartRecommendationsView: View {
                         label: "All",
                         count: recommendationEngine.recommendations.count,
                         isSelected: selectedPriority == nil,
-                        color: .blue
+                        color: AppPalette.standard.accent
                     ) {
                         selectedPriority = nil
                     }
@@ -360,7 +360,7 @@ struct CategoryChip: View {
             .padding(.vertical, 10)
             .background(
                 Capsule()
-                    .fill(isSelected ? Color.blue : Color(.systemGray6))
+                    .fill(isSelected ? AppPalette.standard.accent : Color(.systemGray6))
             )
         }
     }
@@ -420,7 +420,7 @@ struct RecommendationCard: View {
                                 .padding(.vertical, 4)
                                 .background(
                                     Capsule()
-                                        .fill(Color.blue)
+                                        .fill(AppPalette.standard.accent)
                                 )
                         }
                     }

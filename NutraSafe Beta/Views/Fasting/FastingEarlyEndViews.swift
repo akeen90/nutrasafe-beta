@@ -97,7 +97,7 @@ struct EarlyEndModal: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -113,7 +113,7 @@ struct EarlyEndModal: View {
                             .fontWeight(.medium)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                     .buttonStyle(.plain)
                 }
@@ -158,7 +158,7 @@ struct RestartDecisionModal: View {
                 // Header Icon
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .font(.system(size: 60))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .padding(.top, 20)
 
                 // Title & Message
@@ -214,7 +214,7 @@ struct RestartDecisionModal: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Image(systemName: "sparkles")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                 Text("Start new session")
                                     .font(.headline)
                                     .foregroundColor(.primary)

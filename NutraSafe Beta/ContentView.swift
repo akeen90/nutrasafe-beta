@@ -1712,7 +1712,7 @@ struct WeightTrackingView: View {
                 endPoint: .bottomTrailing
             )
             RadialGradient(
-                colors: [Color.blue.opacity(0.10), Color.clear],
+                colors: [AppPalette.standard.accent.opacity(0.10), Color.clear],
                 center: .topLeading,
                 startRadius: 0,
                 endRadius: 300
@@ -2022,7 +2022,7 @@ struct DietManagementTabContent: View {
                                 .padding(.vertical, 10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(calorieGoal == 2500 ? Color.blue : Color.blue.opacity(0.15))
+                                        .fill(calorieGoal == 2500 ? AppPalette.standard.accent : AppPalette.standard.accent.opacity(0.15))
                                 )
                             }
                         }
@@ -2078,7 +2078,7 @@ struct DietManagementTabContent: View {
                     } label: {
                         Text("Change")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
 
@@ -2478,12 +2478,12 @@ struct WeightEntryRow: View {
             } else if isLatest {
                 Text("Latest")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.blue.opacity(0.15))
+                            .fill(AppPalette.standard.accent.opacity(0.15))
                     )
             }
         }
@@ -2544,7 +2544,7 @@ struct ProgressWeightEntryDetailView: View {
                                     .foregroundColor(.secondary)
                                 Text(String(format: "%.1f kg", entry.weight))
                                     .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                             }
 
                             if let bmi = entry.bmi {
@@ -2554,7 +2554,7 @@ struct ProgressWeightEntryDetailView: View {
                                         .foregroundColor(.secondary)
                                     Text(String(format: "%.1f", bmi))
                                         .font(.system(size: 24, weight: .bold))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                             }
                         }
@@ -2638,7 +2638,7 @@ struct ProgressWeightEntryDetailView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(12)
                     }
                     .padding(.horizontal, 16)
@@ -2808,7 +2808,7 @@ struct WeightHistoryRow: View {
                             .foregroundColor(.secondary)
                         Text(String(format: "%.1f", bmi))
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
             }
@@ -2878,7 +2878,7 @@ struct SimpleWeightChart: View {
                             }
                         }
                     }
-                    .stroke(Color.blue, lineWidth: 3)
+                    .stroke(AppPalette.standard.accent, lineWidth: 3)
                 }
 
                 // Data points
@@ -2888,7 +2888,7 @@ struct SimpleWeightChart: View {
                     let y = (1 - (entry.weight - data.minWeight) / data.weightRange) * geometry.size.height
 
                     Circle()
-                        .fill(Color.blue)
+                        .fill(AppPalette.standard.accent)
                         .frame(width: 8, height: 8)
                         .position(x: x, y: y)
                 }
@@ -4375,7 +4375,7 @@ struct HeightSetupView: View {
                 VStack(spacing: 16) {
                     Image(systemName: "figure.stand")
                         .font(.system(size: 60))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
 
                     Text("What's your height?")
                         .font(.system(size: 28, weight: .bold))
@@ -4451,7 +4451,7 @@ struct HeightSetupView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(isValid ? Color.blue : Color.gray)
+                        .background(isValid ? AppPalette.standard.accent : Color.gray)
                         .cornerRadius(12)
                 }
                 .disabled(!isValid)
@@ -4821,7 +4821,7 @@ struct CompactHydrationRing: View {
                             LinearGradient(
                                 gradient: Gradient(stops: [
                                     .init(color: Color.cyan.opacity(0.8), location: 0),
-                                    .init(color: Color.blue.opacity(0.6), location: 1)
+                                    .init(color: AppPalette.standard.accent.opacity(0.6), location: 1)
                                 ]),
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -5068,7 +5068,7 @@ struct AddFoodMainView: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : Color.blue) : Color(.systemGray6))
+                        .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : AppPalette.standard.accent) : Color(.systemGray6))
                 )
                 .contentShape(Rectangle())
             }
@@ -5259,7 +5259,7 @@ struct DiaryLimitReachedView: View {
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: [Color.blue.opacity(0.2), Color.blue.opacity(0.1)],
+                                colors: [AppPalette.standard.accent.opacity(0.2), AppPalette.standard.accent.opacity(0.1)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -5270,7 +5270,7 @@ struct DiaryLimitReachedView: View {
                         .font(.system(size: 44, weight: .medium))
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [Color.blue, Color.blue.opacity(0.7)],
+                                colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.7)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -5317,7 +5317,7 @@ struct DiaryLimitReachedView: View {
                 .frame(height: 56)
                 .background(
                     LinearGradient(
-                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -5363,7 +5363,7 @@ struct AddOptionSelector: View {
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(selectedOption == option ? Color.blue : Color(.systemGray5))
+                                .fill(selectedOption == option ? AppPalette.standard.accent : Color(.systemGray5))
                                 .frame(width: 60, height: 60)
                             
                             Image(systemName: option.icon)
@@ -5388,7 +5388,7 @@ struct AddOptionSelector: View {
                     .cornerRadius(16)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(selectedOption == option ? Color.blue : Color.clear, lineWidth: 2)
+                            .stroke(selectedOption == option ? AppPalette.standard.accent : Color.clear, lineWidth: 2)
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -5660,7 +5660,7 @@ struct PendingVerificationRow: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(8)
                     }
                     .fullScreenCover(isPresented: $showingCompletionSheet) {

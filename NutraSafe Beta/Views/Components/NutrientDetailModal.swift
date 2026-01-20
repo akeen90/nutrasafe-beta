@@ -344,12 +344,12 @@ struct NutrientDetailModal: View {
 
                                 Text(claim.source)
                                     .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
                                     .background(
                                         Capsule()
-                                            .fill(Color.blue.opacity(0.1))
+                                            .fill(AppPalette.standard.accent.opacity(0.1))
                                     )
                             }
                         }
@@ -506,7 +506,7 @@ struct NutrientDetailModal: View {
                             Spacer()
                             Image(systemName: "arrow.up.right.square")
                                 .font(.caption)
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
                     }
                 }

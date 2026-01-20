@@ -152,7 +152,7 @@ struct MicronutrientTimelineView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: "list.bullet")
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 Text("Individual Nutrients")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.primary)

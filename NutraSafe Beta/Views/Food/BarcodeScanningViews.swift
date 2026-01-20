@@ -34,7 +34,7 @@ struct AddFoodBarcodeView: View {
                 VStack(spacing: 20) {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 50))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                         .padding(.top, 20)
 
                     Text("Product Not Found")
@@ -59,7 +59,7 @@ struct AddFoodBarcodeView: View {
                     }
                     .foregroundColor(.white)
                     .padding()
-                    .background(Color.blue)
+                    .background(AppPalette.standard.accent)
                     .cornerRadius(10)
                     .padding(.horizontal, 20)
 
@@ -67,7 +67,7 @@ struct AddFoodBarcodeView: View {
                         pendingContribution = nil
                         errorMessage = nil
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .padding(.bottom, 20)
                 }
                 .padding()
@@ -102,7 +102,7 @@ struct AddFoodBarcodeView: View {
                         .foregroundColor(.white)
                         .padding()
                         .frame(maxWidth: 200)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(10)
                     }
                     .padding(.top, 20)

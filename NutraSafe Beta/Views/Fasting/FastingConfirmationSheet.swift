@@ -159,7 +159,7 @@ struct FastingStartConfirmationSheet: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
-                .background(Color.blue)
+                .background(AppPalette.standard.accent)
                 .cornerRadius(14)
             }
 
@@ -268,7 +268,7 @@ struct FastingStartConfirmationSheet: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(12)
                 }
             }
@@ -421,12 +421,12 @@ struct FastingEndConfirmationSheet: View {
                         // Progress indicator
                         HStack(spacing: 8) {
                             ProgressView(value: min(currentDurationHours / Double(context.durationHours), 1.0))
-                                .progressViewStyle(LinearProgressViewStyle(tint: completionPercentage >= 100 ? .green : .blue))
+                                .progressViewStyle(LinearProgressViewStyle(tint: completionPercentage >= 100 ? .green : AppPalette.standard.accent))
                                 .frame(maxWidth: .infinity)
 
                             Text("\(completionPercentage)%")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(completionPercentage >= 100 ? .green : .blue)
+                                .foregroundColor(completionPercentage >= 100 ? .green : AppPalette.standard.accent)
                         }
 
                         Text("of \(context.durationHours) hour target")
@@ -486,7 +486,7 @@ struct FastingEndConfirmationSheet: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
-                .background(completionPercentage >= 100 ? Color.green : Color.blue)
+                .background(completionPercentage >= 100 ? Color.green : AppPalette.standard.accent)
                 .cornerRadius(14)
             }
 
@@ -595,7 +595,7 @@ struct FastingEndConfirmationSheet: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(12)
                 }
             }

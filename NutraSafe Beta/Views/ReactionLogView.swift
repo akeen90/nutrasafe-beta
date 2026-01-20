@@ -1579,7 +1579,7 @@ struct LogReactionSheet: View {
                         .padding(.vertical, 10)
                         .background(
                             foodSource == source ?
-                            Color.blue : (colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                            AppPalette.standard.accent : (colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
                         )
                         .cornerRadius(10)
                     }
@@ -1740,10 +1740,10 @@ struct LogReactionSheet: View {
                     HStack {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         Text("Add from recent meals")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14))
@@ -1799,7 +1799,7 @@ struct LogReactionSheet: View {
                 }) {
                     Image(systemName: "barcode.viewfinder")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                         .frame(width: 48, height: 48)
                         .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
                         .cornerRadius(12)
@@ -1850,7 +1850,7 @@ struct LogReactionSheet: View {
 
                                 Image(systemName: "plus.circle.fill")
                                     .font(.system(size: 20))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                             }
                             .padding(12)
                             .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
@@ -2431,7 +2431,7 @@ struct LogReactionSheet: View {
                 } else {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 22))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                 }
             }
             .padding(.vertical, 4)
@@ -3034,7 +3034,7 @@ struct StatBox: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
 
             Text(value)
                 .font(.title2)
@@ -3404,7 +3404,7 @@ struct PDFExportSheet: View {
                         VStack(spacing: 24) {
                             Image(systemName: "doc.text.fill")
                                 .font(.system(size: 60))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
 
                             Text("Export Observation Report")
                                 .font(.title2)
@@ -3448,7 +3448,7 @@ struct PDFExportSheet: View {
                                                         endPoint: .trailing
                                                     )
                                                     : LinearGradient(
-                                                        colors: [Color.blue.opacity(0.1)],
+                                                        colors: [AppPalette.standard.accent.opacity(0.1)],
                                                         startPoint: .leading,
                                                         endPoint: .trailing
                                                     )
@@ -3456,7 +3456,7 @@ struct PDFExportSheet: View {
                                             .cornerRadius(10)
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 10)
-                                                    .stroke(selectedDayRange == days ? Color.clear : Color.blue.opacity(0.3), lineWidth: 1)
+                                                    .stroke(selectedDayRange == days ? Color.clear : AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
                                             )
                                         }
                                         .buttonStyle(.plain)
@@ -4080,7 +4080,7 @@ struct RecentMealsListView: View {
                             ForEach(mealFrequencies.prefix(10), id: \.name) { item in
                                 HStack {
                                     Circle()
-                                        .fill(Color.blue)
+                                        .fill(AppPalette.standard.accent)
                                         .frame(width: 8, height: 8)
 
                                     Text(item.name)
@@ -4092,7 +4092,7 @@ struct RecentMealsListView: View {
                                     Text("\(item.count)×")
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                             }
                         }
@@ -4418,7 +4418,7 @@ struct MultiReactionPDFExportSheet: View {
                         VStack(spacing: 24) {
                             Image(systemName: "doc.text.fill")
                                 .font(.system(size: 60))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
 
                             Text("Export Comprehensive Report")
                                 .font(.title2)

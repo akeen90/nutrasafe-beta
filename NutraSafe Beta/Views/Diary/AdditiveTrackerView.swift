@@ -113,7 +113,7 @@ struct AdditiveTrackerSection: View {
                                 Text("View Sources (EFSA, FSA, FDA)")
                                     .font(.system(size: 12, weight: .medium))
                             }
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .padding(.top, 8)
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -439,7 +439,7 @@ private struct ExpandableAdditiveRow: View {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "fork.knife")
                                 .font(.system(size: 14))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .frame(width: 20)
 
                             VStack(alignment: .leading, spacing: 4) {

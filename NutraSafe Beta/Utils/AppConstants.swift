@@ -448,7 +448,7 @@ struct EmptyStateView: View {
                         .padding(.vertical, AppSpacing.medium)
                         .background(
                             RoundedRectangle(cornerRadius: AppRadius.large)
-                                .fill(Color.blue)
+                                .fill(AppPalette.standard.accent)
                         )
                 }
             }

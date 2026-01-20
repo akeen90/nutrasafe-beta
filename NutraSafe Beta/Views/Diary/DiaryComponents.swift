@@ -192,10 +192,10 @@ struct DiaryFoodRow: View {
                 if hasAnySelection {
                     ZStack {
                         Circle()
-                            .fill(isSelected ? Color.blue : Color.clear)
+                            .fill(isSelected ? AppPalette.standard.accent : Color.clear)
                             .frame(width: 22, height: 22)
                         Circle()
-                            .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 1.5)
+                            .stroke(isSelected ? AppPalette.standard.accent : Color.gray.opacity(0.3), lineWidth: 1.5)
                             .frame(width: 22, height: 22)
                         if isSelected {
                             Image(systemName: "checkmark")
@@ -222,7 +222,7 @@ struct DiaryFoodRow: View {
                         if food.quantity > 1 {
                             Text("× \(String(format: "%.0f", food.quantity))")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
                     }
                 }

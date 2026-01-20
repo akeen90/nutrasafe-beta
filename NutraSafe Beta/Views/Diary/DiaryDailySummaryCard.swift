@@ -804,12 +804,12 @@ struct DiaryDailySummaryCard: View {
                 Text("Week")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
             }
-            .foregroundColor(.blue)
+            .foregroundColor(AppPalette.standard.accent)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemBlue).opacity(0.1))
+                    .fill(AppPalette.standard.accent.opacity(0.1))
             )
         }
     }

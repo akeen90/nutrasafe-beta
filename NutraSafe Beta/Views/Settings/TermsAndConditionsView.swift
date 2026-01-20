@@ -19,7 +19,7 @@ struct TermsAndConditionsView: View {
                         Spacer()
                         Image(systemName: "doc.text.fill")
                             .font(.system(size: 60))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         Spacer()
                     }
                     .padding(.top, 20)
@@ -385,7 +385,7 @@ struct TermsSection: View {
             HStack(alignment: .top, spacing: 12) {
                 Text(number)
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .frame(width: 30, alignment: .leading)
 
                 Text(title)

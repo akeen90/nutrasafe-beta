@@ -110,7 +110,7 @@ struct WeeklySummarySheet: View {
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 }
             }
             .onAppear {
@@ -166,13 +166,13 @@ struct WeeklySummarySheet: View {
                         Capsule()
                             .fill(
                                 LinearGradient(
-                                    colors: showingCalendarPicker ? [Color.gray, Color.gray.opacity(0.8)] : [Color.blue, Color.blue.opacity(0.8)],
+                                    colors: showingCalendarPicker ? [Color.gray, Color.gray.opacity(0.8)] : [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                     )
-                    .shadow(color: (showingCalendarPicker ? Color.gray : Color.blue).opacity(0.3), radius: 8, x: 0, y: 4)
+                    .shadow(color: (showingCalendarPicker ? Color.gray : AppPalette.standard.accent).opacity(0.3), radius: 8, x: 0, y: 4)
                 }
 
                 Spacer()
@@ -247,12 +247,12 @@ struct WeeklySummarySheet: View {
                     Text("This Week")
                         .font(.system(size: 13, weight: .semibold))
                 }
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
                     Capsule()
-                        .fill(Color.blue.opacity(0.12))
+                        .fill(AppPalette.standard.accent.opacity(0.12))
                 )
             }
             .padding(.bottom, 12)
@@ -322,13 +322,13 @@ struct WeeklySummarySheet: View {
                 ZStack {
                     if isInSelectedWeek {
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.blue.opacity(0.3))
+                            .fill(AppPalette.standard.accent.opacity(0.3))
                             .frame(width: 32, height: 32)
                     }
 
                     if isToday {
                         Circle()
-                            .stroke(Color.blue, lineWidth: 2)
+                            .stroke(AppPalette.standard.accent, lineWidth: 2)
                             .frame(width: 28, height: 28)
                     }
 
@@ -344,7 +344,7 @@ struct WeeklySummarySheet: View {
                 // Entry indicator dot
                 if hasEntries && !isFuture {
                     Circle()
-                        .fill(isInSelectedWeek ? Color.blue : Color.green)
+                        .fill(isInSelectedWeek ? AppPalette.standard.accent : Color.green)
                         .frame(width: 6, height: 6)
                 } else {
                     Circle()
@@ -440,7 +440,7 @@ struct WeeklySummarySheet: View {
                     .trim(from: 0, to: calorieProgress)
                     .stroke(
                         LinearGradient(
-                            colors: [Color.blue, Color.purple],
+                            colors: [AppPalette.standard.accent, Color.purple],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
@@ -768,7 +768,7 @@ struct ModernDayCard: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .fill(
                                         LinearGradient(
-                                            colors: [Color.blue, Color.purple.opacity(0.8)],
+                                            colors: [AppPalette.standard.accent, Color.purple.opacity(0.8)],
                                             startPoint: .leading,
                                             endPoint: .trailing
                                         )

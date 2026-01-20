@@ -172,7 +172,7 @@ struct FastingTimerView: View {
                         .foregroundColor(.secondary)
                     Text("\(Int(fastingProgress * 100))%")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                 }
 
                 VStack(spacing: 4) {
@@ -284,7 +284,7 @@ struct FastingTimerView: View {
                 }) {
                     Text("View Sources")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                 }
             }
 
@@ -1003,17 +1003,17 @@ struct FastingSettingsView: View {
 
                 Section(header: Text("Notifications")) {
                     Toggle("Enable Notifications", isOn: $notificationsEnabled)
-                        .tint(.blue)
+                        .tint(AppPalette.standard.accent)
                 }
 
                 if notificationsEnabled {
                     Section(header: Text("Notification Types"), footer: Text("Choose which notifications you'd like to receive")) {
                         Toggle("Fast Starting", isOn: $notificationSettings.startNotificationEnabled)
-                            .tint(.blue)
+                            .tint(AppPalette.standard.accent)
                         Toggle("Fast Ending", isOn: $notificationSettings.endNotificationEnabled)
-                            .tint(.blue)
+                            .tint(AppPalette.standard.accent)
                         Toggle("Stage Progress", isOn: $notificationSettings.stageNotificationsEnabled)
-                            .tint(.blue)
+                            .tint(AppPalette.standard.accent)
                     }
 
                     if notificationSettings.stageNotificationsEnabled {

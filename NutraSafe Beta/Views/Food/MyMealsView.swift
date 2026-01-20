@@ -77,7 +77,7 @@ struct MyMealsView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue.opacity(0.2), Color.purple.opacity(0.1)],
+                            colors: [AppPalette.standard.accent.opacity(0.2), Color.purple.opacity(0.1)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -88,7 +88,7 @@ struct MyMealsView: View {
                     .font(.system(size: 60))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Color.blue, Color.purple],
+                            colors: [AppPalette.standard.accent, Color.purple],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -129,7 +129,7 @@ struct MyMealsView: View {
                 .padding(.vertical, 16)
                 .background(
                     LinearGradient(
-                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -164,7 +164,7 @@ struct MyMealsView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(20)
                     }
                 }
@@ -244,12 +244,12 @@ struct MealCard: View {
                     // Icon
                     ZStack {
                         Circle()
-                            .fill(Color.blue.opacity(0.12))
+                            .fill(AppPalette.standard.accent.opacity(0.12))
                             .frame(width: 50, height: 50)
 
                         Image(systemName: meal.iconName)
                             .font(.system(size: 22, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
 
                     // Name and items
@@ -360,12 +360,12 @@ struct LogMealSheet: View {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(Color.blue.opacity(0.12))
+                                .fill(AppPalette.standard.accent.opacity(0.12))
                                 .frame(width: 56, height: 56)
 
                             Image(systemName: meal.iconName)
                                 .font(.system(size: 26, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
@@ -407,7 +407,7 @@ struct LogMealSheet: View {
                                 .padding(.vertical, 12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(selectedMealType == type ? Color.blue : Color(.systemGray6))
+                                        .fill(selectedMealType == type ? AppPalette.standard.accent : Color(.systemGray6))
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -474,7 +474,7 @@ struct LogMealSheet: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(showingSuccess ? Color.green : Color.blue)
+                    .background(showingSuccess ? Color.green : AppPalette.standard.accent)
                     .cornerRadius(14)
                 }
                 .disabled(isLogging || showingSuccess)

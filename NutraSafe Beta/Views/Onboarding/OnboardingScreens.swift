@@ -71,13 +71,13 @@ struct OnboardingNavigationButtons: View {
                 .frame(height: 54)
                 .background(
                     LinearGradient(
-                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .cornerRadius(16)
-                .shadow(color: Color.blue.opacity(0.3), radius: 15, y: 8)
+                .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 15, y: 8)
             }
         }
         .padding(.horizontal, 24)
@@ -116,7 +116,7 @@ struct DiaryPage: View {
                 VStack(alignment: .leading, spacing: 16) {
                     InfoBullet(
                         icon: "magnifyingglass",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Add food easily",
                         description: "Search, scan barcodes, or add manually"
                     )
@@ -190,7 +190,7 @@ struct FoodDetailPage: View {
                 VStack(alignment: .leading, spacing: 16) {
                     InfoBullet(
                         icon: "info.circle.fill",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Complete nutrition",
                         description: "Tap any food to see calories, macros and full ingredients"
                     )
@@ -273,7 +273,7 @@ struct NutrientsPage: View {
 
                     InfoBullet(
                         icon: "circle.fill",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Visual indicators",
                         description: "Low, moderate or strong presence shown with clear color coding"
                     )
@@ -336,7 +336,7 @@ struct ReactionsPage: View {
 
                     InfoBullet(
                         icon: "list.bullet",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Automatic ingredient tracking",
                         description: "We pull the food's ingredients to help identify potential links"
                     )
@@ -398,7 +398,7 @@ struct PatternsPage: View {
 
                     InfoBullet(
                         icon: "doc.text.fill",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Reaction Report",
                         description: "Generate PDF with recent reaction, 7-day diary, last 5 reactions & patterns"
                     )
@@ -461,7 +461,7 @@ struct FastingPage: View {
                 VStack(alignment: .leading, spacing: 16) {
                     InfoBullet(
                         icon: "calendar",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Set your plan",
                         description: "Choose fasting days, start time and reminder preferences"
                     )
@@ -523,7 +523,7 @@ struct ProgressPage: View {
                 VStack(alignment: .leading, spacing: 16) {
                     InfoBullet(
                         icon: "scalemass.fill",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Weight tracking",
                         description: "Log your weight regularly to see trends"
                     )
@@ -608,7 +608,7 @@ struct HealthPermissionsPage: View {
                 VStack(alignment: .leading, spacing: 16) {
                     InfoBullet(
                         icon: "scalemass.fill",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Sync your weight",
                         description: "Automatically pull weight data from Apple Health"
                     )
@@ -753,7 +753,7 @@ struct UseByPage: View {
 
                     InfoBullet(
                         icon: "camera.fill",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "Photo identification",
                         description: "Add photos for quick visual reference"
                     )
@@ -807,7 +807,7 @@ struct FinalMessagePage: View {
                         .font(.system(size: 42, weight: .bold))
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [.blue, .purple],
+                                colors: [AppPalette.standard.accent, .purple],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -865,12 +865,12 @@ struct EmailConsentPage: View {
                 // Email icon
                 ZStack {
                     Circle()
-                        .fill(Color.blue.opacity(0.15))
+                        .fill(AppPalette.standard.accent.opacity(0.15))
                         .frame(width: 120, height: 120)
 
                     Image(systemName: "envelope.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                 }
 
                 VStack(spacing: 16) {
@@ -888,7 +888,7 @@ struct EmailConsentPage: View {
                 VStack(alignment: .leading, spacing: 16) {
                     InfoBullet(
                         icon: "sparkles",
-                        color: .blue,
+                        color: AppPalette.standard.accent,
                         title: "New features",
                         description: "Be first to know about app updates and improvements"
                     )
@@ -921,11 +921,11 @@ struct EmailConsentPage: View {
                     HStack(spacing: 16) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(hasConsented ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                                .stroke(hasConsented ? AppPalette.standard.accent : Color.gray.opacity(0.3), lineWidth: 2)
                                 .frame(width: 32, height: 32)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(hasConsented ? Color.blue : Color.clear)
+                                        .fill(hasConsented ? AppPalette.standard.accent : Color.clear)
                                 )
 
                             if hasConsented {
@@ -959,13 +959,13 @@ struct EmailConsentPage: View {
                     .frame(height: 56)
                     .background(
                         LinearGradient(
-                            colors: [.blue, .purple],
+                            colors: [AppPalette.standard.accent, .purple],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
                     .cornerRadius(16)
-                    .shadow(color: Color.blue.opacity(0.3), radius: 15, y: 8)
+                    .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 15, y: 8)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
@@ -1036,11 +1036,11 @@ struct DisclaimerPage: View {
                     HStack(spacing: 16) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(hasAccepted ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                                .stroke(hasAccepted ? AppPalette.standard.accent : Color.gray.opacity(0.3), lineWidth: 2)
                                 .frame(width: 32, height: 32)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(hasAccepted ? Color.blue : Color.clear)
+                                        .fill(hasAccepted ? AppPalette.standard.accent : Color.clear)
                                 )
 
                             if hasAccepted {
@@ -1080,7 +1080,7 @@ struct DisclaimerPage: View {
                         Group {
                             if hasAccepted {
                                 LinearGradient(
-                                    colors: [.blue, .purple],
+                                    colors: [AppPalette.standard.accent, .purple],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
@@ -1090,7 +1090,7 @@ struct DisclaimerPage: View {
                         }
                     )
                     .cornerRadius(16)
-                    .shadow(color: hasAccepted ? Color.blue.opacity(0.3) : Color.clear, radius: 15, y: 8)
+                    .shadow(color: hasAccepted ? AppPalette.standard.accent.opacity(0.3) : Color.clear, radius: 15, y: 8)
                 }
                 .disabled(!hasAccepted)
                 .padding(.horizontal, 24)
@@ -1150,7 +1150,7 @@ struct InfoCard: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
 
             Text(text)
                 .font(.system(size: 15, weight: .medium))
@@ -1159,7 +1159,7 @@ struct InfoCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color.blue.opacity(0.08))
+        .background(AppPalette.standard.accent.opacity(0.08))
         .cornerRadius(12)
     }
 }
@@ -1217,7 +1217,7 @@ struct DisclaimerBullet: View {
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: isImportant ? [.red, .orange] : [.blue, .blue.opacity(0.7)],
+                                colors: isImportant ? [.red, .orange] : [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.7)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )

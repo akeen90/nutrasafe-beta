@@ -40,7 +40,7 @@ This is a comprehensive food safety and nutrition tracking app with Firebase bac
 ### iOS Development
 ```bash
 # Build iOS app
-cd "/Users/aaronkeen/Documents/My Apps/NutraSafe Beta"
+cd "/Users/aaronkeen/Documents/My Apps/NutraSafe"
 xcodebuild -project NutraSafeBeta.xcodeproj -scheme "NutraSafe Beta" -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6' build
 ```
 

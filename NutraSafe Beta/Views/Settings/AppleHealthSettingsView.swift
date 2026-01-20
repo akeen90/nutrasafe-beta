@@ -79,7 +79,7 @@ struct AppleHealthSettingsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -98,7 +98,7 @@ struct AppleHealthSettingsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(Color(.secondarySystemGroupedBackground))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                         .cornerRadius(12)
                     }
                     .padding(.horizontal)

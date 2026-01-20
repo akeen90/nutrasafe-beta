@@ -36,7 +36,7 @@ struct ModernNutritionScore: View {
     private var gradientColors: [Color] {
         switch grade {
         case "A+", "A": return [Color.green, Color.green.opacity(0.8)]
-        case "B": return [Color.blue, Color.blue.opacity(0.8)]
+        case "B": return [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)]
         case "C": return [Color.yellow, Color.orange]
         case "D": return [Color.orange, Color.red.opacity(0.8)]
         case "F": return [Color.red, Color.red.opacity(0.7)]
@@ -75,7 +75,7 @@ struct NutritionScoreDetailView: View {
     private var gradeColor: Color {
         switch nutritionGrade {
         case "A+", "A": return .green
-        case "B": return .blue
+        case "B": return AppPalette.standard.accent
         case "C": return .yellow
         case "D": return .orange
         case "F": return .red

@@ -41,7 +41,7 @@ struct DatabasePhotoPromptView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "camera.fill.badge.ellipsis")
                         .font(.system(size: 60))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                     
                     Text("Help Build Our Database!")
                         .font(.title.bold())
@@ -123,7 +123,7 @@ struct DatabasePhotoPromptView: View {
                     }) {
                         Text("Just Add to Log")
                             .fontWeight(.medium)
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
                 .padding()
@@ -276,18 +276,18 @@ struct PhotoCaptureSection: View {
                     VStack(spacing: 8) {
                         Image(systemName: "camera.fill")
                             .font(.title2)
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         
                         Text("Tap to Take Photo")
                             .font(.subheadline)
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 120)
-                    .background(Color.blue.opacity(0.05))
+                    .background(AppPalette.standard.accent.opacity(0.05))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                            .stroke(AppPalette.standard.accent.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5]))
                     )
                     .cornerRadius(8)
                 }
@@ -352,18 +352,18 @@ struct EnhancedPhotoCaptureSection: View {
                             VStack(spacing: 8) {
                                 Image(systemName: "camera.fill")
                                     .font(.title2)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                 
                                 Text("Take Photo")
                                     .font(.subheadline)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 120)
-                            .background(Color.blue.opacity(0.05))
+                            .background(AppPalette.standard.accent.opacity(0.05))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                                    .stroke(AppPalette.standard.accent.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5]))
                             )
                             .cornerRadius(8)
                         }
@@ -402,18 +402,18 @@ struct EnhancedPhotoCaptureSection: View {
                         VStack(spacing: 8) {
                             Image(systemName: "camera.fill")
                                 .font(.title2)
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                             
                             Text("Tap to Take Photo")
                                 .font(.subheadline)
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 120)
-                        .background(Color.blue.opacity(0.05))
+                        .background(AppPalette.standard.accent.opacity(0.05))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                                .stroke(AppPalette.standard.accent.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5]))
                         )
                         .cornerRadius(8)
                     }
@@ -502,7 +502,7 @@ struct MoveFoodSheet: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.blue)
+                    .background(AppPalette.standard.accent)
                     .cornerRadius(12)
                 }
                 .padding(.horizontal, 24)
@@ -553,7 +553,7 @@ struct MoveFoodBottomSheet: View {
                         
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.right.circle.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .font(.system(size: 16))
                             
                             Text("\(selectedCount) item\(selectedCount > 1 ? "s" : "") selected")
@@ -569,7 +569,7 @@ struct MoveFoodBottomSheet: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
                         .frame(width: 28, height: 28)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .clipShape(Circle())
                 }
                 .padding(.horizontal, 20)
@@ -589,7 +589,7 @@ struct MoveFoodBottomSheet: View {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             Image(systemName: "calendar")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .font(.system(size: 18))
                             
                             VStack(alignment: .leading, spacing: 2) {
@@ -599,7 +599,7 @@ struct MoveFoodBottomSheet: View {
                                 
                                 Text(formatDateWithDayName(moveToDate))
                                     .font(.subheadline)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .fontWeight(.medium)
                             }
                             
@@ -713,13 +713,13 @@ struct MoveFoodBottomSheet: View {
                         .padding(.vertical, 16)
                         .background(
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.9)]),
+                                gradient: Gradient(colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.9)]),
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
                         .cornerRadius(14)
-                        .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -866,7 +866,7 @@ struct DateRollerPicker: View {
             .frame(height: itemHeight)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                    .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
@@ -979,7 +979,7 @@ struct CopyFoodBottomSheet: View {
 
                         HStack(spacing: 6) {
                             Image(systemName: "doc.on.doc.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .font(.system(size: 16))
 
                             Text("\(selectedCount) item\(selectedCount > 1 ? "s" : "") selected")
@@ -995,7 +995,7 @@ struct CopyFoodBottomSheet: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
                         .frame(width: 28, height: 28)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .clipShape(Circle())
                 }
                 .padding(.horizontal, 20)
@@ -1015,7 +1015,7 @@ struct CopyFoodBottomSheet: View {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             Image(systemName: "calendar")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .font(.system(size: 18))
 
                             VStack(alignment: .leading, spacing: 2) {
@@ -1025,7 +1025,7 @@ struct CopyFoodBottomSheet: View {
 
                                 Text(formatDateWithDayName(copyToDate))
                                     .font(.subheadline)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .fontWeight(.medium)
                             }
 
@@ -1139,13 +1139,13 @@ struct CopyFoodBottomSheet: View {
                         .padding(.vertical, 16)
                         .background(
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.9)]),
+                                gradient: Gradient(colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.9)]),
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
                         .cornerRadius(14)
-                        .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                 }
                 .padding(.horizontal, 20)

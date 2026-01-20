@@ -62,7 +62,7 @@ struct NutrientGapsView: View {
                                 HStack(alignment: .top, spacing: 8) {
                                     Image(systemName: "doc.text.fill")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(citation.organization)
                                             .font(.system(size: 13, weight: .semibold))
@@ -75,7 +75,7 @@ struct NutrientGapsView: View {
                                     Spacer()
                                     Image(systemName: "arrow.up.right.square")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                             }
                             .padding(.vertical, 4)
@@ -161,7 +161,7 @@ struct NutrientGapsView: View {
                     Image(systemName: expanded.contains(row.id) ? "chevron.up" : "chevron.down")
                 }
                 .font(.caption)
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
             }
         }
         .contentShape(Rectangle())

@@ -10,50 +10,7 @@ import SwiftUI
 import UIKit
 
 // MARK: - Custom Midnight Blue Theme
-
-extension Color {
-    /// Midnight blue background - trading platform style
-    static var midnightBackground: Color {
-        Color(red: 0.08, green: 0.12, blue: 0.20) // #141F33
-    }
-
-    /// Slightly lighter midnight blue for cards
-    static var midnightCard: Color {
-        Color(red: 0.12, green: 0.16, blue: 0.24) // #1E293D
-    }
-
-    /// Even lighter for secondary cards
-    static var midnightCardSecondary: Color {
-        Color(red: 0.15, green: 0.20, blue: 0.28) // #263447
-    }
-
-    /// Adaptive background that switches between white and midnight blue
-    static var adaptiveBackground: Color {
-        Color(uiColor: .init { traitCollection in
-            traitCollection.userInterfaceStyle == .dark
-                ? UIColor(red: 0.08, green: 0.12, blue: 0.20, alpha: 1.0)
-                : UIColor.systemBackground
-        })
-    }
-
-    /// Adaptive card background
-    static var adaptiveCard: Color {
-        Color(uiColor: .init { traitCollection in
-            traitCollection.userInterfaceStyle == .dark
-                ? UIColor(red: 0.12, green: 0.16, blue: 0.24, alpha: 1.0)
-                : UIColor.secondarySystemGroupedBackground
-        })
-    }
-
-    /// Adaptive secondary card background
-    static var adaptiveCardSecondary: Color {
-        Color(uiColor: .init { traitCollection in
-            traitCollection.userInterfaceStyle == .dark
-                ? UIColor(red: 0.15, green: 0.20, blue: 0.28, alpha: 1.0)
-                : UIColor.tertiarySystemGroupedBackground
-        })
-    }
-}
+// All Color extensions are defined in AppDesignSystem.swift
 
 // MARK: - Image Cache (Performance Optimization)
 
@@ -602,7 +559,7 @@ struct AddFoundFoodToUseBySheet: View {
                 HStack {
                     Button("Cancel") { dismiss() }
                     .font(.system(size: 17))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
 
                 Spacer()
 
@@ -629,7 +586,7 @@ struct AddFoundFoodToUseBySheet: View {
                             .font(.system(size: 17))
                     }
                 }
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
                 .disabled(isUploadingPhoto || isSaving)
             }
             .padding(.horizontal)
@@ -655,25 +612,25 @@ struct AddFoundFoodToUseBySheet: View {
                                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 12)
-                                                        .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+                                                        .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 2)
                                                 )
                                         } else {
                                             RoundedRectangle(cornerRadius: 12)
-                                                .fill(Color.blue.opacity(0.1))
+                                                .fill(AppPalette.standard.accent.opacity(0.1))
                                                 .frame(width: 80, height: 80)
                                                 .overlay(
                                                     VStack(spacing: 4) {
                                                         Image(systemName: "camera.fill")
                                                             .font(.system(size: 20))
-                                                            .foregroundColor(.blue)
+                                                            .foregroundColor(AppPalette.standard.accent)
                                                         Text("Photo")
                                                             .font(.system(size: 10, weight: .medium))
-                                                            .foregroundColor(.blue)
+                                                            .foregroundColor(AppPalette.standard.accent)
                                                     }
                                                 )
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 12)
-                                                        .stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                                                        .stroke(AppPalette.standard.accent.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
                                                 )
                                         }
 
@@ -1093,7 +1050,7 @@ struct UseByExpiryView: View {
                                 value: "\(sortedItems.count)",
                                 label: "Items",
                                 icon: "refrigerator.fill",
-                                tint: Color.blue
+                                tint: AppPalette.standard.accent
                             )
 
                             CompactStatPill(
@@ -1128,7 +1085,7 @@ struct UseByExpiryView: View {
                                         .font(.system(size: 15, weight: .bold, design: .rounded))
                                         .foregroundStyle(
                                             LinearGradient(
-                                                colors: [Color.blue, Color.purple.opacity(0.8)],
+                                                colors: [AppPalette.standard.accent, Color.purple.opacity(0.8)],
                                                 startPoint: .leading,
                                                 endPoint: .trailing
                                             )
@@ -1144,7 +1101,7 @@ struct UseByExpiryView: View {
                                         .fill(
                                             LinearGradient(
                                                 colors: [
-                                                    Color.blue.opacity(0.12),
+                                                    AppPalette.standard.accent.opacity(0.12),
                                                     Color.purple.opacity(0.08)
                                                 ],
                                                 startPoint: .leading,
@@ -1156,7 +1113,7 @@ struct UseByExpiryView: View {
                                                 .strokeBorder(
                                                     LinearGradient(
                                                         colors: [
-                                                            Color.blue.opacity(0.3),
+                                                            AppPalette.standard.accent.opacity(0.3),
                                                             Color.purple.opacity(0.2)
                                                         ],
                                                         startPoint: .leading,
@@ -2164,7 +2121,7 @@ struct ModernExpiryRow: View {
             Button(action: extendExpiry) {
                 Label("Extend", systemImage: "calendar.badge.plus")
             }
-            .tint(.blue)
+            .tint(AppPalette.standard.accent)
 
             Button(role: .destructive) {
                 showingDeleteAlert = true
@@ -2355,7 +2312,7 @@ struct UseByQuickAddCard: View {
                         Text("Scan")
                     }
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
                     .background(
@@ -2378,7 +2335,7 @@ struct UseByQuickAddCard: View {
                     .frame(height: 44)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(.blue)
+                            .fill(AppPalette.standard.accent)
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -2514,7 +2471,7 @@ struct UseByBarcodeScanSheet: View {
                 VStack(spacing: 20) {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 50))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                         .padding(.top, 20)
 
                     Text("Product Not Found")
@@ -2537,7 +2494,7 @@ struct UseByBarcodeScanSheet: View {
                     Button("Scan Another") {
                         resetScanner()
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .padding(.bottom, 20)
                 }
                 .padding()
@@ -2572,7 +2529,13 @@ struct UseByBarcodeScanSheet: View {
                         .foregroundColor(.white)
                         .padding()
                         .frame(maxWidth: 200)
-                        .background(Color.blue)
+                        .background(
+                            LinearGradient(
+                                colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                         .cornerRadius(10)
                     }
                     .padding(.top, 20)
@@ -2854,7 +2817,7 @@ struct AddUseByItemSheet: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : Color.blue) : Color(.systemGray6))
+                        .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : AppPalette.standard.accent) : Color(.systemGray6))
                 )
                 .contentShape(Rectangle())
             }
@@ -2956,7 +2919,13 @@ struct UseByInlineSearchView: View {
                             .font(.system(size: 20, weight: .medium))
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
-                            .background(Color.blue)
+                            .background(
+                            LinearGradient(
+                                colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                             .cornerRadius(10)
                     }
                 }
@@ -3553,7 +3522,7 @@ struct UseByFoodDetailSheet: View {
                                     HStack {
                                         Image(systemName: "note.text")
                                             .font(.system(size: 12))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                         Text("Notes")
                                             .font(.system(size: 13, weight: .semibold))
                                     }
@@ -3606,7 +3575,7 @@ struct UseByFoodDetailSheet: View {
                                             VStack(spacing: 6) {
                                                 Image(systemName: "camera.fill")
                                                     .font(.system(size: 20))
-                                                    .foregroundColor(.blue)
+                                                    .foregroundColor(AppPalette.standard.accent)
                                                 Text("Photo")
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(.secondary)
@@ -3658,7 +3627,7 @@ struct UseByFoodDetailSheet: View {
                             .padding(.vertical, 16)
                             .background(
                                 LinearGradient(
-                                    colors: [Color.blue, Color.purple],
+                                    colors: [AppPalette.standard.accent, Color.purple],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
@@ -4195,7 +4164,7 @@ struct UseByItemDetailView: View {
                                     HStack {
                                         Image(systemName: "note.text")
                                             .font(.system(size: 12))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                         Text("Notes")
                                             .font(.system(size: 13, weight: .semibold))
                                     }
@@ -4252,13 +4221,13 @@ struct UseByItemDetailView: View {
                                             VStack(spacing: 6) {
                                                 Image(systemName: "camera.fill")
                                                     .font(.system(size: 20))
-                                                    .foregroundColor(.blue)
+                                                    .foregroundColor(AppPalette.standard.accent)
                                                 Text("Photo")
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(.secondary)
                                             }
                                             .frame(width: 80, height: 80)
-                                            .background(Color.blue.opacity(0.1))
+                                            .background(AppPalette.standard.accent.opacity(0.1))
                                             .cornerRadius(10)
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -5635,7 +5604,7 @@ struct ModernGradientBackground: View {
             LinearGradient(
                 colors: [
                     colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground),
-                    Color.blue.opacity(0.03),
+                    AppPalette.standard.accent.opacity(0.03),
                     Color.purple.opacity(0.02)
                 ],
                 startPoint: .topLeading,
@@ -5649,7 +5618,7 @@ struct ModernGradientBackground: View {
                     Circle()
                         .fill(
                             RadialGradient(
-                                colors: [Color.blue.opacity(0.15), Color.clear],
+                                colors: [AppPalette.standard.accent.opacity(0.15), Color.clear],
                                 center: .center,
                                 startRadius: 0,
                                 endRadius: 150
@@ -5843,7 +5812,7 @@ struct AnimatedFridgeIcon: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 25))
-            .shadow(color: Color.blue.opacity(0.12), radius: 12, x: 2, y: 4)
+            .shadow(color: AppPalette.standard.accent.opacity(0.12), radius: 12, x: 2, y: 4)
         }
         .frame(width: 110, height: 180)
     }
@@ -5857,7 +5826,7 @@ struct FloatingParticle: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.4)],
+                    colors: [AppPalette.standard.accent.opacity(0.6), Color.purple.opacity(0.4)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -5928,7 +5897,7 @@ struct ModernAddButton: View {
             }
             .cornerRadius(16)
             .shadow(
-                color: Color.blue.opacity(0.4),
+                color: AppPalette.standard.accent.opacity(0.4),
                 radius: isPressed ? 8 : 15,
                 x: 0,
                 y: isPressed ? 4 : 8

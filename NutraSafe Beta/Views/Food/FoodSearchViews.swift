@@ -78,7 +78,7 @@ struct FoodSearchResultRow: View {
 
                 Image(systemName: "arrow.right.circle")
                     .font(.title2)
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
             }
             .contentShape(Rectangle())
         }
@@ -445,7 +445,7 @@ struct AddFoodSearchView: View {
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white)
                                 .frame(width: 44, height: 44)
-                                .background(Color.blue)
+                                .background(AppPalette.standard.accent)
                                 .cornerRadius(10)
                         }
                     }
@@ -545,7 +545,7 @@ struct AddFoodSearchView: View {
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: "barcode.viewfinder")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .frame(width: 20)
 
                                 Text("Scan a barcode for instant results")
@@ -556,7 +556,7 @@ struct AddFoodSearchView: View {
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: "square.and.pencil")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .frame(width: 20)
 
                                 Text("Use manual entry for better accuracy")
@@ -583,9 +583,9 @@ struct AddFoodSearchView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
-                                .background(Color.blue)
+                                .background(AppPalette.standard.accent)
                                 .cornerRadius(12)
-                                .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                                .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 8, x: 0, y: 4)
                             }
                         }
                     }
@@ -626,7 +626,7 @@ struct AddFoodSearchView: View {
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack {
                                         Image(systemName: "clock.arrow.circlepath")
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                             .font(.system(size: 16, weight: .medium))
                                         Text("Recent Foods")
                                             .font(.system(size: 18, weight: .semibold))
@@ -1047,7 +1047,7 @@ struct FoodDetailView: View {
                                     }) {
                                         Image(systemName: "minus.circle.fill")
                                             .font(.system(size: 20))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                     }
                                     
                                     Text(String(format: "%.2g", quantity))
@@ -1059,7 +1059,7 @@ struct FoodDetailView: View {
                                     }) {
                                         Image(systemName: "plus.circle.fill")
                                             .font(.system(size: 20))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                     }
                                 }
                             }

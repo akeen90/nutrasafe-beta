@@ -51,7 +51,7 @@ struct AddFoodAIView: View {
                 VStack(spacing: 24) {
                     Image(systemName: "camera.viewfinder")
                         .font(.system(size: 60))
-                        .foregroundColor(Color.blue)
+                        .foregroundColor(AppPalette.standard.accent)
 
                     VStack(spacing: 8) {
                         Text("AI Food Scanner")
@@ -87,7 +87,7 @@ struct AddFoodAIView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(Color.blue)
+                            .background(AppPalette.standard.accent)
                             .cornerRadius(12)
                         }
 
@@ -101,7 +101,7 @@ struct AddFoodAIView: View {
                                 Text("Choose from Gallery")
                             }
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(Color(.systemGray6))
@@ -292,7 +292,7 @@ struct AddFoodAIView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue, Color.purple],
+                            colors: [AppPalette.standard.accent, Color.purple],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -331,7 +331,7 @@ struct AddFoodAIView: View {
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [Color.blue, Color.purple],
+                            colors: [AppPalette.standard.accent, Color.purple],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -826,7 +826,7 @@ struct AIFoodSelectionView: View {
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1))
+                        .background(AppPalette.standard.accent.opacity(0.1))
                         .cornerRadius(8)
                 }
                 .padding(.horizontal, 16)
@@ -868,7 +868,7 @@ struct AIFoodSelectionView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
                         .cornerRadius(10)
                     }
@@ -878,7 +878,7 @@ struct AIFoodSelectionView: View {
                 Button("Scan Another") {
                     onScanAnother()
                 }
-                .foregroundColor(Color.blue)
+                .foregroundColor(AppPalette.standard.accent)
                 .padding(.bottom, 16)
             }
         }
@@ -988,7 +988,7 @@ struct AIFoodSelectionRow: View {
                     if food.isVerified {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 16))
-                            .foregroundColor(Color.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                     
                     // NutraSafe grade
@@ -1016,10 +1016,10 @@ struct AIFoodSelectionRow: View {
                     Button(action: onViewDetails) {
                         Text("Details")
                             .font(.system(size: 14))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.blue.opacity(0.1))
+                            .background(AppPalette.standard.accent.opacity(0.1))
                             .cornerRadius(6)
                     }
                 }
@@ -1137,7 +1137,7 @@ struct CombinedMealView: View {
                         Spacer()
                         NutrientSummaryMacros(label: "Carbs", value: totalCarbs, unit: "g", color: .orange)
                         Spacer()
-                        NutrientSummaryMacros(label: "Fat", value: totalFat, unit: "g", color: Color.blue)
+                        NutrientSummaryMacros(label: "Fat", value: totalFat, unit: "g", color: AppPalette.standard.accent)
                     }
                 }
                 .padding()
@@ -1155,7 +1155,7 @@ struct CombinedMealView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
+                    .background(AppPalette.standard.accent)
                     .cornerRadius(12)
                 }
                 .padding(.horizontal)
@@ -1338,7 +1338,7 @@ struct CombinedMealFoodRow: View {
                     }) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundColor(Color.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
             }
@@ -1347,7 +1347,7 @@ struct CombinedMealFoodRow: View {
             HStack {
                 NutrientPill(label: "P", value: food.protein * servingSize, unit: "g", color: .blue)
                 NutrientPill(label: "C", value: food.carbs * servingSize, unit: "g", color: .orange)
-                NutrientPill(label: "F", value: food.fat * servingSize, unit: "g", color: Color.blue)
+                NutrientPill(label: "F", value: food.fat * servingSize, unit: "g", color: AppPalette.standard.accent)
                 Spacer()
             }
         }
@@ -1505,10 +1505,10 @@ struct AIFoodDetailSheet: View {
                             if food.isVerified {
                                 Label("Database Match", systemImage: "checkmark.seal.fill")
                                     .font(.caption)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.1))
+                                    .background(AppPalette.standard.accent.opacity(0.1))
                                     .cornerRadius(8)
                             } else {
                                 Label("AI Estimate", systemImage: "sparkles")
@@ -1576,7 +1576,7 @@ struct AIFoodDetailSheet: View {
                                 .foregroundColor(.secondary)
                         }
                         .padding()
-                        .background(Color.blue.opacity(0.1))
+                        .background(AppPalette.standard.accent.opacity(0.1))
                         .cornerRadius(12)
 
                         // Macros
@@ -1605,14 +1605,14 @@ struct AIFoodDetailSheet: View {
                     // Info notice
                     HStack(spacing: 8) {
                         Image(systemName: "info.circle.fill")
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         Text("To add this food, go back and use the selection checkboxes")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.blue.opacity(0.1))
+                    .background(AppPalette.standard.accent.opacity(0.1))
                     .cornerRadius(12)
                     .padding(.horizontal)
 

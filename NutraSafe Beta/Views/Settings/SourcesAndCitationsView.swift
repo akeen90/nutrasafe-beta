@@ -39,7 +39,7 @@ struct SourcesAndCitationsView: View {
                                 // Category header
                                 HStack(spacing: 8) {
                                     Image(systemName: category.icon)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                         .font(.system(size: 16, weight: .semibold))
 
                                     Text(category.rawValue)
@@ -101,7 +101,7 @@ struct CitationCard: View {
             // Organization
             Text(citation.organization)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
 
             // Title
             Text(citation.title)
@@ -137,7 +137,7 @@ struct CitationCard: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.blue)
+                        .fill(AppPalette.standard.accent)
                 )
             }
         }

@@ -797,7 +797,7 @@ class ReactionPDFExporter {
         let logo = "NutraSafe"
         let logoAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.boldSystemFont(ofSize: 12),
-            .foregroundColor: UIColor.blue
+            .foregroundColor: UIColor(red: 0.00, green: 0.60, blue: 0.55, alpha: 1.0)
         ]
 
         logo.draw(at: CGPoint(x: 50, y: footerY), withAttributes: logoAttributes)
@@ -1157,7 +1157,7 @@ class ReactionPDFExporter {
         currentY += 25
 
         // Draw underline
-        context.cgContext.setStrokeColor(UIColor.blue.cgColor)
+        context.cgContext.setStrokeColor(UIColor(red: 0.00, green: 0.60, blue: 0.55, alpha: 1.0).cgColor)
         context.cgContext.setLineWidth(2.0)
         context.cgContext.move(to: CGPoint(x: 40, y: currentY))
         context.cgContext.addLine(to: CGPoint(x: pageRect.width - 40, y: currentY))
@@ -1364,7 +1364,7 @@ class ReactionPDFExporter {
 
         let countAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.boldSystemFont(ofSize: 11),
-            .foregroundColor: UIColor.blue
+            .foregroundColor: UIColor(red: 0.00, green: 0.60, blue: 0.55, alpha: 1.0)
         ]
 
         for (ingredientName, data) in sortedIngredients.prefix(15) {

@@ -248,7 +248,7 @@ struct NutrientDatabase {
         TrackedNutrient(id: "vitamin_b12", name: "Vitamin B12", displayName: "Vitamin B12", category: .vitamin, unit: "mcg", glowColor: Color.red, icon: "heart.fill"),
         TrackedNutrient(id: "folate", name: "Folate", displayName: "Folate (B9)", category: .vitamin, unit: "mcg", glowColor: Color.green.opacity(0.7), icon: "leaf.arrow.circlepath"),
         TrackedNutrient(id: "biotin", name: "Biotin", displayName: "Biotin (B7)", category: .vitamin, unit: "mcg", glowColor: Color.brown, icon: "scissors"),
-        TrackedNutrient(id: "vitamin_b5", name: "Pantothenic Acid", displayName: "Vitamin B5 (Pantothenic Acid)", category: .vitamin, unit: "mg", glowColor: Color.blue.opacity(0.7), icon: "star.fill"),
+        TrackedNutrient(id: "vitamin_b5", name: "Pantothenic Acid", displayName: "Vitamin B5 (Pantothenic Acid)", category: .vitamin, unit: "mg", glowColor: AppPalette.standard.accent.opacity(0.7), icon: "star.fill"),
 
         // Minerals
         TrackedNutrient(id: "calcium", name: "Calcium", displayName: "Calcium", category: .mineral, unit: "mg", glowColor: Color.white, icon: "figure.strengthtraining.traditional"),
@@ -257,7 +257,7 @@ struct NutrientDatabase {
         TrackedNutrient(id: "potassium", name: "Potassium", displayName: "Potassium", category: .mineral, unit: "mg", glowColor: Color.yellow.opacity(0.8), icon: "waveform.path.ecg"),
         TrackedNutrient(id: "zinc", name: "Zinc", displayName: "Zinc", category: .mineral, unit: "mg", glowColor: Color.gray, icon: "shield.fill"),
         TrackedNutrient(id: "selenium", name: "Selenium", displayName: "Selenium", category: .mineral, unit: "mcg", glowColor: Color.orange.opacity(0.6), icon: "shield.checkered"),
-        TrackedNutrient(id: "phosphorus", name: "Phosphorus", displayName: "Phosphorus", category: .mineral, unit: "mg", glowColor: Color.blue.opacity(0.6), icon: "atom"),
+        TrackedNutrient(id: "phosphorus", name: "Phosphorus", displayName: "Phosphorus", category: .mineral, unit: "mg", glowColor: AppPalette.standard.accent.opacity(0.6), icon: "atom"),
         TrackedNutrient(id: "copper", name: "Copper", displayName: "Copper", category: .mineral, unit: "mg", glowColor: Color.orange.opacity(0.8), icon: "circle.hexagongrid.fill"),
         TrackedNutrient(id: "manganese", name: "Manganese", displayName: "Manganese", category: .mineral, unit: "mg", glowColor: Color.purple.opacity(0.5), icon: "hexagon.fill"),
         TrackedNutrient(id: "iodine", name: "Iodine", displayName: "Iodine", category: .mineral, unit: "mcg", glowColor: Color.indigo.opacity(0.7), icon: "drop.keypad.rectangle"),
@@ -265,7 +265,7 @@ struct NutrientDatabase {
         TrackedNutrient(id: "molybdenum", name: "Molybdenum", displayName: "Molybdenum", category: .mineral, unit: "mcg", glowColor: Color.gray.opacity(0.8), icon: "circle.grid.cross.fill"),
 
         // Other nutrients
-        TrackedNutrient(id: "omega_3", name: "Omega-3", displayName: "Omega-3 Fatty Acids", category: .other, unit: "g", glowColor: Color.blue, icon: "fish.fill")
+        TrackedNutrient(id: "omega_3", name: "Omega-3", displayName: "Omega-3 Fatty Acids", category: .other, unit: "g", glowColor: AppPalette.standard.accent, icon: "fish.fill")
     ]
 
     static func nutrient(for id: String) -> TrackedNutrient? {

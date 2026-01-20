@@ -66,7 +66,7 @@ struct FastingHistoryDropdown: View {
             } label: {
                 HStack {
                     Image(systemName: "clock.arrow.circlepath")
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                     Text("Fasting History")
                         .font(.system(size: 18, weight: .semibold))
                     Spacer()

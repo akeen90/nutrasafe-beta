@@ -278,12 +278,12 @@ struct InferredIngredientsSheet: View {
                 Text("Add Missing Ingredient")
             }
             .font(.body)
-            .foregroundColor(.blue)
+            .foregroundColor(AppPalette.standard.accent)
             .frame(maxWidth: .infinity)
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Color.blue.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                    .strokeBorder(AppPalette.standard.accent.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [5]))
             )
         }
     }

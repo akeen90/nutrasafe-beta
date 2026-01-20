@@ -12,7 +12,7 @@ struct FastingEducationView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "graduationcap.fill")
                             .font(.system(size: 60))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
 
                         Text("Understanding Fasting")
                             .font(.largeTitle)
@@ -51,7 +51,7 @@ struct FastingEducationView: View {
                     }) {
                         HStack {
                             Image(systemName: "doc.text.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("View Scientific Sources")
@@ -565,7 +565,7 @@ struct FirstUseEducationOverlay: View {
                     VStack(spacing: 16) {
                         Image(systemName: "graduationcap.fill")
                             .font(.system(size: 50))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         
                         Text("Welcome to Fasting!")
                             .font(.title2)
@@ -597,7 +597,7 @@ struct FirstUseEducationOverlay: View {
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
+                            .background(AppPalette.standard.accent)
                             .foregroundColor(.white)
                             .cornerRadius(12)
                     }

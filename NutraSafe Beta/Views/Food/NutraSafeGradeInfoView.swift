@@ -113,7 +113,7 @@ struct NutraSafeGradeInfoView: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(citation.organization)
                                         .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
 
                                     Text(citation.title)
                                         .font(.system(size: 14, weight: .medium))
@@ -143,7 +143,7 @@ struct NutraSafeGradeInfoView: View {
                                         .padding(.vertical, 6)
                                         .background(
                                             RoundedRectangle(cornerRadius: 6)
-                                                .fill(Color.blue)
+                                                .fill(AppPalette.standard.accent)
                                         )
                                     }
                                 }

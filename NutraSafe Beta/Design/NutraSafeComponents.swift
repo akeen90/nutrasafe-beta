@@ -50,7 +50,7 @@ struct NutraSafeSectionCard<Content: View>: View {
     init(
         title: String,
         icon: String? = nil,
-        iconColor: Color = .blue,
+        iconColor: Color = AppPalette.standard.accent,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
@@ -90,105 +90,7 @@ struct NutraSafeSectionCard<Content: View>: View {
     }
 }
 
-// MARK: - NutraSafe Primary Button
-
-struct NutraSafePrimaryButton: View {
-    let text: String
-    let action: () -> Void
-    var isEnabled: Bool
-    var showShimmer: Bool
-    var gradient: [Color]
-
-    @State private var shimmerOffset: CGFloat = -200
-
-    init(
-        _ text: String,
-        isEnabled: Bool = true,
-        showShimmer: Bool = false,
-        gradient: [Color]? = nil,
-        action: @escaping () -> Void
-    ) {
-        self.text = text
-        self.isEnabled = isEnabled
-        self.showShimmer = showShimmer
-        self.gradient = gradient ?? [
-            Color(red: 0.20, green: 0.45, blue: 0.50),
-            Color(red: 0.15, green: 0.35, blue: 0.42)
-        ]
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                // Base gradient
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                    .fill(
-                        isEnabled
-                            ? LinearGradient(colors: gradient, startPoint: .leading, endPoint: .trailing)
-                            : LinearGradient(colors: [Color.gray.opacity(0.3)], startPoint: .leading, endPoint: .trailing)
-                    )
-
-                // Shimmer overlay
-                if showShimmer && isEnabled {
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.clear, Color.white.opacity(0.3), Color.clear],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .offset(x: shimmerOffset)
-                        .mask(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
-                }
-
-                // Text
-                Text(text)
-                    .font(DesignTokens.Typography.button)
-                    .foregroundColor(isEnabled ? .white : .gray)
-            }
-            .frame(height: 56)
-        }
-        .disabled(!isEnabled)
-        .onAppear {
-            if showShimmer {
-                withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
-                    shimmerOffset = 400
-                }
-            }
-        }
-    }
-}
-
-// MARK: - NutraSafe Secondary Button
-
-struct NutraSafeSecondaryButton: View {
-    let text: String
-    let action: () -> Void
-    var icon: String?
-
-    init(_ text: String, icon: String? = nil, action: @escaping () -> Void) {
-        self.text = text
-        self.icon = icon
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                if let icon = icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .medium))
-                }
-                Text(text)
-                    .font(.system(size: 16, weight: .medium))
-            }
-            .foregroundColor(Color(white: 0.4))
-            .frame(height: 44)
-        }
-    }
-}
+// NutraSafePrimaryButton and NutraSafeSecondaryButton are defined in AppDesignSystem.swift
 
 // MARK: - NutraSafe Info Card (from onboarding InfoCard)
 
@@ -201,7 +103,7 @@ struct NutraSafeInfoCard: View {
     init(
         icon: String,
         text: String,
-        iconColor: Color = .blue,
+        iconColor: Color = AppPalette.standard.accent,
         backgroundColor: Color? = nil
     ) {
         self.icon = icon
@@ -289,7 +191,7 @@ struct NutraSafeFeatureRow: View {
         icon: String,
         title: String,
         description: String,
-        iconColor: Color = .blue
+        iconColor: Color = AppPalette.standard.accent
     ) {
         self.icon = icon
         self.title = title
@@ -470,7 +372,7 @@ struct NutraSafeInsightCard: View {
     }
 
     private var accentColor: Color {
-        usePaletteColor ? palette.accent : .blue
+        usePaletteColor ? palette.accent : AppPalette.standard.accent
     }
 
     var body: some View {
@@ -542,7 +444,7 @@ struct NutraSafeTag: View {
     init(
         _ text: String,
         isSelected: Bool = false,
-        color: Color = .blue,
+        color: Color = AppPalette.standard.accent,
         action: (() -> Void)? = nil
     ) {
         self.text = text
@@ -605,7 +507,7 @@ struct NutraSafeListRow<Content: View>: View {
 
     init(
         icon: String,
-        iconColor: Color = .blue,
+        iconColor: Color = AppPalette.standard.accent,
         showChevron: Bool = true,
         action: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content

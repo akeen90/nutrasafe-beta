@@ -176,7 +176,7 @@ struct FastingPlanCreationView: View {
                     }
                 }
                 .font(.caption.weight(.medium))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
             }
 
             HStack(spacing: 8) {

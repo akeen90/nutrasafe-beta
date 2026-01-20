@@ -53,12 +53,12 @@ struct PremiumFeatureWrapper<Content: View, Preview: View>: View {
                         // Lock icon
                         ZStack {
                             Circle()
-                                .fill(Color.blue.opacity(0.15))
+                                .fill(AppPalette.standard.accent.opacity(0.15))
                                 .frame(width: 48, height: 48)
 
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
 
                         // Feature name
@@ -79,7 +79,7 @@ struct PremiumFeatureWrapper<Content: View, Preview: View>: View {
                         // Tap to unlock
                         Text("Tap to unlock")
                             .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .padding(.top, 4)
                     }
                     .padding(.horizontal, 24)
@@ -131,12 +131,12 @@ struct SimplePremiumWrapper<Content: View>: View {
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(Color.blue.opacity(0.15))
+                                .fill(AppPalette.standard.accent.opacity(0.15))
                                 .frame(width: 52, height: 52)
 
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 22, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
 
                         Text(featureName)
@@ -171,7 +171,7 @@ struct InlineUpgradePrompt: View {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 14))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
 
                 Text(message)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -184,12 +184,12 @@ struct InlineUpgradePrompt: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.blue))
+                    .background(Capsule().fill(AppPalette.standard.accent))
             }
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.blue.opacity(0.08))
+                    .fill(AppPalette.standard.accent.opacity(0.08))
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -242,14 +242,14 @@ struct FreeTierLimitBanner: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
-                            .background(Capsule().fill(Color.blue))
+                            .background(Capsule().fill(AppPalette.standard.accent))
                     }
                 }
             }
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isAtLimit ? Color.orange.opacity(0.1) : Color.blue.opacity(0.08))
+                    .fill(isAtLimit ? Color.orange.opacity(0.1) : AppPalette.standard.accent.opacity(0.08))
             )
         }
     }
@@ -318,7 +318,7 @@ struct BlurredListSection<Item: Identifiable, Content: View>: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(Capsule().fill(Color.blue))
+                        .background(Capsule().fill(AppPalette.standard.accent))
                     }
                 }
             }

@@ -56,7 +56,7 @@ struct PaywallView: View {
                                 Circle()
                                     .fill(
                                         LinearGradient(
-                                            colors: [Color.blue, Color.purple],
+                                            colors: [AppPalette.standard.accent, Color.purple],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
@@ -92,7 +92,7 @@ struct PaywallView: View {
 
                             BenefitRow(
                                 icon: "fork.knife.circle.fill",
-                                iconColor: .blue,
+                                iconColor: AppPalette.standard.accent,
                                 title: "Unlimited Diary Entries",
                                 description: "Log as much food as you like, every day"
                             )
@@ -164,7 +164,7 @@ struct PaywallView: View {
                             .frame(height: 56)
                             .background(
                                 LinearGradient(
-                                    colors: [Color.blue, Color.blue.opacity(0.8)],
+                                    colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )

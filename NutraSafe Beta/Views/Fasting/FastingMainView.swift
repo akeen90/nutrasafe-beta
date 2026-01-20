@@ -613,8 +613,8 @@ struct PlanDashboardView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.blue.opacity(0.12))
-                            .foregroundColor(.blue)
+                            .background(AppPalette.standard.accent.opacity(0.12))
+                            .foregroundColor(AppPalette.standard.accent)
                             .cornerRadius(12)
                         }
                         .buttonStyle(.plain)
@@ -649,7 +649,7 @@ struct PlanDashboardView: View {
                             Image(systemName: "chevron.right")
                                 .font(.caption)
                         }
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                     }
                     .padding(.top, 4)
                 }
@@ -700,7 +700,7 @@ struct PlanDashboardView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -712,7 +712,7 @@ struct PlanDashboardView: View {
                 VStack(spacing: 16) {
                     Image(systemName: "timer")
                         .font(.system(size: 50))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
 
                     Text("Ready to Start")
                         .font(.title2)
@@ -741,7 +741,7 @@ struct PlanDashboardView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -832,11 +832,11 @@ struct PlanDashboardView: View {
                 HStack(spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(Color.blue.opacity(0.12))
+                            .fill(AppPalette.standard.accent.opacity(0.12))
                             .frame(width: 44, height: 44)
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 20))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -948,8 +948,8 @@ struct PlanDashboardView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.blue.opacity(0.2))
-                    .foregroundColor(.blue)
+                    .background(AppPalette.standard.accent.opacity(0.2))
+                    .foregroundColor(AppPalette.standard.accent)
                     .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
@@ -1022,7 +1022,7 @@ struct PlanDashboardView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
+                .background(AppPalette.standard.accent)
                 .foregroundColor(.white)
                 .cornerRadius(12)
             }
@@ -1216,7 +1216,7 @@ struct PlanDashboardView: View {
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
+                            .background(AppPalette.standard.accent)
                             .foregroundColor(.white)
                             .cornerRadius(12)
                     }
@@ -1433,8 +1433,8 @@ struct FastingStagesDetailView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue.opacity(0.12))
-                        .foregroundColor(.blue)
+                        .background(AppPalette.standard.accent.opacity(0.12))
+                        .foregroundColor(AppPalette.standard.accent)
                         .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
@@ -1618,7 +1618,7 @@ struct RegimeDetailView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .cardBackground(cornerRadius: 12)
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1678,12 +1678,12 @@ struct RegimeTimerCard: View {
                 VStack(spacing: 12) {
                     Text("Currently Fasting")
                         .font(.headline)
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
 
                     Text(viewModel.timeUntilFastEnds)
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
 
                     // Current fasting stage indicator
                     if let phase = viewModel.currentRegimeFastingPhase {
@@ -1921,7 +1921,7 @@ struct FastingStatCard: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 20))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
 
             Text(value)
                 .font(.title3)
@@ -2055,7 +2055,7 @@ struct ActiveSessionView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
                 .cardBackground(cornerRadius: 12)
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
             }
             .buttonStyle(.plain)
 
@@ -2090,8 +2090,8 @@ struct ActiveSessionView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue.opacity(0.2))
-                        .foregroundColor(.blue)
+                        .background(AppPalette.standard.accent.opacity(0.2))
+                        .foregroundColor(AppPalette.standard.accent)
                         .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
@@ -2323,7 +2323,7 @@ struct PhaseRow: View {
                 
                 if isCurrent {
                     Circle()
-                        .stroke(Color.blue, lineWidth: 2)
+                        .stroke(AppPalette.standard.accent, lineWidth: 2)
                         .frame(width: 18, height: 18)
                 }
             }
@@ -2338,7 +2338,7 @@ struct PhaseRow: View {
                     if isCurrent {
                         Text("• Active")
                             .font(.caption)
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
                 
@@ -2357,7 +2357,7 @@ struct PhaseRow: View {
             } else if isCurrent {
                 Text("\(Int(Double(phase.timeRange.upperBound) - elapsedHours))h to next")
                     .font(.caption)
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
             } else {
                 Text("\(phase.timeRange.lowerBound)h+")
                     .font(.caption)
@@ -2431,7 +2431,7 @@ struct CurrentPhaseCard: View {
             Text("Next: \(nextPhase.displayName) in \(hoursToNext)h")
                 .font(.caption)
         }
-        .foregroundColor(.blue)
+        .foregroundColor(AppPalette.standard.accent)
     }
 
     private var motivationalMessageView: some View {
@@ -2660,7 +2660,7 @@ struct WeekSummaryCard: View {
                             Text("\(week.averageDuration, specifier: "%.1f")h")
                                 .font(.title3)
                                 .fontWeight(.semibold)
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                             Text("Avg Duration")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -2822,12 +2822,12 @@ struct WeekDetailView: View {
                                     if hasActiveFast {
                                         // Pulsing ring for active fast
                                         Circle()
-                                            .stroke(Color.blue, lineWidth: 2)
+                                            .stroke(AppPalette.standard.accent, lineWidth: 2)
                                             .frame(width: 44, height: 44)
 
                                         Image(systemName: "flame.fill")
                                             .font(.system(size: 18))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                     } else if !allSessions.isEmpty {
                                         Image(systemName: "checkmark")
                                             .font(.system(size: 16, weight: .semibold))
@@ -2861,7 +2861,7 @@ struct WeekDetailView: View {
                                                 .foregroundColor(.white)
                                                 .padding(.horizontal, 8)
                                                 .padding(.vertical, 3)
-                                                .background(Color.blue)
+                                                .background(AppPalette.standard.accent)
                                                 .cornerRadius(6)
                                         }
                                     }
@@ -3149,7 +3149,7 @@ struct DaySessionRow: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 12)
-            .background(sessions.isEmpty ? Color.gray.opacity(0.05) : Color.blue.opacity(0.05))
+            .background(sessions.isEmpty ? Color.gray.opacity(0.05) : AppPalette.standard.accent.opacity(0.05))
             .cornerRadius(10)
         }
         .padding(.horizontal)
@@ -3354,7 +3354,7 @@ struct FastingSessionCard: View {
         case .completed:
             colors = [Color.green.opacity(0.15), Color.green.opacity(0.05)]
         case .overGoal:
-            colors = [Color.blue.opacity(0.15), Color.purple.opacity(0.08)]
+            colors = [AppPalette.standard.accent.opacity(0.15), Color.purple.opacity(0.08)]
         case .earlyEnd:
             colors = [Color.orange.opacity(0.12), Color.yellow.opacity(0.05)]
         case .failed:
@@ -3362,7 +3362,7 @@ struct FastingSessionCard: View {
         case .skipped:
             colors = [Color.gray.opacity(0.1), Color.gray.opacity(0.05)]
         case .active:
-            colors = [Color.blue.opacity(0.15), Color.cyan.opacity(0.08)]
+            colors = [AppPalette.standard.accent.opacity(0.15), Color.cyan.opacity(0.08)]
         }
         return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
@@ -3410,7 +3410,7 @@ struct FastingSessionCard: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.blue))
+                            .background(Capsule().fill(AppPalette.standard.accent))
                     }
                 }
 
@@ -3687,7 +3687,7 @@ struct TimelineFastCard: View {
                     } else {
                         Text("Ongoing")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
             }
@@ -3833,7 +3833,7 @@ struct ModernFastCard: View {
                     } else {
                         Text("Ongoing")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
 

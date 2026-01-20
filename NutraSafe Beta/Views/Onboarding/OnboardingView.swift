@@ -158,7 +158,7 @@ struct LeanWelcomePage: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
-                    .background(Color.blue)
+                    .background(AppPalette.standard.accent)
                     .cornerRadius(14)
             }
             .padding(.horizontal, 24)
@@ -359,7 +359,7 @@ struct LeanProfilePage: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(12)
                 }
             }
@@ -443,7 +443,7 @@ struct LeanPermissionsPage: View {
                     VStack(spacing: 8) {
                         Image(systemName: "gearshape.2.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .padding(.bottom, 8)
 
                         Text("Enhance Your Experience")
@@ -536,7 +536,7 @@ struct LeanPermissionsPage: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(12)
                 }
             }
@@ -749,7 +749,7 @@ struct LeanDisclaimerPage: View {
                         DisclaimerPoint(
                             icon: "info.circle.fill",
                             text: "NutraSafe helps track nutrition and food safety",
-                            color: .blue
+                            color: AppPalette.standard.accent
                         )
                         DisclaimerPoint(
                             icon: "cross.circle.fill",
@@ -775,11 +775,11 @@ struct LeanDisclaimerPage: View {
                         HStack(spacing: 12) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(hasAcceptedDisclaimer ? Color.blue : Color.secondary.opacity(0.4), lineWidth: 2)
+                                    .stroke(hasAcceptedDisclaimer ? AppPalette.standard.accent : Color.secondary.opacity(0.4), lineWidth: 2)
                                     .frame(width: 24, height: 24)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(hasAcceptedDisclaimer ? Color.blue : Color.clear)
+                                            .fill(hasAcceptedDisclaimer ? AppPalette.standard.accent : Color.clear)
                                     )
 
                                 if hasAcceptedDisclaimer {
@@ -800,10 +800,10 @@ struct LeanDisclaimerPage: View {
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(hasAcceptedDisclaimer ? Color.blue.opacity(0.1) : Color(.secondarySystemBackground))
+                            .fill(hasAcceptedDisclaimer ? AppPalette.standard.accent.opacity(0.1) : Color(.secondarySystemBackground))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .stroke(hasAcceptedDisclaimer ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                                    .stroke(hasAcceptedDisclaimer ? AppPalette.standard.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
                             )
                     )
                     .padding(.horizontal, 24)
@@ -820,11 +820,11 @@ struct LeanDisclaimerPage: View {
                         HStack(spacing: 12) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(emailMarketingConsent ? Color.blue : Color.secondary.opacity(0.4), lineWidth: 2)
+                                    .stroke(emailMarketingConsent ? AppPalette.standard.accent : Color.secondary.opacity(0.4), lineWidth: 2)
                                     .frame(width: 24, height: 24)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(emailMarketingConsent ? Color.blue : Color.clear)
+                                            .fill(emailMarketingConsent ? AppPalette.standard.accent : Color.clear)
                                     )
 
                                 if emailMarketingConsent {
@@ -880,7 +880,7 @@ struct LeanDisclaimerPage: View {
                         .foregroundColor(hasAcceptedDisclaimer ? .white : .secondary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(hasAcceptedDisclaimer ? Color.blue : Color(.tertiarySystemBackground))
+                        .background(hasAcceptedDisclaimer ? AppPalette.standard.accent : Color(.tertiarySystemBackground))
                         .cornerRadius(12)
                 }
                 .disabled(!hasAcceptedDisclaimer)

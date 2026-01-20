@@ -767,7 +767,7 @@ struct AdditiveWatchView: View {
                         Text("View All Sources & Citations")
                             .font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 }
             }
         }
@@ -1230,7 +1230,7 @@ struct AdditiveCard: View {
                                 HStack {
                                     Image(systemName: "doc.text.magnifyingglass")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     Text("Sources (\(additive.sources.count))")
                                         .font(.system(size: 12, weight: .semibold))
                                         .foregroundColor(.primary)
@@ -1252,7 +1252,7 @@ struct AdditiveCard: View {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text(source.title)
                                                     .font(.system(size: 11, weight: .medium))
-                                                    .foregroundColor(.blue)
+                                                    .foregroundColor(AppPalette.standard.accent)
                                                     .lineLimit(2)
 
                                                 Text(source.url)
@@ -1265,7 +1265,7 @@ struct AdditiveCard: View {
                                             .background(Color(.systemGray6))
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                                    .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
                                             )
                                             .cornerRadius(6)
                                         }
@@ -1456,7 +1456,7 @@ struct AdditiveCardView: View {
                                 HStack {
                                     Image(systemName: "doc.text.magnifyingglass")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     Text("Sources (\(additive.sources.count))")
                                         .font(.system(size: 12, weight: .semibold))
                                         .foregroundColor(.primary)
@@ -1478,7 +1478,7 @@ struct AdditiveCardView: View {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text(source.title)
                                                     .font(.system(size: 11, weight: .medium))
-                                                    .foregroundColor(.blue)
+                                                    .foregroundColor(AppPalette.standard.accent)
                                                     .lineLimit(2)
 
                                                 Text(source.url)
@@ -1491,7 +1491,7 @@ struct AdditiveCardView: View {
                                             .background(Color(.systemGray6))
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                                    .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
                                             )
                                             .cornerRadius(6)
                                         }
@@ -1903,7 +1903,7 @@ struct UltraProcessedIngredientCard: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
                                 Image(systemName: "magnifyingglass.circle")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .font(.system(size: 12))
                                 Text("What it is")
                                     .font(.system(size: 12, weight: .semibold))
@@ -1922,7 +1922,7 @@ struct UltraProcessedIngredientCard: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
                                 Image(systemName: "cube.box")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .font(.system(size: 12))
                                 Text("Why it's used")
                                     .font(.system(size: 12, weight: .semibold))
@@ -1941,7 +1941,7 @@ struct UltraProcessedIngredientCard: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
                                 Image(systemName: "leaf")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .font(.system(size: 12))
                                 Text("Where it comes from")
                                     .font(.system(size: 12, weight: .semibold))
@@ -1959,7 +1959,7 @@ struct UltraProcessedIngredientCard: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
                             Image(systemName: "info.circle")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .font(.system(size: 12))
                             Text("Why it matters")
                                 .font(.system(size: 12, weight: .semibold))
@@ -1975,17 +1975,17 @@ struct UltraProcessedIngredientCard: View {
                     // NOVA classification
                     HStack(spacing: 6) {
                         Image(systemName: "chart.bar.fill")
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .font(.system(size: 12))
                         Text("NOVA Group \(ingredient.novaGroup)")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                         Text(novaGroupLabel(ingredient.novaGroup))
                             .font(.system(size: 10))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.15))
+                            .background(AppPalette.standard.accent.opacity(0.15))
                             .cornerRadius(4)
                     }
 
@@ -1994,7 +1994,7 @@ struct UltraProcessedIngredientCard: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
                                 Image(systemName: "doc.text.magnifyingglass")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .font(.system(size: 12))
                                 Text("Scientific Sources (\(ingredient.sources.count))")
                                     .font(.system(size: 12, weight: .semibold))
@@ -2010,7 +2010,7 @@ struct UltraProcessedIngredientCard: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(source.title)
                                             .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                             .lineLimit(2)
 
                                         Text(source.covers)
@@ -2023,7 +2023,7 @@ struct UltraProcessedIngredientCard: View {
                                     .background(Color(.systemGray6))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                            .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
                                     )
                                     .cornerRadius(6)
                                 }
@@ -2373,7 +2373,7 @@ struct EnhancedAdditiveCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Label("What it is", systemImage: "info.circle.fill")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
 
                         Text(detailedAdditive.whatItIs)
                             .font(.system(size: 13))
@@ -2435,7 +2435,7 @@ struct EnhancedAdditiveCard: View {
                                 Text("View \(additive.sources.count) source\(additive.sources.count == 1 ? "" : "s")")
                                     .font(.system(size: 11, weight: .medium))
                             }
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         }
                         .padding(.horizontal, 12)
                         .padding(.bottom, 4)

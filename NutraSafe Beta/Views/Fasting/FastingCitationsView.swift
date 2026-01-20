@@ -82,7 +82,7 @@ struct FastingCitationCard: View {
             // Organization
             Text(citation.organization)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
 
             // Title
             Text(citation.title)
@@ -118,7 +118,7 @@ struct FastingCitationCard: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.blue)
+                        .fill(AppPalette.standard.accent)
                 )
             }
         }

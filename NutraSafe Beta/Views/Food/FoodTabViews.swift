@@ -114,7 +114,7 @@ private var foodGlassBackground: some View {
             endPoint: .bottomTrailing
         )
         RadialGradient(
-            colors: [Color.blue.opacity(0.10), Color.clear],
+            colors: [AppPalette.standard.accent.opacity(0.10), Color.clear],
             center: .topLeading,
             startRadius: 0,
             endRadius: 300
@@ -374,7 +374,7 @@ struct FoodReactionsView: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.blue : Color(.systemGray5))
+                    .fill(isSelected ? AppPalette.standard.accent : Color(.systemGray5))
             )
         }
         .buttonStyle(.plain)
@@ -437,7 +437,7 @@ struct FoodReactionsView: View {
                         HStack(spacing: 10) {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 14))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
 
                             Text("+\(reactionManager.reactions.count - SubscriptionManager.freeReactionsLimit) more reactions")
                                 .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -450,12 +450,12 @@ struct FoodReactionsView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Capsule().fill(Color.blue))
+                                .background(Capsule().fill(AppPalette.standard.accent))
                         }
                         .padding(14)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.blue.opacity(0.08))
+                                .fill(AppPalette.standard.accent.opacity(0.08))
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -520,7 +520,7 @@ struct FoodReactionsView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 20))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
 
                         Text("Log at least 3 reactions to see patterns")
                             .font(.system(size: 14))
@@ -532,7 +532,7 @@ struct FoodReactionsView: View {
                     .padding(.horizontal, 20)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.blue.opacity(0.1))
+                            .fill(AppPalette.standard.accent.opacity(0.1))
                     )
                     .padding(.horizontal, 16)
                 }
@@ -801,7 +801,7 @@ struct FoodReactionSummaryCard: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [Color.blue.opacity(0.2), Color.purple.opacity(0.15)],
+                                    colors: [AppPalette.standard.accent.opacity(0.2), Color.purple.opacity(0.15)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -812,7 +812,7 @@ struct FoodReactionSummaryCard: View {
                             .font(.system(size: 30, weight: .medium))
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [.blue, .purple],
+                                    colors: [AppPalette.standard.accent, .purple],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -834,7 +834,7 @@ struct FoodReactionSummaryCard: View {
                     HStack(spacing: 8) {
                         ForEach(0..<3, id: \.self) { index in
                             Circle()
-                                .fill(index < reactionManager.reactions.count ? Color.blue : Color(.systemGray4))
+                                .fill(index < reactionManager.reactions.count ? AppPalette.standard.accent : Color(.systemGray4))
                                 .frame(width: 10, height: 10)
                         }
                     }
@@ -1002,7 +1002,7 @@ struct FoodReactionListCard: View {
                     }) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .frame(width: 40, height: 40)
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
@@ -1189,7 +1189,7 @@ struct TimelineReactionRow: View {
 
                     Text(formatRelativeDay(reaction.timestamp.dateValue()))
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(isToday(reaction.timestamp.dateValue()) ? .blue : .secondary)
+                        .foregroundColor(isToday(reaction.timestamp.dateValue()) ? AppPalette.standard.accent : .secondary)
                 }
                 .frame(width: 55)
 
@@ -1645,12 +1645,12 @@ struct FoodPatternAnalysisCard: View {
                             Text("Export")
                                 .font(.system(size: 13, weight: .semibold))
                         }
-                        .foregroundColor(subscriptionManager.hasAccess ? .blue : .secondary)
+                        .foregroundColor(subscriptionManager.hasAccess ? AppPalette.standard.accent : .secondary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
                             Capsule()
-                                .fill(subscriptionManager.hasAccess ? Color.blue.opacity(0.12) : Color.gray.opacity(0.1))
+                                .fill(subscriptionManager.hasAccess ? AppPalette.standard.accent.opacity(0.12) : Color.gray.opacity(0.1))
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -1690,7 +1690,7 @@ struct FoodPatternAnalysisCard: View {
                         .font(.system(size: 52))
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [Color.purple.opacity(0.6), Color.blue.opacity(0.6)],
+                                colors: [Color.purple.opacity(0.6), AppPalette.standard.accent.opacity(0.6)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -2093,7 +2093,7 @@ struct ReactionDetailView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "clock.fill")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.blue.opacity(0.7))
+                                    .foregroundColor(AppPalette.standard.accent.opacity(0.7))
                                 Text("WHEN")
                                     .font(.system(size: 11, weight: .bold))
                                     .foregroundColor(.secondary)
@@ -2109,11 +2109,11 @@ struct ReactionDetailView: View {
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.blue.opacity(0.08))
+                                .fill(AppPalette.standard.accent.opacity(0.08))
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.blue.opacity(0.15), lineWidth: 1)
+                                .stroke(AppPalette.standard.accent.opacity(0.15), lineWidth: 1)
                         )
 
                         // Severity Card
@@ -2172,13 +2172,13 @@ struct ReactionDetailView: View {
                                         .padding(.vertical, 8)
                                         .background(
                                             Capsule()
-                                                .fill(Color.blue.opacity(0.1))
+                                                .fill(AppPalette.standard.accent.opacity(0.1))
                                         )
                                         .overlay(
                                             Capsule()
-                                                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                                                .stroke(AppPalette.standard.accent.opacity(0.2), lineWidth: 1)
                                         )
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                             }
                         }
@@ -2311,7 +2311,7 @@ struct RecipeCollectionsCard: View {
                 .foregroundColor(.primary)
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
-                RecipeCollectionItem(name: "Quick & Easy", count: 24, color: .blue)
+                RecipeCollectionItem(name: "Quick & Easy", count: 24, color: AppPalette.standard.accent)
                 RecipeCollectionItem(name: "Dairy Free", count: 18, color: .green)
                 RecipeCollectionItem(name: "High Protein", count: 15, color: .red)
                 RecipeCollectionItem(name: "Meal Prep", count: 12, color: .purple)
@@ -2404,7 +2404,7 @@ struct RecipeRow: View {
         HStack {
             Image(systemName: "doc.text.fill")
                 .font(.system(size: 16))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
@@ -2685,7 +2685,7 @@ struct LogReactionView: View {
                             Spacer()
 
                             Image(systemName: "magnifyingglass")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .font(.system(size: 16))
                         }
                         .padding()
@@ -2740,7 +2740,7 @@ struct LogReactionView: View {
                                     .font(.system(size: 12))
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
-                                    .background(symptoms.contains(symptom) ? Color.blue : Color(.systemGray6))
+                                    .background(symptoms.contains(symptom) ? AppPalette.standard.accent : Color(.systemGray6))
                                     .foregroundColor(symptoms.contains(symptom) ? .white : .primary)
                                     .cornerRadius(20)
                             }
@@ -2766,7 +2766,7 @@ struct LogReactionView: View {
                                             .font(.system(size: 14))
                                     }
                                 }
-                                .background(Color.blue)
+                                .background(AppPalette.standard.accent)
                                 .cornerRadius(20)
                             }
                         }
@@ -2781,7 +2781,7 @@ struct LogReactionView: View {
                             }
                         Button(action: addCustomSymptom) {
                             Text("Add")
-                                .foregroundColor(symptomInput.isEmpty ? .gray : .blue)
+                                .foregroundColor(symptomInput.isEmpty ? .gray : AppPalette.standard.accent)
                         }
                         .buttonStyle(PlainButtonStyle())
                         .disabled(symptomInput.isEmpty)
@@ -2825,7 +2825,7 @@ struct LogReactionView: View {
                             }
                         Button(action: addCustomIngredient) {
                             Text("Add")
-                                .foregroundColor(ingredientInput.isEmpty ? .gray : .blue)
+                                .foregroundColor(ingredientInput.isEmpty ? .gray : AppPalette.standard.accent)
                         }
                         .buttonStyle(PlainButtonStyle())
                         .disabled(ingredientInput.isEmpty)
@@ -3634,7 +3634,7 @@ struct DiaryEntryRowForReaction: View {
                                 Text("\(ingredients.count)")
                             }
                             .font(.system(size: 12))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         }
                     }
                 }
@@ -3652,7 +3652,7 @@ struct DiaryEntryRowForReaction: View {
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
+                        .background(AppPalette.standard.accent.opacity(0.1))
                         .cornerRadius(6)
                 }
 
@@ -4059,7 +4059,7 @@ struct MultipleFoodReactionsPDFExportSheet: View {
                         VStack(spacing: 24) {
                             Image(systemName: "doc.text.fill")
                                 .font(.system(size: 60))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
 
                             Text("Export Reaction Report")
                                 .font(.title2)

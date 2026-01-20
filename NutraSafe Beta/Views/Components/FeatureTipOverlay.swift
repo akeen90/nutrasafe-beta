@@ -174,14 +174,14 @@ extension View {
 
 #Preview {
     ZStack {
-        Color.blue.opacity(0.1)
+        AppPalette.standard.accent.opacity(0.1)
             .ignoresSafeArea()
 
         FeatureTipOverlay(
             title: "Welcome to Your Food Diary",
             message: "This is where you'll track everything you eat. Tap the + button at any time to add food.",
             icon: "fork.knife.circle.fill",
-            accentColor: .blue,
+            accentColor: AppPalette.standard.accent,
             bulletPoints: [
                 "Search our database of thousands of foods",
                 "Scan barcodes for instant lookup",

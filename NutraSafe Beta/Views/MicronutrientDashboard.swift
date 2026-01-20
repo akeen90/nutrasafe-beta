@@ -175,7 +175,7 @@ struct MicronutrientDashboard: View {
                         }) {
                             Image(systemName: "info.circle")
                                 .font(.system(size: 18))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
                     }
 
@@ -247,8 +247,8 @@ struct MicronutrientDashboard: View {
                     .stroke(
                         AngularGradient(
                             gradient: Gradient(colors: [
-                                (status?.color ?? Color.blue).opacity(0.25),
-                                status?.color ?? Color.blue
+                                (status?.color ?? AppPalette.standard.accent).opacity(0.25),
+                                status?.color ?? AppPalette.standard.accent
                             ]),
                             center: .center
                         ),
@@ -555,7 +555,7 @@ struct MicronutrientDashboard: View {
                             .padding(.vertical, 10)
                             .background(
                                 Capsule()
-                                    .fill(selectedFilter == filter ? Color.blue : Color(.systemGray5))
+                                    .fill(selectedFilter == filter ? AppPalette.standard.accent : Color(.systemGray5))
                             )
                     }
                 }
@@ -684,7 +684,7 @@ struct MicronutrientDashboard: View {
                             HStack(spacing: 12) {
                                 Image(systemName: "lock.fill")
                                     .font(.system(size: 16))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("+\(filteredSummaries.count - freeNutrientLimit) more nutrients")
@@ -703,7 +703,7 @@ struct MicronutrientDashboard: View {
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 8)
-                                    .background(Capsule().fill(Color.blue))
+                                    .background(Capsule().fill(AppPalette.standard.accent))
                             }
                             .padding(16)
                         }
@@ -965,7 +965,7 @@ struct MicronutrientDashboard: View {
             HStack(spacing: 12) {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 16))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Estimates Only — Not Medical Advice")
@@ -985,17 +985,17 @@ struct MicronutrientDashboard: View {
                 }) {
                     Image(systemName: "doc.text")
                         .font(.system(size: 14))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                 }
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.blue.opacity(0.1))
+                    .fill(AppPalette.standard.accent.opacity(0.1))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                    .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
             )
         }
     }
@@ -1102,7 +1102,7 @@ struct MicronutrientRow: View {
 
             Image(systemName: "info.circle")
                 .font(.system(size: 16))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -1344,7 +1344,7 @@ struct NutrientInfoSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "clock.fill")
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 Text("Recent Food Sources")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.primary)
@@ -1355,7 +1355,7 @@ struct NutrientInfoSheet: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text("•")
                             .font(.system(size: 14))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
 
                         Text(source)
                             .font(.system(size: 14))

@@ -59,7 +59,7 @@ struct PrivacyPolicyView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         PrivacySection(
                             icon: "person.circle.fill",
-                            iconColor: .blue,
+                            iconColor: AppPalette.standard.accent,
                             title: "1. Information We Collect",
                             content: """
                             Account Information:
@@ -262,7 +262,7 @@ struct PrivacyPolicyView: View {
 
                         PrivacySection(
                             icon: "shield.lefthalf.filled",
-                            iconColor: .blue,
+                            iconColor: AppPalette.standard.accent,
                             title: "8. Children's Privacy",
                             content: """
                             NutraSafe is not intended for children under 13 years of age.
@@ -388,7 +388,7 @@ struct PrivacyPolicyView: View {
 
                         PrivacySection(
                             icon: "pencil.circle.fill",
-                            iconColor: .blue,
+                            iconColor: AppPalette.standard.accent,
                             title: "14. Changes to This Privacy Policy",
                             content: """
                             We may update this Privacy Policy from time to time to reflect:
@@ -435,7 +435,7 @@ struct PrivacyPolicyView: View {
                     VStack(spacing: 12) {
                         HStack {
                             Image(systemName: "checkmark.seal.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                             Text("Your Privacy is Protected")
                                 .font(.system(size: 16, weight: .semibold))
                         }

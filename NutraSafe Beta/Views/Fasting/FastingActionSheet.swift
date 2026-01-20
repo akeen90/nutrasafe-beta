@@ -150,7 +150,7 @@ struct FastingActionSheet: View {
             HStack {
                 Image(systemName: "moon.zzz.fill")
                     .font(.system(size: 20))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .frame(width: 40)
 
                 VStack(alignment: .leading, spacing: 2) {

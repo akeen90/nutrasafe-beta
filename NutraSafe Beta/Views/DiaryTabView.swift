@@ -1698,7 +1698,7 @@ struct CategoricalNutrientTrackingView: View {
             return (
                 text: "Log meals to see which vitamins and minerals you're getting.",
                 icon: "plus.circle.fill",
-                color: .blue
+                color: AppPalette.standard.accent
             )
         }
 
@@ -1761,7 +1761,7 @@ struct CategoricalNutrientTrackingView: View {
                 return (
                     text: "Keep logging to build your nutrient profile.",
                     icon: "chart.line.uptrend.xyaxis",
-                    color: .blue
+                    color: AppPalette.standard.accent
                 )
             }
         }
@@ -1771,7 +1771,7 @@ struct CategoricalNutrientTrackingView: View {
             return (
                 text: "\(nutrientsFound) nutrients found so far. Log more days to see patterns.",
                 icon: "chart.line.uptrend.xyaxis",
-                color: .blue
+                color: AppPalette.standard.accent
             )
         }
 
@@ -1822,7 +1822,7 @@ struct CategoricalNutrientTrackingView: View {
         return (
             text: "Add more foods to see your nutrient breakdown.",
             icon: "plus.circle.fill",
-            color: .blue
+            color: AppPalette.standard.accent
         )
     }
 

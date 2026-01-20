@@ -55,7 +55,7 @@ struct FastingPlanManagementView: View {
                 } label: {
                     HStack {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         Text("Create New Plan")
                             .fontWeight(.medium)
                     }
@@ -151,7 +151,7 @@ struct PlanRow: View {
                         Text("Edit")
                     }
                     .font(.caption)
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 }
                 .buttonStyle(.plain)
 
@@ -200,7 +200,7 @@ struct PlanRow: View {
 
     private func colorForPhilosophy(_ philosophy: AllowedDrinksPhilosophy) -> Color {
         switch philosophy {
-        case .strict: return .blue
+        case .strict: return AppPalette.standard.accent
         case .practical: return .green
         case .lenient: return .pink
         }

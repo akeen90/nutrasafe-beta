@@ -2,7 +2,8 @@
 //  ActionButtons.swift
 //  NutraSafe Beta
 //
-//  Reusable button components extracted from ContentView.swift
+//  Reusable button components - UNIFIED with onboarding design system.
+//  NO platform blue. Palette-aware throughout.
 //
 
 import SwiftUI
@@ -16,25 +17,35 @@ struct PersistentBottomMenu: View {
     let onDelete: () -> Void
     let onCancel: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header showing selected count
             HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(palette.textSecondary)
                 Text("Actions for \(selectedCount) item\(selectedCount == 1 ? "" : "s")")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(palette.textSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(Color(.systemGray6))
+            .background(
+                colorScheme == .dark
+                    ? Color(white: 0.15)
+                    : Color(.systemGray6)
+            )
 
             // Action buttons row
             HStack(spacing: 0) {
                 // Cancel
-                BottomMenuButton(icon: "xmark", title: "Cancel", color: .primary, action: onCancel)
+                BottomMenuButton(icon: "xmark", title: "Cancel", color: palette.textPrimary, action: onCancel)
 
                 Divider()
                     .frame(height: 50)
@@ -53,8 +64,8 @@ struct PersistentBottomMenu: View {
                         .frame(height: 50)
                 }
 
-                // Copy
-                BottomMenuButton(icon: "doc.on.doc", title: "Copy", color: .blue, action: onCopy)
+                // Copy - use palette accent instead of .blue
+                BottomMenuButton(icon: "doc.on.doc", title: "Copy", color: palette.accent, action: onCopy)
 
                 Divider()
                     .frame(height: 50)
@@ -64,7 +75,7 @@ struct PersistentBottomMenu: View {
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
-            .padding(.bottom, 34) // Account for safe area
+            .padding(.bottom, 34)
         }
         .background(Color.adaptiveCard)
         .overlay(
@@ -123,14 +134,14 @@ struct SlimActionButton: View {
     let title: String
     let color: Color
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(color)
-                
+
                 Text(title)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.primary)
@@ -159,7 +170,7 @@ struct PremiumActionButton: View {
     let color: Color
     let isDestructive: Bool
     let action: () -> Void
-    
+
     init(icon: String, title: String, color: Color, isDestructive: Bool = false, action: @escaping () -> Void) {
         self.icon = icon
         self.title = title
@@ -167,7 +178,7 @@ struct PremiumActionButton: View {
         self.isDestructive = isDestructive
         self.action = action
     }
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
@@ -175,12 +186,12 @@ struct PremiumActionButton: View {
                     Circle()
                         .fill(color.opacity(0.15))
                         .frame(width: 44, height: 44)
-                    
+
                     Image(systemName: icon)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(color)
                 }
-                
+
                 Text(title)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.primary)
@@ -202,27 +213,33 @@ struct PremiumButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Compact Action Button
+// MARK: - Compact Action Button (Palette-Aware)
 struct CompactActionButton: View {
     let icon: String
     let title: String
     let isDestructive: Bool
     let action: () -> Void
-    
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     init(icon: String, title: String, isDestructive: Bool = false, action: @escaping () -> Void) {
         self.icon = icon
         self.title = title
         self.isDestructive = isDestructive
         self.action = action
     }
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(isDestructive ? .red : .blue)
-                
+                    .foregroundColor(isDestructive ? .red : palette.accent)
+
                 Text(title)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(isDestructive ? .red : .primary)
@@ -236,32 +253,38 @@ struct CompactActionButton: View {
     }
 }
 
-// MARK: - Action Button
+// MARK: - Action Button (Palette-Aware)
 struct ActionButton: View {
     let icon: String
     let title: String
     let isDestructive: Bool
     let action: () -> Void
-    
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     init(icon: String, title: String, isDestructive: Bool = false, action: @escaping () -> Void) {
         self.icon = icon
         self.title = title
         self.isDestructive = isDestructive
         self.action = action
     }
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(isDestructive ? .red : .blue)
+                    .foregroundColor(isDestructive ? .red : palette.accent)
                     .frame(width: 24)
-                
+
                 Text(title)
                     .font(.system(size: 17, weight: .regular))
                     .foregroundColor(isDestructive ? .red : .primary)
-                
+
                 Spacer()
             }
             .padding(.horizontal, 20)
@@ -269,5 +292,101 @@ struct ActionButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Unified Floating Action Button (From Design System)
+struct FloatingActionButton: View {
+    let icon: String
+    let action: () -> Void
+    var size: CGFloat = 56
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [palette.accent, palette.primary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: size, height: size)
+                    .shadow(color: palette.accent.opacity(0.35), radius: 12, x: 0, y: 6)
+
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.4, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+        }
+        .buttonStyle(ScaleButtonStyle())
+    }
+}
+
+// MARK: - Scale Button Style
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .animation(DesignTokens.Animation.quick, value: configuration.isPressed)
+    }
+}
+
+// MARK: - Palette-Aware Pill Button
+struct PillButton: View {
+    let text: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(text)
+                .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+                .foregroundColor(isSelected ? .white : palette.textSecondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(
+                            isSelected
+                                ? LinearGradient(
+                                    colors: [palette.accent, palette.primary],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                                : LinearGradient(
+                                    colors: [Color.clear],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                        )
+                        .shadow(
+                            color: isSelected ? palette.accent.opacity(0.3) : Color.clear,
+                            radius: isSelected ? 8 : 0,
+                            y: 2
+                        )
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isSelected ? Color.clear : palette.textTertiary.opacity(0.3),
+                            lineWidth: 1
+                        )
+                )
+        }
+        .buttonStyle(ScaleButtonStyle())
     }
 }

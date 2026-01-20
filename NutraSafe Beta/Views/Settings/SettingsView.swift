@@ -209,7 +209,7 @@ struct AccountSection: View {
             HStack {
                 Image(systemName: "envelope.fill")
                     .font(.system(size: 16))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -361,7 +361,7 @@ struct GenderPickerSheet: View {
 
                             if selectedGender == gender {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                             }
                         }
                     }
@@ -462,7 +462,7 @@ struct AboutSection: View {
             HStack {
                 Image(systemName: "info.circle")
                     .font(.system(size: 16))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                     .frame(width: 24)
 
                 Text("Version")
@@ -989,7 +989,7 @@ struct ProgressGoalsSection: View {
                         HStack(spacing: 12) {
                             Image(systemName: "scalemass.fill")
                                 .font(.system(size: 16))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .frame(width: 24)
 
                             Text("Current Weight")
@@ -1001,7 +1001,7 @@ struct ProgressGoalsSection: View {
                             if let weight = currentWeight {
                                 Text(formatWeight(weight))
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .fixedSize()
                             } else {
                                 Text("Not set")
@@ -1935,7 +1935,7 @@ struct AppPreferencesSection: View {
                     HStack(spacing: 12) {
                         Image(systemName: "ruler.fill")
                             .font(.system(size: 16))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .frame(width: 24)
 
                         Text("Units")
@@ -2004,7 +2004,7 @@ struct AppPreferencesSection: View {
                     HStack(spacing: 12) {
                         Image(systemName: "envelope.fill")
                             .font(.system(size: 16))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                             .frame(width: 24)
 
                         Text("Email Preferences")
@@ -2144,7 +2144,7 @@ struct ThemeSelectorView: View {
                                 if selectedTheme == mode {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 22))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                             }
                             .padding(.vertical, 4)
@@ -2207,7 +2207,7 @@ struct UnitsSelectorView: View {
                             HStack(spacing: 16) {
                                 Image(systemName: system.icon)
                                     .font(.system(size: 20))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .frame(width: 32)
 
                                 VStack(alignment: .leading, spacing: 4) {
@@ -2225,7 +2225,7 @@ struct UnitsSelectorView: View {
                                 if selectedUnit == system {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 22))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                             }
                             .padding(.vertical, 4)
@@ -2293,7 +2293,7 @@ struct DataPrivacyView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.system(size: 16))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                                 .frame(width: 24)
 
                             VStack(alignment: .leading, spacing: 4) {
@@ -3064,18 +3064,18 @@ struct MacroManagementView: View {
                     Spacer()
                     if isCustomMode {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(isCustomMode ? Color.blue.opacity(0.1) : Color(.secondarySystemGroupedBackground))
+                        .fill(isCustomMode ? AppPalette.standard.accent.opacity(0.1) : Color(.secondarySystemGroupedBackground))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isCustomMode ? Color.blue : Color.clear, lineWidth: 2)
+                        .stroke(isCustomMode ? AppPalette.standard.accent : Color.clear, lineWidth: 2)
                 )
             }
             .buttonStyle(.plain)
@@ -3428,7 +3428,7 @@ struct CarbLimitEditorSheet: View {
                 // Info note
                 HStack(spacing: 8) {
                     Image(systemName: "info.circle.fill")
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                     Text("Your carb limit affects compliance alerts when logging food.")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
@@ -4719,7 +4719,7 @@ struct NotificationSettingsView: View {
                                 openSystemSettings()
                             }
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
                         }
                     }
                     .padding(.vertical, 8)
@@ -5063,7 +5063,7 @@ struct AppleHealthSettingsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -5080,7 +5080,7 @@ struct AppleHealthSettingsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -5409,7 +5409,7 @@ struct CitationCard: View {
             // Organization
             Text(organization)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
 
             // Title
             Text(title)
@@ -5445,7 +5445,7 @@ struct CitationCard: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.blue)
+                        .fill(AppPalette.standard.accent)
                 )
             }
         }
@@ -5479,12 +5479,12 @@ struct EmailMarketingConsentView: View {
                 // Email icon
                 ZStack {
                     Circle()
-                        .fill(Color.blue.opacity(0.15))
+                        .fill(AppPalette.standard.accent.opacity(0.15))
                         .frame(width: 100, height: 100)
 
                     Image(systemName: "envelope.fill")
                         .font(.system(size: 50))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                 }
 
                 VStack(spacing: 16) {
@@ -5548,7 +5548,7 @@ struct EmailMarketingConsentView: View {
                                     .foregroundColor(.secondary)
                             }
                         }
-                        .tint(.blue)
+                        .tint(AppPalette.standard.accent)
                         .padding(20)
                         .background(Color.adaptiveCard)
                         .cornerRadius(12)
@@ -5644,7 +5644,7 @@ struct BulletPoint: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
                 .font(.system(size: 16))
 
             Text(text)

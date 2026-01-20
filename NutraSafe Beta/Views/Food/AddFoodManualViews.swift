@@ -210,7 +210,7 @@ struct AddFoodManualView: View {
             // Icon
             Image(systemName: "square.and.pencil")
                 .font(.system(size: 72))
-                .foregroundColor(.blue)
+                .foregroundColor(AppPalette.standard.accent)
                 .padding(.bottom, 16)
 
             // Title
@@ -240,7 +240,7 @@ struct AddFoodManualView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.blue)
+                .background(AppPalette.standard.accent)
                 .cornerRadius(12)
             }
             .padding(.horizontal, 32)
@@ -431,7 +431,7 @@ struct ManualFoodDetailEntryView: View {
                                         .font(.system(size: 20))
                                         .foregroundColor(.white)
                                         .frame(width: 44, height: 44)
-                                        .background(Color.blue)
+                                        .background(AppPalette.standard.accent)
                                         .cornerRadius(8)
                                 }
                             }
@@ -459,7 +459,7 @@ struct ManualFoodDetailEntryView: View {
                         .padding()
                         .background(
                             LinearGradient(
-                                colors: [Color.blue, Color.blue.opacity(0.8)],
+                                colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -655,7 +655,7 @@ struct ManualFoodDetailEntryView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(isSaving ? Color.gray : Color.blue)
+                        .background(isSaving ? Color.gray : AppPalette.standard.accent)
                         .cornerRadius(12)
                     }
                     .disabled(isSaving)
@@ -2103,7 +2103,7 @@ struct IngredientConfirmationModal: View {
                         HStack(spacing: 6) {
                             Image(systemName: "gauge.with.dots.needle.67percent")
                                 .font(.system(size: 14))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                             Text("Product Size:")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.secondary)
@@ -2114,7 +2114,7 @@ struct IngredientConfirmationModal: View {
                             .foregroundColor(.primary)
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.blue.opacity(0.1))
+                            .background(AppPalette.standard.accent.opacity(0.1))
                             .cornerRadius(8)
                     }
                     .padding(.horizontal, 20)
@@ -2189,11 +2189,11 @@ struct IngredientConfirmationModal: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "link.circle.fill")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
 
                                 Text("Source: \(extractDomain(from: sourceUrl))")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .lineLimit(1)
                             }
                         }
@@ -2214,7 +2214,7 @@ struct IngredientConfirmationModal: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(AppPalette.standard.accent)
                         .cornerRadius(12)
                     }
 
@@ -2226,10 +2226,10 @@ struct IngredientConfirmationModal: View {
                             Text("Use & Edit")
                                 .font(.system(size: 16, weight: .semibold))
                         }
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue.opacity(0.1))
+                        .background(AppPalette.standard.accent.opacity(0.1))
                         .cornerRadius(12)
                     }
 
@@ -2303,7 +2303,7 @@ struct IngredientOCRCameraView: View {
                     VStack(spacing: 12) {
                         Image(systemName: "text.viewfinder")
                             .font(.system(size: 50))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
 
                         Text("Scan Ingredients")
                             .font(.title2.bold())
@@ -2315,7 +2315,7 @@ struct IngredientOCRCameraView: View {
                         } else {
                             Text("\(capturedImages.count + (currentImage != nil ? 1 : 0)) photo\(capturedImages.count + (currentImage != nil ? 1 : 0) == 1 ? "" : "s") ready")
                                 .font(.subheadline)
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
                     }
                     .padding(.top, 20)
@@ -2358,13 +2358,13 @@ struct IngredientOCRCameraView: View {
                                         .cornerRadius(8)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.blue, lineWidth: 2)
+                                                .stroke(AppPalette.standard.accent, lineWidth: 2)
                                         )
 
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("New Photo")
                                             .font(.caption.bold())
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppPalette.standard.accent)
                                         Button(action: { currentImage = nil }) {
                                             Label("Remove", systemImage: "trash")
                                                 .font(.caption)
@@ -2374,7 +2374,7 @@ struct IngredientOCRCameraView: View {
                                     Spacer()
                                 }
                                 .padding(12)
-                                .background(Color.blue.opacity(0.1))
+                                .background(AppPalette.standard.accent.opacity(0.1))
                                 .cornerRadius(10)
                             }
                         }
@@ -2432,7 +2432,7 @@ struct IngredientOCRCameraView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(isProcessing ? Color.gray : Color.blue)
+                                .background(isProcessing ? Color.gray : AppPalette.standard.accent)
                                 .cornerRadius(12)
                             }
                             .disabled(isProcessing)
@@ -2449,7 +2449,7 @@ struct IngredientOCRCameraView: View {
                                 .foregroundColor(capturedImages.isEmpty && currentImage == nil ? .white : .blue)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(capturedImages.isEmpty && currentImage == nil ? Color.blue : Color.blue.opacity(0.1))
+                                .background(capturedImages.isEmpty && currentImage == nil ? AppPalette.standard.accent : AppPalette.standard.accent.opacity(0.1))
                                 .cornerRadius(12)
                             }
                         }
@@ -3016,7 +3016,7 @@ struct UnifiedProductScannerView: View {
                     VStack(spacing: 12) {
                         Image(systemName: "camera.viewfinder")
                             .font(.system(size: 50))
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppPalette.standard.accent)
 
                         Text("Scan Product")
                             .font(.title2.bold())
@@ -3160,7 +3160,7 @@ struct UnifiedProductScannerView: View {
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(Color.blue)
+                                    .background(AppPalette.standard.accent)
                                     .cornerRadius(12)
                                 }
                             }
@@ -3175,7 +3175,7 @@ struct UnifiedProductScannerView: View {
                                 .foregroundColor(totalPhotos == 0 ? .white : .blue)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(totalPhotos == 0 ? Color.blue : Color.blue.opacity(0.1))
+                                .background(totalPhotos == 0 ? AppPalette.standard.accent : AppPalette.standard.accent.opacity(0.1))
                                 .cornerRadius(12)
                             }
                         }
@@ -3342,7 +3342,7 @@ private struct CapturedPhotoThumbnail: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(isNew ? Color.blue : Color(.systemGray4), lineWidth: isNew ? 2 : 1)
+                        .stroke(isNew ? AppPalette.standard.accent : Color(.systemGray4), lineWidth: isNew ? 2 : 1)
                 )
                 .overlay(alignment: .topTrailing) {
                     Button(action: onRemove) {

@@ -1780,14 +1780,14 @@ struct FoodDetailViewFromSearch: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Image(systemName: "doc.text.fill")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     Text(citation.organization)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundColor(.primary)
                                     Spacer()
                                     Image(systemName: "arrow.up.right.square")
                                         .font(.caption)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                                 Text(citation.title)
                                     .font(.caption)
@@ -1832,14 +1832,14 @@ struct FoodDetailViewFromSearch: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Image(systemName: "doc.text.fill")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     Text(citation.organization)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundColor(.primary)
                                     Spacer()
                                     Image(systemName: "arrow.up.right.square")
                                         .font(.caption)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                                 Text(citation.title)
                                     .font(.caption)
@@ -1895,10 +1895,10 @@ struct FoodDetailViewFromSearch: View {
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 14))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                             Text("Enter the food and brand name to search")
                                 .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
                         .padding(.horizontal)
 
@@ -1921,7 +1921,7 @@ struct FoodDetailViewFromSearch: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(manualSearchText.isEmpty ? Color.gray : Color.blue)
+                        .background(manualSearchText.isEmpty ? Color.gray : AppPalette.standard.accent)
                         .cornerRadius(10)
                     }
                     .disabled(manualSearchText.isEmpty)
@@ -2653,7 +2653,7 @@ private var nutritionFactsSection: some View {
                             .padding(.vertical, 10)
                             .background(
                                 LinearGradient(
-                                    colors: isEstimatingIngredients ? [.gray, .gray] : [.blue, .purple],
+                                    colors: isEstimatingIngredients ? [.gray, .gray] : [AppPalette.standard.accent, .purple],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
@@ -3028,14 +3028,14 @@ private var nutritionFactsSection: some View {
             HStack {
                 Image(systemName: "clock.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 Text("Review typically takes 24-48 hours")
                     .font(.system(size: 14))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(.blue.opacity(0.05))
+            .background(AppPalette.standard.accent.opacity(0.05))
             .cornerRadius(8)
         }
         .padding(.horizontal, 16)
@@ -3912,7 +3912,7 @@ private var nutritionFactsSection: some View {
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 16).fill(selectedMeal == meal ? .blue : Color.gray.opacity(0.15))
+                                        RoundedRectangle(cornerRadius: 16).fill(selectedMeal == meal ? AppPalette.standard.accent : Color.gray.opacity(0.15))
                                     )
                             }
                         }
@@ -4470,7 +4470,7 @@ private var nutritionFactsSection: some View {
                         }) {
                             Text("Sources")
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundColor(AppPalette.standard.accent)
                         }
                     }
                     .padding(.top, 4)
@@ -4514,7 +4514,7 @@ private var nutritionFactsSection: some View {
             HStack(spacing: 8) {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 Text("Estimated from food composition")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
@@ -4524,7 +4524,7 @@ private var nutritionFactsSection: some View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.blue.opacity(0.08))
+                    .fill(AppPalette.standard.accent.opacity(0.08))
             )
 
             if !sortedDetected.isEmpty {
@@ -4544,7 +4544,7 @@ private var nutritionFactsSection: some View {
                 VStack(spacing: 12) {
                     Image(systemName: "drop.fill")
                         .font(.system(size: 40))
-                        .foregroundColor(.blue.opacity(0.5))
+                        .foregroundColor(AppPalette.standard.accent.opacity(0.5))
 
                     Text("No Micronutrient Data")
                         .font(.system(size: 16, weight: .semibold))
@@ -4567,7 +4567,7 @@ private var nutritionFactsSection: some View {
                 HStack {
                     Image(systemName: "info.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                     Text("Health Benefits Based On")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
@@ -4588,7 +4588,7 @@ private var nutritionFactsSection: some View {
                         Image(systemName: "arrow.up.right.square")
                             .font(.system(size: 12))
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 }
             }
             .padding(.top, 8)
@@ -4970,7 +4970,7 @@ struct NutrientCard: View {
         if lower.contains("vitamin") {
             return .orange
         } else if lower.contains("calcium") || lower.contains("magnesium") || lower.contains("phosphorus") {
-            return .blue
+            return AppPalette.standard.accent
         } else if lower.contains("iron") || lower.contains("zinc") || lower.contains("copper") {
             return .red
         } else if lower.contains("potassium") || lower.contains("sodium") {
@@ -5179,7 +5179,7 @@ struct ExpandableSection<Content: View>: View {
                 HStack {
                     Image(systemName: systemImage)
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                         .frame(width: 24)
                     
                     Text(title)
@@ -5230,7 +5230,7 @@ struct VitaminRow: View {
             HStack(spacing: 4) {
                 Text(amount)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 Text(dailyValue)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
@@ -5353,7 +5353,7 @@ struct NutrientInfoCard: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: "checkmark.seal.fill")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     Text("Official Health Claims")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(.primary)
@@ -5371,7 +5371,7 @@ struct NutrientInfoCard: View {
                                                 .fixedSize(horizontal: false, vertical: true)
                                             Text(claim.source)
                                                 .font(.system(size: 10))
-                                                .foregroundColor(.blue)
+                                                .foregroundColor(AppPalette.standard.accent)
                                         }
                                     }
                                 }
@@ -5389,14 +5389,14 @@ struct NutrientInfoCard: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "info.circle.fill")
                                     .font(.system(size: 10))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                 Text("Health benefits based on EFSA-approved claims and NHS guidance")
                                     .font(.system(size: 10))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .lineLimit(2)
                                 Image(systemName: "arrow.up.right.square")
                                     .font(.system(size: 9))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                             }
                         }
                     }
@@ -5434,7 +5434,7 @@ struct NutrientInfoCard: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Image(systemName: "doc.text.fill")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                         .font(.system(size: 14))
                                     Text(citation.organization)
                                         .font(.system(size: 13, weight: .semibold))
@@ -5442,11 +5442,11 @@ struct NutrientInfoCard: View {
                                     Spacer()
                                     Image(systemName: "arrow.up.right.square")
                                         .font(.caption)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                                 Text(citation.title)
                                     .font(.caption)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                 Text(citation.description)
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
@@ -5793,7 +5793,7 @@ struct NutraSafeGradeInfoView: View {
                                 HStack(alignment: .top, spacing: 8) {
                                     Image(systemName: "doc.text.fill")
                                         .font(.system(size: 14))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(citation.organization)
                                             .font(.subheadline.weight(.semibold))
@@ -5806,7 +5806,7 @@ struct NutraSafeGradeInfoView: View {
                                     Spacer()
                                     Image(systemName: "arrow.up.right.square")
                                         .font(.system(size: 14))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                                 .padding(.vertical, 8)
                                 .padding(.horizontal, 12)
@@ -5992,7 +5992,7 @@ struct SugarScoreInfoView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "info.circle.fill")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                     Text(score.recommendation)
                                         .font(.system(size: 13, design: .rounded))
                                         .foregroundColor(.primary)
@@ -6098,7 +6098,7 @@ struct SugarScoreInfoView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(citation.organization)
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
 
                                 Text(citation.title)
                                     .font(.system(size: 14, weight: .medium))
@@ -6128,7 +6128,7 @@ struct SugarScoreInfoView: View {
                                     .padding(.vertical, 6)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.blue)
+                                            .fill(AppPalette.standard.accent)
                                     )
                                 }
                             }
@@ -6221,7 +6221,7 @@ struct BarcodeScannerForEnhancement: View {
                             .foregroundColor(.white)
                             .padding()
                             .frame(maxWidth: .infinity)
-                            .background(Color.blue)
+                            .background(AppPalette.standard.accent)
                             .cornerRadius(10)
                         }
                         .padding(.horizontal)

@@ -67,12 +67,12 @@ struct CreateMealView: View {
                             Button(action: { showingIconPicker = true }) {
                                 ZStack {
                                     Circle()
-                                        .fill(Color.blue.opacity(0.12))
+                                        .fill(AppPalette.standard.accent.opacity(0.12))
                                         .frame(width: 56, height: 56)
 
                                     Image(systemName: selectedIcon)
                                         .font(.system(size: 26, weight: .medium))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppPalette.standard.accent)
                                 }
                             }
 
@@ -185,10 +185,10 @@ struct CreateMealView: View {
                                         Text("Add Food")
                                             .font(.system(size: 15, weight: .semibold))
                                     }
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .padding(.horizontal, 20)
                                     .padding(.vertical, 10)
-                                    .background(Color.blue.opacity(0.1))
+                                    .background(AppPalette.standard.accent.opacity(0.1))
                                     .cornerRadius(20)
                                 }
                             }
@@ -221,12 +221,12 @@ struct CreateMealView: View {
                                         Text("Add More")
                                             .font(.system(size: 15, weight: .medium))
                                     }
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppPalette.standard.accent)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .strokeBorder(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [8]))
+                                            .strokeBorder(AppPalette.standard.accent.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [8]))
                                     )
                                 }
                             }
@@ -377,7 +377,7 @@ struct MealItemRow: View {
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 22))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppPalette.standard.accent)
                 }
             }
 
@@ -433,7 +433,7 @@ struct IconPickerSheet: View {
                             VStack(spacing: 8) {
                                 ZStack {
                                     Circle()
-                                        .fill(selectedIcon == icon.rawValue ? Color.blue : Color.blue.opacity(0.1))
+                                        .fill(selectedIcon == icon.rawValue ? AppPalette.standard.accent : AppPalette.standard.accent.opacity(0.1))
                                         .frame(width: 60, height: 60)
 
                                     Image(systemName: icon.rawValue)
@@ -648,7 +648,7 @@ private struct AddFoodRow: View {
 
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 22))
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
             }
             .padding(14)
             .background(colorScheme == .dark ? Color.midnightCard : Color.white)
@@ -789,7 +789,7 @@ struct AddFoodToMealDetailSheet: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.blue)
+                    .background(AppPalette.standard.accent)
                     .cornerRadius(14)
                 }
                 .padding(.horizontal, 24)

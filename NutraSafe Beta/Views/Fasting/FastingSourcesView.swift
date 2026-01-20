@@ -106,7 +106,7 @@ struct SourceRow: View {
                         Image(systemName: "arrow.up.right.square")
                             .font(.caption)
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppPalette.standard.accent)
                 }
                 .padding(.top, 4)
             }
