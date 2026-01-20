@@ -642,32 +642,12 @@ struct FoodReactionSummaryCard: View {
         return timingCounts.max(by: { $0.value < $1.value })?.key
     }
 
-    /// Weekly trend: reactions this week vs last week
-    private var weeklyTrend: (thisWeek: Int, lastWeek: Int, trend: String)? {
+    /// Reactions logged in the last 30 days
+    private var reactionsInLast30Days: Int {
         let calendar = Calendar.current
         let now = Date()
-
-        guard let startOfThisWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
-              let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek) else {
-            return nil
-        }
-
-        let thisWeekCount = reactionManager.reactions.filter { $0.timestamp.dateValue() >= startOfThisWeek }.count
-        let lastWeekCount = reactionManager.reactions.filter {
-            let date = $0.timestamp.dateValue()
-            return date >= startOfLastWeek && date < startOfThisWeek
-        }.count
-
-        let trend: String
-        if thisWeekCount < lastWeekCount {
-            trend = "down"
-        } else if thisWeekCount > lastWeekCount {
-            trend = "up"
-        } else {
-            trend = "same"
-        }
-
-        return (thisWeekCount, lastWeekCount, trend)
+        guard let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) else { return 0 }
+        return reactionManager.reactions.filter { $0.timestamp.dateValue() >= thirtyDaysAgo }.count
     }
 
     /// Top allergen trigger(s) from reactions - UK 14 major allergens only
@@ -764,11 +744,11 @@ struct FoodReactionSummaryCard: View {
                 // Apple Health-inspired 2x2 Grid
                 VStack(spacing: 10) {
                     HStack(spacing: 10) {
-                        // Most common symptom - Pink theme
+                        // Most frequent symptom - Pink theme
                         if let symptom = mostCommonSymptom {
                             appleStyleCell(
                                 icon: "heart.fill",
-                                label: "COMMON SYMPTOM",
+                                label: "MOST FREQUENT SYMPTOM",
                                 value: symptom.symptom,
                                 subValue: "\(symptom.percentage)% of reactions",
                                 color: .pink
@@ -788,21 +768,16 @@ struct FoodReactionSummaryCard: View {
                     }
 
                     HStack(spacing: 10) {
-                        // Weekly trend - Purple theme
-                        if let trend = weeklyTrend {
-                            let trendArrow = trend.trend == "down" ? "↓" : (trend.trend == "up" ? "↑" : "→")
-                            let trendDesc = trend.trend == "down" ? "Down from \(trend.lastWeek)" : (trend.trend == "up" ? "Up from \(trend.lastWeek)" : "Same as last week")
+                        // Last 30 days - Purple theme
+                        appleStyleCell(
+                            icon: "calendar",
+                            label: "LAST 30 DAYS",
+                            value: "\(reactionsInLast30Days)",
+                            subValue: reactionsInLast30Days == 1 ? "Reaction logged" : "Reactions logged",
+                            color: .purple
+                        )
 
-                            appleStyleCell(
-                                icon: "calendar",
-                                label: "THIS WEEK",
-                                value: "\(trend.thisWeek) \(trendArrow)",
-                                subValue: trendDesc,
-                                color: .purple
-                            )
-                        }
-
-                        // Most common allergen - Red theme
+                        // Most frequent allergen - Red theme
                         if let allergens = topAllergenTriggers {
                             let allergenText = allergens.count > 1
                                 ? allergens.prefix(2).map { $0.name }.joined(separator: ", ")
@@ -811,7 +786,7 @@ struct FoodReactionSummaryCard: View {
 
                             appleStyleCell(
                                 icon: "exclamationmark.triangle.fill",
-                                label: "COMMON ALLERGEN",
+                                label: "MOST FREQUENT ALLERGEN",
                                 value: allergenText,
                                 subValue: "Appeared \(count) times",
                                 color: .red
