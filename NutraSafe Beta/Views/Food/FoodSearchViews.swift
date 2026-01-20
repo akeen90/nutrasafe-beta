@@ -47,31 +47,10 @@ struct FoodSearchResultRow: View {
     let onAdd: () -> Void
     
     // Calculate per-serving calories from per-100g values
+    // PERFORMANCE: Uses pre-parsed servingSizeG instead of regex on every render
     private var perServingCalories: Double {
-        let servingSize = extractServingSize(from: food.servingDescription)
+        let servingSize = food.servingSizeG ?? 100.0
         return food.calories * (servingSize / 100.0)
-    }
-    
-    // Extract serving size in grams from serving description
-    // Uses pre-compiled regexes for performance
-    private func extractServingSize(from servingDesc: String?) -> Double {
-        guard let servingDesc = servingDesc else { return 100.0 }
-
-        // Use pre-compiled patterns instead of compiling on each call
-        for regex in ServingSizePatterns.allPatterns {
-            if let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
-               let range = Range(match.range(at: 1), in: servingDesc) {
-                return Double(String(servingDesc[range])) ?? 100.0
-            }
-        }
-
-        // If just a number is found, assume it's grams
-        if let number = Double(servingDesc.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            return number
-        }
-
-        // Fallback to 100g if no weight found
-        return 100.0
     }
 
     var body: some View {

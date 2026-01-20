@@ -156,7 +156,7 @@ struct AddFoodAIView: View {
         .background(Color.adaptiveCard)
         // Removed auto-launch - user chooses camera or gallery from the initial screen
         .fullScreenCover(isPresented: $showingImagePicker) {
-            ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { [self] image in
+            ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { image in
                 showingImagePicker = false
                 if let image = image {
                     // Check subscription status directly from the manager
@@ -165,17 +165,16 @@ struct AddFoodAIView: View {
                     let isPremiumOverride = subscriptionManager.isPremiumOverride
                     let hasPro = isSubscribed || isInTrial || isPremiumOverride
 
-                    
                     if hasPro {
                         // Pro user - proceed with analysis
                         isScanning = true
                         errorMessage = nil
-                                                analyzeImage(image)
+                        analyzeImage(image)
                     } else {
                         // Non-subscriber - show Pro feature gate
                         capturedImageForGate = image
                         showingProFeatureGate = true
-                                            }
+                    }
                 } else {
                     // User cancelled OR image extraction failed
                     hasLaunchedCamera = false
@@ -221,12 +220,12 @@ struct AddFoodAIView: View {
             AIFoodDetailSheet(food: food, onDismiss: { selectedFoodForDetail = nil })
         }
         .sheet(isPresented: $showingGalleryPicker) {
-            MultiImagePicker(maxSelection: 1) { [self] images in
+            MultiImagePicker(maxSelection: 1) { images in
                 // First dismiss the picker
                 showingGalleryPicker = false
 
                 // Then process the result after a brief delay to ensure clean dismissal
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     if let image = images.first {
                         // Check subscription status directly from the manager
                         let isSubscribed = subscriptionManager.isSubscribed
@@ -234,22 +233,20 @@ struct AddFoodAIView: View {
                         let isPremiumOverride = subscriptionManager.isPremiumOverride
                         let hasPro = isSubscribed || isInTrial || isPremiumOverride
 
-                        
                         if hasPro {
                             // Pro user - proceed with analysis
                             isScanning = true
                             errorMessage = nil
-                                                        analyzeImage(image)
+                            analyzeImage(image)
                         } else {
                             // Non-subscriber - show Pro feature gate
                             capturedImageForGate = image
                             showingProFeatureGate = true
-                                                    }
+                        }
                     } else {
                         // User cancelled or image loading failed
                         hasLaunchedCamera = false
-                        // Only show error if this wasn't an explicit cancel (images array was expected)
-                                            }
+                    }
                 }
             }
         }

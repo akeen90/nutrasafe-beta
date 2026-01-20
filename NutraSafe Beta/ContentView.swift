@@ -483,20 +483,12 @@ struct ContentView: View {
                     tabContent(for: tab)
                         .id(tab) // Stable identity prevents view re-creation
                         .opacity(selectedTab == tab ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.15), value: selectedTab == tab) // Smooth crossfade
                         .allowsHitTesting(selectedTab == tab)
                         .accessibilityHidden(selectedTab != tab)
-                        // PERFORMANCE: Disable animations on hidden tabs to reduce CPU work
-                        .transaction { transaction in
-                            if selectedTab != tab {
-                                transaction.animation = nil
-                            }
-                        }
                 }
             }
         }
-        // PERFORMANCE: Disable view diffing on the entire ZStack when switching tabs
-        // This prevents SwiftUI from comparing all hidden tab views
-        .transaction { $0.disablesAnimations = true }
     }
 
     // Keep each tab alive once visited so data/models are not re-created on every switch
@@ -569,8 +561,6 @@ struct ContentView: View {
                 // Main Content with padding for tab bar and potential workout progress bar
                 VStack {
                     persistentTabViews
-                        .animation(nil, value: selectedTab)
-                        .transaction { $0.disablesAnimations = true }
                         .onAppear {
                             visitedTabs.insert(selectedTab)
                             // PERFORMANCE: Pre-load all tabs in background for instant switching

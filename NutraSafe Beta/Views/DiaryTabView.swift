@@ -56,11 +56,8 @@ struct DiaryTabView: View {
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
     @State private var isLoadingData = false // Loading state for UI feedback
 
-    // MARK: - HealthKit Auto-Refresh Timer (60 seconds)
-    // PERFORMANCE: Made controllable to stop when not viewing diary tab
-    private let healthKitRefreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
-    @State private var isTimerActive = true
-    @State private var healthKitRefreshTask: Task<Void, Never>?  // Track task to prevent unbounded creation
+    // NOTE: HealthKit refresh is now handled by HealthKitManager's live updates
+    // (HKObserverQuery + 30-second timer). Removed redundant DiaryTabView timer.
 
     // MARK: - Feature Tips
     @State private var showingDiaryTip = false
@@ -690,19 +687,7 @@ struct DiaryTabView: View {
                 // Switch to overview tab when food is added (even from Insights tab)
                 diarySubTab = .overview
             }
-            .onReceive(healthKitRefreshTimer) { _ in
-                // PERFORMANCE: Skip if timer is paused or not viewing today's date
-                guard isTimerActive, Calendar.current.isDateInToday(selectedDate) else { return }
-                // Cancel previous task if still running to prevent unbounded task creation
-                healthKitRefreshTask?.cancel()
-                healthKitRefreshTask = Task {
-                    // Check cancellation before starting work
-                    guard !Task.isCancelled else { return }
-                    await healthKitManager.updateStepCount(for: selectedDate)
-                    guard !Task.isCancelled else { return }
-                    await healthKitManager.updateActiveEnergy(for: selectedDate)
-                }
-            }
+            // NOTE: HealthKit refresh now handled automatically by HealthKitManager
             .onChange(of: moveTrigger) { _, newValue in
                 guard newValue else { return }
                 showMoveOptions()
@@ -787,8 +772,7 @@ struct DiaryTabView: View {
 
     // MARK: - Helper Methods for onChange Handlers
     private func handleSelectedTabChange(_ newTab: TabItem) {
-        // PERFORMANCE: Pause timer when leaving diary tab, resume when returning
-        isTimerActive = (newTab == .diary)
+        // NOTE: HealthKit refresh now handled automatically by HealthKitManager
 
         // Unselect when leaving diary; reset overview when returning
         if newTab == .diary {

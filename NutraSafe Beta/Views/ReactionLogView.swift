@@ -138,23 +138,18 @@ struct ReactionLogView: View {
         guard logs.count != lastCacheUpdateLogCount else { return }
         lastCacheUpdateLogCount = logs.count
 
-        // Calculate unique symptoms (sorted by frequency)
-        let symptoms = Set(logs.map { $0.reactionType })
-        cachedUniqueSymptoms = symptoms.sorted { symptom1, symptom2 in
-            let count1 = logs.filter { $0.reactionType == symptom1 }.count
-            let count2 = logs.filter { $0.reactionType == symptom2 }.count
-            return count1 > count2
+        // Calculate unique symptoms (sorted by frequency) - O(n) single pass
+        let symptomCounts = logs.reduce(into: [String: Int]()) { counts, log in
+            counts[log.reactionType, default: 0] += 1
+        }
+        cachedUniqueSymptoms = symptomCounts.keys.sorted {
+            (symptomCounts[$0] ?? 0) > (symptomCounts[$1] ?? 0)
         }
 
-        // Calculate most common symptom
-        if !logs.isEmpty {
-            let grouped = Dictionary(grouping: logs) { $0.reactionType }
-            if let (symptom, entries) = grouped.max(by: { $0.value.count < $1.value.count }) {
-                let percentage = Int((Double(entries.count) / Double(logs.count)) * 100)
-                cachedMostCommonSymptom = (symptom, percentage)
-            } else {
-                cachedMostCommonSymptom = nil
-            }
+        // Calculate most common symptom (reuse symptomCounts - no extra iteration)
+        if let (symptom, count) = symptomCounts.max(by: { $0.value < $1.value }) {
+            let percentage = Int((Double(count) / Double(logs.count)) * 100)
+            cachedMostCommonSymptom = (symptom, percentage)
         } else {
             cachedMostCommonSymptom = nil
         }
@@ -178,13 +173,20 @@ struct ReactionLogView: View {
             cachedPeakTiming = nil
         }
 
-        // Calculate weekly trend
+        // Calculate weekly trend - single pass instead of two filters
         let calendar = Calendar.current
         let now = Date()
         if let startOfThisWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
            let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek) {
-            let thisWeekCount = logs.filter { $0.reactionDate >= startOfThisWeek }.count
-            let lastWeekCount = logs.filter { $0.reactionDate >= startOfLastWeek && $0.reactionDate < startOfThisWeek }.count
+            var thisWeekCount = 0
+            var lastWeekCount = 0
+            for log in logs {
+                if log.reactionDate >= startOfThisWeek {
+                    thisWeekCount += 1
+                } else if log.reactionDate >= startOfLastWeek {
+                    lastWeekCount += 1
+                }
+            }
 
             let trend: String
             if thisWeekCount < lastWeekCount {
