@@ -521,6 +521,41 @@ final class AlgoliaSearchManager {
             // Bonus for shorter names (more specific)
             score += max(0, 500 - result.name.count * 10)
 
+            // PENALTY for multipacks - demote items like "8pk", "6 pack", "multipack", "x4", etc.
+            // These are bulk items, not individual portions that users typically want to log
+            let multipackPatterns = [
+                "\\d+pk\\b",           // 8pk, 6pk, 4pk
+                "\\d+\\s*pack\\b",     // 8 pack, 6pack, 4 pack
+                "\\bx\\d+\\b",         // x4, x6, x8
+                "\\d+\\s*x\\s*\\d+",   // 6x4, 8 x 45g
+                "\\bmultipack\\b",     // multipack
+                "\\bmulti-pack\\b",    // multi-pack
+                "\\bmulti pack\\b",    // multi pack
+                "\\bfamily pack\\b",   // family pack
+                "\\bbulk\\b"           // bulk
+            ]
+            let multipackRegex = try? NSRegularExpression(
+                pattern: multipackPatterns.joined(separator: "|"),
+                options: [.caseInsensitive]
+            )
+            if let regex = multipackRegex,
+               regex.firstMatch(in: nameLower, options: [], range: NSRange(nameLower.startIndex..., in: nameLower)) != nil {
+                score -= 2000  // Strong demotion for multipacks
+            }
+
+            // BONUS/PENALTY for serving size - prefer individual portions over bulk
+            if let servingGrams = result.servingSizeG, servingGrams > 0 {
+                if servingGrams <= 50 {
+                    score += 800   // Strong bonus for small portions (snacks, single items)
+                } else if servingGrams <= 100 {
+                    score += 400   // Moderate bonus for standard portions
+                } else if servingGrams <= 200 {
+                    score += 100   // Slight bonus for reasonable portions
+                } else if servingGrams > 500 {
+                    score -= 300   // Penalty for very large serving sizes (likely bulk)
+                }
+            }
+
             // Bonus for verified items
             if result.isVerified {
                 score += 200
@@ -689,6 +724,42 @@ final class AlgoliaSearchManager {
             // "Big Mac" (7 chars) scores higher than "Big Mac with Large Fries" (25 chars)
             let lengthBonus = max(0, 500 - name.count * 10)
             score += lengthBonus
+
+            // PENALTY for multipacks - demote items like "8pk", "6 pack", "multipack", "x4", etc.
+            // These are bulk items, not individual portions that users typically want to log
+            let multipackPatterns = [
+                "\\d+pk\\b",           // 8pk, 6pk, 4pk
+                "\\d+\\s*pack\\b",     // 8 pack, 6pack, 4 pack
+                "\\bx\\d+\\b",         // x4, x6, x8
+                "\\d+\\s*x\\s*\\d+",   // 6x4, 8 x 45g
+                "\\bmultipack\\b",     // multipack
+                "\\bmulti-pack\\b",    // multi-pack
+                "\\bmulti pack\\b",    // multi pack
+                "\\bfamily pack\\b",   // family pack
+                "\\bbulk\\b"           // bulk
+            ]
+            let multipackRegex = try? NSRegularExpression(
+                pattern: multipackPatterns.joined(separator: "|"),
+                options: [.caseInsensitive]
+            )
+            if let regex = multipackRegex,
+               regex.firstMatch(in: nameLower, options: [], range: NSRange(nameLower.startIndex..., in: nameLower)) != nil {
+                score -= 2000  // Strong demotion for multipacks
+            }
+
+            // BONUS/PENALTY for serving size - prefer individual portions over bulk
+            // Users typically want to log single items, not entire multipacks
+            if let servingGrams = item.result.servingSizeG, servingGrams > 0 {
+                if servingGrams <= 50 {
+                    score += 800   // Strong bonus for small portions (snacks, single items)
+                } else if servingGrams <= 100 {
+                    score += 400   // Moderate bonus for standard portions
+                } else if servingGrams <= 200 {
+                    score += 100   // Slight bonus for reasonable portions
+                } else if servingGrams > 500 {
+                    score -= 300   // Penalty for very large serving sizes (likely bulk)
+                }
+            }
 
             // Bonus for verified items
             if item.result.isVerified {
