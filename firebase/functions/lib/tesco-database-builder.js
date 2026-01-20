@@ -26,6 +26,12 @@ if (!admin.apps.length) {
 // Tesco8 API Configuration
 const TESCO8_API_KEY = functions.config().rapidapi?.key || '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
 const TESCO8_HOST = 'tesco8.p.rapidapi.com';
+// UK Groceries API Configuration (General UK grocery stores)
+const UK_GROCERIES_API_KEY = '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
+const UK_GROCERIES_HOST = 'store-groceries.p.rapidapi.com';
+// Spoonacular Recipe API Configuration
+const SPOONACULAR_API_KEY = '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
+const SPOONACULAR_HOST = 'spoonacular-recipe-food-nutrition-v1.p.rapidapi.com';
 // Helper to remove undefined values from objects (Firestore doesn't accept undefined)
 function removeUndefined(obj) {
     const result = {};
@@ -45,322 +51,193 @@ function removeUndefined(obj) {
 const ALGOLIA_APP_ID = functions.config().algolia?.app_id || 'WK0TIF84M2';
 const ALGOLIA_ADMIN_KEY = functions.config().algolia?.admin_key;
 const TESCO_INDEX_NAME = 'tesco_products';
-// Tesco food categories - comprehensive list for maximum product coverage
-// Strategy: Popular categories first (Snacks → Everyday → Staples → Fresh → Frozen)
+// Collection and Index mapping by API source
+const API_CONFIG = {
+    'tesco8': {
+        collection: 'tescoProducts',
+        algoliaIndex: 'tesco_products',
+        displayName: 'Tesco'
+    },
+    'uk_groceries': {
+        collection: 'ukGroceriesProducts',
+        algoliaIndex: 'uk_groceries_products',
+        displayName: 'UK Groceries'
+    },
+    'spoonacular': {
+        collection: 'spoonacularRecipes',
+        algoliaIndex: 'spoonacular_recipes',
+        displayName: 'Spoonacular'
+    }
+};
+// Helper to get config for an API source
+function getApiConfig(apiSource) {
+    return API_CONFIG[apiSource] || API_CONFIG['tesco8'];
+}
+// Tesco food categories - SIMPLIFIED broad categories only
+// Strategy: ~60 broad terms with 20 pages each = maximum coverage, minimal duplicates
 const SEARCH_TERMS = [
-    // ============ 1. SNACKS & CONFECTIONERY (Most Popular) ============
-    'Chocolate', 'Milk Chocolate', 'Dark Chocolate', 'White Chocolate',
-    'Cadbury', 'Cadbury Dairy Milk', 'Galaxy', 'Lindt', 'Ferrero Rocher', 'Toblerone',
-    'Kit Kat', 'Twix', 'Mars', 'Snickers', 'Bounty', 'Milky Way', 'Maltesers',
-    'Wispa', 'Flake', 'Crunchie', 'Double Decker', 'Boost', 'Picnic', 'Twirl',
-    'Aero', 'Yorkie', 'Dairy Milk', 'Fruit And Nut', 'Whole Nut',
-    'Sweets', 'Haribo', 'Wine Gums', 'Fruit Pastilles', 'Jelly Babies', 'Gummy Bears',
-    'Mints', 'Polo', 'Tic Tac', 'Extra', 'Trebor',
-    'Crisps', 'Walkers', 'Walkers Crisps', 'Pringles', 'Kettle Chips', 'Sensations',
-    'Doritos', 'Wotsits', 'Quavers', 'Monster Munch', 'Skips', 'Hula Hoops',
-    'Ready Salted', 'Cheese And Onion', 'Salt And Vinegar', 'Prawn Cocktail',
-    'Popcorn', 'Butterkist', 'Propercorn', 'Sweet Popcorn', 'Salted Popcorn',
-    'Nuts', 'Peanuts', 'Cashews', 'Almonds', 'Walnuts', 'Pistachios', 'Mixed Nuts',
-    'Biscuits', 'Digestives', 'Rich Tea', 'Hobnobs', 'Custard Creams', 'Bourbons',
-    'Jammie Dodgers', 'Oreos', 'Maryland Cookies', 'Shortbread',
-    'McVities', 'Jacobs', 'Foxs',
-    'Crackers', 'Cream Crackers', 'Ritz', 'Jacobs Crackers', 'Oatcakes', 'Rice Cakes',
-    'Cereal Bars', 'Nakd', 'Kind', 'Nature Valley', 'Belvita', 'Tracker', 'Nutri Grain',
-    'Protein Bars', 'Grenade', 'Fulfil', 'Carb Killa',
-    // ============ 2. EVERYDAY - CEREALS & BREAKFAST ============
-    'Cereals', 'Cornflakes', 'Kelloggs', 'Weetabix', 'Shredded Wheat', 'Bran Flakes',
-    'Crunchy Nut', 'Special K', 'Frosties', 'Coco Pops', 'Rice Krispies', 'Cheerios',
-    'Shreddies', 'Muesli', 'Granola', 'Porridge', 'Porridge Oats', 'Ready Brek',
-    'Quaker Oats', 'Alpen', 'Jordans',
-    'Pancake Mix', 'Syrup', 'Maple Syrup', 'Golden Syrup',
-    'Jam', 'Marmalade', 'Strawberry Jam', 'Raspberry Jam', 'Apricot Jam',
-    'Honey', 'Manuka Honey', 'Clear Honey', 'Set Honey',
-    'Peanut Butter', 'Nutella', 'Chocolate Spread', 'Biscoff Spread', 'Marmite',
-    // ============ 2. EVERYDAY - PASTA RICE NOODLES ============
-    'Pasta', 'Spaghetti', 'Penne', 'Fusilli', 'Tagliatelle', 'Linguine', 'Macaroni',
-    'Lasagne Sheets', 'Ravioli', 'Tortellini', 'Fresh Pasta',
-    'Rice', 'Basmati Rice', 'Long Grain Rice', 'Brown Rice', 'Jasmine Rice', 'Risotto Rice',
-    'Wild Rice', 'Microwave Rice', 'Uncle Bens', 'Tilda',
-    'Noodles', 'Egg Noodles', 'Rice Noodles', 'Udon Noodles', 'Ramen Noodles',
-    'Pot Noodle', 'Super Noodles', 'Instant Noodles',
-    'Couscous', 'Bulgur Wheat', 'Quinoa', 'Pearl Barley', 'Lentils',
-    // ============ 2. EVERYDAY - SAUCES & CONDIMENTS ============
-    'Ketchup', 'Heinz Ketchup', 'Tomato Ketchup',
-    'Mayonnaise', 'Hellmanns', 'Salad Cream',
-    'Mustard', 'English Mustard', 'Dijon Mustard', 'Wholegrain Mustard',
-    'Brown Sauce', 'HP Sauce', 'BBQ Sauce', 'Hot Sauce', 'Sriracha', 'Tabasco',
-    'Soy Sauce', 'Sweet Chilli Sauce', 'Hoisin Sauce', 'Teriyaki Sauce', 'Fish Sauce',
-    'Worcestershire Sauce', 'Mint Sauce', 'Horseradish', 'Tartare Sauce',
-    'Cooking Sauces', 'Pasta Sauce', 'Dolmio', 'Loyd Grossman', 'Homepride',
-    'Curry Sauce', 'Korma Sauce', 'Tikka Masala', 'Madras Sauce', 'Jalfrezi',
-    'Pataks', 'Sharwoods',
-    'Pesto', 'Red Pesto', 'Green Pesto',
-    'Stir Fry Sauce', 'Sweet And Sour', 'Black Bean Sauce', 'Oyster Sauce',
-    'Salsa', 'Guacamole', 'Hummus', 'Tzatziki',
-    // ============ 2. EVERYDAY - DRINKS ============
-    'Water', 'Still Water', 'Sparkling Water', 'Mineral Water', 'Evian', 'Volvic',
-    'Juice', 'Orange Juice', 'Apple Juice', 'Tropical Juice', 'Cranberry Juice',
-    'Tropicana', 'Innocent', 'Ribena', 'Capri Sun',
-    'Squash', 'Robinsons', 'Vimto', 'Blackcurrant Squash', 'Orange Squash',
-    'Fizzy Drinks', 'Coca Cola', 'Pepsi', 'Fanta', 'Sprite', 'Lemonade',
-    'Lucozade', 'Red Bull', 'Monster Energy',
-    'Tea', 'PG Tips', 'Yorkshire Tea', 'Tetley', 'Twinings', 'Green Tea', 'Herbal Tea',
-    'Coffee', 'Instant Coffee', 'Nescafe', 'Kenco', 'Douwe Egberts', 'Coffee Pods',
-    'Hot Chocolate', 'Cadbury Hot Chocolate', 'Options Hot Chocolate',
-    // ============ 2. EVERYDAY - TINNED & CANNED ============
-    'Tinned Tomatoes', 'Chopped Tomatoes', 'Plum Tomatoes', 'Passata', 'Tomato Puree',
-    'Baked Beans', 'Heinz Beans', 'Branston Beans',
-    'Tinned Vegetables', 'Tinned Sweetcorn', 'Tinned Peas', 'Tinned Carrots',
-    'Tinned Fruit', 'Tinned Peaches', 'Tinned Pineapple', 'Fruit Cocktail',
-    'Tinned Fish', 'Tinned Tuna', 'Tinned Salmon', 'Tinned Sardines', 'Tinned Mackerel',
-    'Tinned Meat', 'Corned Beef', 'Spam', 'Hot Dogs',
-    'Tinned Soup', 'Heinz Soup', 'Baxters Soup', 'Campbell Soup',
-    'Tinned Pasta', 'Spaghetti Hoops', 'Ravioli',
-    'Coconut Milk Tinned', 'Evaporated Milk', 'Condensed Milk',
-    'Kidney Beans', 'Chickpeas', 'Black Beans', 'Butter Beans', 'Cannellini Beans',
-    'Baked Beans With Sausages', 'Chilli Con Carne',
-    // ============ 3. STAPLES - DAIRY & EGGS ============
-    'Milk', 'Semi Skimmed Milk', 'Whole Milk', 'Skimmed Milk', 'Oat Milk', 'Almond Milk',
-    'Soya Milk', 'Coconut Milk', 'Lactose Free Milk', 'Organic Milk',
-    'Butter', 'Salted Butter', 'Unsalted Butter', 'Spreadable Butter', 'Margarine',
-    'Eggs', 'Free Range Eggs', 'Organic Eggs', 'Large Eggs', 'Medium Eggs',
-    'Cheese', 'Cheddar', 'Cheddar Cheese', 'Mature Cheddar', 'Mild Cheddar', 'Extra Mature Cheddar',
-    'Mozzarella', 'Parmesan', 'Brie', 'Camembert', 'Stilton', 'Feta', 'Halloumi',
-    'Gouda', 'Edam', 'Red Leicester', 'Double Gloucester', 'Wensleydale', 'Goats Cheese',
-    'Cream Cheese', 'Philadelphia', 'Cottage Cheese', 'Ricotta', 'Mascarpone',
-    'Grated Cheese', 'Cheese Slices', 'Cheese Strings', 'Babybel', 'Laughing Cow',
-    'Yogurt', 'Greek Yogurt', 'Natural Yogurt', 'Fruit Yogurt', 'Yoghurt Drinks',
-    'Muller', 'Activia', 'Danone', 'Yeo Valley', 'Alpro Yogurt', 'Skyr',
-    'Cream', 'Double Cream', 'Single Cream', 'Whipping Cream', 'Clotted Cream', 'Soured Cream',
-    'Custard', 'Creme Fraiche',
-    'Dairy Free', 'Dairy Alternatives', 'Vegan Cheese', 'Vegan Yogurt', 'Vegan Butter',
-    // ============ 3. STAPLES - BAKERY ============
-    'Bread', 'White Bread', 'Brown Bread', 'Wholemeal Bread', 'Seeded Bread', 'Sourdough',
-    'Bread Rolls', 'Baguette', 'Ciabatta', 'Focaccia', 'Naan Bread', 'Pitta Bread',
-    'Wraps', 'Tortilla Wraps', 'Flatbreads', 'Chapati', 'Roti',
-    'Bagels', 'Croissants', 'Pain Au Chocolat', 'Brioche', 'Danish Pastries',
-    'Crumpets', 'English Muffins', 'Teacakes', 'Hot Cross Buns', 'Scones', 'Fruit Loaf',
-    'Pancakes', 'Scotch Pancakes', 'Waffles', 'Crepes',
-    'Doughnuts', 'Cookies', 'Muffins', 'Cupcakes', 'Brownies', 'Flapjacks',
-    'Cakes', 'Birthday Cake', 'Celebration Cake', 'Victoria Sponge', 'Chocolate Cake',
-    'Carrot Cake', 'Lemon Drizzle', 'Coffee Cake', 'Cheesecake', 'Trifle',
-    'Pastries', 'Sausage Rolls', 'Pork Pies', 'Scotch Eggs', 'Cornish Pasties',
-    'Pies', 'Steak Pie', 'Chicken Pie', 'Meat Pie', 'Quiche', 'Quiche Lorraine',
-    'Tarts', 'Fruit Tart', 'Custard Tart', 'Bakewell Tart', 'Treacle Tart',
-    'Gluten Free Bread', 'Gluten Free Bakery',
-    // ============ 4. FRESH FOOD - PRODUCE ============
-    'Fresh Fruit',
-    'Apples', 'Bananas', 'Oranges', 'Grapes', 'Strawberries', 'Blueberries', 'Raspberries',
-    'Blackberries', 'Cherries', 'Pears', 'Plums', 'Peaches', 'Nectarines', 'Mangoes',
-    'Pineapples', 'Melons', 'Watermelon', 'Kiwi', 'Avocados', 'Lemons', 'Limes',
-    'Grapefruit', 'Pomegranate', 'Figs', 'Dates', 'Passion Fruit', 'Papaya', 'Coconut',
-    'Fresh Vegetables',
-    'Potatoes', 'Carrots', 'Onions', 'Tomatoes', 'Peppers', 'Cucumber', 'Lettuce',
-    'Broccoli', 'Cauliflower', 'Cabbage', 'Spinach', 'Kale', 'Courgettes', 'Aubergine',
-    'Mushrooms', 'Sweetcorn', 'Peas', 'Green Beans', 'Asparagus', 'Leeks', 'Celery',
-    'Spring Onions', 'Garlic', 'Ginger', 'Beetroot', 'Parsnips', 'Swede', 'Turnips',
-    'Sweet Potatoes', 'Butternut Squash', 'Radishes', 'Rocket', 'Watercress', 'Pak Choi',
-    'Fresh Salad', 'Coleslaw', 'Mixed Salad', 'Caesar Salad', 'Prepared Vegetables',
-    'Fresh Herbs', 'Basil', 'Coriander', 'Parsley', 'Mint', 'Rosemary', 'Thyme', 'Chives',
-    // ============ 4. FRESH - MEAT & POULTRY ============
-    'Fresh Meat', 'Beef', 'Beef Mince', 'Minced Beef', 'Steak', 'Sirloin Steak', 'Ribeye Steak',
-    'Fillet Steak', 'Rump Steak', 'Beef Joint', 'Roasting Joint', 'Beef Burgers',
-    'Pork', 'Pork Chops', 'Pork Loin', 'Pork Mince', 'Pork Joint', 'Pork Belly', 'Gammon',
-    'Lamb', 'Lamb Chops', 'Lamb Mince', 'Lamb Joint', 'Lamb Leg', 'Lamb Shoulder',
-    'Chicken', 'Chicken Breast', 'Chicken Thighs', 'Chicken Drumsticks', 'Chicken Wings',
-    'Whole Chicken', 'Roast Chicken', 'Chicken Mince', 'Chicken Fillets', 'Chicken Kievs',
-    'Turkey', 'Turkey Mince', 'Turkey Breast', 'Turkey Steaks',
-    'Duck', 'Duck Breast', 'Duck Legs',
-    'Sausages', 'Pork Sausages', 'Beef Sausages', 'Chicken Sausages', 'Cumberland Sausages',
-    'Bacon', 'Streaky Bacon', 'Back Bacon', 'Smoked Bacon', 'Unsmoked Bacon', 'Bacon Rashers',
-    'Ham', 'Sliced Ham', 'Cooked Ham', 'Parma Ham', 'Serrano Ham',
-    'Cooked Meats', 'Sliced Meats', 'Deli Meats', 'Chorizo', 'Salami', 'Pepperoni',
-    'Pastrami', 'Corned Beef', 'Roast Beef', 'Turkey Slices', 'Chicken Slices',
-    // ============ 4. FRESH - FISH & SEAFOOD ============
-    'Fresh Fish', 'Salmon', 'Salmon Fillets', 'Smoked Salmon', 'Cod', 'Cod Fillets',
-    'Haddock', 'Smoked Haddock', 'Sea Bass', 'Trout', 'Mackerel', 'Smoked Mackerel',
-    'Tuna Steaks', 'Plaice', 'Sole', 'Bream', 'Tilapia', 'Pollock', 'Coley',
-    'Prawns', 'King Prawns', 'Tiger Prawns', 'Cooked Prawns', 'Raw Prawns',
-    'Shrimp', 'Crab', 'Crab Sticks', 'Lobster', 'Mussels', 'Scallops', 'Squid', 'Calamari',
-    'Fish Fingers', 'Fish Cakes', 'Breaded Fish', 'Battered Fish', 'Fish Pie Mix',
-    // ============ 5. FROZEN FOOD ============
-    'Frozen Vegetables', 'Frozen Peas', 'Frozen Sweetcorn', 'Frozen Mixed Vegetables',
-    'Frozen Broccoli', 'Frozen Spinach', 'Frozen Carrots', 'Frozen Green Beans',
-    'Frozen Chips', 'Oven Chips', 'Frozen Roast Potatoes', 'Frozen Mash', 'Frozen Wedges',
-    'Frozen Fish', 'Frozen Salmon', 'Frozen Cod', 'Frozen Haddock', 'Frozen Fish Fingers',
-    'Frozen Prawns', 'Frozen Seafood',
-    'Frozen Meat', 'Frozen Chicken', 'Frozen Burgers', 'Frozen Sausages', 'Frozen Meatballs',
-    'Frozen Pizza', 'Frozen Garlic Bread', 'Frozen Naan',
-    'Frozen Ready Meals', 'Frozen Lasagne', 'Frozen Curry', 'Frozen Chinese',
-    'Frozen Yorkshire Puddings', 'Frozen Stuffing', 'Frozen Gravy',
-    'Frozen Pastry', 'Puff Pastry', 'Shortcrust Pastry', 'Filo Pastry',
-    'Frozen Fruit', 'Frozen Berries', 'Frozen Mango', 'Frozen Banana',
-    'Ice Cream', 'Ben Jerrys', 'Haagen Dazs', 'Magnum', 'Cornetto', 'Viennetta',
-    'Ice Lollies', 'Fab', 'Twister', 'Calippo', 'Solero', 'Mini Milk',
-    'Frozen Desserts', 'Frozen Cheesecake', 'Frozen Gateau', 'Frozen Profiteroles',
-    // ============ COOKING & INGREDIENTS ============
-    'Cooking Oil', 'Olive Oil', 'Vegetable Oil', 'Sunflower Oil', 'Coconut Oil', 'Rapeseed Oil',
-    'Vinegar', 'Balsamic Vinegar', 'White Wine Vinegar', 'Cider Vinegar', 'Malt Vinegar',
-    'Salt', 'Sea Salt', 'Rock Salt', 'Table Salt', 'Lo Salt',
-    'Pepper', 'Black Pepper', 'White Pepper', 'Mixed Peppercorns',
-    'Herbs Spices', 'Paprika', 'Cumin', 'Coriander Spice', 'Turmeric', 'Cinnamon', 'Nutmeg',
-    'Chilli Powder', 'Curry Powder', 'Garam Masala', 'Mixed Herbs', 'Italian Herbs',
-    'Stock', 'Stock Cubes', 'Chicken Stock', 'Beef Stock', 'Vegetable Stock', 'Oxo',
-    'Gravy', 'Gravy Granules', 'Bisto',
-    'Flour', 'Plain Flour', 'Self Raising Flour', 'Strong Bread Flour', 'Wholemeal Flour',
-    'Sugar', 'Caster Sugar', 'Icing Sugar', 'Brown Sugar', 'Demerara Sugar',
-    'Baking Powder', 'Bicarbonate Soda', 'Yeast', 'Cornflour', 'Cocoa Powder',
-    'Vanilla Extract', 'Food Colouring', 'Chocolate Chips', 'Sprinkles',
-    // ============ PASTA RICE NOODLES ============
-    'Pasta', 'Spaghetti', 'Penne', 'Fusilli', 'Tagliatelle', 'Linguine', 'Macaroni',
-    'Lasagne Sheets', 'Ravioli', 'Tortellini', 'Fresh Pasta',
-    'Rice', 'Basmati Rice', 'Long Grain Rice', 'Brown Rice', 'Jasmine Rice', 'Risotto Rice',
-    'Wild Rice', 'Microwave Rice', 'Uncle Bens', 'Tilda',
-    'Noodles', 'Egg Noodles', 'Rice Noodles', 'Udon Noodles', 'Ramen Noodles',
-    'Pot Noodle', 'Super Noodles', 'Instant Noodles',
-    'Couscous', 'Bulgur Wheat', 'Quinoa', 'Pearl Barley', 'Lentils',
-    // ============ SAUCES & CONDIMENTS ============
-    'Ketchup', 'Heinz Ketchup', 'Tomato Ketchup',
-    'Mayonnaise', 'Hellmanns', 'Salad Cream',
-    'Mustard', 'English Mustard', 'Dijon Mustard', 'Wholegrain Mustard',
-    'Brown Sauce', 'HP Sauce', 'BBQ Sauce', 'Hot Sauce', 'Sriracha', 'Tabasco',
-    'Soy Sauce', 'Sweet Chilli Sauce', 'Hoisin Sauce', 'Teriyaki Sauce', 'Fish Sauce',
-    'Worcestershire Sauce', 'Mint Sauce', 'Horseradish', 'Tartare Sauce',
-    'Cooking Sauces', 'Pasta Sauce', 'Dolmio', 'Loyd Grossman', 'Homepride',
-    'Curry Sauce', 'Korma Sauce', 'Tikka Masala', 'Madras Sauce', 'Jalfrezi',
-    'Pataks', 'Sharwoods',
-    'Pesto', 'Red Pesto', 'Green Pesto',
-    'Stir Fry Sauce', 'Sweet And Sour', 'Black Bean Sauce', 'Oyster Sauce',
-    'Salsa', 'Guacamole', 'Hummus', 'Tzatziki',
-    // ============ TINNED & CANNED ============
-    'Tinned Tomatoes', 'Chopped Tomatoes', 'Plum Tomatoes', 'Passata', 'Tomato Puree',
-    'Baked Beans', 'Heinz Beans', 'Branston Beans',
-    'Tinned Vegetables', 'Tinned Sweetcorn', 'Tinned Peas', 'Tinned Carrots',
-    'Tinned Fruit', 'Tinned Peaches', 'Tinned Pineapple', 'Fruit Cocktail',
-    'Tinned Fish', 'Tinned Tuna', 'Tinned Salmon', 'Tinned Sardines', 'Tinned Mackerel',
-    'Tinned Meat', 'Corned Beef', 'Spam', 'Hot Dogs',
-    'Tinned Soup', 'Heinz Soup', 'Baxters Soup', 'Campbell Soup',
-    'Tinned Pasta', 'Spaghetti Hoops', 'Ravioli',
-    'Coconut Milk Tinned', 'Evaporated Milk', 'Condensed Milk',
-    'Kidney Beans', 'Chickpeas', 'Black Beans', 'Butter Beans', 'Cannellini Beans',
-    'Baked Beans With Sausages', 'Chilli Con Carne',
+    // ============ SNACKS ============
+    'Chocolate',
+    'Crisps',
+    'Biscuits',
+    'Sweets',
+    'Nuts',
+    'Popcorn',
+    'Crackers',
+    // ============ BREAKFAST ============
+    'Cereals',
+    'Porridge',
+    'Jam',
+    'Honey',
+    'Spread',
+    // ============ CARBS ============
+    'Pasta',
+    'Rice',
+    'Noodles',
+    'Couscous',
+    'Bread',
+    'Wraps',
+    // ============ SAUCES ============
+    'Sauce',
+    'Ketchup',
+    'Mayonnaise',
+    'Pesto',
+    'Dressing',
+    // ============ TINNED ============
+    'Tinned',
+    'Beans',
+    'Soup',
     // ============ DRINKS ============
-    'Water', 'Still Water', 'Sparkling Water', 'Mineral Water', 'Evian', 'Volvic',
-    'Juice', 'Orange Juice', 'Apple Juice', 'Tropical Juice', 'Cranberry Juice',
-    'Tropicana', 'Innocent', 'Ribena', 'Capri Sun',
-    'Squash', 'Robinsons', 'Vimto', 'Blackcurrant Squash', 'Orange Squash',
-    'Fizzy Drinks', 'Coca Cola', 'Pepsi', 'Fanta', 'Sprite', 'Lemonade',
-    'Lucozade', 'Red Bull', 'Monster Energy',
-    'Tea', 'PG Tips', 'Yorkshire Tea', 'Tetley', 'Twinings', 'Green Tea', 'Herbal Tea',
-    'Coffee', 'Instant Coffee', 'Nescafe', 'Kenco', 'Douwe Egberts', 'Coffee Pods',
-    'Hot Chocolate', 'Cadbury Hot Chocolate', 'Options Hot Chocolate',
-    // ============ READY MEALS & CONVENIENCE ============
-    'Ready Meals', 'Microwave Meals', 'Meal Deal',
-    'Sandwiches', 'Wraps', 'Meal Pots', 'Sushi',
-    'Soup', 'Fresh Soup', 'Chunky Soup',
-    'Pizza', 'Fresh Pizza', 'Takeaway Pizza', 'Chicago Town', 'Goodfellas', 'Dr Oetker',
-    'Curry', 'Indian Meal', 'Chinese Meal', 'Thai Meal', 'Italian Meal',
-    'Roast Dinner', 'Sunday Roast',
-    'Kids Meals', 'Lunchbox', 'School Dinners',
-    // ============ WORLD FOODS ============
-    'Chinese', 'Chinese Food', 'Stir Fry', 'Spring Rolls', 'Prawn Crackers', 'Duck Pancakes',
-    'Indian', 'Indian Food', 'Naan', 'Poppadoms', 'Onion Bhaji', 'Samosa',
-    'Thai', 'Thai Food', 'Thai Curry', 'Pad Thai',
-    'Mexican', 'Mexican Food', 'Fajita', 'Taco', 'Enchilada', 'Burrito',
-    'Italian', 'Italian Food', 'Risotto', 'Gnocchi', 'Bruschetta',
-    'Japanese', 'Japanese Food', 'Sushi Rice', 'Miso Soup', 'Edamame',
-    'Polish', 'Polish Food', 'Pierogi',
-    'Greek', 'Greek Food', 'Feta Salad',
-    'Middle Eastern', 'Falafel', 'Shawarma',
-    // ============ FREE FROM & SPECIAL DIETS ============
-    'Free From', 'Gluten Free', 'Dairy Free Foods', 'Lactose Free', 'Vegan',
-    'Vegetarian', 'Plant Based', 'Meat Free', 'Quorn', 'Linda McCartney',
-    'Beyond Meat', 'This Isnt', 'Vivera',
-    'Organic', 'Organic Food', 'Organic Vegetables', 'Organic Meat',
-    'Low Fat', 'Low Calorie', 'Low Sugar', 'Sugar Free', 'Diet', 'Light',
-    'High Protein', 'Protein', 'High Fibre',
-    'Halal', 'Halal Food', 'Halal Meat', 'Halal Chicken',
-    'Kosher',
-    // ============ BABY & TODDLER ============
-    'Baby Food', 'Baby Puree', 'Ella Kitchen', 'Cow Gate', 'Aptamil',
-    'Baby Milk', 'Formula Milk', 'Follow On Milk',
-    'Baby Snacks', 'Baby Biscuits', 'Baby Rice Cakes',
-    'Toddler Food', 'Toddler Meals',
-    // ============ MAJOR BRANDS ============
-    'Tesco Finest', 'Tesco Organic', 'Tesco Free From', 'Tesco Plant Chef',
-    'Wicked Kitchen', 'Hearty Food Co', 'Graze',
-    'Heinz', 'Kelloggs', 'Nestle', 'Kraft', 'Unilever', 'Mars',
-    'Birds Eye', 'McCain', 'Aunt Bessies',
-    'Muller', 'Yoplait',
-    'Warburtons', 'Hovis', 'Kingsmill',
-    'Cathedral City', 'Pilgrims Choice',
-    'Richmond', 'Mattessons',
-    // ============ CHILLED DESSERTS ============
-    'Chilled Desserts', 'Mousse', 'Chocolate Mousse', 'Panna Cotta', 'Rice Pudding',
-    'Tiramisu', 'Creme Brulee', 'Pots', 'Chocolate Pot', 'Dessert Pots', 'Gu',
-    // ============ DELI & ANTIPASTI ============
-    'Deli', 'Antipasti', 'Olives', 'Stuffed Olives', 'Sun Dried Tomatoes',
-    'Stuffed Peppers', 'Marinated', 'Artichokes', 'Capers', 'Anchovies',
-    // ============ PICKLES & PRESERVES ============
-    'Pickles', 'Gherkins', 'Pickled Onions', 'Pickled Beetroot', 'Sauerkraut',
-    'Chutney', 'Mango Chutney', 'Relish', 'Piccalilli', 'Branston Pickle',
-    // ============ MORE WORLD FOODS ============
-    'Korean', 'Korean Food', 'Kimchi', 'Gochujang', 'Korean BBQ',
-    'Vietnamese', 'Pho', 'Vietnamese Food',
-    'Caribbean', 'Jerk', 'Jerk Chicken', 'Plantain', 'Ackee',
-    'African', 'Jollof', 'African Food',
-    // ============ OFFAL & SPECIALTY MEATS ============
-    'Liver', 'Chicken Liver', 'Lambs Liver', 'Kidney', 'Heart',
-    'Black Pudding', 'White Pudding', 'Haggis', 'Tripe',
-    'Venison', 'Rabbit', 'Goat', 'Pheasant', 'Partridge',
-    // ============ DRIED FRUITS & TRAIL MIX ============
-    'Dried Fruit', 'Raisins', 'Sultanas', 'Currants', 'Dried Apricots',
-    'Dried Mango', 'Dried Cranberries', 'Prunes', 'Trail Mix', 'Fruit And Nut Mix',
-    // ============ MEAL KITS & BUNDLES ============
-    'Meal Kit', 'Recipe Box', 'Dinner Kit', 'Cook Kit', 'Meal Bundle',
-    // ============ TESCO OWN BRAND RANGES ============
-    'Tesco', 'Tesco Everyday Value', 'Tesco Clubcard', 'Tesco Meal Deal',
-    'Exclusively At Tesco', 'Tesco Ingredients',
-    // ============ SEASONAL ============
-    'Christmas Food', 'Christmas Dinner', 'Turkey Crown', 'Mince Pies', 'Christmas Pudding',
-    'Easter', 'Easter Eggs', 'Hot Cross Buns', 'Simnel Cake',
-    'BBQ', 'BBQ Food', 'Summer Food', 'Picnic', 'Party Food',
-    'Halloween', 'Bonfire Night',
-    // ============ BREAKFAST EXTRAS ============
-    'Hash Browns', 'Potato Waffles', 'Beans On Toast', 'Full English',
-    'Kippers', 'Smoked Kippers', 'Kedgeree',
-    // ============ BROAD CATCH-ALL TERMS ============
-    'Groceries', 'Food', 'Fresh Food', 'Chilled', 'Chilled Food',
-    'Ambient', 'Cupboard', 'Essentials', 'Basics', 'Everyday',
-    'Weekly Shop', 'Big Shop', 'Top Up',
-    // ============ GENERIC CATEGORY TERMS (to capture all products in category) ============
-    // These single-word generic terms should return many products per search
-    'Fruit', 'Vegetables', 'Salad', 'Herbs',
-    'Dairy', 'Milk', 'Cheese', 'Yogurt', 'Butter', 'Eggs', 'Cream',
-    'Meat', 'Beef', 'Pork', 'Lamb', 'Chicken', 'Turkey', 'Sausages', 'Bacon', 'Ham',
-    'Fish', 'Seafood', 'Prawns', 'Salmon',
-    'Bread', 'Bakery', 'Rolls', 'Cakes', 'Pastries', 'Pies',
-    'Frozen', 'Ice Cream', 'Frozen Meals', 'Frozen Vegetables', 'Frozen Meat',
-    'Chocolate', 'Sweets', 'Crisps', 'Snacks', 'Biscuits', 'Cookies', 'Crackers', 'Nuts',
-    'Cereals', 'Breakfast', 'Porridge', 'Muesli', 'Granola',
-    'Pasta', 'Rice', 'Noodles', 'Grains',
-    'Sauces', 'Condiments', 'Ketchup', 'Mayonnaise', 'Dressings',
-    'Tinned', 'Canned', 'Beans', 'Soup',
-    'Drinks', 'Water', 'Juice', 'Squash', 'Fizzy', 'Tea', 'Coffee',
-    'Ready Meals', 'Sandwiches', 'Pizza', 'Curry',
-    'Vegan', 'Vegetarian', 'Gluten Free', 'Organic', 'Free From',
-    'Baby', 'Toddler',
-    'Spreads', 'Jams', 'Honey',
-    'Oil', 'Vinegar', 'Seasonings', 'Spices',
-    'Desserts', 'Puddings', 'Trifle', 'Mousse',
-    'Dips', 'Hummus', 'Salsa',
-    'Stuffing', 'Gravy', 'Stock',
-    'World Food', 'Chinese', 'Indian', 'Mexican', 'Italian', 'Thai',
-    'Party', 'Entertaining', 'Nibbles',
-    // ============ ALPHABETICAL CATCH-ALL (A-Z single letters) ============
-    // These catch products not found by category searches
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+    'Water',
+    'Juice',
+    'Squash',
+    'Fizzy Drinks',
+    'Tea',
+    'Coffee',
+    // ============ DAIRY ============
+    'Milk',
+    'Cheese',
+    'Yogurt',
+    'Eggs',
+    'Butter',
+    'Cream',
+    // ============ BAKERY ============
+    'Cakes',
+    'Pastries',
+    'Pies',
+    'Croissants',
+    // ============ FRESH ============
+    'Fruit',
+    'Vegetables',
+    'Salad',
+    // ============ MEAT ============
+    'Beef',
+    'Pork',
+    'Lamb',
+    'Chicken',
+    'Sausages',
+    'Bacon',
+    'Ham',
+    'Mince',
+    // ============ FISH ============
+    'Fish',
+    'Salmon',
+    'Prawns',
+    // ============ FROZEN ============
+    'Frozen',
+    'Ice Cream',
+    'Frozen Pizza',
+    // ============ READY MEALS ============
+    'Ready Meals',
+    'Sandwiches',
+    'Pizza',
+    // ============ WORLD FOOD ============
+    'Chinese',
+    'Indian',
+    'Mexican',
+    'Italian',
+    // ============ DIETARY ============
+    'Vegan',
+    'Gluten Free',
+    'Organic',
+    // ============ COOKING ============
+    'Oil',
+    'Vinegar',
+    'Spices',
+    'Stock',
+    'Flour',
+    'Sugar',
+    // ============ DELI & CHILLED ============
+    'Hummus',
+    'Dips',
+    'Olives',
+    'Coleslaw',
+    // ============ CONDIMENTS ============
+    'Mustard',
+    'Pickles',
+    'Chutney',
+    'Relish',
+    // ============ SNACK BARS ============
+    'Cereal Bars',
+    'Protein Bars',
+    // ============ DRINKS EXTRA ============
+    'Energy Drinks',
+    'Smoothies',
+    'Milkshakes',
+    // ============ DESSERTS ============
+    'Pudding',
+    'Custard',
+    'Jelly',
+    'Trifle',
+    // ============ SPREADS ============
+    'Peanut Butter',
+    'Marmite',
+    // ============ BAKING ============
+    'Baking',
+    'Chocolate Chips',
+    'Icing',
+    // ============ WORLD FOOD EXTRA ============
+    'Thai',
+    'Japanese',
+    'Korean',
+    'Polish',
+    // ============ PLANT-BASED ============
+    'Meat Free',
+    'Plant Based',
+    'Quorn',
+    // ============ FRESH EXTRA ============
+    'Herbs',
+    'Mushrooms',
+    // ============ ALCOHOL ============
+    'Beer',
+    'Wine',
+    'Spirits',
+    // ============ ON-THE-GO & CONVENIENCE ============
+    'Meal Deal',
+    'Snack Pots',
+    'Pasta Pots',
+    'Sushi',
+    'Salad Pots',
+    'Rolls',
+    'Lunch',
+    'Snacking',
+    // ============ ON-THE-GO DRINKS ============
+    '330ml',
+    '500ml',
+    'Coke',
+    'Pepsi',
+    'Fanta',
+    'Sprite',
+    'Lucozade',
+    'Red Bull',
+    'Monster',
+    'Ribena',
+    'Oasis',
+    'Volvic',
+    'Evian',
+    'Innocent',
+    'Costa Coffee',
+    'Starbucks',
 ];
 // Helper: Parse numeric value from string
 function parseNumber(value) {
@@ -661,6 +538,290 @@ async function searchTescoProducts(query, page = 0) {
         const totalPages = pagination.totalPages || 1;
         return { products, totalPages };
     }, 3, 1000, `search "${query}" page ${page}`); // Reduced from 3000ms
+}
+/**
+ * Search UK Groceries API - General UK grocery products
+ * This API returns products with full details in one call (no separate details fetch needed)
+ */
+async function searchUKGroceriesProducts(query, page = 0) {
+    return retryWithBackoff(async () => {
+        const response = await axios_1.default.get(`https://${UK_GROCERIES_HOST}/groceries/search/${encodeURIComponent(query)}`, {
+            headers: {
+                'x-rapidapi-host': UK_GROCERIES_HOST,
+                'x-rapidapi-key': UK_GROCERIES_API_KEY
+            },
+            timeout: 30000
+        });
+        console.log(`[UK_GROCERIES] Search "${query}" response keys: ${JSON.stringify(Object.keys(response.data || {}))}`);
+        // The API might return data in different formats - handle both array and object
+        let rawProducts = [];
+        if (Array.isArray(response.data)) {
+            rawProducts = response.data;
+        }
+        else if (response.data?.products) {
+            rawProducts = response.data.products;
+        }
+        else if (response.data?.items) {
+            rawProducts = response.data.items;
+        }
+        else if (response.data?.data) {
+            rawProducts = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+        }
+        console.log(`[UK_GROCERIES] Found ${rawProducts.length} raw products for "${query}"`);
+        // Parse and filter products with nutrition data
+        const products = [];
+        for (const item of rawProducts) {
+            try {
+                const parsed = parseUKGroceriesProduct(item);
+                if (parsed && hasValidNutrition(parsed.nutrition)) {
+                    products.push(parsed);
+                }
+            }
+            catch (e) {
+                console.warn(`[UK_GROCERIES] Failed to parse product: ${e.message}`);
+            }
+        }
+        console.log(`[UK_GROCERIES] ${products.length} products with valid nutrition for "${query}"`);
+        // This API doesn't paginate the same way - assume single page for now
+        return { products, totalPages: 1 };
+    }, 3, 2000, `UK groceries search "${query}"`);
+}
+/**
+ * Parse UK Groceries API product into our standard format
+ */
+function parseUKGroceriesProduct(item) {
+    if (!item)
+        return null;
+    // Extract ID - try multiple fields
+    const id = item.id || item.productId || item.sku || item.gtin || `ukg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Extract title/name
+    const title = item.name || item.title || item.productName || item.description;
+    if (!title)
+        return null;
+    // Extract brand
+    const brand = item.brand || item.brandName || item.manufacturer || '';
+    // Extract price
+    const price = parseNumber(item.price || item.unitPrice || item.currentPrice);
+    // Extract image
+    const imageUrl = item.image || item.imageUrl || item.img || item.thumbnail ||
+        item.images?.[0] || item.productImage;
+    // Extract nutrition - try multiple possible structures
+    let nutrition = {};
+    const nutritionData = item.nutrition || item.nutritionalInfo || item.nutritionInfo ||
+        item.nutritionFacts || item.nutrients || item.nutritionalValues || item;
+    if (nutritionData) {
+        // Try to extract each nutrient with multiple possible field names
+        nutrition.energyKcal = parseNumber(nutritionData.energyKcal || nutritionData.kcal || nutritionData.calories ||
+            nutritionData.energy_kcal || nutritionData.caloriesKcal || nutritionData.cal ||
+            nutritionData.Energy?.kcal);
+        nutrition.energyKj = parseNumber(nutritionData.energyKj || nutritionData.kj || nutritionData.energy_kj ||
+            nutritionData.kilojoules || nutritionData.Energy?.kj);
+        nutrition.fat = parseNumber(nutritionData.fat || nutritionData.totalFat || nutritionData.Fat ||
+            nutritionData.fats || nutritionData.lipids);
+        nutrition.saturates = parseNumber(nutritionData.saturates || nutritionData.saturatedFat || nutritionData.saturated ||
+            nutritionData.saturated_fat || nutritionData.Saturates);
+        nutrition.carbohydrate = parseNumber(nutritionData.carbohydrate || nutritionData.carbohydrates || nutritionData.carbs ||
+            nutritionData.totalCarbohydrate || nutritionData.Carbohydrate);
+        nutrition.sugars = parseNumber(nutritionData.sugars || nutritionData.sugar || nutritionData.totalSugars ||
+            nutritionData.Sugars);
+        nutrition.fibre = parseNumber(nutritionData.fibre || nutritionData.fiber || nutritionData.dietaryFibre ||
+            nutritionData.dietary_fiber || nutritionData.Fibre);
+        nutrition.protein = parseNumber(nutritionData.protein || nutritionData.proteins || nutritionData.Protein);
+        // Handle salt - check for salt field first, then convert from sodium if needed
+        // UK uses salt in grams, US uses sodium in mg
+        const saltDirect = parseNumber(nutritionData.salt || nutritionData.Salt);
+        if (saltDirect !== undefined && saltDirect > 0) {
+            nutrition.salt = saltDirect;
+        }
+        else {
+            // Try to convert from sodium (sodium is typically in mg)
+            const sodiumVal = parseNumber(nutritionData.sodium);
+            if (sodiumVal !== undefined && sodiumVal > 0) {
+                // Sodium in mg to salt in g: salt = sodium(mg) * 2.5 / 1000
+                nutrition.salt = (sodiumVal * 2.5) / 1000;
+            }
+        }
+    }
+    // Extract ingredients
+    let ingredients = item.ingredients || item.ingredientsList || item.ingredientsText ||
+        item.ingredient_list || '';
+    if (Array.isArray(ingredients)) {
+        ingredients = ingredients.join(', ');
+    }
+    // Extract allergens
+    let allergens = [];
+    if (item.allergens) {
+        allergens = Array.isArray(item.allergens) ? item.allergens : [item.allergens];
+    }
+    else if (item.allergenInfo) {
+        allergens = identifyAllergens(item.allergenInfo);
+    }
+    else if (ingredients) {
+        allergens = identifyAllergens(ingredients);
+    }
+    // Extract category
+    const category = item.category || item.department || item.aisle || item.superDepartment || '';
+    // Extract serving size
+    const servingSize = item.servingSize || item.serving_size || item.portionSize || '';
+    // Extract barcode/GTIN
+    const gtin = item.gtin || item.barcode || item.ean || item.upc || '';
+    return {
+        id: `ukg_${id}`,
+        tpnb: '',
+        gtin,
+        title,
+        brand,
+        description: item.description || item.productDescription || '',
+        imageUrl,
+        price,
+        unitPrice: item.unitPrice || item.pricePerUnit || '',
+        nutrition,
+        ingredients,
+        allergens,
+        servingSize,
+        category,
+        importedAt: new Date().toISOString(),
+        source: 'uk_groceries_api'
+    };
+}
+/**
+ * Search Spoonacular API - Grocery products with nutrition
+ * Uses product search to find actual food items (not recipes)
+ */
+async function searchSpoonacularProducts(query, page = 0) {
+    return retryWithBackoff(async () => {
+        const offset = page * 10; // 10 results per page
+        // Use grocery product search (not recipes)
+        const response = await axios_1.default.get(`https://${SPOONACULAR_HOST}/food/products/search`, {
+            params: {
+                query: query,
+                number: 10,
+                offset: offset
+            },
+            headers: {
+                'x-rapidapi-host': SPOONACULAR_HOST,
+                'x-rapidapi-key': SPOONACULAR_API_KEY
+            },
+            timeout: 30000
+        });
+        console.log(`[SPOONACULAR] Product search "${query}" offset ${offset} - status: ${response.status}`);
+        const results = response.data?.products || [];
+        const totalResults = response.data?.totalProducts || 0;
+        const totalPages = Math.ceil(totalResults / 10);
+        console.log(`[SPOONACULAR] Found ${results.length} products for "${query}" (${totalResults} total)`);
+        // Parse products - need to fetch full details for nutrition
+        const products = [];
+        for (const product of results) {
+            try {
+                // Get full product details with nutrition
+                const detailResponse = await axios_1.default.get(`https://${SPOONACULAR_HOST}/food/products/${product.id}`, {
+                    headers: {
+                        'x-rapidapi-host': SPOONACULAR_HOST,
+                        'x-rapidapi-key': SPOONACULAR_API_KEY
+                    },
+                    timeout: 15000
+                });
+                const parsed = parseSpoonacularProduct(detailResponse.data);
+                if (parsed && hasValidNutrition(parsed.nutrition)) {
+                    products.push(parsed);
+                }
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            catch (e) {
+                console.warn(`[SPOONACULAR] Failed to get product ${product.id}: ${e.message}`);
+            }
+        }
+        console.log(`[SPOONACULAR] ${products.length} products with valid nutrition for "${query}"`);
+        return { products, totalPages };
+    }, 3, 2000, `Spoonacular search "${query}" page ${page}`);
+}
+/**
+ * Parse Spoonacular grocery product into our standard product format
+ */
+function parseSpoonacularProduct(product) {
+    if (!product)
+        return null;
+    const id = product.id ? `spoon_${product.id}` : `spoon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const title = product.title;
+    if (!title)
+        return null;
+    // Extract nutrition from the product nutrition structure
+    let nutrition = {};
+    const nutrients = product.nutrition?.nutrients || [];
+    for (const nutrient of nutrients) {
+        const name = nutrient.name?.toLowerCase() || '';
+        const amount = nutrient.amount;
+        // Note: unit is available as nutrient.unit if needed for debugging
+        // Get serving size for normalization
+        // Spoonacular returns nutrition per serving, we need per 100g
+        const servingGrams = parseFloat(product.servings?.size) || parseFloat(product.servingSize) || 100;
+        // Normalize to per 100g
+        const normalizeToP100g = (val) => {
+            if (servingGrams && servingGrams !== 100) {
+                return (val / servingGrams) * 100;
+            }
+            return val;
+        };
+        // Map Spoonacular nutrients to our format
+        if (name === 'calories') {
+            nutrition.energyKcal = normalizeToP100g(amount);
+        }
+        else if (name === 'fat') {
+            nutrition.fat = normalizeToP100g(amount);
+        }
+        else if (name === 'saturated fat') {
+            nutrition.saturates = normalizeToP100g(amount);
+        }
+        else if (name === 'carbohydrates') {
+            nutrition.carbohydrate = normalizeToP100g(amount);
+        }
+        else if (name === 'sugar') {
+            nutrition.sugars = normalizeToP100g(amount);
+        }
+        else if (name === 'fiber') {
+            nutrition.fibre = normalizeToP100g(amount);
+        }
+        else if (name === 'protein') {
+            nutrition.protein = normalizeToP100g(amount);
+        }
+        else if (name === 'sodium') {
+            // Sodium is in mg, normalize to per 100g then convert to salt in g
+            // salt = sodium(mg) * 2.5 / 1000
+            const sodiumPer100g = normalizeToP100g(amount);
+            nutrition.salt = (sodiumPer100g * 2.5) / 1000;
+        }
+    }
+    // Extract ingredients
+    const ingredients = product.ingredientList || product.ingredients || '';
+    // Extract allergens from ingredients
+    const allergens = identifyAllergens(ingredients);
+    // Get image URL
+    const imageUrl = product.image || product.images?.[0] || '';
+    // Get serving size
+    const servingSize = product.servingSize || '';
+    // Get category/aisle
+    const category = product.aisle || product.breadcrumbs?.join(' > ') || 'Grocery';
+    // Get barcode/UPC if available
+    const gtin = product.upc || product.ean || '';
+    return {
+        id,
+        tpnb: '',
+        gtin,
+        title,
+        brand: product.brand || 'Unknown',
+        description: product.description || '',
+        imageUrl,
+        price: product.price,
+        unitPrice: '',
+        nutrition,
+        ingredients,
+        allergens,
+        servingSize,
+        category,
+        importedAt: new Date().toISOString(),
+        source: 'spoonacular_api'
+    };
 }
 async function getProductDetails(productId) {
     try {
@@ -969,6 +1130,7 @@ exports.getTescoBuildProgress = functions.https.onCall(async (_data, context) =>
     const progressDoc = await db.collection('system').doc('tescoBuildProgress').get();
     if (!progressDoc.exists) {
         return {
+            apiSource: 'tesco8',
             status: 'idle',
             currentTermIndex: 0,
             currentTerm: '',
@@ -1000,18 +1162,20 @@ exports.startTescoBuild = functions
     }
     const db = admin.firestore();
     const progressRef = db.collection('system').doc('tescoBuildProgress');
-    const tescoCollection = db.collection('tescoProducts');
+    // Get API source from request (default to tesco8)
+    const requestedApiSource = data?.apiSource || 'tesco8';
     // Get current progress
     const progressDoc = await progressRef.get();
     let progress = progressDoc.exists
         ? progressDoc.data()
         : {
+            apiSource: requestedApiSource,
             status: 'idle',
             currentTermIndex: 0,
             currentTerm: '',
             totalTerms: SEARCH_TERMS.length,
-            currentPage: 5, // Start at page 5 (continuing from previous run)
-            maxPages: 10, // Go up to page 9 (pages 5-9)
+            currentPage: 0, // Start fresh with new simplified terms
+            maxPages: 20, // 20 pages per term for deep coverage
             productsFound: 0,
             productsWithNutrition: 0,
             productsSaved: 0,
@@ -1024,9 +1188,41 @@ exports.startTescoBuild = functions
         };
     // Ensure currentPage and maxPages exist for older progress docs
     if (progress.currentPage === undefined)
-        progress.currentPage = 5;
+        progress.currentPage = 0;
     if (progress.maxPages === undefined)
-        progress.maxPages = 10;
+        progress.maxPages = 20;
+    if (!progress.apiSource)
+        progress.apiSource = 'tesco8';
+    // If switching API source, FORCE RESET to start fresh with new API
+    if (data?.apiSource && data.apiSource !== progress.apiSource) {
+        console.log(`[START] Switching API source from ${progress.apiSource} to ${data.apiSource} - FORCING RESET`);
+        progress = {
+            apiSource: data.apiSource,
+            status: 'running',
+            currentTermIndex: 0,
+            currentTerm: SEARCH_TERMS[0],
+            totalTerms: SEARCH_TERMS.length,
+            currentPage: 0,
+            maxPages: 20,
+            productsFound: 0,
+            productsWithNutrition: 0,
+            productsSaved: 0,
+            duplicatesSkipped: 0,
+            errors: 0,
+            startedAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString(),
+            errorMessages: [`Switched to ${data.apiSource} API`],
+            recentlyFoundProducts: []
+        };
+        // Skip other checks - we're starting fresh with new API
+        await progressRef.set(progress);
+        console.log(`[START] API switch complete - starting fresh build with ${data.apiSource}`);
+        return {
+            success: true,
+            message: `Switched to ${data.apiSource} API and started fresh build`,
+            progress
+        };
+    }
     // Log current status for debugging
     console.log(`[START] Current status: ${progress.status}, currentTermIndex: ${progress.currentTermIndex}/${SEARCH_TERMS.length}, lastUpdated: ${progress.lastUpdated}`);
     // Check if already running - but handle stale 'running' status
@@ -1053,14 +1249,15 @@ exports.startTescoBuild = functions
     }
     // Option to reset - check this FIRST before the completed check
     if (data?.reset) {
-        console.log(`[START] Reset requested - restarting build from beginning`);
+        console.log(`[START] Reset requested - restarting build from beginning with API: ${requestedApiSource}`);
         progress = {
+            apiSource: requestedApiSource,
             status: 'running',
             currentTermIndex: 0,
             currentTerm: SEARCH_TERMS[0],
             totalTerms: SEARCH_TERMS.length,
-            currentPage: 5, // Start at page 5 (continuing from previous run)
-            maxPages: 10, // Go up to page 9 (pages 5-9)
+            currentPage: 0, // Start fresh with new simplified terms
+            maxPages: 20, // 20 pages per term for deep coverage
             productsFound: 0,
             productsWithNutrition: 0,
             productsSaved: 0,
@@ -1073,19 +1270,38 @@ exports.startTescoBuild = functions
         };
     }
     else if (progress.status === 'completed') {
-        // Only block if completed AND not requesting reset
-        console.log(`[START] Build already completed. Use reset=true to restart.`);
-        return {
-            success: false,
-            message: 'Build already completed. Use reset to restart.',
-            progress
-        };
+        // Check if we have NEW terms to process (totalTerms increased)
+        if (progress.currentTermIndex < SEARCH_TERMS.length) {
+            console.log(`[START] Build was completed but NEW terms detected! Continuing from term ${progress.currentTermIndex} (${SEARCH_TERMS[progress.currentTermIndex]})`);
+            progress.status = 'running';
+            progress.totalTerms = SEARCH_TERMS.length;
+            progress.currentTerm = SEARCH_TERMS[progress.currentTermIndex];
+            progress.currentPage = 0; // Start fresh for the new term
+            progress.lastUpdated = new Date().toISOString();
+        }
+        else {
+            // Truly completed - all terms done
+            console.log(`[START] Build already completed. Use reset=true to restart.`);
+            return {
+                success: false,
+                message: 'Build already completed. Use reset to restart.',
+                progress
+            };
+        }
     }
     else {
         progress.status = 'running';
         progress.lastUpdated = new Date().toISOString();
     }
+    // Clear stop flag when starting - user initiated a new start
+    progress.stopRequested = false;
+    console.log(`[START] Starting build with API: ${progress.apiSource}, stopRequested cleared`);
     await progressRef.set(progress);
+    // Get the correct collection and index for this API source
+    const apiConfig = getApiConfig(progress.apiSource);
+    const productCollection = db.collection(apiConfig.collection);
+    const algoliaIndexName = apiConfig.algoliaIndex;
+    console.log(`[START] Using collection: ${apiConfig.collection}, Algolia index: ${algoliaIndexName}`);
     // Initialize Algolia
     let algoliaClient = null;
     if (ALGOLIA_ADMIN_KEY) {
@@ -1099,10 +1315,10 @@ exports.startTescoBuild = functions
         if (algoliaBatch.length > 0 && algoliaClient) {
             try {
                 await algoliaClient.saveObjects({
-                    indexName: TESCO_INDEX_NAME,
+                    indexName: algoliaIndexName,
                     objects: algoliaBatch
                 });
-                console.log(`[ALGOLIA] Flushed ${algoliaBatch.length} objects`);
+                console.log(`[ALGOLIA] Flushed ${algoliaBatch.length} objects to ${algoliaIndexName}`);
             }
             catch (e) {
                 console.error(`[ALGOLIA] Batch error: ${e.message}`);
@@ -1124,30 +1340,87 @@ exports.startTescoBuild = functions
                 progress.currentPage = page;
                 progress.lastUpdated = new Date().toISOString();
                 await progressRef.update({ ...progress });
-                console.log(`[SEARCH] "${term}" page ${page + 1}/${progress.maxPages} (term ${termIndex + 1}/${SEARCH_TERMS.length})`);
+                console.log(`[SEARCH] "${term}" page ${page + 1}/${progress.maxPages} (term ${termIndex + 1}/${SEARCH_TERMS.length}) [API: ${progress.apiSource}]`);
+                let shouldBreakAfterProcessing = false;
                 try {
-                    // Search for this term at this page
-                    const { products, totalPages } = await searchTescoProducts(term, page);
-                    // Skip if this page doesn't exist for this term
-                    if (page >= totalPages) {
-                        console.log(`[SEARCH] Term "${term}" only has ${totalPages} pages, done with this term`);
-                        break; // Move to next term
+                    let batchResults = [];
+                    let existingMap = new Map();
+                    // Handle different API sources
+                    if (progress.apiSource === 'uk_groceries') {
+                        // UK Groceries API returns full products directly
+                        const { products: fullProducts } = await searchUKGroceriesProducts(term, page);
+                        // Skip if no products
+                        if (fullProducts.length === 0) {
+                            console.log(`[SEARCH] UK Groceries: No products found for "${term}"`);
+                            break; // Move to next term - UK Groceries doesn't paginate
+                        }
+                        // Filter out already seen products
+                        const newProducts = fullProducts.filter(p => !seenProductIds.has(p.id));
+                        newProducts.forEach(p => seenProductIds.add(p.id));
+                        progress.productsFound += newProducts.length;
+                        // Batch check existing documents
+                        const productIds = newProducts.map(p => p.id);
+                        existingMap = await batchCheckExisting(productCollection, productIds);
+                        // Convert to batch result format
+                        batchResults = newProducts.map(product => ({
+                            productId: product.id,
+                            product,
+                            error: undefined
+                        }));
+                        console.log(`[SEARCH] UK Groceries: ${newProducts.length} new products for "${term}"`);
+                        // UK Groceries doesn't paginate - move to next term after processing
+                        shouldBreakAfterProcessing = true;
                     }
-                    // OPTIMIZED: Batch check which products already exist
-                    const newProductIds = products.filter(p => !seenProductIds.has(p.id)).map(p => p.id);
-                    newProductIds.forEach(id => seenProductIds.add(id));
-                    progress.productsFound += newProductIds.length;
-                    // Batch read existing documents
-                    const existingMap = await batchCheckExisting(tescoCollection, newProductIds);
-                    // OPTIMIZED: Fetch product details in parallel batches with rate limiting
-                    // Filter to only IDs that need fetching (not in existingMap or need update check)
-                    const idsToFetch = newProductIds.filter(id => {
-                        const existing = existingMap.get(id);
-                        // Fetch if not existing, or if we need to check for more complete data
-                        return !existing || true; // Always fetch to check for completeness
-                    });
-                    console.log(`[BATCH] Fetching ${idsToFetch.length} products in parallel batches`);
-                    const batchResults = await processProductBatch(idsToFetch);
+                    else if (progress.apiSource === 'spoonacular') {
+                        // Spoonacular API returns full recipes with nutrition
+                        const { products: fullProducts, totalPages } = await searchSpoonacularProducts(term, page);
+                        // Skip if no products
+                        if (fullProducts.length === 0) {
+                            console.log(`[SEARCH] Spoonacular: No recipes found for "${term}"`);
+                            break; // Move to next term
+                        }
+                        // Skip if this page doesn't exist
+                        if (page >= totalPages) {
+                            console.log(`[SEARCH] Spoonacular: Term "${term}" only has ${totalPages} pages, done`);
+                            break;
+                        }
+                        // Filter out already seen products
+                        const newProducts = fullProducts.filter(p => !seenProductIds.has(p.id));
+                        newProducts.forEach(p => seenProductIds.add(p.id));
+                        progress.productsFound += newProducts.length;
+                        // Batch check existing documents
+                        const productIds = newProducts.map(p => p.id);
+                        existingMap = await batchCheckExisting(productCollection, productIds);
+                        // Convert to batch result format
+                        batchResults = newProducts.map(product => ({
+                            productId: product.id,
+                            product,
+                            error: undefined
+                        }));
+                        console.log(`[SEARCH] Spoonacular: ${newProducts.length} new recipes for "${term}"`);
+                    }
+                    else {
+                        // Tesco8 API - search returns IDs, then fetch details
+                        const { products, totalPages } = await searchTescoProducts(term, page);
+                        // Skip if this page doesn't exist for this term
+                        if (page >= totalPages) {
+                            console.log(`[SEARCH] Term "${term}" only has ${totalPages} pages, done with this term`);
+                            break; // Move to next term
+                        }
+                        // OPTIMIZED: Batch check which products already exist
+                        const newProductIds = products.filter(p => !seenProductIds.has(p.id)).map(p => p.id);
+                        newProductIds.forEach(id => seenProductIds.add(id));
+                        progress.productsFound += newProductIds.length;
+                        // Batch read existing documents
+                        existingMap = await batchCheckExisting(productCollection, newProductIds);
+                        // OPTIMIZED: Fetch product details in parallel batches with rate limiting
+                        const idsToFetch = newProductIds.filter(id => {
+                            const existing = existingMap.get(id);
+                            return !existing || true;
+                        });
+                        console.log(`[BATCH] Fetching ${idsToFetch.length} products in parallel batches`);
+                        batchResults = await processProductBatch(idsToFetch);
+                    }
                     // Process batch results
                     for (const { productId, product, error: detailsError } of batchResults) {
                         if (detailsError) {
@@ -1187,10 +1460,10 @@ exports.startTescoBuild = functions
                             progress.productsWithNutrition++;
                             // Save to Firestore with error handling (set will create or update)
                             try {
-                                await tescoCollection.doc(product.id).set(removeUndefined(product));
+                                await productCollection.doc(product.id).set(removeUndefined(product));
                                 progress.productsSaved++;
                                 progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
-                                console.log(`Saved product: ${product.id} - ${product.title?.substring(0, 40)} (${product.nutrition?.energyKcal} kcal)`);
+                                console.log(`Saved product to ${apiConfig.collection}: ${product.id} - ${product.title?.substring(0, 40)} (${product.nutrition?.energyKcal} kcal)`);
                                 // Track this product in recentlyFoundProducts
                                 if (!progress.recentlyFoundProducts) {
                                     progress.recentlyFoundProducts = [];
@@ -1257,6 +1530,11 @@ exports.startTescoBuild = functions
                         progress: currentProgress.data()
                     };
                 }
+                // For UK Groceries API, break after first page (no pagination)
+                if (shouldBreakAfterProcessing) {
+                    console.log(`[SEARCH] UK Groceries: Moving to next term after processing`);
+                    break;
+                }
             } // End page loop
             // Reset page to 0 for next term
             progress.currentPage = 0;
@@ -1310,8 +1588,10 @@ exports.stopTescoBuild = functions.https.onCall(async (_data, context) => {
     const progressRef = db.collection('system').doc('tescoBuildProgress');
     await progressRef.update({
         status: 'idle',
+        stopRequested: true, // Block scheduled function from auto-restarting
         lastUpdated: new Date().toISOString()
     });
+    console.log('[STOP] Build stopped completely - stopRequested flag set');
     return { success: true, message: 'Build stopped completely' };
 });
 /**
@@ -1325,12 +1605,12 @@ exports.scheduledTescoBuild = functions
     .onRun(async () => {
     const db = admin.firestore();
     const progressRef = db.collection('system').doc('tescoBuildProgress');
-    const tescoCollection = db.collection('tescoProducts');
     // Get current progress
     const progressDoc = await progressRef.get();
     let progress = progressDoc.exists
         ? progressDoc.data()
         : {
+            apiSource: 'tesco8',
             status: 'idle',
             currentTermIndex: 0,
             currentTerm: '',
@@ -1349,14 +1629,25 @@ exports.scheduledTescoBuild = functions
         };
     // Ensure currentPage and maxPages exist for older progress docs
     if (progress.currentPage === undefined)
-        progress.currentPage = 5;
+        progress.currentPage = 0;
     if (progress.maxPages === undefined)
-        progress.maxPages = 10;
-    console.log(`[SCHEDULED] Status: ${progress.status}, Page: ${progress.currentPage}/${progress.maxPages}, Term: ${progress.currentTermIndex}/${progress.totalTerms}`);
+        progress.maxPages = 20;
+    if (!progress.apiSource)
+        progress.apiSource = 'tesco8';
+    // Get the correct collection and index for this API source
+    const apiConfig = getApiConfig(progress.apiSource);
+    const productCollection = db.collection(apiConfig.collection);
+    const algoliaIndexName = apiConfig.algoliaIndex;
+    console.log(`[SCHEDULED] Status: ${progress.status}, Page: ${progress.currentPage}/${progress.maxPages}, Term: ${progress.currentTermIndex}/${progress.totalTerms}, API: ${progress.apiSource}`);
     // Only run if status is 'running' (started via admin UI)
     // Don't run if paused, completed, or idle
     if (progress.status !== 'running') {
         console.log(`[SCHEDULED] Build status is '${progress.status}', not continuing.`);
+        return null;
+    }
+    // Check if user requested stop - respect the stop request
+    if (progress.stopRequested) {
+        console.log(`[SCHEDULED] Stop was requested by user - aborting scheduled run`);
         return null;
     }
     // ============ STALL DETECTION & AUTO-RESTART ============
@@ -1385,7 +1676,13 @@ exports.scheduledTescoBuild = functions
         console.log(`[SCHEDULED] ⏸️ Paused. Waiting ${AUTO_RESTART_DELAY_MS / 1000}s before restart...`);
         // Step 2: Wait 30 seconds
         await new Promise(resolve => setTimeout(resolve, AUTO_RESTART_DELAY_MS));
-        // Step 3: Resume
+        // Step 3: Check if stop was requested during the wait
+        const freshProgress = await progressRef.get();
+        if (freshProgress.exists && freshProgress.data()?.stopRequested) {
+            console.log(`[SCHEDULED] Stop was requested during wait period - not resuming`);
+            return null;
+        }
+        // Step 4: Resume
         progress.status = 'running';
         progress.lastUpdated = new Date().toISOString();
         progress.lastProductSavedAt = new Date().toISOString(); // Reset the timer
@@ -1417,10 +1714,10 @@ exports.scheduledTescoBuild = functions
         if (algoliaBatch.length > 0 && algoliaClient) {
             try {
                 await algoliaClient.saveObjects({
-                    indexName: TESCO_INDEX_NAME,
+                    indexName: algoliaIndexName,
                     objects: algoliaBatch
                 });
-                console.log(`[SCHEDULED] Flushed ${algoliaBatch.length} items to Algolia`);
+                console.log(`[SCHEDULED] Flushed ${algoliaBatch.length} items to ${algoliaIndexName}`);
             }
             catch (e) {
                 console.error(`[SCHEDULED] Algolia batch error: ${e.message}`);
@@ -1442,32 +1739,93 @@ exports.scheduledTescoBuild = functions
                 progress.currentPage = page;
                 progress.lastUpdated = new Date().toISOString();
                 await progressRef.update({ ...progress });
-                console.log(`[SCHEDULED] "${term}" page ${page + 1}/${progress.maxPages} (term ${termIndex + 1}/${SEARCH_TERMS.length})`);
+                console.log(`[SCHEDULED] "${term}" page ${page + 1}/${progress.maxPages} (term ${termIndex + 1}/${SEARCH_TERMS.length}) [API: ${progress.apiSource || 'tesco8'}]`);
+                let shouldBreakAfterProcessing = false;
                 try {
-                    // Search for this term at this page
-                    const { products, totalPages } = await searchTescoProducts(term, page);
-                    // Skip if this page doesn't exist for this term
-                    if (page >= totalPages) {
-                        console.log(`[SCHEDULED] Term "${term}" only has ${totalPages} pages, done with this term`);
-                        break; // Move to next term
-                    }
-                    // OPTIMIZED: Filter out already seen products first
-                    const newProducts = products.filter(p => {
-                        if (seenProductIds.has(p.id)) {
-                            progress.duplicatesSkipped++;
-                            return false;
+                    let batchResults = [];
+                    let existingMap = new Map();
+                    // Handle different API sources
+                    if (progress.apiSource === 'uk_groceries') {
+                        // UK Groceries API returns full products directly
+                        const { products: fullProducts } = await searchUKGroceriesProducts(term, page);
+                        // Skip if no products
+                        if (fullProducts.length === 0) {
+                            console.log(`[SCHEDULED] UK Groceries: No products found for "${term}"`);
+                            break; // Move to next term
                         }
-                        seenProductIds.add(p.id);
-                        progress.productsFound++;
-                        return true;
-                    });
-                    // OPTIMIZED: Batch check which products already exist in Firestore
-                    const newProductIds = newProducts.map(p => p.id);
-                    const existingMap = await batchCheckExisting(tescoCollection, newProductIds);
-                    // OPTIMIZED: Fetch product details in parallel batches with rate limiting
-                    if (newProductIds.length > 0) {
-                        console.log(`[SCHEDULED] Fetching ${newProductIds.length} products in parallel batches`);
-                        const batchResults = await processProductBatch(newProductIds);
+                        // Filter out already seen products
+                        const newProducts = fullProducts.filter(p => !seenProductIds.has(p.id));
+                        newProducts.forEach(p => seenProductIds.add(p.id));
+                        progress.productsFound += newProducts.length;
+                        // Batch check existing documents
+                        const productIds = newProducts.map(p => p.id);
+                        existingMap = await batchCheckExisting(productCollection, productIds);
+                        // Convert to batch result format
+                        batchResults = newProducts.map(product => ({
+                            productId: product.id,
+                            product,
+                            error: undefined
+                        }));
+                        console.log(`[SCHEDULED] UK Groceries: ${newProducts.length} new products for "${term}"`);
+                        shouldBreakAfterProcessing = true;
+                    }
+                    else if (progress.apiSource === 'spoonacular') {
+                        // Spoonacular API returns full recipes with nutrition
+                        const { products: fullProducts, totalPages } = await searchSpoonacularProducts(term, page);
+                        // Skip if no products
+                        if (fullProducts.length === 0) {
+                            console.log(`[SCHEDULED] Spoonacular: No recipes found for "${term}"`);
+                            break; // Move to next term
+                        }
+                        // Skip if this page doesn't exist
+                        if (page >= totalPages) {
+                            console.log(`[SCHEDULED] Spoonacular: Term "${term}" only has ${totalPages} pages, done`);
+                            break;
+                        }
+                        // Filter out already seen products
+                        const newProducts = fullProducts.filter(p => !seenProductIds.has(p.id));
+                        newProducts.forEach(p => seenProductIds.add(p.id));
+                        progress.productsFound += newProducts.length;
+                        // Batch check existing documents
+                        const productIds = newProducts.map(p => p.id);
+                        existingMap = await batchCheckExisting(productCollection, productIds);
+                        // Convert to batch result format
+                        batchResults = newProducts.map(product => ({
+                            productId: product.id,
+                            product,
+                            error: undefined
+                        }));
+                        console.log(`[SCHEDULED] Spoonacular: ${newProducts.length} new recipes for "${term}"`);
+                    }
+                    else {
+                        // Tesco8 API - search returns IDs, then fetch details
+                        const { products, totalPages } = await searchTescoProducts(term, page);
+                        // Skip if this page doesn't exist for this term
+                        if (page >= totalPages) {
+                            console.log(`[SCHEDULED] Term "${term}" only has ${totalPages} pages, done with this term`);
+                            break; // Move to next term
+                        }
+                        // OPTIMIZED: Filter out already seen products first
+                        const newProducts = products.filter(p => {
+                            if (seenProductIds.has(p.id)) {
+                                progress.duplicatesSkipped++;
+                                return false;
+                            }
+                            seenProductIds.add(p.id);
+                            progress.productsFound++;
+                            return true;
+                        });
+                        // OPTIMIZED: Batch check which products already exist in Firestore
+                        const newProductIds = newProducts.map(p => p.id);
+                        existingMap = await batchCheckExisting(productCollection, newProductIds);
+                        // OPTIMIZED: Fetch product details in parallel batches with rate limiting
+                        if (newProductIds.length > 0) {
+                            console.log(`[SCHEDULED] Fetching ${newProductIds.length} products in parallel batches`);
+                            batchResults = await processProductBatch(newProductIds);
+                        }
+                    }
+                    // Process batch results
+                    if (batchResults.length > 0) {
                         for (const { productId, product, error: detailsError } of batchResults) {
                             if (detailsError) {
                                 progress.errors++;
@@ -1499,10 +1857,10 @@ exports.scheduledTescoBuild = functions
                                 }
                                 progress.productsWithNutrition++;
                                 try {
-                                    await tescoCollection.doc(product.id).set(removeUndefined(product));
+                                    await productCollection.doc(product.id).set(removeUndefined(product));
                                     progress.productsSaved++;
                                     progress.lastProductSavedAt = new Date().toISOString(); // Track for stall detection
-                                    console.log(`[SCHEDULED] Saved: ${product.title?.substring(0, 30)} (${product.nutrition?.energyKcal} kcal)`);
+                                    console.log(`[SCHEDULED] Saved to ${apiConfig.collection}: ${product.title?.substring(0, 30)} (${product.nutrition?.energyKcal} kcal)`);
                                     // OPTIMIZED: Add to Algolia batch instead of individual writes
                                     algoliaBatch.push(prepareAlgoliaObject(product));
                                     if (algoliaBatch.length >= ALGOLIA_BATCH_SIZE) {
@@ -1514,8 +1872,7 @@ exports.scheduledTescoBuild = functions
                                 }
                             }
                         }
-                    }
-                    // No sleep() needed - rate limiter handles timing
+                    } // End if (batchResults.length > 0)
                     // Update progress after processing this page
                     progress.lastUpdated = new Date().toISOString();
                     await progressRef.update({ ...progress });
@@ -1535,6 +1892,11 @@ exports.scheduledTescoBuild = functions
                     // Flush remaining Algolia items before pausing
                     await flushAlgoliaBatch();
                     return null;
+                }
+                // For UK Groceries API, break after first page (no pagination)
+                if (shouldBreakAfterProcessing) {
+                    console.log(`[SCHEDULED] UK Groceries: Moving to next term after processing`);
+                    break;
                 }
             } // End page loop
             // Reset page to 0 for next term
@@ -1582,10 +1944,13 @@ exports.resetTescoDatabase = functions
     }
     // Reset progress
     await db.collection('system').doc('tescoBuildProgress').set({
+        apiSource: 'tesco8',
         status: 'idle',
         currentTermIndex: 0,
         currentTerm: '',
         totalTerms: SEARCH_TERMS.length,
+        currentPage: 0,
+        maxPages: 20,
         productsFound: 0,
         productsWithNutrition: 0,
         productsSaved: 0,
@@ -1593,7 +1958,8 @@ exports.resetTescoDatabase = functions
         errors: 0,
         startedAt: '',
         lastUpdated: new Date().toISOString(),
-        errorMessages: []
+        errorMessages: [],
+        recentlyFoundProducts: []
     });
     // Clear Algolia index
     if (ALGOLIA_ADMIN_KEY) {

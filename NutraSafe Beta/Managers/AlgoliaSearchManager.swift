@@ -13,6 +13,163 @@ import Foundation
 /// Groups of brand synonyms - first item is the canonical name
 /// When searching for any synonym, results for all synonyms in the group are returned
 /// NOTE: This is for SEARCH functionality only - not all brands here hide the NutraSafe grade
+// MARK: - UK Common Food Search Expansions
+// When users search for these common terms, expand to include the typical UK interpretation
+
+/// Maps common UK search terms to their typical meanings
+/// e.g., "beans" in UK typically means "baked beans", not raw kidney beans
+let ukCommonFoodExpansions: [String: [String]] = [
+    // Everyday UK staples
+    "beans": ["baked beans", "heinz beans", "beans in tomato sauce"],
+    "toast": ["toast white", "toast wholemeal", "buttered toast"],
+    "porridge": ["porridge oats", "oats porridge", "ready brek"],
+    "crumpet": ["crumpet", "warburtons crumpet"],
+    "crumpets": ["crumpets", "warburtons crumpets"],
+    "muffin": ["english muffin", "warburtons muffin"],  // UK muffin ≠ American muffin
+
+    // Common drinks - single cans/bottles
+    "coke": ["coca-cola", "coca cola can", "coke 330ml"],
+    "pepsi": ["pepsi", "pepsi can", "pepsi 330ml"],
+    "fanta": ["fanta", "fanta can", "fanta orange"],
+    "sprite": ["sprite", "sprite can", "sprite 330ml"],
+    "lucozade": ["lucozade", "lucozade original", "lucozade energy"],
+    "irn bru": ["irn-bru", "irn bru", "irn bru can"],
+    "red bull": ["red bull", "red bull can", "red bull 250ml"],
+    "monster": ["monster energy", "monster can"],
+    "coffee": ["coffee black", "coffee with milk", "latte", "cappuccino"],
+    "tea": ["tea with milk", "tea black", "cup of tea"],
+
+    // Chocolate bars - single bars not multipacks
+    "mars": ["mars bar", "mars"],
+    "snickers": ["snickers", "snickers bar"],
+    "twix": ["twix", "twix bar"],
+    "kitkat": ["kit kat", "kitkat", "kit kat 4 finger"],
+    "dairy milk": ["cadbury dairy milk", "dairy milk"],
+    "galaxy": ["galaxy chocolate", "galaxy bar"],
+    "maltesers": ["maltesers", "maltesers bag"],
+    "aero": ["aero", "aero mint", "aero bar"],
+    "crunchie": ["crunchie", "crunchie bar"],
+    "yorkie": ["yorkie", "yorkie bar"],
+    "bounty": ["bounty", "bounty bar"],
+    "milky way": ["milky way", "milky way bar"],
+    "wispa": ["wispa", "wispa bar"],
+    "double decker": ["double decker", "double decker bar"],
+    "boost": ["boost", "boost bar", "cadbury boost"],
+    "picnic": ["picnic", "picnic bar"],
+    "fudge": ["fudge bar", "cadbury fudge"],
+    "curly wurly": ["curly wurly"],
+    "freddo": ["freddo", "cadbury freddo"],
+    "kinder bueno": ["kinder bueno", "bueno"],
+    "ferrero rocher": ["ferrero rocher"],
+    "lindt": ["lindt", "lindt lindor"],
+    "toblerone": ["toblerone"],
+
+    // Crisps - single bags
+    "crisps": ["crisps", "walkers crisps", "ready salted crisps"],
+    "walkers": ["walkers crisps", "walkers"],
+    "pringles": ["pringles", "pringles original"],
+    "doritos": ["doritos", "doritos cool original"],
+    "quavers": ["quavers"],
+    "wotsits": ["wotsits"],
+    "hula hoops": ["hula hoops"],
+    "monster munch": ["monster munch"],
+    "skips": ["skips"],
+    "frazzles": ["frazzles"],
+    "squares": ["walkers squares"],
+    "sensations": ["sensations crisps", "walkers sensations"],
+    "kettle chips": ["kettle chips"],
+    "mccoys": ["mccoys", "mccoy's"],
+
+    // Biscuits
+    "biscuit": ["biscuit", "digestive", "rich tea"],
+    "digestive": ["digestive", "mcvities digestive"],
+    "hobnob": ["hobnob", "hobnobs", "mcvities hobnob"],
+    "bourbon": ["bourbon biscuit", "bourbon"],
+    "custard cream": ["custard cream", "custard creams"],
+    "rich tea": ["rich tea", "rich tea biscuit"],
+    "jaffa cake": ["jaffa cake", "jaffa cakes", "mcvities jaffa"],
+    "oreo": ["oreo", "oreo biscuit"],
+    "shortbread": ["shortbread", "shortbread finger"],
+
+    // UK composite meals
+    "beans on toast": ["baked beans", "beans on toast"],
+    "cheese on toast": ["cheese on toast", "welsh rarebit"],
+    "egg on toast": ["egg on toast", "poached egg"],
+    "full english": ["full english breakfast", "english breakfast", "fry up"],
+    "fish and chips": ["fish and chips", "cod and chips", "fish chips"],
+    "fish fingers": ["fish fingers", "birds eye fish fingers"],
+    "chicken nuggets": ["chicken nuggets"],
+    "fish cake": ["fish cake", "fishcake"],
+    "sausage roll": ["sausage roll", "greggs sausage roll"],
+    "pasty": ["cornish pasty", "pasty", "greggs pasty"],
+    "pie": ["pie", "meat pie", "steak pie"],
+    "jacket potato": ["jacket potato", "baked potato"],
+    "chips": ["chips", "oven chips", "fries"],  // UK chips = fries
+    "curry": ["chicken curry", "curry sauce", "tikka masala"],
+    "sandwich": ["sandwich", "ham sandwich", "cheese sandwich"],
+    "wrap": ["wrap", "chicken wrap", "tortilla wrap"],
+    "salad": ["salad", "mixed salad", "side salad"],
+    "soup": ["soup", "tomato soup", "heinz soup"],
+
+    // Breakfast items
+    "cereal": ["cereal", "cornflakes", "weetabix"],
+    "weetabix": ["weetabix"],
+    "cornflakes": ["cornflakes", "kelloggs corn flakes"],
+    "shreddies": ["shreddies"],
+    "coco pops": ["coco pops", "kelloggs coco pops"],
+    "frosties": ["frosties", "kelloggs frosties"],
+    "cheerios": ["cheerios"],
+    "granola": ["granola"],
+    "muesli": ["muesli"],
+
+    // Yoghurts
+    "yoghurt": ["yoghurt", "natural yoghurt", "greek yoghurt"],
+    "muller": ["muller corner", "muller light", "muller yoghurt"],
+    "activia": ["activia", "activia yoghurt"],
+    "yeo valley": ["yeo valley", "yeo valley yoghurt"],
+
+    // Ready meals / convenience
+    "pot noodle": ["pot noodle"],
+    "super noodles": ["super noodles", "batchelors super noodles"],
+    "pizza": ["pizza", "margherita pizza", "pepperoni pizza"],
+    "lasagne": ["lasagne"],
+    "cottage pie": ["cottage pie"],
+    "shepherds pie": ["shepherds pie", "shepherd's pie"],
+]
+
+/// Indicates single-serve products (cans, bars, single portions)
+/// These should be boosted over multipacks for typical calorie logging
+let singleServeIndicators: Set<String> = [
+    // Size indicators for drinks
+    "330ml", "250ml", "500ml", "can", "bottle", "carton",
+    // Size indicators for chocolate/snacks
+    "bar", "single", "standard", "regular",
+    // Portion indicators
+    "portion", "serving", "individual", "1x", "each",
+    // Weight indicators for typical single items
+    "25g", "30g", "32g", "35g", "40g", "45g", "50g", "51g", "52g", "58g"
+]
+
+/// Indicates multipacks/bulk items that should be demoted
+/// Users logging calories want single items, not 24-packs
+let bulkIndicators: Set<String> = [
+    // Pack quantities
+    "multipack", "multi-pack", "multi pack",
+    "case", "cases", "tray", "box of",
+    "24 pack", "24pk", "24x", "x24",
+    "18 pack", "18pk", "18x", "x18",
+    "12 pack", "12pk", "12x", "x12",
+    "10 pack", "10pk", "10x", "x10",
+    "8 pack", "8pk", "8x", "x8",
+    "6 pack", "6pk", "6x", "x6",
+    "4 pack", "4pk", "4x", "x4",
+    "3 pack", "3pk", "3x", "x3",
+    "2 pack", "2pk", "2x", "x2",
+    // Bulk terms
+    "bulk", "wholesale", "catering", "family pack", "sharing",
+    "value pack", "bundle", "selection"
+]
+
 let brandSynonymGroups: [[String]] = [
     // === FAST FOOD RESTAURANTS (grade hidden) ===
     // McDonald's variants
@@ -219,11 +376,19 @@ func isProcessedFoodBrand(brand: String?, name: String) -> Bool {
     return false
 }
 
-/// Expand a search query to include brand synonyms
+/// Expand a search query to include brand synonyms and UK common food expansions
 func expandSearchQuery(_ query: String) -> [String] {
     let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
     var expandedQueries = [query]
 
+    // First, check for UK common food expansions (e.g., "beans" -> "baked beans")
+    if let ukExpansions = ukCommonFoodExpansions[queryLower] {
+        for expansion in ukExpansions where !expandedQueries.contains(expansion) {
+            expandedQueries.append(expansion)
+        }
+    }
+
+    // Then check brand synonyms
     if let canonical = synonymToCanonical[queryLower],
        let synonyms = canonicalToSynonyms[canonical] {
         for synonym in synonyms where synonym != queryLower {
@@ -532,7 +697,12 @@ final class AlgoliaSearchManager {
                 "\\bmulti-pack\\b",    // multi-pack
                 "\\bmulti pack\\b",    // multi pack
                 "\\bfamily pack\\b",   // family pack
-                "\\bbulk\\b"           // bulk
+                "\\bbulk\\b",          // bulk
+                "\\bsharing\\b",       // sharing bag/pack
+                "\\bselection\\b",     // selection box
+                "\\bvariety\\b",       // variety pack
+                "\\bcase\\b",          // case of
+                "\\btray\\b"           // tray of
             ]
             let multipackRegex = try? NSRegularExpression(
                 pattern: multipackPatterns.joined(separator: "|"),
@@ -540,19 +710,38 @@ final class AlgoliaSearchManager {
             )
             if let regex = multipackRegex,
                regex.firstMatch(in: nameLower, options: [], range: NSRange(nameLower.startIndex..., in: nameLower)) != nil {
-                score -= 2000  // Strong demotion for multipacks
+                score -= 2500  // Stronger demotion for multipacks
+            }
+
+            // BONUS for single-serve indicators (cans, single bars, standard portions)
+            // Users searching "coke" want "Coca-Cola 330ml Can" not "Coca-Cola 24x330ml"
+            let hasSingleServeIndicator = singleServeIndicators.contains { indicator in
+                nameLower.contains(indicator)
+            }
+            if hasSingleServeIndicator {
+                score += 1200  // Strong bonus for single-serve items
+            }
+
+            // Extra check for bulk indicators from our defined set
+            let hasBulkIndicator = bulkIndicators.contains { indicator in
+                nameLower.contains(indicator)
+            }
+            if hasBulkIndicator {
+                score -= 1500  // Additional penalty for bulk terms
             }
 
             // BONUS/PENALTY for serving size - prefer individual portions over bulk
             if let servingGrams = result.servingSizeG, servingGrams > 0 {
                 if servingGrams <= 50 {
-                    score += 800   // Strong bonus for small portions (snacks, single items)
+                    score += 1000  // Strong bonus for small portions (snacks, single items)
                 } else if servingGrams <= 100 {
-                    score += 400   // Moderate bonus for standard portions
+                    score += 600   // Good bonus for standard portions
                 } else if servingGrams <= 200 {
-                    score += 100   // Slight bonus for reasonable portions
+                    score += 200   // Slight bonus for reasonable portions
                 } else if servingGrams > 500 {
-                    score -= 300   // Penalty for very large serving sizes (likely bulk)
+                    score -= 500   // Penalty for very large serving sizes (likely bulk)
+                } else if servingGrams > 1000 {
+                    score -= 1000  // Strong penalty for >1kg items
                 }
             }
 
@@ -572,13 +761,25 @@ final class AlgoliaSearchManager {
 
             // RAW/WHOLE FOOD PRIORITY: When searching single words like "apple", "banana",
             // prioritize raw/whole versions over processed (juice, pie, dried, etc.)
-            if queryWords.count == 1 && queryLower.count >= 3 {
-                let rawFoodIndicators: Set<String> = ["large", "medium", "small", "raw", "fresh", "whole", "ripe"]
-                let processedIndicators: Set<String> = ["juice", "pie", "cake", "bread", "chips", "crisps", "dried",
+            // BUT: Don't apply this logic to known snack/drink/chocolate searches
+            let isSnackOrDrinkSearch = ukCommonFoodExpansions[queryLower] != nil &&
+                (queryLower.contains("coke") || queryLower.contains("pepsi") || queryLower.contains("mars") ||
+                 queryLower.contains("snickers") || queryLower.contains("kitkat") || queryLower.contains("crisps") ||
+                 queryLower.contains("chocolate") || queryLower.contains("biscuit"))
+
+            if queryWords.count == 1 && queryLower.count >= 3 && !isSnackOrDrinkSearch {
+                let rawFoodIndicators: Set<String> = [
+                    "large", "medium", "small", "raw", "fresh", "whole", "ripe",
+                    "plain", "natural", "unflavoured", "unsweetened", "organic"
+                ]
+                // Note: "chips" removed from processed indicators - UK users want chips (fries)
+                // "bar" kept for raw food searches but shouldn't penalize chocolate bar searches
+                let processedIndicators: Set<String> = ["juice", "pie", "cake", "bread", "dried",
                     "smoothie", "jam", "jelly", "sauce", "syrup", "yogurt", "yoghurt", "flavour", "flavor",
-                    "candy", "sweet", "bar", "drink", "cordial", "squash", "concentrate", "puree", "purée",
+                    "candy", "sweet", "drink", "cordial", "squash", "concentrate", "puree", "purée",
                     "crumble", "tart", "turnover", "strudel", "compote", "preserve", "spread", "butter",
-                    "ice", "cream", "sorbet", "frozen", "canned", "tinned", "cocktail", "wine", "cider", "vinegar"]
+                    "ice", "cream", "sorbet", "frozen", "canned", "tinned", "cocktail", "wine", "cider", "vinegar",
+                    "flavoured", "coated", "dipped", "covered"]
 
                 let hasRawIndicator = nameWords.contains { rawFoodIndicators.contains($0) }
                 let hasProcessedIndicator = nameWords.contains { processedIndicators.contains($0) }
@@ -595,6 +796,18 @@ final class AlgoliaSearchManager {
                 // Penalty for processed foods
                 else if hasProcessedIndicator {
                     score -= 1000
+                }
+            }
+
+            // SIMPLE PREPARED FOODS: Boost common UK preparations like "boiled egg", "toast"
+            let simplePrepIndicators: Set<String> = [
+                "boiled", "poached", "scrambled", "fried", "grilled",
+                "toasted", "steamed", "mashed", "baked", "roasted"
+            ]
+            if queryWords.count <= 2 {
+                let hasSimplePrepIndicator = nameWords.contains { simplePrepIndicators.contains($0) }
+                if hasSimplePrepIndicator && nameWords.count <= 4 {
+                    score += 1500  // Boost simple prepared foods
                 }
             }
 
@@ -727,7 +940,7 @@ final class AlgoliaSearchManager {
 
             // PENALTY for multipacks - demote items like "8pk", "6 pack", "multipack", "x4", etc.
             // These are bulk items, not individual portions that users typically want to log
-            let multipackPatterns = [
+            let multipackPatterns2 = [
                 "\\d+pk\\b",           // 8pk, 6pk, 4pk
                 "\\d+\\s*pack\\b",     // 8 pack, 6pack, 4 pack
                 "\\bx\\d+\\b",         // x4, x6, x8
@@ -736,28 +949,51 @@ final class AlgoliaSearchManager {
                 "\\bmulti-pack\\b",    // multi-pack
                 "\\bmulti pack\\b",    // multi pack
                 "\\bfamily pack\\b",   // family pack
-                "\\bbulk\\b"           // bulk
+                "\\bbulk\\b",          // bulk
+                "\\bsharing\\b",       // sharing bag/pack
+                "\\bselection\\b",     // selection box
+                "\\bvariety\\b",       // variety pack
+                "\\bcase\\b",          // case of
+                "\\btray\\b"           // tray of
             ]
-            let multipackRegex = try? NSRegularExpression(
-                pattern: multipackPatterns.joined(separator: "|"),
+            let multipackRegex2 = try? NSRegularExpression(
+                pattern: multipackPatterns2.joined(separator: "|"),
                 options: [.caseInsensitive]
             )
-            if let regex = multipackRegex,
+            if let regex = multipackRegex2,
                regex.firstMatch(in: nameLower, options: [], range: NSRange(nameLower.startIndex..., in: nameLower)) != nil {
-                score -= 2000  // Strong demotion for multipacks
+                score -= 2500  // Stronger demotion for multipacks
+            }
+
+            // BONUS for single-serve indicators (cans, single bars, standard portions)
+            let hasSingleServe = singleServeIndicators.contains { indicator in
+                nameLower.contains(indicator)
+            }
+            if hasSingleServe {
+                score += 1200  // Strong bonus for single-serve items
+            }
+
+            // Extra check for bulk indicators
+            let hasBulk = bulkIndicators.contains { indicator in
+                nameLower.contains(indicator)
+            }
+            if hasBulk {
+                score -= 1500  // Additional penalty for bulk terms
             }
 
             // BONUS/PENALTY for serving size - prefer individual portions over bulk
             // Users typically want to log single items, not entire multipacks
             if let servingGrams = item.result.servingSizeG, servingGrams > 0 {
                 if servingGrams <= 50 {
-                    score += 800   // Strong bonus for small portions (snacks, single items)
+                    score += 1000  // Strong bonus for small portions (snacks, single items)
                 } else if servingGrams <= 100 {
-                    score += 400   // Moderate bonus for standard portions
+                    score += 600   // Good bonus for standard portions
                 } else if servingGrams <= 200 {
-                    score += 100   // Slight bonus for reasonable portions
+                    score += 200   // Slight bonus for reasonable portions
                 } else if servingGrams > 500 {
-                    score -= 300   // Penalty for very large serving sizes (likely bulk)
+                    score -= 500   // Penalty for very large serving sizes (likely bulk)
+                } else if servingGrams > 1000 {
+                    score -= 1000  // Strong penalty for >1kg items
                 }
             }
 
@@ -814,6 +1050,18 @@ final class AlgoliaSearchManager {
                 else if (normalizedBrand.contains(normalizedQuery) || normalizedQuery.contains(normalizedBrand)) && !isNameFocusedSearch {
                     // Brand contains query - only if not a food name search
                     score += 1000
+                }
+            }
+
+            // SIMPLE PREPARED FOODS: Boost common UK preparations
+            let simplePrepIndicators2: Set<String> = [
+                "boiled", "poached", "scrambled", "fried", "grilled",
+                "toasted", "steamed", "mashed", "baked", "roasted"
+            ]
+            if queryWords.count <= 2 {
+                let hasSimplePrep = nameWords.contains { simplePrepIndicators2.contains($0) }
+                if hasSimplePrep && nameWords.count <= 4 {
+                    score += 1500  // Boost simple prepared foods
                 }
             }
 

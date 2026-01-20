@@ -2846,6 +2846,7 @@ struct AddUseByItemSheet: View {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : Color.blue) : Color(.systemGray6))
                 )
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
         }

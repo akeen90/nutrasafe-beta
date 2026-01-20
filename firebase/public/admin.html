@@ -4431,7 +4431,7 @@
                     </button>
                     <button class="nav-tab" data-view="database-check">Database Check</button>
                     <button class="nav-tab" data-view="email-marketing">Email Marketing</button>
-                    <button class="nav-tab" data-view="tesco-builder">Tesco Builder</button>
+                    <button class="nav-tab" data-view="tesco-builder">Database Builder</button>
                 </nav>
                 <div class="user-info">
                     <span id="user-email" class="user-email"></span>
@@ -4979,8 +4979,8 @@
         <div id="tesco-builder-view" class="view">
             <div class="tesco-builder-container">
                 <div class="tesco-header">
-                    <h2>🛒 Tesco Database Builder <span id="realtime-indicator" class="realtime-indicator" title="Connection status"><span class="realtime-dot"></span> Connecting...</span></h2>
-                    <p>Build a comprehensive UK food database by scanning Tesco's product catalog via their official API</p>
+                    <h2>🗄️ Database Builder <span id="realtime-indicator" class="realtime-indicator" title="Connection status"><span class="realtime-dot"></span> Connecting...</span></h2>
+                    <p>Build a comprehensive UK food database from multiple API sources including Tesco, UK Groceries, and recipe databases</p>
                 </div>
 
                 <!-- Stats Cards -->
@@ -5060,6 +5060,17 @@
                             Waiting for build to start...
                         </div>
                     </div>
+                </div>
+
+                <!-- API Source Selector -->
+                <div class="tesco-api-selector" style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                    <label style="font-weight: 500; color: #374151;">API Source:</label>
+                    <select id="tesco-api-source" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 14px; min-width: 200px;">
+                        <option value="tesco8">🛒 Tesco (Tesco8 API)</option>
+                        <option value="uk_groceries">🇬🇧 General UK Groceries</option>
+                        <option value="spoonacular">🍽️ Spoonacular Recipes</option>
+                    </select>
+                    <span id="tesco-api-status" style="font-size: 13px; color: #6b7280;"></span>
                 </div>
 
                 <!-- Controls -->
@@ -5678,6 +5689,7 @@
             tescoLastAutoRestart: null, // Timestamp of last auto-restart
             tescoAutoRestartCooldown: 30000, // Minimum 30s between auto-restarts
             tescoAutoRestarting: false, // Currently in auto-restart process
+            tescoStopRequested: false, // User clicked Stop - block all auto-restarts
             tescoPeriodicRestartInterval: 300000, // 5 minutes - do proactive restart
             tescoLastPeriodicRestart: null, // Timestamp of last periodic restart
 
@@ -6197,7 +6209,21 @@
                 document.getElementById('edit-fat').value = nutrition.fat || food.fat || '';
                 document.getElementById('edit-fiber').value = nutrition.fiber || food.fiber || '';
                 document.getElementById('edit-sugar').value = nutrition.sugar || food.sugar || '';
-                document.getElementById('edit-salt').value = nutrition.salt || food.salt || '';
+
+                // Salt calculation - handle both UK (salt in g) and US (sodium in mg) formats
+                // Same logic as scan-database.ts to ensure consistency
+                const saltFromFood = parseFloat(nutrition.salt || food.salt) || 0;
+                const sodiumFromFood = parseFloat(nutrition.sodium || food.sodium) || 0;
+                let saltValue = '';
+                if (saltFromFood > 0) {
+                    // UK format: salt already in grams
+                    saltValue = saltFromFood;
+                } else if (sodiumFromFood > 0) {
+                    // US format: convert sodium mg to salt g (salt = sodium * 2.5 / 1000)
+                    saltValue = (sodiumFromFood * 2.5 / 1000).toFixed(2);
+                }
+                document.getElementById('edit-salt').value = saltValue;
+
                 document.getElementById('edit-verified-by').value = food.verifiedBy || '';
             },
 
@@ -12012,7 +12038,7 @@
                 // Verify authentication before calling
                 if (!state.isAuthenticated || !state.currentUser) {
                     console.error('Not authenticated - cannot load Tesco progress');
-                    this.showToast('Please sign in to access Tesco Builder', 'error');
+                    this.showToast('Please sign in to access Database Builder', 'error');
                     return;
                 }
 
@@ -12050,7 +12076,7 @@
                     // Better error messages
                     let errorMsg = error.message || 'Unknown error';
                     if (error.code === 'unauthenticated') {
-                        errorMsg = 'Please sign in to access Tesco Builder.';
+                        errorMsg = 'Please sign in to access Database Builder.';
                     } else if (error.code === 'permission-denied') {
                         const uid = state.currentUser?.uid || 'unknown';
                         errorMsg = `Admin access required. Add UID (${uid}) to /admins collection.`;
@@ -12128,6 +12154,31 @@
                         statusBadge.className = 'status-badge status-' + status;
                     }
 
+                    // Update API source selector and status
+                    const apiSourceSelect = document.getElementById('tesco-api-source');
+                    const apiStatusEl = document.getElementById('tesco-api-status');
+                    const currentApiSource = progress.apiSource || 'tesco8';
+                    if (apiSourceSelect) {
+                        apiSourceSelect.value = currentApiSource;
+                        // Disable selector while build is running
+                        apiSourceSelect.disabled = (status === 'running' || status === 'paused');
+                    }
+                    // API display name mapping
+                    const apiDisplayNames = {
+                        'tesco8': 'Tesco',
+                        'uk_groceries': 'UK Groceries',
+                        'spoonacular': 'Spoonacular'
+                    };
+                    const apiDisplayName = apiDisplayNames[currentApiSource] || 'Tesco';
+
+                    if (apiStatusEl) {
+                        if (status === 'running' || status === 'paused') {
+                            apiStatusEl.textContent = `Currently using: ${apiDisplayName}`;
+                        } else {
+                            apiStatusEl.textContent = '';
+                        }
+                    }
+
                     // Show/hide live feed based on status
                     if (liveFeed) {
                         liveFeed.style.display = status === 'running' ? 'block' : 'none';
@@ -12136,7 +12187,7 @@
                     // Update live feed current activity
                     if (status === 'running' && currentActivityText) {
                         if (progress.currentTerm) {
-                            currentActivityText.textContent = `Searching Tesco for "${progress.currentTerm}"`;
+                            currentActivityText.textContent = `Searching ${apiDisplayName} for "${progress.currentTerm}"`;
                             const termsRemaining = (progress.totalTerms || 0) - (progress.currentTermIndex || 0);
                             currentActivityDetail.textContent = `Term ${progress.currentTermIndex || 0} of ${progress.totalTerms || 0} • ${termsRemaining} remaining`;
                         } else {
@@ -12336,6 +12387,18 @@
             },
 
             async startTescoBuild(forceReset = false) {
+                // Get selected API source FIRST (before confirmation dialog)
+                const apiSourceSelect = document.getElementById('tesco-api-source');
+                const apiSource = apiSourceSelect ? apiSourceSelect.value : 'tesco8';
+
+                // API-specific labels for confirmation dialog
+                const apiLabels = {
+                    'tesco8': { name: 'Tesco', desc: 'Tesco food categories' },
+                    'uk_groceries': { name: 'UK Groceries', desc: 'UK grocery products' },
+                    'spoonacular': { name: 'Spoonacular', desc: 'British recipes with nutrition' }
+                };
+                const apiLabel = apiLabels[apiSource] || apiLabels['tesco8'];
+
                 // Check current build status
                 const currentStatus = state.tescoBuildProgress?.status;
 
@@ -12346,7 +12409,7 @@
                     }
                     forceReset = true;
                 } else if (!forceReset) {
-                    if (!confirm('Start building the Tesco database?\n\nThis will scan 147 Tesco food categories and save products to your database. You can pause at any time.')) {
+                    if (!confirm(`Start building from ${apiLabel.name}?\n\nThis will scan ${apiLabel.desc} and save products to your database. You can pause at any time.`)) {
                         return;
                     }
                 }
@@ -12358,13 +12421,13 @@
                 }
 
                 try {
-                    console.log('[START] Calling startTescoBuild function... reset:', forceReset);
+                    console.log('[START] Calling startTescoBuild function... reset:', forceReset, 'apiSource:', apiSource);
                     const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
-                    const result = await startTescoBuild({ reset: forceReset });
+                    const result = await startTescoBuild({ reset: forceReset, apiSource: apiSource });
                     console.log('[START] Result:', result.data);
 
                     if (result.data.success) {
-                        this.showToast('Tesco database build started!', 'success');
+                        this.showToast('Database build started!', 'success');
 
                         // Initialize activity log and restart timers
                         state.tescoActivityLog = [];
@@ -12372,7 +12435,15 @@
                         state.tescoPreviousProgress = null;
                         state.tescoLastPeriodicRestart = Date.now(); // Reset periodic timer
                         state.tescoAutoRestartCount = 0; // Reset restart count for new build
+                        state.tescoStopRequested = false; // Clear stop flag for new build
+                        state.tescoAutoRestartEnabled = true; // Re-enable auto-restart
                         this.addActivityLogEntry('Build started', 'success');
+
+                        // Update the toggle in the UI
+                        const autoRestartToggle = document.getElementById('tesco-auto-restart-toggle');
+                        if (autoRestartToggle) {
+                            autoRestartToggle.checked = true;
+                        }
 
                         // Start polling for progress
                         this.startTescoProgressPolling();
@@ -12413,7 +12484,7 @@
                     const result = await pauseTescoBuild();
 
                     if (result.data.success) {
-                        this.showToast('Tesco build paused. Progress saved.', 'success');
+                        this.showToast('Database build paused. Progress saved.', 'success');
                         this.addActivityLogEntry('Build paused by user', 'info');
                         this.stopTescoProgressPolling();
                     } else {
@@ -12438,14 +12509,27 @@
                     stopBtn.innerHTML = '<span class="spinner-small"></span> Stopping...';
                 }
 
+                // IMMEDIATELY disable auto-restart to prevent it from restarting
+                state.tescoAutoRestartEnabled = false;
+                state.tescoAutoRestarting = false;
+                state.tescoStopRequested = true; // New flag to block any pending restart
+
+                // Update the toggle in the UI
+                const autoRestartToggle = document.getElementById('tesco-auto-restart-toggle');
+                if (autoRestartToggle) {
+                    autoRestartToggle.checked = false;
+                }
+
+                // Stop polling IMMEDIATELY
+                this.stopTescoProgressPolling();
+
                 try {
                     const stopTescoBuild = firebase.functions().httpsCallable('stopTescoBuild');
                     const result = await stopTescoBuild();
 
                     if (result.data.success) {
-                        this.showToast('Tesco build STOPPED completely. Scheduler will not restart it.', 'success');
-                        this.addActivityLogEntry('Build stopped completely by user', 'warning');
-                        this.stopTescoProgressPolling();
+                        this.showToast('Database build STOPPED completely. Auto-restart disabled.', 'success');
+                        this.addActivityLogEntry('Build STOPPED - auto-restart disabled', 'warning');
                     } else {
                         throw new Error(result.data.error || 'Failed to stop build');
                     }
@@ -12469,11 +12553,15 @@
                 }
 
                 try {
+                    // Get selected API source for resume
+                    const apiSourceSelect = document.getElementById('tesco-api-source');
+                    const apiSource = apiSourceSelect ? apiSourceSelect.value : 'tesco8';
+
                     const startTescoBuild = firebase.functions().httpsCallable('startTescoBuild');
-                    const result = await startTescoBuild(); // Same function handles resume
+                    const result = await startTescoBuild({ apiSource: apiSource }); // Pass API source on resume
 
                     if (result.data.success) {
-                        this.showToast('Tesco build resumed!', 'success');
+                        this.showToast('Database build resumed!', 'success');
 
                         // Initialize tracking if not already
                         if (!state.tescoLastUpdateTime) {
@@ -12517,7 +12605,7 @@
                     const result = await resetTescoDatabase({ confirm: true });
 
                     if (result.data.success) {
-                        this.showToast('Tesco database reset complete', 'success');
+                        this.showToast('Database reset complete', 'success');
                         this.stopTescoProgressPolling();
                     } else {
                         throw new Error(result.data.error || 'Failed to reset database');
@@ -12966,6 +13054,13 @@
                 this.addActivityLogEntry(`🔄 Auto-restart #${state.tescoAutoRestartCount} triggered (${reason})`, 'warning');
 
                 try {
+                    // Check if stop was requested before starting
+                    if (state.tescoStopRequested) {
+                        console.log('[Auto-Restart] ABORTED - Stop was requested');
+                        this.addActivityLogEntry('Auto-restart cancelled - stop requested', 'info');
+                        return;
+                    }
+
                     // Step 1: Pause the build
                     console.log('[Auto-Restart] Step 1: Pausing build...');
                     const pauseTescoBuild = firebase.functions().httpsCallable('pauseTescoBuild');
@@ -12973,12 +13068,27 @@
                     console.log('[Auto-Restart] Pause result:', pauseResult.data);
                     this.addActivityLogEntry('Build paused for restart', 'info');
 
+                    // Check again if stop was requested during pause
+                    if (state.tescoStopRequested) {
+                        console.log('[Auto-Restart] ABORTED - Stop was requested during pause');
+                        this.addActivityLogEntry('Auto-restart cancelled - stop requested', 'info');
+                        return;
+                    }
+
                     // Step 2: Wait for function to stop
                     // Simple fixed wait - the Cloud Function checks pause status between search terms
                     // Wait 15 seconds which should be enough for any term to complete
                     console.log('[Auto-Restart] Step 2: Waiting 15 seconds for function to stop...');
                     this.addActivityLogEntry('Waiting 15s for function to stop...', 'info');
                     await new Promise(resolve => setTimeout(resolve, 15000));
+
+                    // Check AGAIN if stop was requested during wait
+                    if (state.tescoStopRequested) {
+                        console.log('[Auto-Restart] ABORTED - Stop was requested during wait');
+                        this.addActivityLogEntry('Auto-restart cancelled - stop requested', 'info');
+                        return;
+                    }
+
                     this.addActivityLogEntry('Wait complete, resuming...', 'success');
 
                     // Step 3: Resume the build

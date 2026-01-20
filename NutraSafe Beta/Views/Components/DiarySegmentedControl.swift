@@ -56,6 +56,7 @@ struct DiarySegmentedControl<Tab: Hashable & CaseIterable & RawRepresentable>: V
                                 }
                             }
                         )
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
             }

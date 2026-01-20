@@ -22,6 +22,17 @@ struct ReactionLogView: View {
     @State private var allergenLoadFailed = false  // Track allergen load failures for user feedback
     @State private var allergenLoadRetryCount = 0  // Retry counter for exponential backoff
 
+    // MARK: - Cached Computed Values (Performance Optimization)
+    // These are expensive to compute and don't need to recalculate on every view redraw
+    @State private var cachedUniqueSymptoms: [String] = []
+    @State private var cachedCommonFoods: [(name: String, frequency: Int, percentage: Double)] = []
+    @State private var cachedCommonIngredients: [(name: String, frequency: Int, percentage: Double, isPrimarilyEstimated: Bool)] = []
+    @State private var cachedMostCommonSymptom: (symptom: String, percentage: Int)?
+    @State private var cachedPeakTiming: String?
+    @State private var cachedTopTrigger: (name: String, percentage: Int)?
+    @State private var cachedWeeklyTrend: (thisWeek: Int, lastWeek: Int, trend: String)?
+    @State private var lastCacheUpdateLogCount: Int = -1  // Track when cache was last updated
+
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
         case fiveDays = 5
@@ -93,6 +104,7 @@ struct ReactionLogView: View {
             async let allergensTask: () = loadUserAllergens()
             await logsTask
             await allergensTask
+            updateCachedValues()
             isLoadingData = false
             print("📊 [ReactionLogView] Initial load complete. reactionLogs count: \(manager.reactionLogs.count)")
         }
@@ -104,11 +116,155 @@ struct ReactionLogView: View {
                 Task {
                     print("📊 [ReactionLogView] Reloading reaction logs after sheet dismissed...")
                     await manager.loadReactionLogs()
+                    updateCachedValues()
                     print("📊 [ReactionLogView] Reload complete. New count: \(manager.reactionLogs.count)")
                 }
             }
         }
+        .onChange(of: manager.reactionLogs.count) {
+            // Update cache when reaction logs change
+            updateCachedValues()
+        }
         .trackScreen("Reaction Log")
+    }
+
+    // MARK: - Cache Update (Performance Optimization)
+
+    /// Updates all cached computed values. Called once when data changes rather than on every view redraw.
+    private func updateCachedValues() {
+        let logs = manager.reactionLogs
+
+        // Only update if data actually changed
+        guard logs.count != lastCacheUpdateLogCount else { return }
+        lastCacheUpdateLogCount = logs.count
+
+        // Calculate unique symptoms (sorted by frequency)
+        let symptoms = Set(logs.map { $0.reactionType })
+        cachedUniqueSymptoms = symptoms.sorted { symptom1, symptom2 in
+            let count1 = logs.filter { $0.reactionType == symptom1 }.count
+            let count2 = logs.filter { $0.reactionType == symptom2 }.count
+            return count1 > count2
+        }
+
+        // Calculate most common symptom
+        if !logs.isEmpty {
+            let grouped = Dictionary(grouping: logs) { $0.reactionType }
+            if let (symptom, entries) = grouped.max(by: { $0.value.count < $1.value.count }) {
+                let percentage = Int((Double(entries.count) / Double(logs.count)) * 100)
+                cachedMostCommonSymptom = (symptom, percentage)
+            } else {
+                cachedMostCommonSymptom = nil
+            }
+        } else {
+            cachedMostCommonSymptom = nil
+        }
+
+        // Calculate peak timing
+        if !logs.isEmpty {
+            let calendar = Calendar.current
+            var timingCounts: [String: Int] = ["Morning": 0, "Afternoon": 0, "Evening": 0, "Night": 0]
+
+            for entry in logs {
+                let hour = calendar.component(.hour, from: entry.reactionDate)
+                switch hour {
+                case 5..<12: timingCounts["Morning", default: 0] += 1
+                case 12..<17: timingCounts["Afternoon", default: 0] += 1
+                case 17..<21: timingCounts["Evening", default: 0] += 1
+                default: timingCounts["Night", default: 0] += 1
+                }
+            }
+            cachedPeakTiming = timingCounts.max(by: { $0.value < $1.value })?.key
+        } else {
+            cachedPeakTiming = nil
+        }
+
+        // Calculate weekly trend
+        let calendar = Calendar.current
+        let now = Date()
+        if let startOfThisWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
+           let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek) {
+            let thisWeekCount = logs.filter { $0.reactionDate >= startOfThisWeek }.count
+            let lastWeekCount = logs.filter { $0.reactionDate >= startOfLastWeek && $0.reactionDate < startOfThisWeek }.count
+
+            let trend: String
+            if thisWeekCount < lastWeekCount {
+                trend = "down"
+            } else if thisWeekCount > lastWeekCount {
+                trend = "up"
+            } else {
+                trend = "same"
+            }
+            cachedWeeklyTrend = (thisWeekCount, lastWeekCount, trend)
+        } else {
+            cachedWeeklyTrend = nil
+        }
+
+        // Calculate top trigger
+        var ingredientScores: [String: Double] = [:]
+        for entry in logs {
+            guard let analysis = entry.triggerAnalysis else { continue }
+            for ingredient in analysis.topIngredients.prefix(3) {
+                ingredientScores[ingredient.ingredientName, default: 0] += ingredient.crossReactionFrequency
+            }
+        }
+        if let (name, score) = ingredientScores.max(by: { $0.value < $1.value }), score > 0 {
+            let percentage = Int(score / Double(max(1, logs.filter { $0.triggerAnalysis != nil }.count)))
+            cachedTopTrigger = (name, min(percentage, 100))
+        } else {
+            cachedTopTrigger = nil
+        }
+
+        // Calculate common foods
+        var foodCounts: [String: (count: Int, displayName: String)] = [:]
+        for entry in logs {
+            guard let analysis = entry.triggerAnalysis else { continue }
+            for food in analysis.topFoods {
+                let normalizedName = food.foodName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                if foodCounts[normalizedName] == nil {
+                    foodCounts[normalizedName] = (count: 1, displayName: food.foodName)
+                } else {
+                    foodCounts[normalizedName]?.count += 1
+                }
+            }
+        }
+        let totalReactions = logs.count
+        cachedCommonFoods = foodCounts
+            .filter { $0.value.count >= 2 }
+            .map { (name: $0.value.displayName, frequency: $0.value.count, percentage: (Double($0.value.count) / Double(max(1, totalReactions))) * 100.0) }
+            .sorted { $0.frequency > $1.frequency }
+
+        // Calculate common ingredients
+        var ingredientCounts: [String: (count: Int, displayName: String, exactCount: Int, estimatedCount: Int)] = [:]
+        for entry in logs {
+            guard let analysis = entry.triggerAnalysis else { continue }
+            for ingredient in analysis.topIngredients {
+                let normalizedName = ingredient.ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                if ingredientCounts[normalizedName] == nil {
+                    ingredientCounts[normalizedName] = (
+                        count: 1,
+                        displayName: ingredient.ingredientName,
+                        exactCount: ingredient.exactExposureCount,
+                        estimatedCount: ingredient.estimatedExposureCount
+                    )
+                } else {
+                    ingredientCounts[normalizedName]?.count += 1
+                    ingredientCounts[normalizedName]?.exactCount += ingredient.exactExposureCount
+                    ingredientCounts[normalizedName]?.estimatedCount += ingredient.estimatedExposureCount
+                }
+            }
+        }
+        cachedCommonIngredients = ingredientCounts
+            .filter { $0.value.count >= 2 }
+            .map {
+                let isPrimarilyEstimated = $0.value.estimatedCount > $0.value.exactCount
+                return (
+                    name: $0.value.displayName,
+                    frequency: $0.value.count,
+                    percentage: (Double($0.value.count) / Double(max(1, totalReactions))) * 100.0,
+                    isPrimarilyEstimated: isPrimarilyEstimated
+                )
+            }
+            .sorted { $0.frequency > $1.frequency }
     }
 
     // MARK: - Load User Allergens
@@ -304,30 +460,29 @@ struct ReactionLogView: View {
                         selectedTab = tab
                     }
                 }) {
-                    VStack(spacing: 8) {
-                        Text(tab.rawValue)
-                            .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
-                            .foregroundColor(selectedTab == tab ? .white : .secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                selectedTab == tab ?
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 0.3, green: 0.5, blue: 1.0),
-                                            Color(red: 0.5, green: 0.3, blue: 0.9)
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                    : LinearGradient(
-                                        colors: [Color.clear],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                            )
-                            .cornerRadius(10)
-                    }
+                    Text(tab.rawValue)
+                        .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
+                        .foregroundColor(selectedTab == tab ? .white : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            selectedTab == tab ?
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.3, green: 0.5, blue: 1.0),
+                                        Color(red: 0.5, green: 0.3, blue: 0.9)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                                : LinearGradient(
+                                    colors: [Color.clear],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                        )
+                        .cornerRadius(10)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -338,13 +493,17 @@ struct ReactionLogView: View {
     }
 
     // MARK: - Tab Content
-    @ViewBuilder
+    // Both views are kept in the hierarchy but only one is visible.
+    // This prevents SwiftUI from rebuilding views on tab switch for instant transitions.
     private var tabContent: some View {
-        switch selectedTab {
-        case .potentialTriggers:
+        ZStack {
             potentialTriggersView
-        case .reactionTimeline:
+                .opacity(selectedTab == .potentialTriggers ? 1 : 0)
+                .allowsHitTesting(selectedTab == .potentialTriggers)
+
             reactionTimelineView
+                .opacity(selectedTab == .reactionTimeline ? 1 : 0)
+                .allowsHitTesting(selectedTab == .reactionTimeline)
         }
     }
 
@@ -435,8 +594,8 @@ struct ReactionLogView: View {
                     // All Symptoms option
                     symptomFilterChip(symptom: nil, label: "All", icon: "list.bullet")
 
-                    // Get unique symptoms from logged reactions
-                    ForEach(uniqueSymptoms, id: \.self) { symptom in
+                    // Get unique symptoms from logged reactions (using cached values)
+                    ForEach(cachedUniqueSymptoms, id: \.self) { symptom in
                         let reactionType = ReactionType.allCases.first { $0.rawValue == symptom }
                         symptomFilterChip(
                             symptom: symptom,
@@ -485,95 +644,10 @@ struct ReactionLogView: View {
         return manager.reactionLogs.filter { $0.reactionType == symptom }
     }
 
-    // MARK: - Unique Symptoms
-    private var uniqueSymptoms: [String] {
-        let symptoms = Set(manager.reactionLogs.map { $0.reactionType })
-        // Sort by frequency (most common first)
-        return symptoms.sorted { symptom1, symptom2 in
-            let count1 = manager.reactionLogs.filter { $0.reactionType == symptom1 }.count
-            let count2 = manager.reactionLogs.filter { $0.reactionType == symptom2 }.count
-            return count1 > count2
-        }
-    }
-
-    // MARK: - Reaction Insights
-
-    /// Most common symptom with percentage
-    private var mostCommonSymptomInsight: (symptom: String, percentage: Int)? {
-        guard !manager.reactionLogs.isEmpty else { return nil }
-
-        let grouped = Dictionary(grouping: manager.reactionLogs) { $0.reactionType }
-        guard let (symptom, entries) = grouped.max(by: { $0.value.count < $1.value.count }) else { return nil }
-
-        let percentage = Int((Double(entries.count) / Double(manager.reactionLogs.count)) * 100)
-        return (symptom, percentage)
-    }
-
-    /// Peak timing for reactions (Morning/Afternoon/Evening/Night)
-    private var peakTimingInsight: String? {
-        guard !manager.reactionLogs.isEmpty else { return nil }
-
-        let calendar = Calendar.current
-        var timingCounts: [String: Int] = ["Morning": 0, "Afternoon": 0, "Evening": 0, "Night": 0]
-
-        for entry in manager.reactionLogs {
-            let hour = calendar.component(.hour, from: entry.reactionDate)
-            switch hour {
-            case 5..<12: timingCounts["Morning", default: 0] += 1
-            case 12..<17: timingCounts["Afternoon", default: 0] += 1
-            case 17..<21: timingCounts["Evening", default: 0] += 1
-            default: timingCounts["Night", default: 0] += 1
-            }
-        }
-
-        return timingCounts.max(by: { $0.value < $1.value })?.key
-    }
-
-    /// Weekly trend: reactions this week vs last week
-    private var weeklyTrendInsight: (thisWeek: Int, lastWeek: Int, trend: String)? {
-        let calendar = Calendar.current
-        let now = Date()
-
-        guard let startOfThisWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
-              let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek) else {
-            return nil
-        }
-
-        let thisWeekCount = manager.reactionLogs.filter { $0.reactionDate >= startOfThisWeek }.count
-        let lastWeekCount = manager.reactionLogs.filter { $0.reactionDate >= startOfLastWeek && $0.reactionDate < startOfThisWeek }.count
-
-        let trend: String
-        if thisWeekCount < lastWeekCount {
-            trend = "down"
-        } else if thisWeekCount > lastWeekCount {
-            trend = "up"
-        } else {
-            trend = "same"
-        }
-
-        return (thisWeekCount, lastWeekCount, trend)
-    }
-
-    /// Top trigger correlation from analysis data
-    private var topTriggerInsight: (name: String, percentage: Int)? {
-        // Aggregate all trigger analyses to find the most common trigger
-        var ingredientScores: [String: Double] = [:]
-
-        for entry in manager.reactionLogs {
-            guard let analysis = entry.triggerAnalysis else { continue }
-
-            for ingredient in analysis.topIngredients.prefix(3) {
-                ingredientScores[ingredient.ingredientName, default: 0] += ingredient.crossReactionFrequency
-            }
-        }
-
-        guard let (name, score) = ingredientScores.max(by: { $0.value < $1.value }),
-              score > 0 else { return nil }
-
-        // Normalize to percentage (crossReactionFrequency is already 0-100)
-        let percentage = Int(score / Double(max(1, manager.reactionLogs.filter { $0.triggerAnalysis != nil }.count)))
-        return (name, min(percentage, 100))
-    }
+    // NOTE: Computed insight properties have been replaced with cached @State properties
+    // (cachedUniqueSymptoms, cachedMostCommonSymptom, cachedPeakTiming, cachedWeeklyTrend, cachedTopTrigger)
+    // which are updated via updateCachedValues() when data changes, rather than on every view redraw.
+    // This eliminates expensive O(n×m) recalculations during tab switching.
 
     // MARK: - Reaction Insights Card
     @ViewBuilder
@@ -591,10 +665,10 @@ struct ReactionLogView: View {
                     Spacer()
                 }
 
-                // Insights rows
+                // Insights rows (using cached values for performance)
                 VStack(spacing: 10) {
                     // Most common symptom
-                    if let insight = mostCommonSymptomInsight {
+                    if let insight = cachedMostCommonSymptom {
                         insightRow(
                             icon: "chart.bar.fill",
                             iconColor: .blue,
@@ -604,7 +678,7 @@ struct ReactionLogView: View {
                     }
 
                     // Peak timing
-                    if let timing = peakTimingInsight {
+                    if let timing = cachedPeakTiming {
                         insightRow(
                             icon: "clock.fill",
                             iconColor: .orange,
@@ -614,8 +688,7 @@ struct ReactionLogView: View {
                     }
 
                     // Weekly trend
-                    if let trend = weeklyTrendInsight {
-                        let trendIcon = trend.trend == "down" ? "arrow.down.right" : (trend.trend == "up" ? "arrow.up.right" : "equal")
+                    if let trend = cachedWeeklyTrend {
                         let trendColor: Color = trend.trend == "down" ? .green : (trend.trend == "up" ? .red : .secondary)
                         let trendText = trend.trend == "down" ? "↓ from \(trend.lastWeek)" : (trend.trend == "up" ? "↑ from \(trend.lastWeek)" : "same as last week")
 
@@ -630,7 +703,7 @@ struct ReactionLogView: View {
                     }
 
                     // Top trigger
-                    if let trigger = topTriggerInsight {
+                    if let trigger = cachedTopTrigger {
                         insightRow(
                             icon: "target",
                             iconColor: .red,
@@ -727,9 +800,8 @@ struct ReactionLogView: View {
 
     // MARK: - Common Foods View (Flagged Foods)
     private var commonFoodsView: some View {
-        let commonFoods = calculateCommonFoods()
-
-        return VStack(alignment: .leading, spacing: 16) {
+        // Using cached values for performance (no recalculation on tab switch)
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: "flag.fill")
                     .foregroundColor(.orange)
@@ -744,14 +816,14 @@ struct ReactionLogView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 4)
 
-            if commonFoods.isEmpty {
+            if cachedCommonFoods.isEmpty {
                 Text("Not enough observations yet to identify food patterns")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
             } else {
-                ForEach(commonFoods.prefix(10), id: \.name) { food in
+                ForEach(cachedCommonFoods.prefix(10), id: \.name) { food in
                     CommonFoodRow(
                         name: food.name,
                         frequency: food.frequency,
@@ -767,8 +839,8 @@ struct ReactionLogView: View {
 
     // MARK: - Common Ingredients View
     private var commonIngredientsView: some View {
-        let commonIngredients = calculateCommonIngredients()
-        let matchedAllergens = commonIngredients.filter { isUserAllergenIngredient($0.name) }
+        // Using cached values for performance (no recalculation on tab switch)
+        let matchedAllergens = cachedCommonIngredients.filter { isUserAllergenIngredient($0.name) }
 
         return VStack(alignment: .leading, spacing: 16) {
             Text("Ingredient Patterns")
@@ -812,7 +884,7 @@ struct ReactionLogView: View {
                 .shadow(color: .red.opacity(0.3), radius: 6, x: 0, y: 3)
             }
 
-            if commonIngredients.isEmpty {
+            if cachedCommonIngredients.isEmpty {
                 Text("Not enough observations yet to identify ingredient patterns")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -820,14 +892,14 @@ struct ReactionLogView: View {
                     .padding(.vertical, 40)
             } else {
                 // Disclaimer about estimated ingredients (AI-Inferred Meal Analysis)
-                if commonIngredients.contains(where: { $0.isPrimarilyEstimated }) {
+                if cachedCommonIngredients.contains(where: { $0.isPrimarilyEstimated }) {
                     Text("Patterns may include both exact ingredients and estimated exposures from meals without ingredient labels.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .padding(.bottom, 8)
                 }
 
-                ForEach(commonIngredients.prefix(10), id: \.name) { ingredient in
+                ForEach(cachedCommonIngredients.prefix(10), id: \.name) { ingredient in
                     CommonIngredientRow(
                         name: ingredient.name,
                         frequency: ingredient.frequency,
@@ -840,79 +912,8 @@ struct ReactionLogView: View {
         }
     }
 
-
-    // MARK: - Calculate Common Ingredients
-
-    /// Calculate common ingredients across all reactions, tracking estimated vs exact sources
-    /// for AI-inferred meal analysis feature
-    private func calculateCommonIngredients() -> [(name: String, frequency: Int, percentage: Double, isPrimarilyEstimated: Bool)] {
-        var ingredientCounts: [String: (count: Int, displayName: String, exactCount: Int, estimatedCount: Int)] = [:]
-
-        // Count ingredients across all reactions (case-insensitive)
-        // Track exact vs estimated exposure counts for badge display
-        for entry in manager.reactionLogs {
-            guard let analysis = entry.triggerAnalysis else { continue }
-
-            for ingredient in analysis.topIngredients {
-                let normalizedName = ingredient.ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-
-                if ingredientCounts[normalizedName] == nil {
-                    ingredientCounts[normalizedName] = (
-                        count: 1,
-                        displayName: ingredient.ingredientName,
-                        exactCount: ingredient.exactExposureCount,
-                        estimatedCount: ingredient.estimatedExposureCount
-                    )
-                } else {
-                    ingredientCounts[normalizedName]?.count += 1
-                    ingredientCounts[normalizedName]?.exactCount += ingredient.exactExposureCount
-                    ingredientCounts[normalizedName]?.estimatedCount += ingredient.estimatedExposureCount
-                }
-            }
-        }
-
-        // Filter to ingredients appearing in 2+ reactions and calculate percentages
-        let totalReactions = manager.reactionLogs.count
-        return ingredientCounts
-            .filter { $0.value.count >= 2 }
-            .map {
-                let isPrimarilyEstimated = $0.value.estimatedCount > $0.value.exactCount
-                return (
-                    name: $0.value.displayName,
-                    frequency: $0.value.count,
-                    percentage: (Double($0.value.count) / Double(totalReactions)) * 100.0,
-                    isPrimarilyEstimated: isPrimarilyEstimated
-                )
-            }
-            .sorted { $0.frequency > $1.frequency }
-    }
-
-    // MARK: - Calculate Common Foods (Flagged Foods)
-    private func calculateCommonFoods() -> [(name: String, frequency: Int, percentage: Double)] {
-        var foodCounts: [String: (count: Int, displayName: String)] = [:]
-
-        // Count foods across all reactions (case-insensitive)
-        for entry in manager.reactionLogs {
-            guard let analysis = entry.triggerAnalysis else { continue }
-
-            for food in analysis.topFoods {
-                let normalizedName = food.foodName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-
-                if foodCounts[normalizedName] == nil {
-                    foodCounts[normalizedName] = (count: 1, displayName: food.foodName)
-                } else {
-                    foodCounts[normalizedName]?.count += 1
-                }
-            }
-        }
-
-        // Filter to foods appearing in 2+ reactions and calculate percentages
-        let totalReactions = manager.reactionLogs.count
-        return foodCounts
-            .filter { $0.value.count >= 2 }
-            .map { (name: $0.value.displayName, frequency: $0.value.count, percentage: (Double($0.value.count) / Double(totalReactions)) * 100.0) }
-            .sorted { $0.frequency > $1.frequency }
-    }
+    // NOTE: calculateCommonIngredients() and calculateCommonFoods() have been moved into
+    // updateCachedValues() to compute once when data changes rather than on every view render.
 }
 
 // MARK: - Stat Card

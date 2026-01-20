@@ -128,17 +128,28 @@ class HealthKitManager: ObservableObject {
             return
         }
 
-        let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-            HKObjectType.workoutType()
-        ]
+        // Safe unwrapping of HKQuantityTypes - these should always exist on supported devices
+        // but guard against future API changes
+        var typesToRead = Set<HKObjectType>()
+        typesToRead.insert(HKObjectType.workoutType())
 
-        let typesToWrite: Set<HKSampleType> = [
-            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!
-        ]
+        if let bodyMassType = HKObjectType.quantityType(forIdentifier: .bodyMass) {
+            typesToRead.insert(bodyMassType)
+        }
+        if let stepCountType = HKObjectType.quantityType(forIdentifier: .stepCount) {
+            typesToRead.insert(stepCountType)
+        }
+        if let activeEnergyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
+            typesToRead.insert(activeEnergyType)
+        }
+
+        var typesToWrite = Set<HKSampleType>()
+        if let dietaryEnergyType = HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed) {
+            typesToWrite.insert(dietaryEnergyType)
+        }
+        if let bodyMassWriteType = HKObjectType.quantityType(forIdentifier: .bodyMass) {
+            typesToWrite.insert(bodyMassWriteType)
+        }
 
         do {
             try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
@@ -168,11 +179,15 @@ class HealthKitManager: ObservableObject {
     }
 
     private func fetchActiveEnergyBurned(for date: Date = Date()) async throws -> Double {
-        let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
-        
+        guard let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
+            return 0
+        }
+
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+            return 0
+        }
         
         let predicate = HKQuery.predicateForSamples(
             withStart: startOfDay,
@@ -331,7 +346,9 @@ class HealthKitManager: ObservableObject {
     func fetchStepCount(for date: Date) async throws -> Double {
         guard isAuthorized else { return 0 }
 
-        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            return 0
+        }
 
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
@@ -445,14 +462,16 @@ class HealthKitManager: ObservableObject {
         
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+            return []
+        }
+
         let predicate = HKQuery.predicateForSamples(
             withStart: startOfDay,
             end: endOfDay,
             options: .strictStartDate
         )
-        
+
         return try await withCheckedThrowingContinuation { continuation in
             let query = HKSampleQuery(
                 sampleType: HKObjectType.workoutType(),
@@ -480,8 +499,10 @@ class HealthKitManager: ObservableObject {
     
     func fetchUserWeight() async throws -> Double {
         guard isAuthorized else { return 70.0 }
-        
-        let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
+
+        guard let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass) else {
+            return 70.0
+        }
         
         return try await withCheckedThrowingContinuation { continuation in
             let query = HKSampleQuery(
@@ -538,10 +559,12 @@ class HealthKitManager: ObservableObject {
     
     func writeDietaryEnergyConsumed(calories: Double, date: Date = Date()) async throws {
         guard isAuthorized else {
-                        throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
+            throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
         }
 
-        let energyType = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
+        guard let energyType = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed) else {
+            throw NSError(domain: "HealthKitManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Dietary energy type unavailable"])
+        }
         let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: calories)
 
         let sample = HKQuantitySample(
@@ -560,10 +583,12 @@ class HealthKitManager: ObservableObject {
 
     func writeBodyWeight(weightKg: Double, date: Date = Date()) async throws {
         guard isAuthorized else {
-                        throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
+            throw NSError(domain: "HealthKitManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "HealthKit not authorized"])
         }
 
-        let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
+        guard let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass) else {
+            throw NSError(domain: "HealthKitManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Body mass type unavailable"])
+        }
         let weightQuantity = HKQuantity(unit: .gramUnit(with: .kilo), doubleValue: weightKg)
 
         let sample = HKQuantitySample(

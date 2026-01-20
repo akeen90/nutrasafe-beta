@@ -21,6 +21,10 @@ struct WeeklySummarySheet: View {
     @State private var isLoading = false
     @State private var expandedDays: Set<String> = []
     @State private var weeklyCache: [String: WeeklySummary] = [:]
+    @State private var showingCalendarPicker = false
+    @State private var displayedMonth: Date = Date()
+    @State private var datesWithEntries: Set<Date> = []
+    @State private var isLoadingCalendarEntries = false
 
     init(initialDate: Date, calorieGoal: Double, macroGoals: [MacroGoal], fetchWeeklySummary: @escaping (Date, Double, Double, Double, Double) async -> WeeklySummary?, setSelectedDate: @escaping (Date) -> Void) {
         self.initialDate = initialDate
@@ -119,8 +123,14 @@ struct WeeklySummarySheet: View {
     private var weekNavigationBar: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                // Previous week
-                Button(action: navigateToPreviousWeek) {
+                // Previous week/month
+                Button(action: {
+                    if showingCalendarPicker {
+                        displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
+                    } else {
+                        navigateToPreviousWeek()
+                    }
+                }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary.opacity(0.7))
@@ -133,12 +143,20 @@ struct WeeklySummarySheet: View {
 
                 Spacer()
 
-                // This Week button
-                Button(action: navigateToThisWeek) {
+                // Calendar toggle button
+                Button(action: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        showingCalendarPicker.toggle()
+                        if showingCalendarPicker {
+                            displayedMonth = currentDisplayDate
+                            loadDatesWithEntries()
+                        }
+                    }
+                }) {
                     HStack(spacing: 6) {
-                        Image(systemName: "calendar")
+                        Image(systemName: showingCalendarPicker ? "calendar.circle.fill" : "calendar")
                             .font(.system(size: 12, weight: .semibold))
-                        Text("This Week")
+                        Text(showingCalendarPicker ? "Close" : "Pick Week")
                             .font(.system(size: 13, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -148,19 +166,25 @@ struct WeeklySummarySheet: View {
                         Capsule()
                             .fill(
                                 LinearGradient(
-                                    colors: [Color.blue, Color.blue.opacity(0.8)],
+                                    colors: showingCalendarPicker ? [Color.gray, Color.gray.opacity(0.8)] : [Color.blue, Color.blue.opacity(0.8)],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                     )
-                    .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                    .shadow(color: (showingCalendarPicker ? Color.gray : Color.blue).opacity(0.3), radius: 8, x: 0, y: 4)
                 }
 
                 Spacer()
 
-                // Next week
-                Button(action: navigateToNextWeek) {
+                // Next week/month
+                Button(action: {
+                    if showingCalendarPicker {
+                        displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
+                    } else {
+                        navigateToNextWeek()
+                    }
+                }) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary.opacity(0.7))
@@ -172,11 +196,228 @@ struct WeeklySummarySheet: View {
                 }
             }
 
-            // Week range
-            Text(formatWeekRange())
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
+            // Week range or month/year when calendar is shown
+            if showingCalendarPicker {
+                Text(formatMonthYear(displayedMonth))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+            } else {
+                Text(formatWeekRange())
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+            }
+
+            // Calendar picker section
+            if showingCalendarPicker {
+                calendarPickerSection
+            }
         }
+    }
+
+    // MARK: - Calendar Picker Section
+    @ViewBuilder
+    private var calendarPickerSection: some View {
+        VStack(spacing: 0) {
+            // Day of week headers
+            HStack(spacing: 0) {
+                ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                    Text(day)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            // Calendar grid
+            calendarGrid
+                .padding(.bottom, 12)
+
+            // This Week button
+            Button(action: {
+                navigateToThisWeek()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    showingCalendarPicker = false
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("This Week")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundColor(.blue)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(Color.blue.opacity(0.12))
+                )
+            }
+            .padding(.bottom, 12)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 12, x: 0, y: 4)
+        )
+        .onChange(of: displayedMonth) {
+            loadDatesWithEntries()
+        }
+    }
+
+    // MARK: - Calendar Grid
+    private var calendarGrid: some View {
+        let calendar = Calendar.current
+        guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) else {
+            return AnyView(EmptyView())
+        }
+
+        let weekdayOfFirst = calendar.component(.weekday, from: monthStart)
+        let firstWeekdayOffset = weekdayOfFirst - 1
+        let daysInMonth = calendar.range(of: .day, in: .month, for: displayedMonth)?.count ?? 30
+        let totalCells = firstWeekdayOffset + daysInMonth
+
+        return AnyView(
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 8) {
+                ForEach(0..<totalCells, id: \.self) { index in
+                    if index < firstWeekdayOffset {
+                        Color.clear
+                            .frame(height: 44)
+                    } else {
+                        let day = index - firstWeekdayOffset + 1
+                        if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
+                            calendarDayCell(date: date, day: day)
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    // MARK: - Calendar Day Cell
+    private func calendarDayCell(date: Date, day: Int) -> some View {
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(date)
+        let isInSelectedWeek = isDateInCurrentWeek(date)
+        let hasEntries = datesWithEntries.contains(where: { calendar.isDate($0, inSameDayAs: date) })
+        let isFuture = date > Date()
+
+        return Button(action: {
+            // Select the week containing this date
+            currentDisplayDate = date
+            displayedMonth = date
+            loadWeek()
+
+            // Close calendar after selection
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    showingCalendarPicker = false
+                }
+            }
+        }) {
+            VStack(spacing: 2) {
+                // Day number
+                ZStack {
+                    if isInSelectedWeek {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.blue.opacity(0.3))
+                            .frame(width: 32, height: 32)
+                    }
+
+                    if isToday {
+                        Circle()
+                            .stroke(Color.blue, lineWidth: 2)
+                            .frame(width: 28, height: 28)
+                    }
+
+                    Text("\(day)")
+                        .font(.system(size: 16, weight: isToday || isInSelectedWeek ? .bold : .regular))
+                        .foregroundColor(
+                            isFuture ? .secondary.opacity(0.5) :
+                            isInSelectedWeek ? .blue :
+                            .primary
+                        )
+                }
+
+                // Entry indicator dot
+                if hasEntries && !isFuture {
+                    Circle()
+                        .fill(isInSelectedWeek ? Color.blue : Color.green)
+                        .frame(width: 6, height: 6)
+                } else {
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .frame(height: 44)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(isFuture)
+    }
+
+    // MARK: - Check if date is in current selected week
+    private func isDateInCurrentWeek(_ date: Date) -> Bool {
+        let calendar = Calendar.current
+
+        // Get the Monday of the week containing currentDisplayDate
+        let weekday = calendar.component(.weekday, from: currentDisplayDate)
+        let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
+
+        guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: currentDisplayDate),
+              let sunday = calendar.date(byAdding: .day, value: 6, to: monday) else {
+            return false
+        }
+
+        let startOfMonday = calendar.startOfDay(for: monday)
+        let endOfSunday = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: sunday) ?? sunday
+
+        return date >= startOfMonday && date <= endOfSunday
+    }
+
+    // MARK: - Load Dates With Entries
+    private func loadDatesWithEntries() {
+        guard !isLoadingCalendarEntries else { return }
+        isLoadingCalendarEntries = true
+
+        Task {
+            let calendar = Calendar.current
+            guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)),
+                  let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart),
+                  let monthEndWithTime = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: monthEnd) else {
+                await MainActor.run {
+                    isLoadingCalendarEntries = false
+                }
+                return
+            }
+
+            do {
+                let entries = try await FirebaseManager.shared.getFoodEntriesInRange(from: monthStart, to: monthEndWithTime)
+
+                var dates = Set<Date>()
+                for entry in entries {
+                    let startOfDay = calendar.startOfDay(for: entry.date)
+                    dates.insert(startOfDay)
+                }
+
+                await MainActor.run {
+                    datesWithEntries = dates
+                    isLoadingCalendarEntries = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingCalendarEntries = false
+                }
+            }
+        }
+    }
+
+    // MARK: - Format Month Year
+    private func formatMonthYear(_ date: Date) -> String {
+        DateHelper.fullMonthYearFormatter.string(from: date)
     }
 
     // MARK: - Hero Stats Card
@@ -484,17 +725,21 @@ struct ModernDayCard: View {
         return Double(day.calories) / calorieGoal
     }
 
-    private var statusInfo: (icon: String, color: Color) {
+    private var calorieStatus: (text: String, color: Color, isOnTarget: Bool) {
         if !day.isLogged {
-            return ("minus.circle", .secondary)
+            return ("–", .secondary, false)
         }
-        let diff = abs(Double(day.calories) - calorieGoal) / calorieGoal
-        if diff < 0.1 {
-            return ("checkmark.circle.fill", .green)
-        } else if day.calories > Int(calorieGoal) {
-            return ("arrow.up.circle.fill", .red)
+        let diff = day.calories - Int(calorieGoal)
+        let percentDiff = abs(Double(diff)) / calorieGoal
+        if percentDiff < 0.1 {
+            // Within 10% of goal - on target
+            return ("✓", .green, true)
+        } else if diff > 0 {
+            // Over goal - red with + prefix
+            return ("+\(diff)", .red, false)
         } else {
-            return ("arrow.down.circle.fill", .orange)
+            // Under goal - green with - prefix
+            return ("\(diff)", .green, false)
         }
     }
 
@@ -553,10 +798,11 @@ struct ModernDayCard: View {
                         }
                         .frame(width: 70, alignment: .trailing)
 
-                        // Status icon
-                        Image(systemName: statusInfo.icon)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(statusInfo.color)
+                        // Calorie difference indicator
+                        Text(calorieStatus.text)
+                            .font(.system(size: calorieStatus.isOnTarget ? 18 : 12, weight: .bold, design: .rounded))
+                            .foregroundColor(calorieStatus.color)
+                            .frame(minWidth: 44, alignment: .trailing)
 
                         // Chevron
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")

@@ -659,12 +659,22 @@ struct DiaryDailySummaryCard: View {
         var checkDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
 
         // Count backwards from yesterday to find streak
-        while true {
+        // Safety limit: max 365 days to prevent infinite loop edge cases
+        let maxIterations = 365
+        var iterations = 0
+
+        while iterations < maxIterations {
+            iterations += 1
             let dateKey = formatDateKey(checkDate)
             let count = saved[dateKey] ?? 0
             if count >= dailyWaterGoal {
                 streak += 1
+                let previousDate = checkDate
                 checkDate = Calendar.current.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
+                // Safety check: ensure date actually changed to prevent infinite loop
+                if checkDate == previousDate {
+                    break
+                }
             } else {
                 break
             }

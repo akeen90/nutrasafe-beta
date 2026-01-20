@@ -345,9 +345,11 @@ function detectIssues(food: Record<string, unknown>): Issue[] {
   const protein = (food.protein as number) || 0;
   const carbs = (food.carbs as number) || (food.carbohydrates as number) || 0;
   const fat = (food.fat as number) || 0;
-  const fiber = (food.fiber as number) || 0;
+  const fiber = (food.fiber as number) || (food.fibre as number) || 0;  // UK uses 'fibre'
   const sugar = (food.sugar as number) || 0;
-  const sodium = (food.sodium as number) || 0;
+  // UK uses 'salt' in grams, US uses 'sodium' in mg
+  const saltGramsFromFood = (food.salt as number) || 0;
+  const sodiumMg = (food.sodium as number) || 0;
 
   if (calories === 0 && protein === 0 && carbs === 0 && fat === 0) {
     issues.push({ type: 'missing-nutrition', field: 'nutrition' });
@@ -413,10 +415,13 @@ function detectIssues(food: Record<string, unknown>): Issue[] {
     }
   }
 
-  // Salt check (UK labels use salt in grams, not sodium in mg)
-  // Convert sodium (mg) to salt (g): salt = sodium × 2.5 / 1000
+  // Salt check (UK labels use salt in grams, US uses sodium in mg)
+  // UK: salt is stored directly in grams
+  // US: sodium in mg needs conversion (salt = sodium × 2.5 / 1000)
   // > 10g salt per 100g is impossibly high
-  const saltGrams = (sodium * 2.5) / 1000;
+  const saltGrams = saltGramsFromFood > 0
+    ? saltGramsFromFood  // UK format: salt already in grams
+    : (sodiumMg * 2.5) / 1000;  // US format: convert sodium mg to salt g
   if (saltGrams > 10) {
     impossibleIssues.push(`salt: ${saltGrams.toFixed(1)}g (extremely high)`);
   }
