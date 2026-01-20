@@ -334,7 +334,7 @@ struct FastingPlanCreationView: View {
     private func philosophyExplanation(_ philosophy: AllowedDrinksPhilosophy) -> String {
         switch philosophy {
         case .strict:
-            return "Most strict approach - only zero-calorie drinks with no artificial sweeteners. Best for autophagy and metabolic benefits."
+            return "Most strict approach - only zero-calorie drinks with no artificial sweeteners. May better support autophagy."
         case .practical:
             return "Allows sugar-free drinks like Diet Coke or Coke Zero. Won't prompt to end fast for these items."
         }

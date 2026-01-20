@@ -1035,9 +1035,9 @@ struct FastingSettingsView: View {
                 Section(header: Text("About Intermittent Fasting")) {
                     VStack(alignment: .leading, spacing: 12) {
                         InfoRow(icon: "clock.fill", color: .orange, title: "12:12", description: "Good for beginners, gentle fasting")
-                        InfoRow(icon: "flame.fill", color: .red, title: "16:8", description: "Most popular, effective fat burning")
-                        InfoRow(icon: "bolt.fill", color: .purple, title: "18:6", description: "Enhanced autophagy and ketosis")
-                        InfoRow(icon: "star.fill", color: .yellow, title: "20:4", description: "Advanced, maximum benefits")
+                        InfoRow(icon: "flame.fill", color: .red, title: "16:8", description: "Most popular plan, may support fat burning")
+                        InfoRow(icon: "bolt.fill", color: .purple, title: "18:6", description: "May support autophagy and ketosis")
+                        InfoRow(icon: "star.fill", color: .yellow, title: "20:4", description: "Advanced, longer fasting window")
                     }
                 }
             }

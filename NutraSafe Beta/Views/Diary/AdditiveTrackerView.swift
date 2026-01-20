@@ -13,6 +13,7 @@ struct AdditiveTrackerSection: View {
     @ObservedObject var viewModel: AdditiveTrackerViewModel
     @State private var expandedAdditiveId: String?
     @State private var isExpanded = true
+    @State private var showingSources = false
 
     // Group additives by verdict
     private var avoidAdditives: [AdditiveAggregate] {
@@ -101,6 +102,21 @@ struct AdditiveTrackerSection: View {
                                 additives: neutralAdditives
                             )
                         }
+
+                        // Sources link
+                        Button {
+                            showingSources = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.system(size: 12))
+                                Text("View Sources (EFSA, FSA, FDA)")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .foregroundColor(.blue)
+                            .padding(.top, 8)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     } else {
                         emptyStateView
                     }
@@ -117,6 +133,9 @@ struct AdditiveTrackerSection: View {
         .padding(.horizontal, 16)
         .onAppear {
             viewModel.loadData()
+        }
+        .fullScreenCover(isPresented: $showingSources) {
+            SourcesAndCitationsView()
         }
     }
 
@@ -140,6 +159,7 @@ struct AdditiveTrackerSection: View {
                                 ? Capsule().fill(Color.orange)
                                 : Capsule().fill(Color(.systemGray6))
                         )
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(PlainButtonStyle())
 
