@@ -156,14 +156,23 @@ private struct FastingHistoryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Date badge
+            // Date badge with date span (e.g., "19th > 20th")
             VStack(alignment: .leading, spacing: 2) {
-                Text(dateString(session.endTime ?? Date()))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    Text(session.dateSpanDisplay)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(session.isFalseStart ? .secondary.opacity(0.6) : .secondary)
+
+                    // False start indicator
+                    if session.isFalseStart {
+                        Image(systemName: "arrow.counterclockwise.circle")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange.opacity(0.7))
+                    }
+                }
                 Text(durationString(session.actualDurationHours))
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(session.isFalseStart ? .secondary : .primary)
             }
             .frame(width: 120, alignment: .leading)
 
@@ -182,8 +191,14 @@ private struct FastingHistoryRow: View {
                     }
                 }
 
+                // False start subtext
+                if session.isFalseStart {
+                    Text("False start")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange.opacity(0.8))
+                }
                 // Warm-up attempt subtext for very early ends
-                if session.attemptType == .warmup {
+                else if session.attemptType == .warmup {
                     Text("Warm-up attempt")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary.opacity(0.8))
@@ -206,12 +221,8 @@ private struct FastingHistoryRow: View {
          .background(Color(.systemGray6))
          .cornerRadius(10)
          .contentShape(Rectangle())
+         .opacity(session.isFalseStart ? 0.6 : 1.0) // Dim false starts
          .onTapGesture { onTap() }
-    }
-
-    private func dateString(_ date: Date) -> String {
-        // PERFORMANCE: Use cached static formatter
-        DateHelper.mediumDateShortTimeFormatter.string(from: date)
     }
 
     private func durationString(_ hours: Double) -> String {

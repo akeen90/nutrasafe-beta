@@ -221,6 +221,54 @@ enum DateHelper {
         return formatter
     }()
 
+    // MARK: - Ordinal Date Formatting
+
+    /// Convert day number to ordinal string (1 -> "1st", 2 -> "2nd", etc.)
+    /// - Parameter day: The day number (1-31)
+    /// - Returns: Ordinal string representation
+    static func ordinalString(for day: Int) -> String {
+        let suffix: String
+        switch day {
+        case 11, 12, 13: suffix = "th"
+        case _ where day % 10 == 1: suffix = "st"
+        case _ where day % 10 == 2: suffix = "nd"
+        case _ where day % 10 == 3: suffix = "rd"
+        default: suffix = "th"
+        }
+        return "\(day)\(suffix)"
+    }
+
+    /// Format a date range as ordinal span (e.g., "19th > 20th" or just "20th" if same day)
+    /// Used for fasting history to show overnight fasts spanning multiple days
+    /// - Parameters:
+    ///   - start: The start date of the range
+    ///   - end: The end date of the range (optional, defaults to start if nil)
+    /// - Returns: Formatted string like "19th > 20th" or "20th"
+    static func formatDateSpan(start: Date, end: Date?) -> String {
+        let effectiveEnd = end ?? start
+        let startDay = calendar.component(.day, from: start)
+        let endDay = calendar.component(.day, from: effectiveEnd)
+
+        // Same day - just show the day
+        if calendar.isDate(start, inSameDayAs: effectiveEnd) {
+            return ordinalString(for: endDay)
+        }
+
+        // Check if crossing month boundary
+        let startMonth = calendar.component(.month, from: start)
+        let endMonth = calendar.component(.month, from: effectiveEnd)
+
+        if startMonth != endMonth {
+            // Include month names when crossing months
+            let startMonthStr = shortMonthFormatter.string(from: start)
+            let endMonthStr = shortMonthFormatter.string(from: effectiveEnd)
+            return "\(ordinalString(for: startDay)) \(startMonthStr) > \(ordinalString(for: endDay)) \(endMonthStr)"
+        }
+
+        // Same month, different days
+        return "\(ordinalString(for: startDay)) > \(ordinalString(for: endDay))"
+    }
+
     // MARK: - Shared Calendar (User's Local Timezone)
 
     /// Shared calendar instance using user's current timezone

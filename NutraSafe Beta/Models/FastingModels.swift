@@ -461,6 +461,88 @@ struct FastingSession: Identifiable, Codable, Equatable {
         let targetEndTime = startTime.addingTimeInterval(TimeInterval(targetDurationHours) * 3600)
         return max(0, targetEndTime.timeIntervalSinceNow)
     }
+
+    // MARK: - Date Span Display
+
+    /// Formatted date span string (e.g., "19th > 20th" or "20th")
+    /// Shows when a fast spans multiple days for overnight fasts
+    var dateSpanDisplay: String {
+        DateHelper.formatDateSpan(start: startTime, end: endTime)
+    }
+
+    // MARK: - False Start Detection
+
+    /// Minimum duration (hours) for a fast to be considered valid
+    static let minimumValidDurationHours: Double = 2.0
+
+    /// Window (hours) to detect rapid restart patterns
+    static let falseStartWindowHours: Double = 4.0
+
+    /// True if this session is a false start (very short, not meaningful)
+    /// False starts are < 2 hours and don't contribute to fasting goals
+    var isFalseStart: Bool {
+        // Active sessions are never false starts
+        guard !isActive else { return false }
+
+        // Very short fasts (< 2 hours) are false starts
+        if actualDurationHours < Self.minimumValidDurationHours {
+            // Intentional skips with 0 duration are NOT false starts - they're deliberate
+            if skipped && actualDurationHours < 0.1 {
+                return false
+            }
+            return true
+        }
+
+        return false
+    }
+
+    /// Should this session be excluded from analytics totals?
+    var excludeFromAnalytics: Bool {
+        return isFalseStart || (skipped && actualDurationHours < 0.1)
+    }
+}
+
+// MARK: - FastingSession Array Extension for False Start Detection
+
+extension Array where Element == FastingSession {
+    /// Identify sessions that are part of rapid stop/start patterns
+    /// (multiple attempts within a short window that indicate false starts)
+    func identifyFalseStartClusters() -> Set<String> {
+        var falseStartIds = Set<String>()
+        let sortedSessions = self.sorted { $0.startTime < $1.startTime }
+
+        for (index, session) in sortedSessions.enumerated() {
+            guard let sessionId = session.id,
+                  let endTime = session.endTime else { continue }
+
+            // If this was a short session, check if there's a restart within 4 hours
+            if session.actualDurationHours < FastingSession.minimumValidDurationHours {
+                let nextSessions = sortedSessions.dropFirst(index + 1)
+                for nextSession in nextSessions {
+                    let timeBetweenHours = nextSession.startTime.timeIntervalSince(endTime) / 3600
+                    if timeBetweenHours < FastingSession.falseStartWindowHours && timeBetweenHours >= 0 {
+                        // This is a false start pattern - short fast followed by quick restart
+                        falseStartIds.insert(sessionId)
+                        break
+                    } else if timeBetweenHours >= FastingSession.falseStartWindowHours {
+                        // Gap too large, not a false start pattern
+                        break
+                    }
+                }
+            }
+        }
+
+        return falseStartIds
+    }
+
+    /// Filter to only valid sessions (excluding false starts and rapid restart patterns)
+    var validSessions: [FastingSession] {
+        let clusterIds = identifyFalseStartClusters()
+        return filter { session in
+            guard let id = session.id else { return true }
+            return !clusterIds.contains(id) && !session.isFalseStart
+        }
+    }
 }
 
 // MARK: - Week Summary

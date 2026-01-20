@@ -3196,280 +3196,288 @@ struct FastingTimelineView: View {
     @Binding var selectedDate: Date?
     let onDeleteSession: (FastingSession) -> Void
 
-    // Group sessions by date
-    private var dailySummaries: [(date: Date, sessions: [FastingSession])] {
-        let calendar = Calendar.current
-        var dateMap: [Date: [FastingSession]] = [:]
-
-        for session in sessions {
-            let reportDate = session.endTime ?? session.startTime
-            let dayStart = calendar.startOfDay(for: reportDate)
-            if dateMap[dayStart] == nil {
-                dateMap[dayStart] = []
-            }
-            dateMap[dayStart]?.append(session)
-        }
-
-        // Sort by date ascending (oldest first, newest last)
-        return dateMap.sorted { $0.key < $1.key }
-            .map { (date: $0.key, sessions: $0.value) }
+    // Get recent sessions sorted by end time (newest first for display, but we'll reverse for scroll)
+    private var recentSessions: [FastingSession] {
+        sessions
+            .filter { $0.endTime != nil && $0.actualDurationHours > 0 }
+            .sorted { ($0.endTime ?? $0.startTime) < ($1.endTime ?? $1.startTime) }
+            .suffix(20) // Last 20 fasts
+            .reversed() // Newest first in array, but we'll display oldest-to-newest in scroll
+            .map { $0 }
     }
 
-    // Find sessions for the selected date
-    private var selectedSessions: [FastingSession] {
-        guard let selected = selectedDate else { return [] }
-        let calendar = Calendar.current
-        return dailySummaries.first { calendar.isDate($0.date, inSameDayAs: selected) }?.sessions ?? []
+    // Sessions sorted for horizontal scroll (oldest left, newest right)
+    private var scrollSessions: [FastingSession] {
+        Array(recentSessions.reversed())
     }
 
-    // Date range label
-    private var dateRangeLabel: String {
-        guard let first = dailySummaries.first?.date,
-              let last = dailySummaries.last?.date else { return "" }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-
-        if Calendar.current.isDate(first, inSameDayAs: last) {
-            return formatter.string(from: first)
-        } else {
-            return "\(formatter.string(from: first)) - \(formatter.string(from: last))"
-        }
-    }
-
-    // Max hours in any single day (for bar scaling)
-    private var maxHoursInADay: Double {
-        let maxHours = dailySummaries.map { summary in
-            summary.sessions.reduce(0) { $0 + $1.actualDurationHours }
-        }.max() ?? 24
-        return max(maxHours, 1) // Avoid division by zero
-    }
+    @State private var selectedSession: FastingSession?
 
     var body: some View {
-        VStack(spacing: 12) {
-            // Timeline header
-            HStack {
-                Text("← Older")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text(dateRangeLabel)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text("Today →")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 4)
-
-            // Horizontal scrolling timeline with mini bars
+        VStack(spacing: 16) {
+            // Horizontal scrolling cards
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(dailySummaries, id: \.date) { summary in
-                            TimelineBarView(
-                                date: summary.date,
-                                sessions: summary.sessions,
-                                isSelected: selectedDate != nil && Calendar.current.isDate(selectedDate!, inSameDayAs: summary.date),
-                                maxHours: maxHoursInADay,
+                    HStack(spacing: 12) {
+                        ForEach(scrollSessions) { session in
+                            FastingSessionCard(
+                                session: session,
+                                isSelected: selectedSession?.id == session.id,
                                 onTap: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        if selectedDate != nil && Calendar.current.isDate(selectedDate!, inSameDayAs: summary.date) {
-                                            selectedDate = nil
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        if selectedSession?.id == session.id {
+                                            selectedSession = nil
                                         } else {
-                                            selectedDate = summary.date
+                                            selectedSession = session
                                         }
                                     }
+                                },
+                                onDelete: {
+                                    onDeleteSession(session)
                                 }
                             )
-                            .id(summary.date)
+                            .id(session.id)
                         }
                     }
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 4)
                     .padding(.vertical, 8)
                 }
-                .background(Color.gray.opacity(0.06))
-                .cornerRadius(16)
                 .onAppear {
                     // Auto-scroll to most recent (rightmost)
-                    if let lastDate = dailySummaries.last?.date {
+                    if let lastSession = scrollSessions.last {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             withAnimation {
-                                proxy.scrollTo(lastDate, anchor: .trailing)
+                                proxy.scrollTo(lastSession.id, anchor: .trailing)
                             }
                         }
                     }
                 }
             }
-
-            // Selected day detail card
-            if let selected = selectedDate, !selectedSessions.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    // Day header
-                    HStack {
-                        Text(formatDayHeader(selected))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text("\(selectedSessions.count) fast\(selectedSessions.count == 1 ? "" : "s")")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    // Sessions for this day
-                    ForEach(Array(selectedSessions.enumerated()), id: \.element.id) { index, session in
-                        TimelineFastCard(
-                            session: session,
-                            sessionNumber: selectedSessions.count > 1 ? index + 1 : nil,
-                            onClear: {
-                                onDeleteSession(session)
-                            }
-                        )
-                    }
-                }
-                .padding(16)
-                .background(Color.adaptiveCard)
-                .cornerRadius(12)
-                .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
-            }
-        }
-    }
-
-    private func formatDayHeader(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let formatter = DateFormatter()
-
-        if calendar.isDateInToday(date) {
-            return "Today"
-        } else if calendar.isDateInYesterday(date) {
-            return "Yesterday"
-        } else {
-            formatter.dateFormat = "EEEE, MMM d"
-            return formatter.string(from: date)
         }
     }
 }
 
-// MARK: - Timeline Bar View (Mini Graph)
-struct TimelineBarView: View {
-    let date: Date
-    let sessions: [FastingSession]
+// MARK: - Modern Fasting Session Card
+struct FastingSessionCard: View {
+    let session: FastingSession
     let isSelected: Bool
-    let maxHours: Double // Max hours across all days for scaling
     let onTap: () -> Void
+    let onDelete: () -> Void
 
-    private var totalHours: Double {
-        sessions.reduce(0) { $0 + $1.actualDurationHours }
+    private var completionRatio: Double {
+        guard session.targetDurationHours > 0 else { return 1.0 }
+        return min(1.0, session.actualDurationHours / Double(session.targetDurationHours))
     }
 
-    private var barColor: Color {
-        guard !sessions.isEmpty else { return .gray.opacity(0.3) }
+    private var statusColor: Color {
+        switch session.completionStatus {
+        case .completed: return .green
+        case .overGoal: return .blue
+        case .earlyEnd: return .orange
+        case .failed: return .red
+        case .skipped: return .gray
+        case .active: return .blue
+        }
+    }
 
-        let statuses = sessions.map { $0.completionStatus }
+    private var statusGradient: LinearGradient {
+        let colors: [Color]
+        switch session.completionStatus {
+        case .completed:
+            colors = [Color.green.opacity(0.15), Color.green.opacity(0.05)]
+        case .overGoal:
+            colors = [Color.blue.opacity(0.15), Color.purple.opacity(0.08)]
+        case .earlyEnd:
+            colors = [Color.orange.opacity(0.12), Color.yellow.opacity(0.05)]
+        case .failed:
+            colors = [Color.red.opacity(0.12), Color.orange.opacity(0.05)]
+        case .skipped:
+            colors = [Color.gray.opacity(0.1), Color.gray.opacity(0.05)]
+        case .active:
+            colors = [Color.blue.opacity(0.15), Color.cyan.opacity(0.08)]
+        }
+        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
 
-        if statuses.contains(.overGoal) { return .blue }
-        if statuses.contains(.completed) { return .green }
-        if statuses.contains(.active) { return .blue }
-        if statuses.contains(.earlyEnd) { return .orange }
-        if statuses.contains(.failed) { return .red }
-        return .gray
+    private var isOvernight: Bool {
+        guard let endTime = session.endTime else { return false }
+        return !Calendar.current.isDate(session.startTime, inSameDayAs: endTime)
     }
 
     private var isToday: Bool {
-        Calendar.current.isDateInToday(date)
+        guard let endTime = session.endTime else { return false }
+        return Calendar.current.isDateInToday(endTime)
     }
 
-    private var dayLabel: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d"
-        return formatter.string(from: date)
-    }
-
-    private var monthLabel: String? {
-        let calendar = Calendar.current
-        let day = calendar.component(.day, from: date)
-        if day == 1 || isToday {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM"
-            return formatter.string(from: date)
+    private var statusIcon: String {
+        switch session.completionStatus {
+        case .completed: return "checkmark.circle.fill"
+        case .overGoal: return "star.circle.fill"
+        case .earlyEnd: return "arrow.uturn.backward.circle.fill"
+        case .failed: return "xmark.circle.fill"
+        case .skipped: return "moon.zzz.fill"
+        case .active: return "circle.dotted"
         }
-        return nil
-    }
-
-    // Bar height based on hours (min 8pt, max 60pt)
-    private var barHeight: CGFloat {
-        guard maxHours > 0, totalHours > 0 else { return 8 }
-        let ratio = totalHours / maxHours
-        return max(8, CGFloat(ratio) * 60)
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            // Month label (shown on 1st of month or today)
-            if let month = monthLabel {
-                Text(month)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.secondary)
-            } else {
-                Text(" ")
-                    .font(.system(size: 9))
-            }
+        VStack(spacing: 0) {
+            // Main card content
+            VStack(spacing: 10) {
+                // Date span header
+                HStack(spacing: 4) {
+                    if isOvernight {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.purple.opacity(0.7))
+                    }
 
-            // The bar with hours
-            ZStack(alignment: .bottom) {
-                // Background bar (empty state)
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray.opacity(0.15))
-                    .frame(width: isSelected ? 32 : 24, height: 60)
+                    Text(session.dateSpanDisplay)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(isToday ? .primary : .secondary)
 
-                // Filled bar
-                if totalHours > 0 {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(
-                            LinearGradient(
-                                colors: [barColor.opacity(0.7), barColor],
-                                startPoint: .bottom,
-                                endPoint: .top
-                            )
+                    if isToday {
+                        Text("TODAY")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.blue))
+                    }
+                }
+
+                // Circular progress with duration
+                ZStack {
+                    // Background ring
+                    Circle()
+                        .stroke(statusColor.opacity(0.2), lineWidth: 5)
+                        .frame(width: 56, height: 56)
+
+                    // Progress ring
+                    Circle()
+                        .trim(from: 0, to: completionRatio)
+                        .stroke(
+                            statusColor,
+                            style: StrokeStyle(lineWidth: 5, lineCap: .round)
                         )
-                        .frame(width: isSelected ? 32 : 24, height: barHeight)
+                        .frame(width: 56, height: 56)
+                        .rotationEffect(.degrees(-90))
+
+                    // Duration in center
+                    VStack(spacing: -2) {
+                        Text(String(format: "%.0f", session.actualDurationHours))
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                        Text("hrs")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
                 }
 
-                // Hours label inside bar
-                if totalHours > 0 {
-                    Text("\(Int(totalHours))hr")
-                        .font(.system(size: totalHours >= 10 ? 8 : 9, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
-                        .padding(.bottom, 4)
+                // Status indicator
+                HStack(spacing: 4) {
+                    Image(systemName: statusIcon)
+                        .font(.system(size: 10))
+                    Text(session.completionStatus.displayName)
+                        .font(.system(size: 10, weight: .medium))
                 }
+                .foregroundColor(statusColor)
 
-                // Selection ring
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(barColor, lineWidth: 2)
-                        .frame(width: 36, height: 64)
+                // Time range (compact)
+                if !isSelected {
+                    HStack(spacing: 3) {
+                        Text(DateHelper.shortTimeFormatter.string(from: session.startTime))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 7))
+                        if let endTime = session.endTime {
+                            Text(DateHelper.shortTimeFormatter.string(from: endTime))
+                        }
+                    }
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary.opacity(0.8))
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
 
-            // Day number
-            Text(dayLabel)
-                .font(.system(size: 10, weight: isToday ? .bold : .regular))
-                .foregroundColor(isToday ? .primary : .secondary)
+            // Expanded details when selected
+            if isSelected {
+                VStack(spacing: 8) {
+                    Divider()
+                        .padding(.horizontal, 8)
 
-            // Today indicator
-            if isToday {
-                Circle()
-                    .fill(Color.blue)
-                    .frame(width: 4, height: 4)
+                    // Detailed time info
+                    VStack(spacing: 4) {
+                        HStack {
+                            Image(systemName: "play.circle.fill")
+                                .foregroundColor(.green.opacity(0.7))
+                            Text(session.startTime.formatted(date: .omitted, time: .shortened))
+                            Spacer()
+                        }
+                        .font(.system(size: 11))
+
+                        HStack {
+                            Image(systemName: "stop.circle.fill")
+                                .foregroundColor(.red.opacity(0.7))
+                            if let endTime = session.endTime {
+                                Text(endTime.formatted(date: .omitted, time: .shortened))
+                            }
+                            Spacer()
+                        }
+                        .font(.system(size: 11))
+
+                        if session.targetDurationHours > 0 {
+                            HStack {
+                                Image(systemName: "target")
+                                    .foregroundColor(.purple.opacity(0.7))
+                                Text("\(session.targetDurationHours)h goal")
+                                Spacer()
+                                Text("\(Int(completionRatio * 100))%")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(statusColor)
+                            }
+                            .font(.system(size: 11))
+                        }
+                    }
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 12)
+
+                    // Delete button
+                    Button {
+                        onDelete()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 10))
+                            Text("Delete")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(.red.opacity(0.8))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 4)
+                .padding(.bottom, 8)
+                .padding(.horizontal, 8)
             }
         }
-        .frame(width: 40)
+        .frame(width: isSelected ? 140 : 110)
+        .background(statusGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(isSelected ? statusColor.opacity(0.5) : Color.clear, lineWidth: 2)
+        )
+        .shadow(color: statusColor.opacity(isSelected ? 0.25 : 0.1), radius: isSelected ? 8 : 4, x: 0, y: 2)
         .contentShape(Rectangle())
         .onTapGesture {
             onTap()
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 }
 
@@ -3581,11 +3589,23 @@ struct TimelineFastCard: View {
                     }
                 }
 
-                // Time range
+                // Time range with date span for overnight fasts
                 HStack(spacing: 4) {
                     Image(systemName: "clock")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
+
+                    // Show date span if overnight fast
+                    let isOvernight = session.endTime != nil && !Calendar.current.isDate(session.startTime, inSameDayAs: session.endTime!)
+                    if isOvernight {
+                        Text(session.dateSpanDisplay)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.purple.opacity(0.8))
+                        Text("•")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary.opacity(0.5))
+                    }
+
                     Text(DateHelper.shortTimeFormatter.string(from: session.startTime))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)

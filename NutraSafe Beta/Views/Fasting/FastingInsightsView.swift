@@ -207,11 +207,16 @@ struct MetricCard: View {
 struct ProgressChartSection: View {
     let sessions: [FastingSession]
 
+    /// Filter out false starts for main chart display
+    private var displaySessions: [FastingSession] {
+        sessions.filter { !$0.isFalseStart }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             headerView
 
-            if sessions.count > 1 {
+            if displaySessions.count > 1 {
                 progressChart
             } else {
                 emptyDataView
@@ -224,51 +229,56 @@ struct ProgressChartSection: View {
 
     private var headerView: some View {
         HStack {
-            Image(systemName: "chart.xyaxis.line")
+            Image(systemName: "chart.bar.fill")
                 .foregroundColor(.purple)
-            Text("Progress Over Time")
+            Text("Fasting History")
                 .font(.headline)
+            Spacer()
+            if !displaySessions.isEmpty {
+                Text("Last \(min(displaySessions.count, 14)) fasts")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
     }
 
     private var progressChart: some View {
-        Chart {
-            ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
-                LineMark(
-                    x: .value("Date", session.startTime),
-                    y: .value("Duration (hours)", session.actualDurationHours)
-                )
-                .foregroundStyle(Color.blue)
-                .symbol(Circle())
-                .symbolSize(50)
+        let sessionsToShow = Array(displaySessions.prefix(14).reversed())
+        let chartHeight = CGFloat(min(sessionsToShow.count, 14) * 36 + 40)
 
-                AreaMark(
-                    x: .value("Date", session.startTime),
-                    y: .value("Duration (hours)", session.actualDurationHours)
+        return Chart {
+            ForEach(sessionsToShow) { session in
+                // Main duration bar
+                BarMark(
+                    x: .value("Duration", session.actualDurationHours),
+                    y: .value("Date", session.dateSpanDisplay)
                 )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.blue.opacity(0.3), Color.blue.opacity(0.1)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-            }
-        }
-        .frame(height: 200)
-        .chartYScale(domain: 0...maxDuration)
-        .chartXAxis {
-            AxisMarks { value in
-                if let date = value.as(Date.self) {
-                    AxisValueLabel {
-                        Text(date.formatted(.dateTime.month(.abbreviated).day()))
-                            .font(.caption)
-                    }
+                .foregroundStyle(barGradient(for: session))
+                .cornerRadius(4)
+                .annotation(position: .trailing, alignment: .leading, spacing: 4) {
+                    Text(String(format: "%.1fh", session.actualDurationHours))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
             }
+
+            // Target line (use first session's target as reference)
+            if let firstSession = sessionsToShow.first, firstSession.targetDurationHours > 0 {
+                RuleMark(x: .value("Target", Double(firstSession.targetDurationHours)))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                    .foregroundStyle(.gray.opacity(0.6))
+                    .annotation(position: .top, alignment: .trailing) {
+                        Text("Goal: \(firstSession.targetDurationHours)h")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+            }
         }
-        .chartYAxis {
-            AxisMarks { value in
+        .frame(height: chartHeight)
+        .chartXAxis {
+            AxisMarks(position: .bottom) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
+                    .foregroundStyle(.gray.opacity(0.3))
                 if let hours = value.as(Double.self) {
                     AxisValueLabel {
                         Text("\(Int(hours))h")
@@ -277,11 +287,18 @@ struct ProgressChartSection: View {
                 }
             }
         }
+        .chartYAxis {
+            AxisMarks { _ in
+                AxisValueLabel()
+                    .font(.caption)
+            }
+        }
+        .chartXScale(domain: 0...(maxDuration + 2))
     }
 
     private var emptyDataView: some View {
         VStack(spacing: 12) {
-            Image(systemName: "chart.line.uptrend.xyaxis")
+            Image(systemName: "chart.bar.fill")
                 .font(.system(size: 50))
                 .foregroundColor(.secondary)
 
@@ -299,8 +316,24 @@ struct ProgressChartSection: View {
     }
 
     private var maxDuration: Double {
-        let max = sessions.map { $0.actualDurationHours }.max() ?? 24
+        let max = displaySessions.prefix(14).map { $0.actualDurationHours }.max() ?? 24
         return max * 1.1 // Add 10% padding
+    }
+
+    /// Color gradient based on completion status
+    private func barGradient(for session: FastingSession) -> LinearGradient {
+        let colors: [Color]
+        switch session.completionStatus {
+        case .completed, .overGoal:
+            colors = [Color.green.opacity(0.7), Color.green]
+        case .earlyEnd:
+            colors = [Color.orange.opacity(0.7), Color.orange]
+        case .active:
+            colors = [Color.blue.opacity(0.7), Color.blue]
+        default:
+            colors = [Color.gray.opacity(0.5), Color.gray]
+        }
+        return LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
     }
 }
 
@@ -530,37 +563,49 @@ struct RecentSessionsSection: View {
 
 struct SessionRow: View {
     let session: FastingSession
-    
+
     var body: some View {
         HStack(spacing: 12) {
-            // Status indicator
+            // Status indicator - different for false starts
             Circle()
-                .fill(statusColor)
+                .fill(session.isFalseStart ? Color.gray.opacity(0.4) : statusColor)
                 .frame(width: 8, height: 8)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(session.completionStatus.displayName)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    
+
+                    // False start indicator
+                    if session.isFalseStart {
+                        HStack(spacing: 2) {
+                            Image(systemName: "arrow.counterclockwise.circle")
+                                .font(.system(size: 10))
+                            Text("false start")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.orange.opacity(0.8))
+                    }
+
                     Spacer()
-                    
-                    Text(session.startTime.formatted(date: .abbreviated, time: .omitted))
+
+                    // Use new date span display (e.g., "19th > 20th")
+                    Text(session.dateSpanDisplay)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 HStack {
                     Text("\(session.actualDurationHours, specifier: "%.1f")h")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     if session.targetDurationHours > 0 {
                         Text("of \(session.targetDurationHours)h")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        
+
                         let progress = min(session.progressPercentage * 100, 100)
                         Text("• \(Int(progress))%")
                             .font(.caption)
@@ -570,8 +615,9 @@ struct SessionRow: View {
             }
         }
         .padding(.vertical, 8)
+        .opacity(session.isFalseStart ? 0.6 : 1.0) // Dim false starts
     }
-    
+
     private var statusColor: Color {
         switch session.completionStatus {
         case .completed, .overGoal:
