@@ -566,11 +566,6 @@ struct ContentView: View {
                             // PERFORMANCE: Pre-load all tabs in background for instant switching
                             preloadAllTabsInBackground()
                         }
-                        .onChange(of: selectedTab) { oldTab, newTab in
-                            visitedTabs.insert(newTab)
-                            // Track tab changes in analytics
-                            trackTabChange(newTab)
-                        }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             
@@ -768,18 +763,21 @@ struct ContentView: View {
         }
         
         .onChange(of: selectedTab) { _, newTab in
+            // Track visited tabs for pre-loading optimization
+            visitedTabs.insert(newTab)
+
+            // Track tab changes in analytics
+            trackTabChange(newTab)
+
             // Track the last non-add tab for proper return behavior when dismissing
             if newTab != .add {
                 previousTabBeforeAdd = newTab
             }
 
-            // SOFT PAYWALL: All tabs are now accessible - premium features are gated within each tab
-            // No longer blocking tab access here
-
             // Reset the notification flag after navigation is handled
             if isNavigatingFromNotification {
                 isNavigatingFromNotification = false
-                            }
+            }
         }
         .onAppear {
             // PERFORMANCE OPTIMIZATION: Parallel preloading for instant app responsiveness
