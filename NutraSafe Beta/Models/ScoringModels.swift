@@ -70,43 +70,14 @@ class ProcessingScorer {
     private let cacheLock = NSLock()
 
     // PERFORMANCE: Precompiled regex patterns (compiled once, reused thousands of times)
-    // These patterns are compile-time verified as valid regex, so failures are impossible
-    private static let gramPattern1: NSRegularExpression = {
-        do {
-            return try NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*g"#, options: [])
-        } catch {
-            // This pattern is compile-time verified - failure is impossible
-            fatalError("Invalid regex pattern gramPattern1 - this is a programming error")
-        }
-    }()
-    private static let gramPattern2: NSRegularExpression = {
-        do {
-            return try NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
-        } catch {
-            fatalError("Invalid regex pattern gramPattern2 - this is a programming error")
-        }
-    }()
-    private static let mlPattern1: NSRegularExpression = {
-        do {
-            return try NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*ml"#, options: [])
-        } catch {
-            fatalError("Invalid regex pattern mlPattern1 - this is a programming error")
-        }
-    }()
-    private static let mlPattern2: NSRegularExpression = {
-        do {
-            return try NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*ml\)"#, options: [])
-        } catch {
-            fatalError("Invalid regex pattern mlPattern2 - this is a programming error")
-        }
-    }()
-    private static let eNumberPattern: NSRegularExpression = {
-        do {
-            return try NSRegularExpression(pattern: "e\\d{3,4}", options: [])
-        } catch {
-            fatalError("Invalid regex pattern eNumberPattern - this is a programming error")
-        }
-    }()
+    // These patterns are compile-time verified as valid regex literals - they cannot fail
+    // swiftlint:disable force_try
+    private static let gramPattern1 = try! NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*g"#, options: [])
+    private static let gramPattern2 = try! NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
+    private static let mlPattern1 = try! NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*ml"#, options: [])
+    private static let mlPattern2 = try! NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*ml\)"#, options: [])
+    private static let eNumberPattern = try! NSRegularExpression(pattern: "e\\d{3,4}", options: [])
+    // swiftlint:enable force_try
 
     // PERFORMANCE: Cache for dynamically generated word boundary patterns
     private var regexPatternCache: [String: NSRegularExpression] = [:]

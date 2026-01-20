@@ -22,7 +22,11 @@ class BackgroundTaskManager {
             forTaskWithIdentifier: Self.notificationRefreshTaskId,
             using: nil
         ) { task in
-            self.handleNotificationRefresh(task: task as! BGAppRefreshTask)
+            guard let refreshTask = task as? BGAppRefreshTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            self.handleNotificationRefresh(task: refreshTask)
         }
 
             }

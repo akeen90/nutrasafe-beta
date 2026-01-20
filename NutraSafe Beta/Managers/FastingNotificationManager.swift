@@ -190,7 +190,14 @@ class FastingNotificationManager {
         content.body = "Snoozed reminder - your fast is ready to begin"
         content.sound = .default
         content.categoryIdentifier = fastStartCategoryId
-        content.userInfo = userInfo as! [String: Any]
+        // Safely convert userInfo to [String: Any], filtering out non-String keys
+        var safeUserInfo: [String: Any] = [:]
+        for (key, value) in userInfo {
+            if let stringKey = key as? String {
+                safeUserInfo[stringKey] = value
+            }
+        }
+        content.userInfo = safeUserInfo
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(minutes * 60), repeats: false)
         let identifier = "fast_start_snooze_\(planId)_\(Date().timeIntervalSince1970)"
@@ -205,7 +212,14 @@ class FastingNotificationManager {
         content.body = "You've extended your fast by \(minutes) minutes. Great willpower!"
         content.sound = .default
         content.categoryIdentifier = fastEndCategoryId
-        content.userInfo = userInfo as! [String: Any]
+        // Safely convert userInfo to [String: Any], filtering out non-String keys
+        var safeUserInfo: [String: Any] = [:]
+        for (key, value) in userInfo {
+            if let stringKey = key as? String {
+                safeUserInfo[stringKey] = value
+            }
+        }
+        content.userInfo = safeUserInfo
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(minutes * 60), repeats: false)
         let identifier = "fast_end_extend_\(planId)_\(Date().timeIntervalSince1970)"

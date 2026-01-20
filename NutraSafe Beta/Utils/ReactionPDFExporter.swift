@@ -41,7 +41,8 @@ class ReactionPDFExporter {
             yPosition = drawUserInfo(in: context, y: yPosition, userName: userName)
 
             // SECTION 1: Most Recent Reaction
-            let mostRecentReaction = reactions[0]
+            // Safe access - guard at function start ensures array is non-empty
+            guard let mostRecentReaction = reactions.first else { return }
             yPosition = drawSectionHeader(in: context, y: yPosition, title: "MOST RECENT REACTION", pageRect: pageRect)
             yPosition = drawReactionDetails(in: context, y: yPosition, entry: mostRecentReaction)
 
@@ -257,8 +258,10 @@ class ReactionPDFExporter {
             yPosition = drawUserInfo(in: context, y: yPosition, userName: userName)
 
             // SECTION 1: Latest Reaction at Top
+            // Safe access - guard at function start ensures array is non-empty
+            guard let latestReaction = reactions.first else { return }
             yPosition = drawSectionHeader(in: context, y: yPosition, title: "LATEST REACTION", pageRect: pageRect)
-            yPosition = drawFoodReactionDetails(in: context, y: yPosition, reaction: reactions[0])
+            yPosition = drawFoodReactionDetails(in: context, y: yPosition, reaction: latestReaction)
 
             // SECTION 2: 7-Day Meal History (if provided)
             if !mealHistory.isEmpty {

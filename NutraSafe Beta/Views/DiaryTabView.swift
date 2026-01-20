@@ -344,7 +344,7 @@ struct DiaryTabView: View {
 
                 // Day of week headers
                 HStack(spacing: 0) {
-                    ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                    ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
                         Text(day)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.secondary)
@@ -986,28 +986,47 @@ struct DiaryTabView: View {
 
     @ViewBuilder
     private var nutrientsTabContent: some View {
-        // Insights sub-tab picker
-        insightsSubTabPicker
-            .padding(.top, 8)
-            .padding(.horizontal, 16)
+        // Check premium access for Insights tab
+        if subscriptionManager.hasAccess {
+            // Premium users see full content
+            // Insights sub-tab picker
+            insightsSubTabPicker
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
 
-        // Content based on selected sub-tab
-        switch insightsSubTab {
-        case .additives:
-            AdditiveTrackerSection(viewModel: additiveTrackerVM)
+            // Content based on selected sub-tab
+            switch insightsSubTab {
+            case .additives:
+                AdditiveTrackerSection(viewModel: additiveTrackerVM)
 
-        case .nutrients:
-            if #available(iOS 16.0, *) {
-                CategoricalNutrientTrackingView(selectedDate: $selectedDate)
-            } else {
-                Text("Nutrient tracking requires iOS 16.0 or later")
-                    .foregroundColor(.secondary)
-                    .padding()
+            case .nutrients:
+                if #available(iOS 16.0, *) {
+                    CategoricalNutrientTrackingView(selectedDate: $selectedDate)
+                } else {
+                    Text("Nutrient tracking requires iOS 16.0 or later")
+                        .foregroundColor(.secondary)
+                        .padding()
+                }
             }
-        }
 
-        Spacer()
-            .frame(height: 150)
+            Spacer()
+                .frame(height: 150)
+        } else {
+            // Free users see unlock card
+            PremiumUnlockCard(
+                icon: "chart.bar.doc.horizontal",
+                iconColor: .orange,
+                title: "Food Insights",
+                subtitle: "Understand what's really in your food with detailed additive tracking and vitamin & mineral analysis",
+                benefits: [
+                    "Track food additives and E-numbers in your diet",
+                    "Monitor daily vitamin & mineral intake",
+                    "See how your nutrition stacks up against targets",
+                    "Identify nutritional gaps and improvements"
+                ],
+                onUnlockTapped: { showingPaywall = true }
+            )
+        }
     }
 
     private var insightsSubTabPicker: some View {
@@ -1029,6 +1048,7 @@ struct DiaryTabView: View {
                                 ? Capsule().fill(Color.orange)
                                 : Capsule().fill(Color(.systemGray6))
                         )
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(PlainButtonStyle())
 
@@ -2522,11 +2542,11 @@ final class CategoricalNutrientViewModel: ObservableObject {
         // Priority 2: 1-2 missing nutrients
         if missing.count >= 1 {
             let names = missing.prefix(2).map { $0.name }
-            if missing.count == 1 {
+            if missing.count == 1, let firstName = names.first {
                 if isViewingPastWeek {
-                    return "This week was missing \(names[0]) from logged foods."
+                    return "This week was missing \(firstName) from logged foods."
                 }
-                return "Your entries are missing \(names[0]) this week — see what's causing it."
+                return "Your entries are missing \(firstName) this week — see what's causing it."
             } else {
                 if isViewingPastWeek {
                     return "This week was missing \(names.joined(separator: " and ")) from logged foods."

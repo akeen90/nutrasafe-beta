@@ -297,10 +297,10 @@ class FastingViewModel: ObservableObject {
             }
         }
 
-        Task {
-            await loadInitialData()
-            refreshSnoozeCache() // PERFORMANCE: Initialize snooze cache once at startup
-            startTimer()
+        Task { [weak self] in
+            await self?.loadInitialData()
+            self?.refreshSnoozeCache() // PERFORMANCE: Initialize snooze cache once at startup
+            self?.startTimer()
         }
     }
 
@@ -693,13 +693,13 @@ class FastingViewModel: ObservableObject {
 
         lastRecordedFastWindowEnd = windowEnd
 
-        Task {
+        Task { [weak self] in
             do {
-                _ = try await firebaseManager.saveFastingSession(session)
+                _ = try await self?.firebaseManager.saveFastingSession(session)
 
                 // Refresh sessions and analytics
-                await loadRecentSessions()
-                await loadAnalytics()
+                await self?.loadRecentSessions()
+                await self?.loadAnalytics()
             } catch {
                 // Silently handle save errors
             }
@@ -1798,8 +1798,8 @@ class FastingViewModel: ObservableObject {
         // For "end" notifications, we need to ensure the active session is loaded first
         // This handles the race condition when app launches from notification tap
         if fastingType == "end" {
-            Task {
-                await ensureSessionLoadedThenShowEndConfirmation()
+            Task { [weak self] in
+                await self?.ensureSessionLoadedThenShowEndConfirmation()
             }
         } else if fastingType == "start" {
             showingStartConfirmation = true

@@ -3145,9 +3145,8 @@ struct WeightLineChart: View {
                                 .offset(x: point.x, y: point.y - 14)
                         }
                     }
-                } else if entries.count == 1 {
+                } else if entries.count == 1, let entry = entries.first {
                     // Single entry - just show a dot
-                    let entry = entries[0]
                     let x = chartLeft + width / 2
                     let y = chartTop + height - CGFloat((entry.weight - bounds.min) / bounds.range) * height
 
@@ -5106,6 +5105,7 @@ struct AddFoodMainView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : Color.blue) : Color(.systemGray6))
                 )
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
         }
