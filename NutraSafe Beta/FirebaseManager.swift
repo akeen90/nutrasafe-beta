@@ -117,18 +117,32 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Network Retry Logic
 
-    /// Retry failed network operations with exponential backoff
+    /// Retry failed network operations with exponential backoff and total timeout
     /// - Parameters:
     ///   - maxAttempts: Maximum number of retry attempts (default: 3)
+    ///   - totalTimeout: Maximum total time for all attempts combined (default: 15 seconds)
     ///   - operation: The async operation to retry
     /// - Returns: The result of the operation
+    /// - Note: Total timeout prevents UI from appearing frozen during poor network conditions
     private func withRetry<T>(
         maxAttempts: Int = 3,
+        totalTimeout: TimeInterval = 15.0,
         operation: @escaping () async throws -> T
     ) async throws -> T {
+        let startTime = Date()
         var lastError: Error?
 
         for attempt in 0..<maxAttempts {
+            // STABILITY: Check total timeout before each attempt
+            let elapsed = Date().timeIntervalSince(startTime)
+            if elapsed >= totalTimeout {
+                throw lastError ?? NSError(
+                    domain: "NutraSafeRetry",
+                    code: -2,
+                    userInfo: [NSLocalizedDescriptionKey: "Operation timed out after \(Int(elapsed)) seconds"]
+                )
+            }
+
             do {
                 return try await operation()
             } catch {
@@ -142,7 +156,12 @@ class FirebaseManager: ObservableObject {
                 // Exponential backoff: 1s, 2s, 4s
                 let delay = pow(2.0, Double(attempt))
 
-                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                // Don't sleep past the total timeout
+                let remainingTime = totalTimeout - Date().timeIntervalSince(startTime)
+                let actualDelay = min(delay, remainingTime)
+                if actualDelay > 0 {
+                    try await Task.sleep(nanoseconds: UInt64(actualDelay * 1_000_000_000))
+                }
             }
         }
 
@@ -349,11 +368,15 @@ class FirebaseManager: ObservableObject {
     // MARK: - Apple Sign In
 
     /// Start Apple Sign In flow and return the hashed nonce for the request
-    func startAppleSignIn() -> String {
+    /// Returns nil if secure nonce generation fails
+    func startAppleSignIn() -> String? {
         // Initialize Firebase services to ensure auth listener is set up
         initializeFirebaseServices()
 
-        let nonce = randomNonceString()
+        guard let nonce = randomNonceString() else {
+            print("⚠️ [FirebaseManager] Failed to generate secure nonce for Apple Sign In")
+            return nil
+        }
         currentNonce = nonce
         return sha256(nonce)
     }
@@ -422,12 +445,15 @@ class FirebaseManager: ObservableObject {
     }
 
     // Generate random nonce string for Apple Sign In security
-    private func randomNonceString(length: Int = 32) -> String {
-        precondition(length > 0)
+    // Returns nil if secure random generation fails (should never happen, but safer than crashing)
+    private func randomNonceString(length: Int = 32) -> String? {
+        guard length > 0 else { return nil }
         var randomBytes = [UInt8](repeating: 0, count: length)
         let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
-        if errorCode != errSecSuccess {
-            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+        guard errorCode == errSecSuccess else {
+            // Log error but don't crash - let caller handle gracefully
+            print("⚠️ [FirebaseManager] SecRandomCopyBytes failed with OSStatus \(errorCode)")
+            return nil
         }
         let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
         return String(randomBytes.map { charset[Int($0) % charset.count] })
@@ -599,6 +625,9 @@ class FirebaseManager: ObservableObject {
 
         // Create new fetch task
         let fetchTask = Task<[FoodEntry], Error> {
+            // CRITICAL: Check for cancellation before starting work (prevents race condition)
+            try Task.checkCancellation()
+
             // Query using local day boundaries (Firebase stores UTC timestamps but we query by local day)
             let queryStart = calendar.startOfDay(for: date)
             guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: queryStart)?.addingTimeInterval(-0.001) else {
@@ -607,12 +636,17 @@ class FirebaseManager: ObservableObject {
             let queryEnd = endOfDay
 
             let snapshot = try await withRetry {
-                try await self.db.collection("users").document(userId)
+                // Check cancellation before each retry attempt
+                try Task.checkCancellation()
+                return try await self.db.collection("users").document(userId)
                     .collection("foodEntries")
                     .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
                     .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: queryEnd))
                     .getDocuments()
             }
+
+            // CRITICAL: Check cancellation after network call - cache may have been invalidated
+            try Task.checkCancellation()
 
             let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
                 // Use Firestore's native Codable decoder for safe, crash-proof parsing
@@ -628,6 +662,10 @@ class FirebaseManager: ObservableObject {
                     return nil
                 }
             }
+
+            // CRITICAL: Final cancellation check before writing to cache
+            // This prevents a cancelled task from overwriting fresh data
+            try Task.checkCancellation()
 
             // Store in cache and remove from in-flight (async-safe with DispatchQueue)
             self.cacheQueue.sync {

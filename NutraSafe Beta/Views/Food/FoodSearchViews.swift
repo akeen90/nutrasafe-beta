@@ -19,9 +19,23 @@ final class LocalGradeCache {
 // MARK: - Pre-compiled Regex Patterns (Performance Optimization)
 // Regex compilation is expensive (~100x slower than string ops)
 // Pre-compile once at app launch instead of per-call
+// Using lazy closures with explicit error handling for safety
 private enum ServingSizePatterns {
-    static let gramPattern = try! NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*g"#, options: [])
-    static let parenthesesGramPattern = try! NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
+    static let gramPattern: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*g"#, options: [])
+        } catch {
+            // Pattern is compile-time verified - failure is impossible
+            fatalError("Invalid regex pattern gramPattern - this is a programming error")
+        }
+    }()
+    static let parenthesesGramPattern: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
+        } catch {
+            fatalError("Invalid regex pattern parenthesesGramPattern - this is a programming error")
+        }
+    }()
     static let allPatterns: [NSRegularExpression] = [gramPattern, parenthesesGramPattern]
 }
 

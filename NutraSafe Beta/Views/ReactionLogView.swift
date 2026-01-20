@@ -19,6 +19,8 @@ struct ReactionLogView: View {
     @State private var isLoadingData = false
     @State private var userAllergens: Set<Allergen> = []
     @State private var selectedSymptomFilter: String? = nil  // nil = All Symptoms
+    @State private var allergenLoadFailed = false  // Track allergen load failures for user feedback
+    @State private var allergenLoadRetryCount = 0  // Retry counter for exponential backoff
 
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
@@ -38,6 +40,11 @@ struct ReactionLogView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Allergen load failure warning (safety-critical)
+                if allergenLoadFailed {
+                    allergenWarningBanner
+                }
+
                 // Log Reaction Button
                 logReactionButton
 
@@ -107,13 +114,66 @@ struct ReactionLogView: View {
     // MARK: - Load User Allergens
 
     private func loadUserAllergens() async {
+        // Try to load from cache first (UserDefaults) for instant display
+        if let cachedAllergens = loadCachedAllergens() {
+            await MainActor.run {
+                userAllergens = cachedAllergens
+            }
+        }
+
+        // Then fetch fresh data from server
         do {
             let settings = try await FirebaseManager.shared.getUserSettings()
+            let allergens = Set(settings.allergens ?? [])
             await MainActor.run {
-                userAllergens = Set(settings.allergens ?? [])
+                userAllergens = allergens
+                allergenLoadFailed = false
+                allergenLoadRetryCount = 0
             }
+            // Cache for offline access
+            cacheAllergens(allergens)
         } catch {
-            // Silently fail - allergens are optional
+            // CRITICAL: Allergen loading is safety-critical for a food reaction tracking app
+            // Log error and show subtle indicator, but don't crash
+            print("⚠️ [ReactionLogView] Failed to load allergens: \(error.localizedDescription)")
+
+            // Retry with exponential backoff (max 3 retries)
+            if allergenLoadRetryCount < 3 {
+                await MainActor.run {
+                    allergenLoadRetryCount += 1
+                }
+                let delay = UInt64(pow(2.0, Double(allergenLoadRetryCount))) * 1_000_000_000 // 2, 4, 8 seconds
+                try? await Task.sleep(nanoseconds: delay)
+                await loadUserAllergens() // Recursive retry
+            } else {
+                // Max retries reached - show warning if no cached data
+                await MainActor.run {
+                    if userAllergens.isEmpty {
+                        allergenLoadFailed = true
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Allergen Cache (for offline safety)
+
+    private func loadCachedAllergens() -> Set<Allergen>? {
+        guard let data = UserDefaults.standard.data(forKey: "cachedUserAllergens"),
+              let allergenIds = try? JSONDecoder().decode([String].self, from: data) else {
+            return nil
+        }
+        // Convert IDs back to Allergen enum values
+        let allergens = allergenIds.compactMap { id in
+            Allergen.allCases.first { $0.rawValue == id }
+        }
+        return Set(allergens)
+    }
+
+    private func cacheAllergens(_ allergens: Set<Allergen>) {
+        let allergenIds = allergens.map { $0.rawValue }
+        if let data = try? JSONEncoder().encode(allergenIds) {
+            UserDefaults.standard.set(data, forKey: "cachedUserAllergens")
         }
     }
 
@@ -130,6 +190,51 @@ struct ReactionLogView: View {
             }
         }
         return false
+    }
+
+    // MARK: - Allergen Warning Banner (shown when allergens fail to load)
+    private var allergenWarningBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.orange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Allergen data unavailable")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+                Text("Your saved allergens couldn't be loaded. Tap to retry.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: {
+                allergenLoadFailed = false
+                allergenLoadRetryCount = 0
+                Task {
+                    await loadUserAllergens()
+                }
+            }) {
+                Text("Retry")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.orange)
+                    .cornerRadius(8)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.orange.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                )
+        )
     }
 
     // MARK: - Log Reaction Button

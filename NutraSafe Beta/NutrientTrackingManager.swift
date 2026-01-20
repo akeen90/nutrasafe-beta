@@ -27,12 +27,27 @@ class NutrientTrackingManager: ObservableObject {
     private var diaryListener: ListenerRegistration? // Deduplicated diary listener
     private var currentUserId: String = "" // User-specific cache isolation
 
-    // Base cache keys (will be appended with userId)
-    private let cacheKey_frequencies = "nutrient_frequencies_cache"
-    private let cacheKey_dayActivities = "day_activities_cache"
-    private let cacheKey_lastUpdated = "nutrient_cache_last_updated"
+    // File-based cache paths (UserDefaults inappropriate for large data - can cause launch delays)
+    private let cacheKey_lastUpdated = "nutrient_cache_last_updated" // Small, stays in UserDefaults
 
-    // Generate user-scoped cache key
+    // Generate file path for user-scoped cache files
+    private func cacheFilePath(for filename: String) -> URL? {
+        guard !currentUserId.isEmpty else { return nil }
+        let fileManager = FileManager.default
+        guard let cacheDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let nutrientCacheDir = cacheDir.appendingPathComponent("NutrientCache", isDirectory: true)
+
+        // Create directory if needed
+        if !fileManager.fileExists(atPath: nutrientCacheDir.path) {
+            try? fileManager.createDirectory(at: nutrientCacheDir, withIntermediateDirectories: true)
+        }
+
+        return nutrientCacheDir.appendingPathComponent("\(filename)_\(currentUserId).json")
+    }
+
+    // Generate user-scoped UserDefaults key (for small data only)
     private func cacheKey(for baseKey: String) -> String {
         guard !currentUserId.isEmpty else { return baseKey }
         return "\(baseKey)_\(currentUserId)"
@@ -43,48 +58,68 @@ class NutrientTrackingManager: ObservableObject {
         // Initialize with empty state
     }
 
-    deinit {
-        // CRITICAL: Clean up Firebase listeners to prevent memory leaks
+    // MARK: - Cleanup
+    // Note: Since this is a singleton, deinit rarely runs. However, for Swift 6 concurrency safety,
+    // we capture listener references before deinit to avoid MainActor isolation issues.
+    // Call cleanupListeners() explicitly when user logs out.
+
+    /// Explicitly clean up all listeners - call on logout or when manager is no longer needed
+    func cleanupListeners() {
         diaryListener?.remove()
+        diaryListener = nil
         listeners.forEach { $0.remove() }
+        listeners.removeAll()
+    }
+
+    deinit {
+        // Capture listener references for safe cleanup from non-isolated context
+        // This avoids Swift 6 strict concurrency warnings
+        let diary = diaryListener
+        let allListeners = listeners
+        diary?.remove()
+        allListeners.forEach { $0.remove() }
     }
 
     // MARK: - Cache Management
+    // PERFORMANCE: Uses file-based storage for large data (nutrient frequencies and day activities)
+    // UserDefaults is inappropriate for MB-sized data and can cause app launch delays
 
     private func loadFromCache() {
         guard !currentUserId.isEmpty else {
                         return
         }
 
-        // Load last updated date
+        // Load last updated date (small, stays in UserDefaults)
         let lastUpdatedKey = cacheKey(for: cacheKey_lastUpdated)
         if let lastUpdatedTimestamp = UserDefaults.standard.object(forKey: lastUpdatedKey) as? Double {
             lastUpdated = Date(timeIntervalSince1970: lastUpdatedTimestamp)
         }
 
-        // Load nutrient frequencies with user-scoped key
-        let frequenciesKey = cacheKey(for: cacheKey_frequencies)
-        if let frequenciesData = UserDefaults.standard.data(forKey: frequenciesKey) {
+        // Load nutrient frequencies from file cache
+        if let frequenciesPath = cacheFilePath(for: "nutrient_frequencies"),
+           let frequenciesData = try? Data(contentsOf: frequenciesPath) {
             do {
                 let decoder = JSONDecoder()
                 decoder.dateDecodingStrategy = .secondsSince1970
                 let frequencies = try decoder.decode([String: NutrientFrequency].self, from: frequenciesData)
                 nutrientFrequencies = frequencies
                 hasCachedData = !frequencies.isEmpty
-                            } catch {
-                            }
+            } catch {
+                print("⚠️ [NutrientTrackingManager] Failed to decode frequencies cache: \(error.localizedDescription)")
+            }
         }
 
-        // Load day activities with user-scoped key
-        let activitiesKey = cacheKey(for: cacheKey_dayActivities)
-        if let activitiesData = UserDefaults.standard.data(forKey: activitiesKey) {
+        // Load day activities from file cache
+        if let activitiesPath = cacheFilePath(for: "day_activities"),
+           let activitiesData = try? Data(contentsOf: activitiesPath) {
             do {
                 let decoder = JSONDecoder()
                 decoder.dateDecodingStrategy = .secondsSince1970
                 let activities = try decoder.decode([String: DayNutrientActivity].self, from: activitiesData)
                 dayActivities = activities
-                            } catch {
-                            }
+            } catch {
+                print("⚠️ [NutrientTrackingManager] Failed to decode activities cache: \(error.localizedDescription)")
+            }
         }
 
         // Initialize with all tracked nutrients if no cache
@@ -103,31 +138,35 @@ class NutrientTrackingManager: ObservableObject {
                         return
         }
 
-        // Save last updated date with user-scoped key
+        // Save last updated date (small, stays in UserDefaults)
         let lastUpdatedKey = cacheKey(for: cacheKey_lastUpdated)
         if let lastUpdated = lastUpdated {
             UserDefaults.standard.set(lastUpdated.timeIntervalSince1970, forKey: lastUpdatedKey)
         }
 
-        // Save nutrient frequencies with user-scoped key
-        let frequenciesKey = cacheKey(for: cacheKey_frequencies)
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .secondsSince1970
-            let frequenciesData = try encoder.encode(nutrientFrequencies)
-            UserDefaults.standard.set(frequenciesData, forKey: frequenciesKey)
-                    } catch {
-                    }
+        // Save nutrient frequencies to file (can be MB-sized)
+        if let frequenciesPath = cacheFilePath(for: "nutrient_frequencies") {
+            do {
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .secondsSince1970
+                let frequenciesData = try encoder.encode(nutrientFrequencies)
+                try frequenciesData.write(to: frequenciesPath, options: .atomic)
+            } catch {
+                print("⚠️ [NutrientTrackingManager] Failed to save frequencies cache: \(error.localizedDescription)")
+            }
+        }
 
-        // Save day activities with user-scoped key
-        let activitiesKey = cacheKey(for: cacheKey_dayActivities)
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .secondsSince1970
-            let activitiesData = try encoder.encode(dayActivities)
-            UserDefaults.standard.set(activitiesData, forKey: activitiesKey)
-                    } catch {
-                    }
+        // Save day activities to file (can be MB-sized)
+        if let activitiesPath = cacheFilePath(for: "day_activities") {
+            do {
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .secondsSince1970
+                let activitiesData = try encoder.encode(dayActivities)
+                try activitiesData.write(to: activitiesPath, options: .atomic)
+            } catch {
+                print("⚠️ [NutrientTrackingManager] Failed to save activities cache: \(error.localizedDescription)")
+            }
+        }
 
         hasCachedData = true
     }
@@ -348,11 +387,25 @@ class NutrientTrackingManager: ObservableObject {
         }
 
         // Listen to diary changes to auto-update nutrients
+        // PERFORMANCE: Limit to last 90 days to prevent downloading entire history
+        // This is a reasonable window for nutrient tracking analytics
+        let ninetyDaysAgo = Calendar.current.date(byAdding: .day, value: -90, to: Date()) ?? Date()
+
         diaryListener = db.collection("users").document(userId)
             .collection("diary")
+            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: ninetyDaysAgo))
+            .order(by: "date", descending: true)
+            .limit(to: 500)  // Safety limit to prevent memory issues
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
-                guard error == nil, let snapshot = snapshot else { return }
+
+                // STABILITY: Surface listener errors instead of silently failing
+                if let error = error {
+                    print("⚠️ [NutrientTrackingManager] Diary listener error: \(error.localizedDescription)")
+                    // Don't return - may still have cached data to work with
+                }
+
+                guard let snapshot = snapshot else { return }
 
                 // When diary changes, recalculate nutrients
                 Task {

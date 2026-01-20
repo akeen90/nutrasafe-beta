@@ -73,8 +73,11 @@ class FastingViewModel: ObservableObject {
         }
 
         // Convert to WeekSummary array and sort by week start (most recent first)
-        weekSummaries = weekMap.map { weekStart, sessions in
-            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+        weekSummaries = weekMap.compactMap { weekStart, sessions in
+            // Safely unwrap the calendar date calculation
+            guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
+                return nil
+            }
             return WeekSummary(weekStart: weekStart, weekEnd: weekEnd, sessions: sessions)
         }.sorted { $0.weekStart > $1.weekStart }
     }
@@ -82,7 +85,8 @@ class FastingViewModel: ObservableObject {
     private func getWeekStart(for date: Date, calendar: Calendar) -> Date {
         var components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
         components.weekday = 2 // Monday (1 = Sunday, 2 = Monday in Gregorian calendar)
-        return calendar.date(from: components)!
+        // Safely unwrap with fallback to start of current day
+        return calendar.date(from: components) ?? calendar.startOfDay(for: date)
     }
 
     // MARK: - Private Properties
@@ -271,6 +275,9 @@ class FastingViewModel: ObservableObject {
         return motivationalMessages[currentMessageIndex]
     }
 
+    // MARK: - Notification Observer
+    private var historyObserver: NSObjectProtocol?
+
     // MARK: - Initialization
 
     init(firebaseManager: FirebaseManager, userId: String) {
@@ -278,13 +285,13 @@ class FastingViewModel: ObservableObject {
         self.userId = userId
         self.fastingService = FastingService()  // Optional - will be nil if user not authenticated
 
-        // Listen for session updates
-        NotificationCenter.default.addObserver(
+        // Listen for session updates - store observer token for proper cleanup
+        historyObserver = NotificationCenter.default.addObserver(
             forName: .fastHistoryUpdated,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-                        Task {
+            Task {
                 // PERFORMANCE: Load all data in a single batch instead of sequential calls
                 await self?.loadInitialData()
             }
@@ -299,7 +306,10 @@ class FastingViewModel: ObservableObject {
 
     deinit {
         timer?.invalidate()
-        NotificationCenter.default.removeObserver(self, name: .fastHistoryUpdated, object: nil)
+        // STABILITY: Use stored observer token for guaranteed cleanup
+        if let observer = historyObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Data Loading
@@ -474,7 +484,9 @@ class FastingViewModel: ObservableObject {
             } else {
                 fetchedSessions = try await firebaseManager.getFastingSessions()
             }
-            self.allSessions = fetchedSessions  // Store all sessions for timeline
+            // MEMORY: Limit stored sessions to prevent unbounded growth
+            // 365 sessions = ~1 year of daily fasting, reasonable for timeline view
+            self.allSessions = Array(fetchedSessions.prefix(365))
             self.recentSessions = Array(fetchedSessions.prefix(10))
         } catch {
             self.error = error

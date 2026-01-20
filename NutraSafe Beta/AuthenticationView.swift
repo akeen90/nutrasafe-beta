@@ -904,14 +904,19 @@ class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControl
     private var currentNonce: String?
 
     func startSignInWithApple(firebaseManager: FirebaseManager, completion: @escaping (Result<ASAuthorization, Error>) -> Void) {
-        
+
         self.completionHandler = completion
 
-        // Generate nonce
-        let nonce = firebaseManager.startAppleSignIn()
+        // Generate nonce - handle rare failure gracefully
+        guard let nonce = firebaseManager.startAppleSignIn() else {
+            let error = NSError(domain: "AppleSignIn", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Unable to generate secure authentication token. Please try again."])
+            completion(.failure(error))
+            return
+        }
         self.currentNonce = nonce
 
-        
+
         // Create Apple ID request
         let appleIDProvider = ASAuthorizationAppleIDProvider()
         let request = appleIDProvider.createRequest()
@@ -923,7 +928,7 @@ class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControl
         authorizationController.delegate = self
         authorizationController.presentationContextProvider = self
 
-        
+
         // Perform request
         authorizationController.performRequests()
     }

@@ -60,6 +60,7 @@ struct DiaryTabView: View {
     // PERFORMANCE: Made controllable to stop when not viewing diary tab
     private let healthKitRefreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var isTimerActive = true
+    @State private var healthKitRefreshTask: Task<Void, Never>?  // Track task to prevent unbounded creation
 
     // MARK: - Feature Tips
     @State private var showingDiaryTip = false
@@ -692,8 +693,13 @@ struct DiaryTabView: View {
             .onReceive(healthKitRefreshTimer) { _ in
                 // PERFORMANCE: Skip if timer is paused or not viewing today's date
                 guard isTimerActive, Calendar.current.isDateInToday(selectedDate) else { return }
-                Task {
+                // Cancel previous task if still running to prevent unbounded task creation
+                healthKitRefreshTask?.cancel()
+                healthKitRefreshTask = Task {
+                    // Check cancellation before starting work
+                    guard !Task.isCancelled else { return }
                     await healthKitManager.updateStepCount(for: selectedDate)
+                    guard !Task.isCancelled else { return }
                     await healthKitManager.updateActiveEnergy(for: selectedDate)
                 }
             }
