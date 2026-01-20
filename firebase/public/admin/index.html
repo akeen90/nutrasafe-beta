@@ -1016,7 +1016,7 @@
             </div>
             
             <div class="modal-actions">
-                <button class="action-btn btn-approve" onclick="saveFoodChanges()">💾 Save Changes</button>
+                <button class="action-btn btn-approve" id="save-food-btn" onclick="saveFoodChanges()">💾 Save Changes</button>
                 <button class="action-btn btn-reject" onclick="deleteFoodEntry()" id="delete-food-btn">🗑️ Delete</button>
                 <button class="action-btn btn-view" onclick="closeFoodEditModal()">Cancel</button>
             </div>
@@ -2932,8 +2932,25 @@
             console.log('saveFoodChanges called');
             console.log('currentEditingFood:', currentEditingFood);
 
+            // Get UI elements immediately
+            const saveBtn = document.getElementById('save-food-btn');
+            const saveStatus = document.getElementById('save-status');
+            const originalBtnText = saveBtn ? saveBtn.textContent : '';
+
+            // Disable button immediately and show loading state
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '⏳ Saving...';
+                saveBtn.style.opacity = '0.7';
+            }
+
             if (!currentEditingFood) {
                 showAlert('No food selected for editing', 'error');
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = originalBtnText;
+                    saveBtn.style.opacity = '1';
+                }
                 return;
             }
 
@@ -2944,19 +2961,22 @@
             if (!foodId) {
                 showAlert('Error: No food ID found. Cannot update this food.', 'error');
                 console.error('Missing foodId in currentEditingFood:', currentEditingFood);
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = originalBtnText;
+                    saveBtn.style.opacity = '1';
+                }
                 return;
             }
 
-            const saveStatus = document.getElementById('save-status');
             if (!saveStatus) {
                 console.error('save-status element not found');
-                showAlert('Error: Save status element not found', 'error');
-                return;
+            } else {
+                saveStatus.style.display = 'block';
+                saveStatus.style.background = 'rgba(0, 255, 136, 0.15)';
+                saveStatus.style.color = 'var(--accent-primary)';
+                saveStatus.textContent = '💾 Updating database...';
             }
-            saveStatus.style.display = 'block';
-            saveStatus.style.background = 'rgba(0, 255, 136, 0.15)';
-            saveStatus.style.color = 'var(--accent-primary)';
-            saveStatus.textContent = '💾 Saving changes...';
 
             try {
                 // Gather form data with defensive null checks
@@ -3021,16 +3041,30 @@
                     console.log('API response:', result);
                 } catch (fetchError) {
                     console.error('Network error updating food:', fetchError);
-                    saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
-                    saveStatus.style.color = 'var(--accent-tertiary)';
-                    saveStatus.textContent = '❌ Network error: ' + fetchError.message;
+                    if (saveStatus) {
+                        saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
+                        saveStatus.style.color = 'var(--accent-tertiary)';
+                        saveStatus.textContent = '❌ Network error: ' + fetchError.message;
+                    }
+                    // Re-enable save button
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = '💾 Save Changes';
+                        saveBtn.style.opacity = '1';
+                    }
                     return;
                 }
 
                 console.log('Checking result.success:', result.success, 'type:', typeof result.success);
                 if (result.success === true) {
                     // Close modal on successful HTTP response (data was saved)
-                    saveStatus.textContent = '✅ Changes saved successfully!';
+                    if (saveStatus) {
+                        saveStatus.textContent = '✅ Changes saved successfully!';
+                    }
+                    if (saveBtn) {
+                        saveBtn.textContent = '✅ Saved!';
+                        saveBtn.style.background = 'var(--accent-primary)';
+                    }
 
                     // Update the cache with new food data
                     const updatedFood = {
@@ -3060,24 +3094,48 @@
                     addFoodToCache(updatedFood);
                     updateCacheStats();
 
+                    // Close modal faster (500ms instead of 1500ms)
                     setTimeout(() => {
                         closeFoodEditModal();
                         showAlert('Food updated successfully', 'success');
-                    }, 1500);
+                        // Reset button state
+                        if (saveBtn) {
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = '💾 Save Changes';
+                            saveBtn.style.opacity = '1';
+                            saveBtn.style.background = '';
+                        }
+                    }, 500);
 
                 } else {
                     // Handle any non-success response
                     console.error('Save failed with result:', result);
-                    saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
-                    saveStatus.style.color = 'var(--accent-tertiary)';
-                    saveStatus.textContent = '❌ Error saving: ' + (result.error || result.message || 'Unknown error from API');
+                    if (saveStatus) {
+                        saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
+                        saveStatus.style.color = 'var(--accent-tertiary)';
+                        saveStatus.textContent = '❌ Error saving: ' + (result.error || result.message || 'Unknown error from API');
+                    }
+                    // Re-enable save button
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = '💾 Save Changes';
+                        saveBtn.style.opacity = '1';
+                    }
                 }
 
             } catch (error) {
                 console.error('Error saving food changes:', error);
-                saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
-                saveStatus.style.color = 'var(--accent-tertiary)';
-                saveStatus.textContent = '❌ Network error: ' + error.message;
+                if (saveStatus) {
+                    saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
+                    saveStatus.style.color = 'var(--accent-tertiary)';
+                    saveStatus.textContent = '❌ Error: ' + error.message;
+                }
+                // Re-enable save button
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '💾 Save Changes';
+                    saveBtn.style.opacity = '1';
+                }
             }
         }
 

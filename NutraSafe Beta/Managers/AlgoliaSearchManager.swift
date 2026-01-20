@@ -427,17 +427,21 @@ final class AlgoliaSearchManager {
     }
 
     // Index names with priority - lower number = higher priority
-    // TIER 1: Tesco products (official UK supermarket data - highest quality)
+    // TIER 0: Admin-verified foods (highest quality - human verified)
+    // TIER 1: Tesco products (official UK supermarket data)
     // TIER 2: Other UK/verified sources
     // Results are deduplicated, so items from lower-priority indices only appear if not in higher-priority ones
     private var indices: [(String, Int)] {
         return [
-            ("tesco_products", 0),       // TIER 1: Tesco UK (official supermarket data)
-            ("uk_foods_cleaned", 1),     // UK Foods Cleaned (59k records)
-            ("foods", 2),                // Original foods (fallback - fills gaps)
-            ("fast_foods_database", 3),  // Fast Food restaurants
-            ("generic_database", 4),     // Generic food items
-            ("user_added", 5),           // User's custom foods
+            ("verified_foods", 0),       // TIER 0: Admin-verified foods (human verified - highest quality)
+            ("ai_enhanced", 1),          // TIER 1: AI-enhanced foods (AI verified with human approval)
+            ("ai_manually_added", 1),    // TIER 1: AI manually added foods (from AI scanner)
+            ("tesco_products", 2),       // TIER 2: Tesco UK (official supermarket data)
+            ("uk_foods_cleaned", 3),     // UK Foods Cleaned (59k records)
+            ("foods", 4),                // Original foods (fallback - fills gaps)
+            ("fast_foods_database", 5),  // Fast Food restaurants
+            ("generic_database", 6),     // Generic food items
+            ("user_added", 7),           // User's custom foods
         ]
     }
 

@@ -138,71 +138,69 @@ exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).h
                 .collection(targetCollection)
                 .doc(foodId)
                 .set(updateData, { merge: true });
-            // Also update in Algolia to keep search in sync
-            try {
-                const algoliaKey = algoliaAdminKey.value();
-                if (algoliaKey) {
-                    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
-                    // Map Firestore collection to Algolia index
-                    const collectionToIndex = {
-                        'verifiedFoods': 'verified_foods',
-                        'foods': 'foods',
-                        'manualFoods': 'manual_foods',
-                        'userAdded': 'user_added',
-                        'aiEnhanced': 'ai_enhanced',
-                        'aiManuallyAdded': 'ai_manually_added',
-                        'tesco_products': 'tesco_products'
-                    };
-                    const algoliaIndex = collectionToIndex[targetCollection] || targetCollection;
-                    // Prepare Algolia update object (flatten nutrition data)
-                    const algoliaUpdate = {
-                        objectID: foodId,
-                        name: updateData.foodName || updateData.name,
-                        foodName: updateData.foodName || updateData.name,
-                        brand: updateData.brandName || updateData.brand,
-                        brandName: updateData.brandName || updateData.brand,
-                        barcode: updateData.barcode,
-                        ingredients: updateData.ingredients || updateData.extractedIngredients,
-                        servingDescription: updateData.servingSize || updateData.servingDescription,
-                        servingSizeG: updateData.servingSizeG,
-                        servingUnit: updateData.servingUnit,
-                        isPerUnit: updateData.isPerUnit,
-                        source: updateData.source,
-                        updatedAt: new Date().toISOString()
-                    };
-                    // Flatten nutrition data for Algolia
-                    if (updateData.nutritionData) {
-                        algoliaUpdate.calories = updateData.nutritionData.calories || 0;
-                        algoliaUpdate.protein = updateData.nutritionData.protein || 0;
-                        algoliaUpdate.carbs = updateData.nutritionData.carbs || 0;
-                        algoliaUpdate.fat = updateData.nutritionData.fat || 0;
-                        algoliaUpdate.fiber = updateData.nutritionData.fiber || 0;
-                        algoliaUpdate.sugar = updateData.nutritionData.sugar || 0;
-                        algoliaUpdate.sodium = updateData.nutritionData.sodium || 0;
-                        algoliaUpdate.saturatedFat = updateData.nutritionData.saturatedFat || 0;
-                    }
-                    // Remove undefined values
-                    Object.keys(algoliaUpdate).forEach(key => {
-                        if (algoliaUpdate[key] === undefined)
-                            delete algoliaUpdate[key];
-                    });
-                    await client.partialUpdateObject({
-                        indexName: algoliaIndex,
-                        objectID: foodId,
-                        attributesToUpdate: algoliaUpdate,
-                        createIfNotExists: true
-                    });
-                    console.log(`✅ Updated food in both Firestore (${targetCollection}) and Algolia (${algoliaIndex})`);
-                }
-            }
-            catch (algoliaError) {
-                console.error('⚠️ Algolia sync failed (Firestore update succeeded):', algoliaError);
-                // Don't fail the request - Firestore update succeeded
-            }
+            // Send response immediately after Firestore update (don't wait for Algolia)
             res.json({
                 success: true,
                 message: 'Food updated successfully'
             });
+            // Sync to Algolia in background (fire-and-forget for faster response)
+            // This is safe because Firestore is the source of truth
+            const algoliaKey = algoliaAdminKey.value();
+            if (algoliaKey) {
+                const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
+                // Map Firestore collection to Algolia index
+                const collectionToIndex = {
+                    'verifiedFoods': 'verified_foods',
+                    'foods': 'foods',
+                    'manualFoods': 'manual_foods',
+                    'userAdded': 'user_added',
+                    'aiEnhanced': 'ai_enhanced',
+                    'aiManuallyAdded': 'ai_manually_added',
+                    'tesco_products': 'tesco_products'
+                };
+                const algoliaIndex = collectionToIndex[targetCollection] || targetCollection;
+                // Prepare Algolia update object (flatten nutrition data)
+                const algoliaUpdate = {
+                    objectID: foodId,
+                    name: updateData.foodName || updateData.name,
+                    foodName: updateData.foodName || updateData.name,
+                    brand: updateData.brandName || updateData.brand,
+                    brandName: updateData.brandName || updateData.brand,
+                    barcode: updateData.barcode,
+                    ingredients: updateData.ingredients || updateData.extractedIngredients,
+                    servingDescription: updateData.servingSize || updateData.servingDescription,
+                    servingSizeG: updateData.servingSizeG,
+                    servingUnit: updateData.servingUnit,
+                    isPerUnit: updateData.isPerUnit,
+                    source: updateData.source,
+                    updatedAt: new Date().toISOString()
+                };
+                // Flatten nutrition data for Algolia
+                if (updateData.nutritionData) {
+                    algoliaUpdate.calories = updateData.nutritionData.calories || 0;
+                    algoliaUpdate.protein = updateData.nutritionData.protein || 0;
+                    algoliaUpdate.carbs = updateData.nutritionData.carbs || 0;
+                    algoliaUpdate.fat = updateData.nutritionData.fat || 0;
+                    algoliaUpdate.fiber = updateData.nutritionData.fiber || 0;
+                    algoliaUpdate.sugar = updateData.nutritionData.sugar || 0;
+                    algoliaUpdate.sodium = updateData.nutritionData.sodium || 0;
+                    algoliaUpdate.saturatedFat = updateData.nutritionData.saturatedFat || 0;
+                }
+                // Remove undefined values
+                Object.keys(algoliaUpdate).forEach(key => {
+                    if (algoliaUpdate[key] === undefined)
+                        delete algoliaUpdate[key];
+                });
+                // Fire-and-forget Algolia update (don't await)
+                client.partialUpdateObject({
+                    indexName: algoliaIndex,
+                    objectID: foodId,
+                    attributesToUpdate: algoliaUpdate,
+                    createIfNotExists: true
+                })
+                    .then(() => console.log(`✅ Algolia sync complete: ${algoliaIndex}/${foodId}`))
+                    .catch((err) => console.error(`⚠️ Algolia sync failed for ${foodId}:`, err));
+            }
         }
     }
     catch (error) {
