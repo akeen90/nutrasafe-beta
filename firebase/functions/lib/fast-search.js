@@ -97,6 +97,34 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
                 console.error('Lowercase search failed:', error);
             }
         }
+        // Strategy 3: Search Tesco products (uses 'title' field instead of 'foodName')
+        if (searchResults.length < 15) {
+            try {
+                const tescoSnapshot = await admin.firestore()
+                    .collection('tescoProducts')
+                    .where('title', '>=', capitalizedWord)
+                    .where('title', '<=', capitalizedWord + '\uf8ff')
+                    .limit(20)
+                    .get();
+                const tescoResults = tescoSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return formatFoodResult(doc.id, data);
+                });
+                // Merge results, avoiding duplicates
+                const existingIds = new Set(searchResults.map(r => r.id));
+                const existingBarcodes = new Set(searchResults.map(r => r.barcode).filter(b => b));
+                tescoResults.forEach(result => {
+                    // Check both ID and barcode for duplicates
+                    if (!existingIds.has(result.id) && (!result.barcode || !existingBarcodes.has(result.barcode))) {
+                        searchResults.push(result);
+                    }
+                });
+                console.log(`Added ${tescoResults.length} Tesco products to search results`);
+            }
+            catch (error) {
+                console.error('Tesco search failed:', error);
+            }
+        }
         // Fast client-side filtering and ranking
         const queryWords = normalizedQuery.split(/\s+/);
         let filteredResults = searchResults.filter(food => {
@@ -135,25 +163,62 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
 // Simplified food result formatting
 function formatFoodResult(id, data) {
     const nutrition = data.nutritionData || data.nutrition || {};
+    // Extract serving size from multiple possible field names
+    let servingDescription = data.servingDescription ||
+        data.serving_description ||
+        data.servingSize ||
+        data.serving_size ||
+        '100g serving';
+    // Extract raw numeric serving size in grams (before validation)
+    const rawServingSizeG = data.servingSizeG ||
+        data.serving_size_g ||
+        data.servingWeightG ||
+        extractRawServingSize(servingDescription);
+    // Validate and fix bad serving size data (e.g., RI% mistaken for grams)
+    let servingSizeG = validateServingSize(rawServingSizeG, servingDescription);
+    // If serving size was reset due to bad data, update description too
+    if (rawServingSizeG < 50 && rawServingSizeG > 0 && servingSizeG === 100) {
+        servingDescription = '100g serving';
+    }
     return {
         id: id,
-        name: data.foodName || '',
-        brand: data.brandName || null,
-        barcode: data.barcode || '',
-        calories: extractNutritionValue(nutrition.calories || data.calories),
+        name: data.foodName || data.title || data.name || '',
+        brand: data.brandName || data.brand || null,
+        barcode: data.barcode || data.gtin || '',
+        calories: extractNutritionValue(nutrition.calories || nutrition.energyKcal || data.calories),
         protein: extractNutritionValue(nutrition.protein || data.protein),
-        carbs: extractNutritionValue(nutrition.carbs || nutrition.carbohydrates || data.carbs),
+        carbs: extractNutritionValue(nutrition.carbs || nutrition.carbohydrates || nutrition.carbohydrate || data.carbs),
         fat: extractNutritionValue(nutrition.fat || data.fat),
         fiber: extractNutritionValue(nutrition.fiber || nutrition.fibre || data.fiber),
         sugar: extractNutritionValue(nutrition.sugar || nutrition.sugars || data.sugar),
         sodium: extractNutritionValue(nutrition.sodium || (nutrition.salt ? nutrition.salt * 1000 : 0)),
-        servingDescription: data.servingSize || '100g serving',
+        servingDescription: servingDescription,
+        servingSizeG: servingSizeG,
         ingredients: data.extractedIngredients || data.ingredients || null,
         additives: data.additives || null,
         verifiedBy: data.verifiedBy || null,
         verificationMethod: data.verificationMethod || null,
         verifiedAt: data.verifiedAt || null
     };
+}
+// Extract raw serving size (no validation)
+function extractRawServingSize(servingStr) {
+    if (!servingStr || servingStr === '100g serving')
+        return 100;
+    const match = servingStr.match(/(\d+(?:\.\d+)?)\s*(g|ml)/i);
+    return match ? parseFloat(match[1]) : 100;
+}
+// Validate serving size - reject bad data (RI%, parsing errors)
+function validateServingSize(servingSizeG, servingDescription) {
+    if (servingSizeG < 50 && servingSizeG > 0) {
+        // Only allow small servings for actual small items (snacks, biscuits, etc.)
+        const smallPortionKeywords = ['biscuit', 'sweet', 'chocolate', 'crisp', 'snack', 'bar', 'piece'];
+        const isSmallItem = smallPortionKeywords.some(kw => servingDescription.toLowerCase().includes(kw));
+        if (!isSmallItem) {
+            return 100;
+        }
+    }
+    return servingSizeG;
 }
 // Fast nutrition value extraction
 function extractNutritionValue(field) {

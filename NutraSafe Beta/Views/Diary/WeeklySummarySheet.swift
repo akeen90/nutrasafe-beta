@@ -420,27 +420,22 @@ struct WeeklySummarySheet: View {
         DateHelper.fullMonthYearFormatter.string(from: date)
     }
 
-    // MARK: - Hero Stats Card
+    // MARK: - Hero Stats Card (Compact)
     private func heroStatsCard(summary: WeeklySummary) -> some View {
         let calorieDifference = summary.totalCalories - weeklyCalorieGoal
-        let percentDiff = weeklyCalorieGoal > 0 ? Double(calorieDifference) / Double(weeklyCalorieGoal) : 0
+        let isOver = calorieDifference > 0
+        let absDiff = abs(calorieDifference)
 
-        // Healthier status calculation - doesn't celebrate extreme restriction
-        // Based on psychology research: avoid reinforcing restrictive eating patterns
-        let calorieStatus = getHealthyCalorieStatus(percentDiff: percentDiff, difference: calorieDifference, daysLogged: summary.daysLogged)
-
-        return VStack(spacing: 20) {
-            // Calorie Ring
+        return HStack(spacing: 16) {
+            // Compact Calorie Ring
             ZStack {
-                // Background ring
                 Circle()
                     .stroke(
                         colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05),
-                        lineWidth: 12
+                        lineWidth: 8
                     )
-                    .frame(width: 140, height: 140)
+                    .frame(width: 80, height: 80)
 
-                // Progress ring
                 Circle()
                     .trim(from: 0, to: calorieProgress)
                     .stroke(
@@ -449,70 +444,55 @@ struct WeeklySummarySheet: View {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
                     )
-                    .frame(width: 140, height: 140)
+                    .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(-90))
 
-                // Center content
-                VStack(spacing: 2) {
-                    Text("\(summary.totalCalories)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                VStack(spacing: 0) {
+                    Text("\(Int(calorieProgress * 100))%")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
+                }
+            }
 
-                    Text("of \(formatNumber(weeklyCalorieGoal))")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+            // Stats Column
+            VStack(alignment: .leading, spacing: 6) {
+                // Total eaten
+                HStack(spacing: 4) {
+                    Text("\(formatNumber(summary.totalCalories))")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    Text("/ \(formatNumber(weeklyCalorieGoal)) kcal")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
-
-                    Text("kcal")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary.opacity(0.7))
                 }
-            }
-            .padding(.top, 8)
 
-            // Healthy calorie status indicator
-            if summary.daysLogged > 0 {
+                // Budget status with clear context
                 HStack(spacing: 6) {
-                    Image(systemName: calorieStatus.icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(calorieStatus.color)
+                    Image(systemName: isOver ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(isOver ? .red : .green)
 
-                    Text(calorieStatus.message)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(calorieStatus.color)
+                    Text("\(formatNumber(absDiff)) \(isOver ? "over" : "under") weekly budget")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(isOver ? .red : .green)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(
-                    Capsule()
-                        .fill(calorieStatus.color.opacity(0.12))
-                )
+
+                // Days logged
+                Text("\(summary.daysLogged)/7 days logged")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
             }
 
-            // Days logged badge
-            HStack(spacing: 6) {
-                Image(systemName: summary.daysLogged == 7 ? "checkmark.seal.fill" : "flame.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(summary.daysLogged == 7 ? .green : .orange)
-
-                Text("\(summary.daysLogged) of 7 days logged")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary.opacity(0.8))
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
-            )
+            Spacer()
         }
-        .padding(.vertical, 24)
+        .padding(16)
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 24)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 20, x: 0, y: 8)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.06), radius: 12, x: 0, y: 4)
         )
     }
 
@@ -725,68 +705,6 @@ struct WeeklySummarySheet: View {
         formatter.numberStyle = .decimal
         return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
-
-    // MARK: - Healthy Calorie Status
-    // Psychology-informed messaging that doesn't reinforce restrictive eating patterns
-    // Based on research showing calorie apps can contribute to eating disorder symptoms
-    private func getHealthyCalorieStatus(percentDiff: Double, difference: Int, daysLogged: Int) -> (message: String, icon: String, color: Color) {
-        // Calculate expected progress based on days logged
-        // If 2 of 7 days logged, we expect ~28% of weekly calories consumed
-        let expectedProgress = Double(daysLogged) / 7.0
-
-        // Calculate what the difference SHOULD be at this point in the week
-        // e.g., on day 2, being 5/7 "under" the WEEKLY goal is perfectly normal
-        let expectedCaloriesAtThisPoint = Double(weeklyCalorieGoal) * expectedProgress
-        let actualVsExpected = expectedCaloriesAtThisPoint > 0
-            ? (Double(weeklyCalorieGoal) + Double(difference)) / expectedCaloriesAtThisPoint
-            : 1.0
-
-        // Full week completed (7 days logged) - show actual totals
-        if daysLogged == 7 {
-            let absDiff = abs(difference)
-            if abs(percentDiff) < 0.05 {
-                // Within 5% - on target
-                return ("On track", "checkmark.circle.fill", .green)
-            } else if difference < 0 {
-                // Under - show number but don't celebrate extreme deficits
-                if percentDiff < -0.20 {
-                    // More than 20% under - concerning
-                    return ("\(formatNumber(absDiff)) under", "arrow.down.circle.fill", .orange)
-                } else {
-                    return ("\(formatNumber(absDiff)) under", "arrow.down.circle.fill", .green)
-                }
-            } else {
-                // Over
-                if percentDiff > 0.15 {
-                    return ("\(formatNumber(difference)) over", "arrow.up.circle.fill", .red)
-                } else {
-                    return ("\(formatNumber(difference)) over", "arrow.up.circle.fill", .orange)
-                }
-            }
-        }
-
-        // Partial week - compare against expected progress
-        // actualVsExpected: 1.0 = exactly on pace, <1.0 = behind pace, >1.0 = ahead of pace
-        if actualVsExpected >= 0.85 && actualVsExpected <= 1.15 {
-            // Within 15% of expected pace - on track
-            return ("On track", "checkmark.circle.fill", .green)
-        } else if actualVsExpected < 0.85 {
-            // Behind pace - but don't celebrate restriction
-            if actualVsExpected < 0.60 {
-                // Significantly behind - concerning
-                return ("Below pace", "exclamationmark.circle.fill", .orange)
-            } else {
-                return ("Under pace", "arrow.down.circle.fill", .blue)
-            }
-        } else {
-            // Ahead of pace
-            if actualVsExpected > 1.30 {
-                return ("Over pace", "arrow.up.circle.fill", .red)
-            } else {
-                return ("Slightly ahead", "arrow.up.circle.fill", .orange)
-            }
-        }
-    }
 }
 
 // MARK: - Modern Day Card
@@ -931,12 +849,22 @@ struct ModernDayCard: View {
 
     private func expandedMacro(name: String, value: Int, goal: Int, color: Color) -> some View {
         let progress = goal > 0 ? min(Double(value) / Double(goal), 1.0) : 0
+        let difference = value - goal
+        let isOver = difference > 0
+        let isOnTarget = goal > 0 && abs(Double(difference) / Double(goal)) < 0.10 // Within 10%
 
-        return VStack(spacing: 6) {
-            Text("\(value)g")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+        return VStack(spacing: 4) {
+            // Value and goal
+            HStack(spacing: 2) {
+                Text("\(value)")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Text("/\(goal)g")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+            }
 
+            // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
@@ -948,6 +876,13 @@ struct ModernDayCard: View {
                 }
             }
             .frame(height: 4)
+
+            // Over/under indicator
+            if goal > 0 {
+                Text(isOnTarget ? "✓" : (isOver ? "+\(difference)" : "\(difference)"))
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundColor(isOnTarget ? .green : (isOver ? .red : .green))
+            }
 
             Text(name)
                 .font(.system(size: 10, weight: .medium, design: .rounded))

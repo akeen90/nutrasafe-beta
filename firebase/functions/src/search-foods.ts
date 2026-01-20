@@ -8,6 +8,32 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
+// Helper function to parse raw serving size (no validation)
+function parseRawServingSize(servingStr: string | undefined): number {
+  if (!servingStr || servingStr === '100g serving') return 100;
+
+  const match = servingStr.match(/(\d+(?:\.\d+)?)\s*(g|ml|grams?|millilitre?s?)/i);
+  if (match) {
+    return parseFloat(match[1]);
+  }
+  return 100;
+}
+
+// Validate serving size - reject bad data
+function validateServingSize(servingSizeG: number, servingDescription: string): number {
+  // If serving size is suspiciously small (under 50g) for what looks like a meal
+  // these are likely RI percentages or parsing errors
+  if (servingSizeG < 50 && servingSizeG > 0) {
+    // Check if description suggests it's actually a small portion item
+    const smallPortionKeywords = ['biscuit', 'sweet', 'chocolate', 'crisp', 'snack', 'bar', 'piece'];
+    const isSmallItem = smallPortionKeywords.some(kw => servingDescription.toLowerCase().includes(kw));
+    if (!isSmallItem) {
+      return 100; // Reset to 100g for meals with bad data
+    }
+  }
+  return servingSizeG;
+}
+
 // Helper function to check if ingredients are in English
 function isEnglishIngredients(ingredientsText: string): boolean {
   if (!ingredientsText || ingredientsText.trim().length === 0) {
@@ -272,15 +298,67 @@ export const searchFoods = functions
       return count;
     }
 
-    // Search both collections in parallel (much faster!)
+    // Helper function for Tesco search (uses 'title' and 'brand' field names)
+    async function fastSearchTesco(searchTerms: string[]) {
+      const searches: Promise<FirebaseFirestore.QuerySnapshot>[] = [];
+
+      // Search for each word in the query
+      for (const searchTerm of searchTerms) {
+        const capitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+        const lowercase = searchTerm.toLowerCase();
+        const uppercase = searchTerm.toUpperCase();
+
+        // Run searches in parallel for speed
+        for (const term of [capitalized, lowercase, uppercase]) {
+          // Search title (Tesco uses 'title' instead of 'foodName')
+          searches.push(
+            admin.firestore()
+              .collection('tescoProducts')
+              .where('title', '>=', term)
+              .where('title', '<=', term + '\uf8ff')
+              .limit(50)
+              .get()
+          );
+
+          // Search brand
+          searches.push(
+            admin.firestore()
+              .collection('tescoProducts')
+              .where('brand', '>=', term)
+              .where('brand', '<=', term + '\uf8ff')
+              .limit(50)
+              .get()
+          );
+        }
+      }
+
+      const results = await Promise.allSettled(searches);
+
+      let count = 0;
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          result.value.docs.forEach((doc: FirebaseFirestore.DocumentSnapshot) => {
+            if (!allDocs.has(doc.id)) {
+              allDocs.set(doc.id, doc);
+              count++;
+            }
+          });
+        }
+      });
+
+      return count;
+    }
+
+    // Search all collections in parallel (much faster!)
     const startTime = Date.now();
-    const [verifiedCount, foodsCount] = await Promise.all([
+    const [verifiedCount, foodsCount, tescoCount] = await Promise.all([
       fastSearch('verifiedFoods', queryWords),
-      fastSearch('foods', queryWords)
+      fastSearch('foods', queryWords),
+      fastSearchTesco(queryWords)
     ]);
 
     const searchTime = Date.now() - startTime;
-    console.log(`⚡ Fast search completed in ${searchTime}ms - found ${allDocs.size} candidates (${verifiedCount} verified, ${foodsCount} foods)`);
+    console.log(`⚡ Fast search completed in ${searchTime}ms - found ${allDocs.size} candidates (${verifiedCount} verified, ${foodsCount} foods, ${tescoCount} Tesco)`);
 
     
     const verifiedSnapshot = { docs: Array.from(allDocs.values()) };
@@ -290,9 +368,10 @@ export const searchFoods = functions
       const data = doc.data();
       if (!data) return null; // Skip if no data
       const nutrition = data.nutritionData || data.nutrition || {};
-      
-      const foodName = data.foodName || '';
-      const brandName = data.brandName || '';
+
+      // Handle multiple field names (Tesco uses 'title', standard uses 'foodName')
+      const foodName = data.foodName || data.title || data.name || '';
+      const brandName = data.brandName || data.brand || '';
       
       // Calculate relevance score for ranking
       const relevanceScore = calculateRelevance(foodName, brandName, query, queryWords);
@@ -328,19 +407,41 @@ export const searchFoods = functions
       }
       
       // Format data exactly as iOS app expects
-      const calorieValue = nutrition.calories || nutrition.energy || 0;
-      const proteinValue = nutrition.protein || 0;
-      const carbsValue = nutrition.carbs || nutrition.carbohydrates || 0;
-      const fatValue = nutrition.fat || 0;
-      const fiberValue = nutrition.fiber || nutrition.fibre || 0;
-      const sugarValue = nutrition.sugar || nutrition.sugars || 0;
-      const sodiumValue = nutrition.sodium || (nutrition.salt ? nutrition.salt * 1000 : 0);
+      // Handle Tesco field names: energyKcal, carbohydrate, fibre, sugars
+      const calorieValue = nutrition.calories || nutrition.energyKcal || nutrition.energy || data.calories || 0;
+      const proteinValue = nutrition.protein || data.protein || 0;
+      const carbsValue = nutrition.carbs || nutrition.carbohydrates || nutrition.carbohydrate || data.carbs || 0;
+      const fatValue = nutrition.fat || data.fat || 0;
+      const fiberValue = nutrition.fiber || nutrition.fibre || data.fiber || 0;
+      const sugarValue = nutrition.sugar || nutrition.sugars || data.sugar || 0;
+      const sodiumValue = nutrition.sodium || data.sodium || (nutrition.salt ? nutrition.salt * 1000 : 0);
+
+      // Extract serving size from multiple possible field names
+      let servingDescription = data.servingDescription ||
+                               data.serving_description ||
+                               data.servingSize ||
+                               data.serving_size ||
+                               '100g serving';
+
+      // Extract raw numeric serving size in grams (before validation)
+      const rawServingSizeG = data.servingSizeG ||
+                              data.serving_size_g ||
+                              data.servingWeightG ||
+                              parseRawServingSize(servingDescription);
+
+      // Validate and fix bad serving size data (e.g., RI% mistaken for grams)
+      let servingSizeG = validateServingSize(rawServingSizeG, servingDescription);
+
+      // If serving size was reset due to bad data, update description too
+      if (rawServingSizeG < 50 && rawServingSizeG > 0 && servingSizeG === 100) {
+        servingDescription = '100g serving';
+      }
       
       return {
         id: doc.id,
         name: foodName,
         brand: brandName || null,
-        barcode: data.barcode || '',
+        barcode: data.barcode || data.gtin || '',
         calories: typeof calorieValue === 'object' ? calorieValue : { kcal: calorieValue },
         protein: typeof proteinValue === 'object' ? proteinValue : { per100g: proteinValue },
         carbs: typeof carbsValue === 'object' ? carbsValue : { per100g: carbsValue },
@@ -348,7 +449,8 @@ export const searchFoods = functions
         fiber: typeof fiberValue === 'object' ? fiberValue : { per100g: fiberValue },
         sugar: typeof sugarValue === 'object' ? sugarValue : { per100g: sugarValue },
         sodium: sodiumValue ? (typeof sodiumValue === 'object' ? sodiumValue : { per100g: sodiumValue }) : null,
-        servingDescription: data.servingSize || '100g serving',
+        servingDescription: servingDescription,
+        servingSizeG: servingSizeG,
         
         // CRITICAL FIX: Map ingredients field for iOS app - keep as array
         ingredients: (() => {

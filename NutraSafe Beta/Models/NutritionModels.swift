@@ -304,6 +304,413 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case other          // Default - no presets
     }
 
+    // MARK: - Serving Size Classification System
+
+    /// Classification for serving size recommendation purposes
+    /// Determines whether specific serving templates can be safely suggested
+    enum ServingClassification: String {
+        case atomicRaw = "ATOMIC_RAW"           // Single ingredient, raw: "salmon fillet", "raw broccoli"
+        case atomicPrepared = "ATOMIC_PREPARED" // Single ingredient, cooked: "grilled salmon", "boiled egg"
+        case compositeDish = "COMPOSITE_DISH"   // Multi-ingredient dish: "salmon en croute", "chicken curry"
+        case brandedPackaged = "BRANDED_PACKAGED" // Retail product: "Mars bar", "tinned tuna"
+        case ambiguous = "AMBIGUOUS"            // Too vague: "salmon", "chicken", "pasta"
+    }
+
+    /// Confidence level for serving size suggestions
+    struct ServingConfidence {
+        let score: Double           // 0.0 to 1.0
+        let classification: ServingClassification
+        let usesSafeOutput: Bool    // True if should use generic portions
+        let reasons: [String]       // Explainability
+
+        /// Threshold for using category-specific presets vs safe generic options
+        static let highConfidenceThreshold: Double = 0.7
+    }
+
+    // MARK: - Composite Dish Detection
+
+    /// Comprehensive list of indicators that suggest a composite/prepared dish
+    /// These patterns take PRIORITY over single-ingredient keyword matching
+    private static let compositeDishIndicators: Set<String> = [
+        // Pastry-wrapped
+        "en croute", "encroute", "wellington", "pie", "pies", "pasty", "pasties",
+        "pastry", "puff pastry", "shortcrust", "filo", "phyllo", "strudel",
+        "samosa", "samosas", "spring roll", "spring rolls", "egg roll",
+        "dumpling", "dumplings", "gyoza", "wonton", "wontons",
+        "calzone", "empanada", "empanadas", "cornish pasty", "sausage roll",
+
+        // Curries & Asian sauced dishes
+        "curry", "curries", "korma", "masala", "tikka masala", "tikka",
+        "madras", "vindaloo", "jalfrezi", "rogan josh", "bhuna", "balti",
+        "dopiaza", "pathia", "biryani", "dhansak", "saag",
+        "satay", "rendang", "massaman", "panang", "green curry", "red curry",
+        "katsu", "teriyaki", "sweet and sour", "kung pao", "szechuan",
+        "chow mein", "chop suey",
+
+        // Pasta dishes (complete)
+        "bolognese", "bolognaise", "carbonara", "arrabiata", "arrabbiata",
+        "alfredo", "puttanesca", "amatriciana", "cacio e pepe",
+        "lasagne", "lasagna", "cannelloni", "manicotti",
+        "spaghetti and meatballs", "pasta bake", "mac and cheese", "mac n cheese",
+        "macaroni cheese", "tuna pasta bake",
+
+        // Sandwiches & filled items
+        "sandwich", "sandwiches", "butty", "buttie", "sarnie",
+        "wrap", "wraps", "burrito", "burritos", "taco", "tacos",
+        "quesadilla", "enchilada", "fajita", "fajitas",
+        "panini", "paninis", "baguette filled",
+        "sub", "hoagie", "hero", "grinder",
+        "club sandwich", "toastie", "toasted sandwich",
+
+        // Soups & liquid dishes
+        "soup", "soups", "broth", "consomme",
+        "chowder", "bisque", "gazpacho", "minestrone",
+        "stew", "stews", "casserole", "casseroles",
+        "hotpot", "hot pot", "goulash", "bourguignon",
+        "tagine", "ragu", "ragout",
+
+        // Baked & gratin
+        "bake", "bakes", "gratin", "au gratin", "dauphinoise",
+        "crumble", "cobbler", "crisp",
+        "quiche", "frittata",
+
+        // Stir-fried
+        "stir fry", "stir-fry", "stirfry", "stir fried", "stir-fried",
+        "pad thai", "fried rice",
+
+        // Coated & processed
+        "battered", "in batter", "beer battered",
+        "breaded", "crumbed", "coated", "crispy coated",
+        "tempura", "panko", "southern fried",
+        "nuggets", "nugget", "fingers", "finger",
+        "goujons", "goujon", "bites", "popcorn chicken", "popcorn shrimp",
+        "kiev", "kyiv", "cordon bleu", "schnitzel", "escalope",
+
+        // Stuffed & filled
+        "stuffed", "filled", "loaded", "topped", "covered",
+
+        // Complete meals
+        "meal", "ready meal", "microwave meal",
+        "dinner", "platter", "combo", "meal deal",
+        "roast dinner", "sunday roast", "sunday lunch",
+        "full english", "full breakfast", "fry up", "fry-up",
+        "mixed grill",
+
+        // UK specific dishes
+        "fish and chips", "fish n chips", "fish & chips",
+        "bangers and mash", "sausage and mash",
+        "shepherd's pie", "shepherds pie", "cottage pie",
+        "toad in the hole", "bubble and squeak",
+        "ploughman's", "ploughmans",
+        "beans on toast", "cheese on toast",
+
+        // International dishes
+        "moussaka", "paella", "risotto",
+        "ramen", "pho", "laksa",
+        "falafel wrap", "shawarma", "kebab", "doner",
+        "burrito bowl", "poke bowl", "buddha bowl",
+    ]
+
+    /// Phrase patterns that indicate composite dishes (checked with "contains")
+    private static let compositePatterns: [String] = [
+        " with ", " and ", " in sauce", " in gravy", " in cream",
+        " on toast", " on a bed of", " on rice", " on chips",
+        " with sauce", " with gravy", " with vegetables", " with rice",
+        " with noodles", " with salad", " with chips", " with fries",
+        " with mash", " with coleslaw",
+    ]
+
+    /// Single-word queries that are too ambiguous for specific serving suggestions
+    private static let ambiguousSingleWords: Set<String> = [
+        "salmon", "chicken", "beef", "pork", "lamb", "turkey", "duck",
+        "fish", "tuna", "cod", "haddock", "mackerel", "trout",
+        "pasta", "rice", "bread", "noodles", "couscous",
+        "curry", "pizza", "steak", "mince", "mincemeat",
+        "sausage", "sausages", "bacon",
+    ]
+
+    /// Vague preparation words that don't clarify form factor
+    private static let vaguePreparations: Set<String> = [
+        "cooked", "fried", "roast", "roasted", "baked", "grilled",
+        "steamed", "boiled", "poached",
+    ]
+
+    /// Form factor qualifiers that increase confidence
+    private static let formFactorQualifiers: Set<String> = [
+        "fillet", "breast", "thigh", "drumstick", "wing", "leg",
+        "slice", "sliced", "diced", "cubed", "chopped", "minced",
+        "whole", "half", "quarter",
+        "steak", "chop", "cutlet", "escalope",
+        "raw", "fresh",
+    ]
+
+    /// Packaged/prepared format indicators
+    private static let packagedFormatIndicators: Set<String> = [
+        "tinned", "canned", "jarred", "bottled",
+        "frozen", "packet", "sachet", "pouch",
+        "smoked", "cured", "dried",
+    ]
+
+    /// Check if text contains any composite dish indicator
+    private func containsCompositeDishIndicator(_ text: String) -> Bool {
+        let textLower = text.lowercased()
+
+        // Check exact indicators
+        for indicator in Self.compositeDishIndicators {
+            if textLower.contains(indicator) {
+                return true
+            }
+        }
+
+        // Check pattern indicators
+        for pattern in Self.compositePatterns {
+            if textLower.contains(pattern) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /// Check if the food item appears to be packaged/prepared format
+    private func hasPackagedFormatIndicator(_ text: String) -> Bool {
+        let textLower = text.lowercased()
+        return Self.packagedFormatIndicators.contains(where: { textLower.contains($0) })
+    }
+
+    /// Check if the query contains form factor qualifiers
+    private func hasFormFactorQualifier(_ text: String) -> Bool {
+        let textLower = text.lowercased()
+        return Self.formFactorQualifiers.contains(where: { textLower.contains($0) })
+    }
+
+    /// Calculate serving confidence and classification for a given query
+    /// - Parameter query: The user's search query (if available, otherwise empty string)
+    /// - Returns: ServingConfidence with classification and confidence score
+    func servingConfidence(forQuery query: String = "") -> ServingConfidence {
+        var score: Double = 0.5  // Start neutral
+        var reasons: [String] = []
+        var classification: ServingClassification = .ambiguous
+
+        let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let nameLower = name.lowercased()
+        let queryWords = queryLower.split(separator: " ").map { String($0) }
+
+        // ========================================
+        // STEP 1: Check for COMPOSITE DISH (highest priority)
+        // ========================================
+        if containsCompositeDishIndicator(nameLower) || containsCompositeDishIndicator(queryLower) {
+            classification = .compositeDish
+            score = 0.9  // High confidence it's composite
+            reasons.append("Contains composite dish indicator")
+
+            return ServingConfidence(
+                score: score,
+                classification: classification,
+                usesSafeOutput: true,  // ALWAYS use safe output for composite dishes
+                reasons: reasons
+            )
+        }
+
+        // ========================================
+        // STEP 2: Check for BRANDED/PACKAGED
+        // ========================================
+        // Check if packaged format (tinned, canned, etc.)
+        if hasPackagedFormatIndicator(nameLower) || hasPackagedFormatIndicator(queryLower) {
+            classification = .brandedPackaged
+            if servingSizeG != nil && servingSizeG! > 0 {
+                score = 0.95
+                reasons.append("Packaged item with known serving size")
+            } else {
+                score = 0.4  // Packaged but no serving info
+                reasons.append("Packaged item without serving data")
+            }
+            return ServingConfidence(
+                score: score,
+                classification: classification,
+                usesSafeOutput: score < ServingConfidence.highConfidenceThreshold,
+                reasons: reasons
+            )
+        }
+
+        // Check if it's a branded product (chocolate bars, drinks, etc. - already well-handled)
+        // These already work well with the existing category system
+        let brandLower = (brand ?? "").lowercased()
+        let isBrandedSnack = Self.chocolateBarProducts.contains(where: { nameLower.contains($0) }) ||
+                             Self.baggedChocolateProducts.contains(where: { nameLower.contains($0) }) ||
+                             Self.softDrinkBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) })
+        if isBrandedSnack {
+            classification = .brandedPackaged
+            score = 0.85
+            reasons.append("Known branded product")
+            return ServingConfidence(
+                score: score,
+                classification: classification,
+                usesSafeOutput: false,  // Branded items can use their specific presets
+                reasons: reasons
+            )
+        }
+
+        // ========================================
+        // STEP 3: Check for AMBIGUOUS query
+        // ========================================
+
+        // Rule 3a: Single-word generic ingredients are ambiguous
+        if queryWords.count == 1 && Self.ambiguousSingleWords.contains(queryLower) {
+            classification = .ambiguous
+            score = 0.2
+            reasons.append("Single-word generic ingredient")
+            return ServingConfidence(
+                score: score,
+                classification: classification,
+                usesSafeOutput: true,
+                reasons: reasons
+            )
+        }
+
+        // Rule 3b: Vague preparation + generic ingredient = ambiguous
+        if queryWords.count == 2 {
+            let firstWord = queryWords[0]
+            let secondWord = queryWords[1]
+            if Self.vaguePreparations.contains(firstWord) && Self.ambiguousSingleWords.contains(secondWord) {
+                classification = .ambiguous
+                score = 0.3
+                reasons.append("Vague preparation with generic ingredient")
+                return ServingConfidence(
+                    score: score,
+                    classification: classification,
+                    usesSafeOutput: true,
+                    reasons: reasons
+                )
+            }
+        }
+
+        // Rule 3c: Query significantly shorter than matched item name
+        if !queryLower.isEmpty && queryLower.count < nameLower.count / 3 && queryLower.count < 8 {
+            classification = .ambiguous
+            score = 0.35
+            reasons.append("Query much shorter than matched item")
+            return ServingConfidence(
+                score: score,
+                classification: classification,
+                usesSafeOutput: true,
+                reasons: reasons
+            )
+        }
+
+        // ========================================
+        // STEP 4: ATOMIC classification (RAW or PREPARED)
+        // ========================================
+
+        // Determine if prepared based on cooking indicators in name
+        let preparedIndicators = ["grilled", "roasted", "baked", "fried", "steamed", "boiled", "poached", "smoked", "cured"]
+        let isPrepared = preparedIndicators.contains(where: { nameLower.contains($0) || queryLower.contains($0) })
+
+        classification = isPrepared ? .atomicPrepared : .atomicRaw
+
+        // Confidence adjustments
+        score = 0.5
+
+        // Boost: Has form factor qualifier (fillet, breast, etc.)
+        if hasFormFactorQualifier(queryLower) || hasFormFactorQualifier(nameLower) {
+            score += 0.25
+            reasons.append("Has form factor qualifier")
+        }
+
+        // Boost: Verified item
+        if isVerified {
+            score += 0.1
+            reasons.append("Verified item")
+        }
+
+        // Boost: Query closely matches item name
+        if !queryLower.isEmpty && nameLower.hasPrefix(queryLower) {
+            score += 0.15
+            reasons.append("Query matches item name prefix")
+        }
+
+        // Reduce: Short query without qualifiers
+        if queryLower.count < 12 && !hasFormFactorQualifier(queryLower) {
+            score -= 0.1
+            reasons.append("Short query without qualifiers")
+        }
+
+        // Ensure score is in valid range
+        score = min(1.0, max(0.0, score))
+
+        // Determine if should use safe output
+        let usesSafeOutput = score < ServingConfidence.highConfidenceThreshold
+
+        return ServingConfidence(
+            score: score,
+            classification: classification,
+            usesSafeOutput: usesSafeOutput,
+            reasons: reasons
+        )
+    }
+
+    // Helper sets for branded product detection (extracted for reuse)
+    // NOTE: Avoid short generic words that could match unrelated foods
+    // e.g., "flake" matches "cornflakes" - use "cadbury flake" instead
+    private static let chocolateBarProducts: Set<String> = [
+        "mars bar", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat",
+        "aero bar", "yorkie", "wispa bar", "cadbury flake", "flake bar", "crunchie", "double decker",
+        "boost bar", "picnic bar", "dairy milk bar", "fruit & nut", "whole nut", "caramel bar",
+        "turkish delight", "fudge bar", "curly wurly", "chomp", "freddo", "timeout",
+        "toffee crisp", "drifter", "lion bar", "star bar", "topic bar"
+    ]
+
+    private static let baggedChocolateProducts: Set<String> = [
+        "revels", "maltesers", "celebrations", "minstrels", "m&m", "m&ms",
+        "buttons", "giant buttons", "heroes", "roses", "quality street",
+        "after eight", "matchmakers", "galaxy counters", "milkybar buttons",
+        "smarties", "aero bubbles", "bitsa wispa", "lindor", "lindt lindor",
+        "ferrero rocher", "ferrero", "thorntons", "godiva", "guylian", "toblerone"
+    ]
+
+    private static let softDrinkBrands: Set<String> = [
+        "coca-cola", "coca cola", "coke", "diet coke", "coke zero", "pepsi",
+        "pepsi max", "fanta", "sprite", "7up", "7-up", "dr pepper", "irn-bru",
+        "irn bru", "lucozade", "red bull", "monster", "relentless", "rockstar",
+        "tango", "oasis", "schweppes", "san pellegrino", "fever-tree"
+    ]
+
+    // MARK: - Safe Output Portions
+
+    /// Generic weight-based portions for when confidence is low or item is composite/ambiguous
+    /// These avoid form-factor assumptions like "small fillet" or "1 slice"
+    var safePortionOptions: [PortionOption] {
+        let caloriesPer100 = calories
+        return [
+            PortionOption(name: "100g", calories: caloriesPer100 * 1.0, serving_g: 100),
+            PortionOption(name: "150g", calories: caloriesPer100 * 1.5, serving_g: 150),
+            PortionOption(name: "200g", calories: caloriesPer100 * 2.0, serving_g: 200),
+            PortionOption(name: "250g", calories: caloriesPer100 * 2.5, serving_g: 250),
+            PortionOption(name: "300g", calories: caloriesPer100 * 3.0, serving_g: 300),
+        ]
+    }
+
+    /// Safe portion options for liquids
+    var safeLiquidPortionOptions: [PortionOption] {
+        let caloriesPer100 = calories
+        return [
+            PortionOption(name: "100ml", calories: caloriesPer100 * 1.0, serving_g: 100),
+            PortionOption(name: "150ml", calories: caloriesPer100 * 1.5, serving_g: 150),
+            PortionOption(name: "200ml", calories: caloriesPer100 * 2.0, serving_g: 200),
+            PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
+            PortionOption(name: "300ml", calories: caloriesPer100 * 3.0, serving_g: 300),
+        ]
+    }
+
+    // Track the query used for this food item (for serving classification)
+    // This is set when the food is selected from search results
+    private var _searchQuery: String = ""
+
+    /// Set the search query that led to this food item
+    mutating func setSearchQuery(_ query: String) {
+        _searchQuery = query
+    }
+
     /// Auto-detect food category from name, brand, and serving info
     var detectedCategory: FoodCategory {
         let nameLower = name.lowercased()
@@ -321,7 +728,8 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         let baggedChocolateProducts = ["revels", "maltesers", "celebrations", "minstrels", "m&m", "m&ms", "buttons", "giant buttons", "heroes", "roses", "quality street", "after eight", "matchmakers", "galaxy counters", "milkybar buttons", "smarties", "aero bubbles", "bitsa wispa", "lindor", "lindt lindor", "ferrero rocher", "ferrero", "thorntons", "godiva", "guylian", "toblerone"]
 
         // Actual chocolate BAR products (single bars, not bags)
-        let chocolateBarProducts = ["mars bar", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat", "aero bar", "yorkie", "wispa bar", "flake", "crunchie", "double decker", "boost", "picnic", "dairy milk bar", "fruit & nut", "whole nut", "caramel", "turkish delight", "fudge", "curly wurly", "chomp", "freddo", "timeout", "toffee crisp", "drifter", "lion bar", "star bar", "topic"]
+        // NOTE: Avoid short words that could match unrelated foods (e.g., "flake" matches "cornflakes")
+        let chocolateBarProducts = ["mars bar", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat", "aero bar", "yorkie", "wispa bar", "cadbury flake", "flake bar", "crunchie", "double decker", "boost bar", "picnic bar", "dairy milk bar", "fruit & nut", "whole nut", "caramel bar", "turkish delight", "fudge bar", "curly wurly", "chomp", "freddo", "timeout", "toffee crisp", "drifter", "lion bar", "star bar", "topic bar"]
 
         // Sweet/candy brands
         let sweetBrands = ["haribo", "maynards", "rowntrees", "skittles", "starburst", "jelly belly", "swizzels", "chupa chups", "chewits", "refreshers", "drumstick", "love hearts", "parma violets"]
@@ -492,6 +900,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     ]
 
     /// Returns true if this food should show preset portion options
+    /// NOTE: This uses the basic category detection. For query-aware detection
+    /// that prevents inappropriate presets for composite dishes, use
+    /// `shouldShowCategoryPresets(forQuery:)` instead.
     var hasPresetPortions: Bool {
         // If already has database portions, use those instead
         if hasPortionOptions { return false }
@@ -504,8 +915,93 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
             return false
         }
+
+        // CRITICAL: Check for composite dish indicators BEFORE category detection
+        // This prevents "salmon en croute" from getting fish fillet presets
+        if containsCompositeDishIndicator(nameLower) {
+            return false  // Composite dishes should use safe output, not category presets
+        }
+
         // Only show presets for detectable categories
         return detectedCategory != .other
+    }
+
+    /// Query-aware check for whether to show category-specific presets
+    /// Use this when you have the original search query available
+    /// - Parameter query: The user's search query
+    /// - Returns: true if category-specific presets are appropriate
+    func shouldShowCategoryPresets(forQuery query: String) -> Bool {
+        // First check basic prerequisites
+        if hasPortionOptions { return false }
+        if isPerUnit == true { return false }
+
+        let brandLower = (brand?.lowercased() ?? "").replacingOccurrences(of: "'", with: "'")
+        let nameLower = name.lowercased().replacingOccurrences(of: "'", with: "'")
+
+        if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return false
+        }
+
+        // Use the confidence system to determine appropriate output
+        let confidence = servingConfidence(forQuery: query)
+
+        // If classification indicates safe output should be used, don't show category presets
+        if confidence.usesSafeOutput {
+            return false
+        }
+
+        // Only show presets for detectable categories with high confidence
+        return detectedCategory != .other
+    }
+
+    /// Get appropriate portion options based on query and classification
+    /// This is the RECOMMENDED method for getting portion options
+    /// - Parameter query: The user's search query
+    /// - Returns: Array of portion options appropriate for this food/query combination
+    func portionsForQuery(_ query: String) -> [PortionOption] {
+        // 1. Database portions always take priority
+        if let dbPortions = portions, !dbPortions.isEmpty {
+            return dbPortions
+        }
+
+        // 2. Per-unit items don't need presets
+        if isPerUnit == true {
+            return []
+        }
+
+        // 3. Fast food items don't need presets
+        let brandLower = (brand?.lowercased() ?? "").replacingOccurrences(of: "'", with: "'")
+        let nameLower = name.lowercased().replacingOccurrences(of: "'", with: "'")
+        if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return []
+        }
+
+        // 4. Calculate confidence and classification
+        let confidence = servingConfidence(forQuery: query)
+
+        // 5. Return appropriate portions based on classification
+        switch confidence.classification {
+        case .compositeDish, .ambiguous:
+            // ALWAYS use safe output for composite dishes and ambiguous queries
+            return isLiquidCategory ? safeLiquidPortionOptions : safePortionOptions
+
+        case .brandedPackaged:
+            // Branded items can use their category-specific presets if detected
+            if detectedCategory != .other {
+                return presetPortions
+            }
+            return safePortionOptions
+
+        case .atomicRaw, .atomicPrepared:
+            // Atomic items: use category presets if confidence is high enough
+            if confidence.usesSafeOutput {
+                return isLiquidCategory ? safeLiquidPortionOptions : safePortionOptions
+            }
+            if detectedCategory != .other {
+                return presetPortions
+            }
+            return safePortionOptions
+        }
     }
 
     /// Preset serving size options based on food category
@@ -698,6 +1194,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     }
 
     /// Combined portions: database portions OR calculated presets
+    /// NOTE: This uses basic category detection. For query-aware portions that
+    /// properly handle composite dishes and ambiguous queries, use
+    /// `portionsForQuery(_:)` instead.
     var availablePortions: [PortionOption] {
         // Prefer database portions if available
         if let dbPortions = portions, !dbPortions.isEmpty {
@@ -708,8 +1207,30 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     }
 
     /// Returns true if either database portions or presets are available
+    /// NOTE: This uses basic category detection. For query-aware checking, use
+    /// the confidence system methods instead.
     var hasAnyPortionOptions: Bool {
         return hasPortionOptions || hasPresetPortions
+    }
+
+    /// Query-aware check for portion options
+    /// This properly handles composite dishes and ambiguous queries by returning
+    /// appropriate safe options when needed.
+    /// - Parameter query: The user's search query
+    /// - Returns: true if any portion options are available (may be safe defaults)
+    func hasAnyPortionOptions(forQuery query: String) -> Bool {
+        // Database portions always available
+        if hasPortionOptions { return true }
+        // Per-unit items have no portions
+        if isPerUnit == true { return false }
+        // Fast food has no portions
+        let brandLower = (brand?.lowercased() ?? "").replacingOccurrences(of: "'", with: "'")
+        let nameLower = name.lowercased().replacingOccurrences(of: "'", with: "'")
+        if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return false
+        }
+        // Otherwise, we always have some options (either category presets or safe defaults)
+        return true
     }
 }
 

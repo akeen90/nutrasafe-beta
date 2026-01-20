@@ -143,6 +143,7 @@ struct FoodSearchResultRowEnhanced: View {
     }
 
     // Get standard serving size description - use first preset portion if available
+    // Uses query-aware method to properly handle composite dishes
     private var standardServingDesc: String {
         if food.isPerUnit == true {
             return "1 serving"
@@ -150,23 +151,32 @@ struct FoodSearchResultRowEnhanced: View {
             return "\(Int(servingG))g"
         } else if let desc = food.servingDescription, !desc.isEmpty {
             return desc
-        } else if food.hasAnyPortionOptions, let firstPortion = food.availablePortions.first {
-            // Use first preset portion (e.g., "Standard Bag (85g)" for chocolates)
-            return firstPortion.name
         } else {
+            // Use query-aware portions to prevent inappropriate serving descriptions
+            // for composite dishes like "salmon en croute"
+            let effectiveQuery = food.name
+            let portions = food.portionsForQuery(effectiveQuery)
+            if let firstPortion = portions.first {
+                return firstPortion.name
+            }
             return "100g"
         }
     }
 
     // Get the actual serving weight for nutrition calculation
+    // Uses query-aware method to properly handle composite dishes
     private var standardServingWeight: Double {
         if food.isPerUnit == true {
             return 100.0 // Per-unit foods use full values
         } else if let servingG = food.servingSizeG, servingG > 0 {
             return servingG
-        } else if food.hasAnyPortionOptions, let firstPortion = food.availablePortions.first {
-            return firstPortion.serving_g
         } else {
+            // Use query-aware portions for composite dish handling
+            let effectiveQuery = food.name
+            let portions = food.portionsForQuery(effectiveQuery)
+            if let firstPortion = portions.first {
+                return firstPortion.serving_g
+            }
             return 100.0
         }
     }

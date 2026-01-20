@@ -3593,8 +3593,11 @@ private var nutritionFactsSection: some View {
                     perUnitServingRow
                 } else {
                     // Per-100g foods: show preset portions if available
-                    if food.hasAnyPortionOptions {
-                        let portions = food.availablePortions
+                    // Use query-aware method to properly handle composite dishes and ambiguous items
+                    // This prevents "salmon en croute" from getting "small fillet" suggestions
+                    let effectiveQuery = food.name // Use food name as query for classification
+                    if food.hasAnyPortionOptions(forQuery: effectiveQuery) {
+                        let portions = food.portionsForQuery(effectiveQuery)
                         ForEach(portions) { portion in
                             let isSelected = selectedPortionName == portion.name
                             let multiplier = portion.serving_g / 100.0
@@ -3679,7 +3682,7 @@ private var nutritionFactsSection: some View {
                     }
 
                     // Custom weight row - INDEPENDENT (values based on typed weight only)
-                    let isCustomSelected = selectedPortionName == "__custom__" || !food.hasAnyPortionOptions
+                    let isCustomSelected = selectedPortionName == "__custom__" || !food.hasAnyPortionOptions(forQuery: effectiveQuery)
                     let customMultiplier = (Double(servingAmount) ?? 100) / 100.0
                     HStack(spacing: 6) {
                         // 1x label - left edge

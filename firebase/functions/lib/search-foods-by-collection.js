@@ -69,19 +69,27 @@ exports.searchFoodsByCollection = functions.https.onRequest(async (req, res) => 
         const results = snapshot.docs.map(doc => {
             const data = doc.data();
             const nutrition = data.nutritionData || {};
+            // Extract serving size from multiple possible field names
+            const servingDescription = data.servingDescription ||
+                data.serving_description ||
+                data.servingSize ||
+                data.serving_size ||
+                '100g serving';
             // Format data exactly as dashboard expects
             return {
                 id: doc.id,
-                name: data.foodName || '',
-                brand: data.brandName || null,
-                calories: nutrition.calories || nutrition.energy || 0,
+                name: data.foodName || data.title || data.name || '',
+                brand: data.brandName || data.brand || null,
+                barcode: data.barcode || data.gtin || '',
+                calories: nutrition.calories || nutrition.energyKcal || nutrition.energy || 0,
                 protein: nutrition.protein || 0,
-                carbs: nutrition.carbs || nutrition.carbohydrates || 0,
+                carbs: nutrition.carbs || nutrition.carbohydrates || nutrition.carbohydrate || 0,
                 fat: nutrition.fat || 0,
                 fiber: nutrition.fiber || nutrition.fibre || 0,
                 sugar: nutrition.sugar || nutrition.sugars || 0,
                 sodium: nutrition.sodium || (nutrition.salt ? nutrition.salt * 1000 : 0),
-                servingDescription: data.servingSize || '100g serving',
+                servingDescription: servingDescription,
+                servingSizeG: data.servingSizeG || data.serving_size_g || data.servingWeightG || 100,
                 ingredients: data.extractedIngredients || data.ingredients || null
             };
         });

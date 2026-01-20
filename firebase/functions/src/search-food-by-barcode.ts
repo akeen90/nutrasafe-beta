@@ -232,32 +232,36 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
 
     console.log(`Searching for barcode: "${barcode}"`);
 
-    // Search all food collections for the barcode
-    const collections = ['verifiedFoods', 'foods', 'manualFoods'];
+    // Search all food collections for the barcode (priority order)
+    // verifiedFoods first (highest quality), then foods, then tescoProducts, then manualFoods
+    const collections = ['verifiedFoods', 'foods', 'tescoProducts', 'manualFoods'];
     let foundFood = null;
     let foundCollection = null;
 
     for (const collection of collections) {
       try {
         console.log(`Searching ${collection} for barcode: ${barcode}`);
-        
+
+        // Tesco products use 'gtin' field instead of 'barcode'
+        const barcodeField = collection === 'tescoProducts' ? 'gtin' : 'barcode';
+
         const snapshot = await admin.firestore()
           .collection(collection)
-          .where('barcode', '==', barcode)
+          .where(barcodeField, '==', barcode)
           .limit(1)
           .get();
 
         if (!snapshot.empty) {
           const doc = snapshot.docs[0];
           const data = doc.data();
-          
+
           foundFood = {
             id: doc.id,
             collection: collection,
             ...data
           } as any;
           foundCollection = collection;
-          console.log(`Found food in ${collection}: ${data.foodName || data.name}`);
+          console.log(`Found food in ${collection}: ${data.foodName || data.title || data.name}`);
           break;
         }
       } catch (error) {
@@ -362,9 +366,20 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
 
     // Transform the food data to match iOS app expectations
     // Support both nested nutritionData object AND flat structure (from CSV imports)
-    const nutrition = foundFood.nutritionData || foundFood;
-    const foodName = foundFood.foodName || foundFood.name || 'Unknown Product';
+    const nutrition = foundFood.nutritionData || foundFood.nutrition || foundFood;
+    const foodName = foundFood.foodName || foundFood.title || foundFood.name || 'Unknown Product';
     const brandName = foundFood.brandName || foundFood.brand || null;
+
+    // Extract serving size from multiple possible field names
+    const servingDescription = foundFood.servingDescription ||
+                               foundFood.serving_description ||
+                               foundFood.servingSize ||
+                               foundFood.serving_size ||
+                               'per 100g';
+    const servingSizeG = foundFood.servingSizeG ||
+                         foundFood.serving_size_g ||
+                         foundFood.servingWeightG ||
+                         100;
 
     // Analyze ingredients for additives and processing score
     let additiveAnalysis = null;
@@ -395,10 +410,10 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
       }
     }
 
-    // Format nutrition data
-    const calorieValue = nutrition.calories || nutrition.energy || 0;
+    // Format nutrition data (handle Tesco field names: energyKcal, carbohydrate, fibre, sugars)
+    const calorieValue = nutrition.calories || nutrition.energyKcal || nutrition.energy || 0;
     const proteinValue = nutrition.protein || 0;
-    const carbsValue = nutrition.carbs || nutrition.carbohydrates || 0;
+    const carbsValue = nutrition.carbs || nutrition.carbohydrates || nutrition.carbohydrate || 0;
     const fatValue = nutrition.fat || 0;
     const fiberValue = nutrition.fiber || nutrition.fibre || 0;
     const sugarValue = nutrition.sugar || nutrition.sugars || 0;
@@ -409,7 +424,7 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
       food_id: foundFood.id,
       food_name: foodName,
       brand_name: brandName,
-      barcode: foundFood.barcode || barcode,
+      barcode: foundFood.barcode || foundFood.gtin || barcode,
       calories: typeof calorieValue === 'object' ? calorieValue.kcal || calorieValue.per100g || 0 : calorieValue,
       protein: typeof proteinValue === 'object' ? proteinValue.per100g || 0 : proteinValue,
       carbohydrates: typeof carbsValue === 'object' ? carbsValue.per100g || 0 : carbsValue,
@@ -417,8 +432,9 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
       fiber: typeof fiberValue === 'object' ? fiberValue.per100g || 0 : fiberValue,
       sugar: typeof sugarValue === 'object' ? sugarValue.per100g || 0 : sugarValue,
       sodium: typeof sodiumValue === 'object' ? sodiumValue.per100g || 0 : sodiumValue,
-      serving_description: foundFood.servingSize || 'per 100g',
-      
+      serving_description: servingDescription,
+      serving_size_g: servingSizeG,
+
       // Include ingredients as a string (what the iOS app expects)
       ingredients: ingredientsString || '',
 
