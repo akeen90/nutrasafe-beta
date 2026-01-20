@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
+exports.searchTescoAndUpdate = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
 const functions = require("firebase-functions");
 const functionsV2 = require("firebase-functions/v2");
 const params_1 = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const algoliasearch_1 = require("algoliasearch");
+const axios_1 = require("axios");
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -13,6 +14,9 @@ if (!admin.apps.length) {
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 const algoliaAdminKey = (0, params_1.defineSecret)('ALGOLIA_ADMIN_API_KEY');
+// Tesco8 API Configuration
+const TESCO8_API_KEY = '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
+const TESCO8_HOST = 'tesco8.p.rapidapi.com';
 // Map Algolia index names to Firestore collection names (where applicable)
 const INDEX_TO_COLLECTION = {
     'uk_foods_cleaned': null, // Algolia-only, no direct Firestore sync
@@ -24,9 +28,12 @@ const INDEX_TO_COLLECTION = {
     'user_added': 'userAdded',
     'ai_enhanced': 'aiEnhanced',
     'ai_manually_added': 'aiManuallyAdded',
+    'tesco_products': 'tesco_products',
 };
+// Algolia-only indices (no Firestore backing)
+const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
 // Update verified food
-exports.updateVerifiedFood = functions.https.onRequest(async (req, res) => {
+exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).https.onRequest(async (req, res) => {
     // Set CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -36,21 +43,27 @@ exports.updateVerifiedFood = functions.https.onRequest(async (req, res) => {
         return;
     }
     try {
-        const { foodId, foodName, brandName, barcode, extractedIngredients, nutritionData, verifiedBy, verificationMethod } = req.body;
+        const { foodId, foodName, brandName, barcode, extractedIngredients, nutritionData, verifiedBy, verificationMethod, collection, servingSize, servingSizeG, servingUnit, isPerUnit, source } = req.body;
         if (!foodId) {
             res.status(400).json({ error: 'Food ID is required' });
             return;
         }
-        console.log(`Updating food: ${foodId}`);
+        // Determine which collection to update (default to verifiedFoods)
+        const targetCollection = collection || 'verifiedFoods';
+        console.log(`Updating food: ${foodId} in collection: ${targetCollection}`);
         // Prepare update data
         const updateData = {
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
         // Add regular food fields if provided
-        if (foodName !== undefined)
+        if (foodName !== undefined) {
             updateData.foodName = foodName;
-        if (brandName !== undefined)
+            updateData.name = foodName; // Keep both for compatibility
+        }
+        if (brandName !== undefined) {
             updateData.brandName = brandName;
+            updateData.brand = brandName; // Keep both for compatibility
+        }
         if (barcode !== undefined)
             updateData.barcode = barcode;
         if (extractedIngredients !== undefined) {
@@ -59,6 +72,18 @@ exports.updateVerifiedFood = functions.https.onRequest(async (req, res) => {
         }
         if (nutritionData !== undefined)
             updateData.nutritionData = nutritionData;
+        if (servingSize !== undefined) {
+            updateData.servingSize = servingSize;
+            updateData.servingDescription = servingSize; // Keep both for compatibility
+        }
+        if (servingSizeG !== undefined)
+            updateData.servingSizeG = servingSizeG;
+        if (servingUnit !== undefined)
+            updateData.servingUnit = servingUnit;
+        if (isPerUnit !== undefined)
+            updateData.isPerUnit = isPerUnit;
+        if (source !== undefined)
+            updateData.source = source;
         // Add verification status if provided
         if (verifiedBy !== undefined) {
             updateData.verifiedBy = verifiedBy;
@@ -81,19 +106,108 @@ exports.updateVerifiedFood = functions.https.onRequest(async (req, res) => {
             }
         }
         console.log('Update data:', updateData);
-        // Update the food document
-        await admin.firestore()
-            .collection('verifiedFoods')
-            .doc(foodId)
-            .update(updateData);
-        res.json({
-            success: true,
-            message: 'Food updated successfully'
-        });
+        // Check if this is an Algolia-only index
+        if (ALGOLIA_ONLY_INDICES.includes(targetCollection)) {
+            // For Algolia-only indices, update directly in Algolia
+            const algoliaKey = algoliaAdminKey.value();
+            if (!algoliaKey) {
+                res.status(500).json({ error: 'Algolia API key not configured' });
+                return;
+            }
+            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
+            // Prepare Algolia update object
+            const algoliaUpdate = {
+                objectID: foodId,
+                ...updateData,
+                updatedAt: new Date().toISOString()
+            };
+            delete algoliaUpdate.updatedAt; // Remove Firestore timestamp
+            await client.partialUpdateObject({
+                indexName: targetCollection,
+                objectID: foodId,
+                attributesToUpdate: algoliaUpdate
+            });
+            res.json({
+                success: true,
+                message: 'Food updated in Algolia successfully'
+            });
+        }
+        else {
+            // For Firestore-backed collections, update both Firestore and Algolia
+            await admin.firestore()
+                .collection(targetCollection)
+                .doc(foodId)
+                .set(updateData, { merge: true });
+            // Also update in Algolia to keep search in sync
+            try {
+                const algoliaKey = algoliaAdminKey.value();
+                if (algoliaKey) {
+                    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
+                    // Map Firestore collection to Algolia index
+                    const collectionToIndex = {
+                        'verifiedFoods': 'verified_foods',
+                        'foods': 'foods',
+                        'manualFoods': 'manual_foods',
+                        'userAdded': 'user_added',
+                        'aiEnhanced': 'ai_enhanced',
+                        'aiManuallyAdded': 'ai_manually_added',
+                        'tesco_products': 'tesco_products'
+                    };
+                    const algoliaIndex = collectionToIndex[targetCollection] || targetCollection;
+                    // Prepare Algolia update object (flatten nutrition data)
+                    const algoliaUpdate = {
+                        objectID: foodId,
+                        name: updateData.foodName || updateData.name,
+                        foodName: updateData.foodName || updateData.name,
+                        brand: updateData.brandName || updateData.brand,
+                        brandName: updateData.brandName || updateData.brand,
+                        barcode: updateData.barcode,
+                        ingredients: updateData.ingredients || updateData.extractedIngredients,
+                        servingDescription: updateData.servingSize || updateData.servingDescription,
+                        servingSizeG: updateData.servingSizeG,
+                        servingUnit: updateData.servingUnit,
+                        isPerUnit: updateData.isPerUnit,
+                        source: updateData.source,
+                        updatedAt: new Date().toISOString()
+                    };
+                    // Flatten nutrition data for Algolia
+                    if (updateData.nutritionData) {
+                        algoliaUpdate.calories = updateData.nutritionData.calories || 0;
+                        algoliaUpdate.protein = updateData.nutritionData.protein || 0;
+                        algoliaUpdate.carbs = updateData.nutritionData.carbs || 0;
+                        algoliaUpdate.fat = updateData.nutritionData.fat || 0;
+                        algoliaUpdate.fiber = updateData.nutritionData.fiber || 0;
+                        algoliaUpdate.sugar = updateData.nutritionData.sugar || 0;
+                        algoliaUpdate.sodium = updateData.nutritionData.sodium || 0;
+                        algoliaUpdate.saturatedFat = updateData.nutritionData.saturatedFat || 0;
+                    }
+                    // Remove undefined values
+                    Object.keys(algoliaUpdate).forEach(key => {
+                        if (algoliaUpdate[key] === undefined)
+                            delete algoliaUpdate[key];
+                    });
+                    await client.partialUpdateObject({
+                        indexName: algoliaIndex,
+                        objectID: foodId,
+                        attributesToUpdate: algoliaUpdate,
+                        createIfNotExists: true
+                    });
+                    console.log(`✅ Updated food in both Firestore (${targetCollection}) and Algolia (${algoliaIndex})`);
+                }
+            }
+            catch (algoliaError) {
+                console.error('⚠️ Algolia sync failed (Firestore update succeeded):', algoliaError);
+                // Don't fail the request - Firestore update succeeded
+            }
+            res.json({
+                success: true,
+                message: 'Food updated successfully'
+            });
+        }
     }
     catch (error) {
         console.error('Error updating food:', error);
-        res.status(500).json({ error: 'Failed to update food' });
+        res.status(500).json({ error: 'Failed to update food', details: String(error) });
     }
 });
 // Add new food directly to human verified collection
@@ -563,6 +677,225 @@ exports.fixExistingFoodsVerification = functions.https.onRequest(async (req, res
     catch (error) {
         console.error('Error fixing foods verification:', error);
         res.status(500).json({ error: 'Failed to fix foods verification status' });
+    }
+});
+// Search Tesco by GTIN/barcode first, then fallback to name/brand, and update food
+exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], timeoutSeconds: 60 }).https.onRequest(async (req, res) => {
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        res.status(200).send();
+        return;
+    }
+    try {
+        const { foodId, barcode, foodName, brandName, collection, reportId } = req.body;
+        if (!foodId && !barcode && !foodName) {
+            res.status(400).json({ success: false, error: 'Food ID, barcode, or food name is required' });
+            return;
+        }
+        console.log(`🔍 Searching Tesco for: barcode=${barcode}, name=${foodName}, brand=${brandName}`);
+        let tescoProduct = null;
+        // Step 1: Try searching by barcode/GTIN first
+        if (barcode) {
+            console.log(`🔍 Searching by barcode: ${barcode}`);
+            try {
+                // Search Tesco by keyword (barcode)
+                const searchResponse = await axios_1.default.get(`https://${TESCO8_HOST}/product-search-by-keyword`, {
+                    params: { query: barcode, page: '0' },
+                    headers: {
+                        'x-rapidapi-host': TESCO8_HOST,
+                        'x-rapidapi-key': TESCO8_API_KEY
+                    },
+                    timeout: 15000
+                });
+                if (searchResponse.data?.success && searchResponse.data?.products?.length > 0) {
+                    // Find product with matching barcode
+                    const matchingProduct = searchResponse.data.products.find((p) => p.gtin === barcode || p.ean === barcode);
+                    if (matchingProduct) {
+                        // Get full product details
+                        const detailsResponse = await axios_1.default.get(`https://${TESCO8_HOST}/product-details`, {
+                            params: { productId: matchingProduct.id },
+                            headers: {
+                                'x-rapidapi-host': TESCO8_HOST,
+                                'x-rapidapi-key': TESCO8_API_KEY
+                            },
+                            timeout: 15000
+                        });
+                        if (detailsResponse.data?.success && detailsResponse.data?.product) {
+                            tescoProduct = detailsResponse.data.product;
+                            console.log(`✅ Found product by barcode: ${tescoProduct.title}`);
+                        }
+                    }
+                }
+            }
+            catch (barcodeError) {
+                console.log(`⚠️ Barcode search failed: ${barcodeError}`);
+            }
+        }
+        // Step 2: Fallback to name/brand search
+        if (!tescoProduct && foodName) {
+            const searchQuery = brandName ? `${brandName} ${foodName}` : foodName;
+            console.log(`🔍 Searching by name: ${searchQuery}`);
+            try {
+                const searchResponse = await axios_1.default.get(`https://${TESCO8_HOST}/product-search-by-keyword`, {
+                    params: { query: searchQuery, page: '0' },
+                    headers: {
+                        'x-rapidapi-host': TESCO8_HOST,
+                        'x-rapidapi-key': TESCO8_API_KEY
+                    },
+                    timeout: 15000
+                });
+                if (searchResponse.data?.success && searchResponse.data?.products?.length > 0) {
+                    // Get the first (best match) product
+                    const firstProduct = searchResponse.data.products[0];
+                    // Get full product details
+                    const detailsResponse = await axios_1.default.get(`https://${TESCO8_HOST}/product-details`, {
+                        params: { productId: firstProduct.id },
+                        headers: {
+                            'x-rapidapi-host': TESCO8_HOST,
+                            'x-rapidapi-key': TESCO8_API_KEY
+                        },
+                        timeout: 15000
+                    });
+                    if (detailsResponse.data?.success && detailsResponse.data?.product) {
+                        tescoProduct = detailsResponse.data.product;
+                        console.log(`✅ Found product by name: ${tescoProduct.title}`);
+                    }
+                }
+            }
+            catch (nameError) {
+                console.log(`⚠️ Name search failed: ${nameError}`);
+            }
+        }
+        if (!tescoProduct) {
+            res.json({ success: false, error: 'No matching product found in Tesco' });
+            return;
+        }
+        // Extract nutrition data from Tesco product
+        const nutrition = tescoProduct.nutrition || {};
+        const nutritionData = {
+            calories: nutrition.energyKcal || nutrition.energy_kcal || 0,
+            protein: nutrition.protein || 0,
+            carbs: nutrition.carbohydrate || nutrition.carbs || 0,
+            carbohydrates: nutrition.carbohydrate || nutrition.carbs || 0,
+            fat: nutrition.fat || 0,
+            fiber: nutrition.fibre || nutrition.fiber || 0,
+            fibre: nutrition.fibre || nutrition.fiber || 0,
+            sugar: nutrition.sugars || nutrition.sugar || 0,
+            sugars: nutrition.sugars || nutrition.sugar || 0,
+            sodium: nutrition.sodium || 0,
+            salt: nutrition.salt || 0,
+            saturatedFat: nutrition.saturates || nutrition.saturatedFat || 0
+        };
+        // Prepare update data
+        const updateData = {
+            foodName: tescoProduct.title || foodName,
+            name: tescoProduct.title || foodName,
+            brandName: tescoProduct.brand || brandName || 'Tesco',
+            brand: tescoProduct.brand || brandName || 'Tesco',
+            barcode: tescoProduct.gtin || barcode,
+            gtin: tescoProduct.gtin || barcode,
+            nutritionData,
+            ingredients: tescoProduct.ingredients?.join(', ') || '',
+            extractedIngredients: tescoProduct.ingredients?.join(', ') || '',
+            servingDescription: tescoProduct.servingSize || 'per 100g',
+            servingSize: tescoProduct.servingSize || 'per 100g',
+            source: 'tesco_api',
+            tescoProductId: tescoProduct.id,
+            imageUrl: tescoProduct.imageUrl,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedFromTesco: true,
+            tescoUpdatedAt: new Date().toISOString()
+        };
+        // Update in Firestore
+        const targetCollection = collection || 'verifiedFoods';
+        const docId = foodId || `tesco_${tescoProduct.id}`;
+        await admin.firestore()
+            .collection(targetCollection)
+            .doc(docId)
+            .set(updateData, { merge: true });
+        console.log(`✅ Updated food in Firestore: ${targetCollection}/${docId}`);
+        // Also update in Algolia
+        try {
+            const algoliaKey = algoliaAdminKey.value();
+            if (algoliaKey) {
+                const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
+                const collectionToIndex = {
+                    'verifiedFoods': 'verified_foods',
+                    'foods': 'foods',
+                    'manualFoods': 'manual_foods',
+                    'userAdded': 'user_added',
+                    'tesco_products': 'tesco_products'
+                };
+                const algoliaIndex = collectionToIndex[targetCollection] || targetCollection;
+                const algoliaUpdate = {
+                    objectID: docId,
+                    name: updateData.foodName,
+                    foodName: updateData.foodName,
+                    brand: updateData.brandName,
+                    brandName: updateData.brandName,
+                    barcode: updateData.barcode,
+                    gtin: updateData.gtin,
+                    calories: nutritionData.calories,
+                    protein: nutritionData.protein,
+                    carbs: nutritionData.carbs,
+                    fat: nutritionData.fat,
+                    fiber: nutritionData.fiber,
+                    sugar: nutritionData.sugar,
+                    sodium: nutritionData.sodium,
+                    saturatedFat: nutritionData.saturatedFat,
+                    ingredients: updateData.ingredients,
+                    servingDescription: updateData.servingDescription,
+                    source: 'tesco_api',
+                    imageUrl: updateData.imageUrl,
+                    updatedAt: new Date().toISOString()
+                };
+                await client.partialUpdateObject({
+                    indexName: algoliaIndex,
+                    objectID: docId,
+                    attributesToUpdate: algoliaUpdate,
+                    createIfNotExists: true
+                });
+                console.log(`✅ Updated food in Algolia: ${algoliaIndex}/${docId}`);
+            }
+        }
+        catch (algoliaError) {
+            console.error('⚠️ Algolia sync failed:', algoliaError);
+        }
+        // Optionally mark the report as resolved
+        if (reportId) {
+            try {
+                await admin.firestore()
+                    .collection('userReports')
+                    .doc(reportId)
+                    .update({
+                    status: 'resolved',
+                    resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    resolvedBy: 'tesco_api_update',
+                    notes: `Updated with Tesco data: ${tescoProduct.title}`
+                });
+                console.log(`✅ Marked report ${reportId} as resolved`);
+            }
+            catch (reportError) {
+                console.error('⚠️ Failed to update report status:', reportError);
+            }
+        }
+        res.json({
+            success: true,
+            message: `Updated food with Tesco data: ${tescoProduct.title}`,
+            product: {
+                id: docId,
+                name: updateData.foodName,
+                brand: updateData.brandName,
+                barcode: updateData.barcode
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error searching Tesco:', error);
+        res.status(500).json({ success: false, error: 'Failed to search Tesco', details: String(error) });
     }
 });
 //# sourceMappingURL=food-management.js.map

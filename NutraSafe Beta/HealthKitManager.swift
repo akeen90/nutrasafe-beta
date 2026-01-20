@@ -1,5 +1,6 @@
 import Foundation
 import HealthKit
+import UIKit
 
 extension HKWorkoutActivityType {
     var name: String {
@@ -77,7 +78,56 @@ class HealthKitManager: ObservableObject {
     private var stepCountTask: Task<Void, Never>?
     private var activeEnergyTask: Task<Void, Never>?
 
-    private init() {}
+    // MARK: - Live Refresh Properties
+    // Observer queries for live HealthKit updates
+    private var stepObserverQuery: HKObserverQuery?
+    private var activeEnergyObserverQuery: HKObserverQuery?
+
+    // Timer for periodic refresh (backup for observer queries)
+    private var refreshTimer: Timer?
+    private let refreshInterval: TimeInterval = 30 // Refresh every 30 seconds
+
+    // Track app foreground state for smart refreshing
+    private var isAppInForeground = true
+
+    private init() {
+        setupAppLifecycleObservers()
+    }
+
+    deinit {
+        stopLiveUpdates()
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - App Lifecycle
+    private func setupAppLifecycleObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillResignActive),
+            name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+    }
+
+    @objc private func appDidBecomeActive() {
+        isAppInForeground = true
+        if isAuthorized {
+            // Refresh immediately when app becomes active
+            refreshHealthKitData()
+            startRefreshTimer()
+        }
+    }
+
+    @objc private func appWillResignActive() {
+        isAppInForeground = false
+        stopRefreshTimer()
+    }
 
     /// Check if HealthKit authorization has already been granted
     /// This checks the authorization status without prompting the user
@@ -96,10 +146,15 @@ class HealthKitManager: ObservableObject {
         }
 
         let status = healthStore.authorizationStatus(for: bodyMassType)
+        let wasAuthorized = (status == .sharingAuthorized)
 
         await MainActor.run {
             // sharingAuthorized means we have write permission (which implies read was also granted)
-            self.isAuthorized = (status == .sharingAuthorized)
+            self.isAuthorized = wasAuthorized
+            // Start live updates if already authorized
+            if wasAuthorized {
+                self.startLiveUpdates()
+            }
         }
     }
 
@@ -117,6 +172,16 @@ class HealthKitManager: ObservableObject {
         }
 
         currentDisplayDate = newDate
+
+        // Restart timer based on whether we're viewing today
+        // (we only want auto-refresh when viewing today's data)
+        if isAuthorized {
+            if Calendar.current.isDateInToday(newDate) {
+                startRefreshTimer()
+            } else {
+                stopRefreshTimer()
+            }
+        }
     }
     
     func requestAuthorization() async {
@@ -157,16 +222,136 @@ class HealthKitManager: ObservableObject {
                 self.isAuthorized = true
                 self.errorMessage = nil
                 self.showError = false
+                // Start live updates after authorization
+                self.startLiveUpdates()
             }
         } catch {
-            
+
             await MainActor.run {
                 self.errorMessage = "Unable to access HealthKit. Please enable access in Settings > Health > Data Access & Devices > NutraSafe"
                 self.showError = true
             }
         }
     }
-    
+
+    // MARK: - Live Updates
+
+    /// Start live updates for HealthKit data (observers + timer)
+    /// Call this after authorization is granted
+    func startLiveUpdates() {
+        guard isAuthorized else { return }
+
+        // Start observer queries for immediate notifications
+        setupStepCountObserver()
+        setupActiveEnergyObserver()
+
+        // Start timer for periodic refresh (backup)
+        startRefreshTimer()
+    }
+
+    /// Stop all live update mechanisms
+    func stopLiveUpdates() {
+        stopObserverQueries()
+        stopRefreshTimer()
+    }
+
+    /// Refresh HealthKit data for the current display date
+    func refreshHealthKitData() {
+        Task {
+            await updateStepCount(for: currentDisplayDate)
+            await updateActiveEnergy(for: currentDisplayDate)
+            await updateExerciseCalories(for: currentDisplayDate)
+        }
+    }
+
+    // MARK: - Observer Queries
+
+    private func setupStepCountObserver() {
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return }
+
+        // Stop existing observer if any
+        if let existingQuery = stepObserverQuery {
+            healthStore.stop(existingQuery)
+        }
+
+        let query = HKObserverQuery(sampleType: stepType, predicate: nil) { [weak self] _, completionHandler, error in
+            guard let self = self, error == nil else {
+                completionHandler()
+                return
+            }
+
+            // Only refresh if we're in foreground and observing today
+            if self.isAppInForeground && Calendar.current.isDateInToday(self.currentDisplayDate) {
+                Task {
+                    await self.updateStepCount(for: self.currentDisplayDate)
+                }
+            }
+
+            completionHandler()
+        }
+
+        stepObserverQuery = query
+        healthStore.execute(query)
+    }
+
+    private func setupActiveEnergyObserver() {
+        guard let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
+
+        // Stop existing observer if any
+        if let existingQuery = activeEnergyObserverQuery {
+            healthStore.stop(existingQuery)
+        }
+
+        let query = HKObserverQuery(sampleType: energyType, predicate: nil) { [weak self] _, completionHandler, error in
+            guard let self = self, error == nil else {
+                completionHandler()
+                return
+            }
+
+            // Only refresh if we're in foreground and observing today
+            if self.isAppInForeground && Calendar.current.isDateInToday(self.currentDisplayDate) {
+                Task {
+                    await self.updateActiveEnergy(for: self.currentDisplayDate)
+                }
+            }
+
+            completionHandler()
+        }
+
+        activeEnergyObserverQuery = query
+        healthStore.execute(query)
+    }
+
+    private func stopObserverQueries() {
+        if let query = stepObserverQuery {
+            healthStore.stop(query)
+            stepObserverQuery = nil
+        }
+        if let query = activeEnergyObserverQuery {
+            healthStore.stop(query)
+            activeEnergyObserverQuery = nil
+        }
+    }
+
+    // MARK: - Timer-based Refresh
+
+    private func startRefreshTimer() {
+        stopRefreshTimer() // Stop any existing timer
+
+        // Only run timer when viewing today's data
+        guard Calendar.current.isDateInToday(currentDisplayDate) else { return }
+
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
+            guard let self = self, self.isAppInForeground else { return }
+            self.refreshHealthKitData()
+        }
+    }
+
+    private func stopRefreshTimer() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+    }
+
     func fetchTodayExerciseCalories() async throws -> Double {
         return try await fetchExerciseCalories(for: Date())
     }

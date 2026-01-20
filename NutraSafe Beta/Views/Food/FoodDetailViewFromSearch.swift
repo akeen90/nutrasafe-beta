@@ -107,6 +107,7 @@ struct FoodDetailViewFromSearch: View {
     // AI-Inferred Ingredients states
     @State private var showingInferredIngredientsSheet = false
     @State private var inferredIngredients: [InferredIngredient] = []
+    @State private var isEstimatingIngredients = false
 
     // MARK: - Fasting Integration
     var fastingViewModel: FastingViewModel?
@@ -2318,7 +2319,15 @@ private var nutritionFactsSection: some View {
     }
 
     private var ingredientsSection: some View {
-        IngredientsSectionView(status: cachedIngredientsStatus, ingredients: cachedIngredients, userAllergens: userAllergens, foodName: displayFood.name, showingInferredIngredientsSheet: $showingInferredIngredientsSheet)
+        IngredientsSectionView(
+            status: cachedIngredientsStatus,
+            ingredients: cachedIngredients,
+            userAllergens: userAllergens,
+            foodName: displayFood.name,
+            showingInferredIngredientsSheet: $showingInferredIngredientsSheet,
+            isEstimatingIngredients: isEstimatingIngredients,
+            onEstimateIngredients: estimateIngredientsWithAI
+        )
     }
 
     struct NutritionFactsSectionView: View {
@@ -2461,6 +2470,8 @@ private var nutritionFactsSection: some View {
         let userAllergens: [Allergen]
         let foodName: String
         @Binding var showingInferredIngredientsSheet: Bool
+        let isEstimatingIngredients: Bool
+        let onEstimateIngredients: () -> Void
 
         // Common additive/processed ingredient patterns to highlight
         private let concerningPatterns = [
@@ -2624,11 +2635,17 @@ private var nutritionFactsSection: some View {
 
                         // AI Estimate Ingredients button
                         Button(action: {
-                            showingInferredIngredientsSheet = true
+                            onEstimateIngredients()
                         }) {
                             HStack(spacing: 8) {
-                                Image(systemName: "sparkles")
-                                Text("Estimate Ingredients")
+                                if isEstimatingIngredients {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                }
+                                Text(isEstimatingIngredients ? "Estimating..." : "Estimate Ingredients")
                             }
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
@@ -2636,13 +2653,14 @@ private var nutritionFactsSection: some View {
                             .padding(.vertical, 10)
                             .background(
                                 LinearGradient(
-                                    colors: [.blue, .purple],
+                                    colors: isEstimatingIngredients ? [.gray, .gray] : [.blue, .purple],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                             .clipShape(Capsule())
                         }
+                        .disabled(isEstimatingIngredients)
 
                         Text("Uses AI to estimate likely ingredients")
                             .font(.system(size: 11))
@@ -3047,6 +3065,103 @@ private var nutritionFactsSection: some View {
                     showingNotificationError = true
                 }
             }
+        }
+    }
+
+    // Estimate ingredients using AI and flag for review
+    private func estimateIngredientsWithAI() {
+        isEstimatingIngredients = true
+
+        Task {
+            do {
+                // 1. Call AI inference to get estimated ingredients
+                let analysis = try await InferredIngredientManager.shared.inferIngredients(for: food.name)
+                let estimatedIngredients = analysis.allInferredIngredients
+
+                // 2. Convert to ingredient names string
+                let ingredientNames = estimatedIngredients.map { $0.name }
+                let ingredientsText = ingredientNames.joined(separator: ", ")
+
+                // 3. Update the UI to show estimated ingredients
+                await MainActor.run {
+                    inferredIngredients = estimatedIngredients
+                    enhancedIngredientsText = ingredientsText
+                }
+
+                // 4. Flag for review with estimated ingredients
+                try await notifyTeamWithEstimatedIngredients(ingredientNames)
+
+                await MainActor.run {
+                    isEstimatingIngredients = false
+                    // Show success feedback briefly
+                    showingNotificationSuccess = true
+                }
+
+            } catch {
+                await MainActor.run {
+                    isEstimatingIngredients = false
+                    // Silently fail or show error
+                    notificationErrorMessage = "Unable to estimate ingredients. Please try again."
+                    showingNotificationError = true
+                }
+            }
+        }
+    }
+
+    // Notify team with AI-estimated ingredients for review
+    private func notifyTeamWithEstimatedIngredients(_ estimatedIngredients: [String]) async throws {
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/notifyIncompleteFood") else {
+            throw NSError(domain: "Invalid URL", code: -1)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Build food data with estimated ingredients
+        var foodData: [String: Any] = [
+            "id": food.id,
+            "name": food.name,
+            "calories": food.calories,
+            "protein": food.protein,
+            "carbs": food.carbs,
+            "fat": food.fat,
+            "fiber": food.fiber,
+            "sugar": food.sugar,
+            "sodium": food.sodium,
+            "isVerified": food.isVerified,
+            "ingredients": estimatedIngredients,
+            "processingLabel": "AI-Estimated Ingredients (Pending Review)"
+        ]
+
+        // Add optional fields if present
+        if let brand = food.brand { foodData["brand"] = brand }
+        if let barcode = food.barcode { foodData["barcode"] = barcode }
+        if let servingDescription = food.servingDescription { foodData["servingDescription"] = servingDescription }
+        if let servingSizeG = food.servingSizeG { foodData["servingSizeG"] = servingSizeG }
+
+        let requestBody: [String: Any] = [
+            "data": [
+                "foodName": food.name,
+                "brandName": food.brand ?? "",
+                "foodId": food.id,
+                "barcode": food.barcode ?? "",
+                "userId": firebaseManager.currentUser?.uid ?? "anonymous",
+                "userEmail": firebaseManager.currentUser?.email ?? "anonymous",
+                "recipientEmail": "contact@nutrasafe.co.uk",
+                "fullFoodData": foodData,
+                "estimatedIngredients": estimatedIngredients,
+                "isAIEstimated": true
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw NSError(domain: "Failed to notify team", code: -1)
         }
     }
 

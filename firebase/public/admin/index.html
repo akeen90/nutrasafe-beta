@@ -958,7 +958,15 @@
                         <option value="verifiedFoods">Verified Foods</option>
                         <option value="foods">Foods</option>
                         <option value="manualFoods">Manual Foods</option>
+                        <option value="userAdded">User Added</option>
+                        <option value="aiEnhanced">AI Enhanced</option>
+                        <option value="aiManuallyAdded">AI Manually Added</option>
+                        <option value="tesco_products">Tesco Products</option>
+                        <option value="uk_foods_cleaned">UK Foods (Algolia)</option>
+                        <option value="fast_foods_database">Fast Foods (Algolia)</option>
+                        <option value="generic_database">Generic Foods (Algolia)</option>
                     </select>
+                    <small style="color: var(--text-secondary); font-size: 10px;">Note: Algolia-only collections require Algolia update</small>
                 </div>
                 
                 <div class="form-group">
@@ -970,7 +978,38 @@
                     <label class="form-label">Serving Size Description</label>
                     <input type="text" class="form-input" id="edit-serving-size" placeholder="e.g., per 100g, per serving..." />
                 </div>
-                
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Serving Size (numeric)</label>
+                        <input type="number" class="form-input" id="edit-serving-size-g" placeholder="e.g., 30" step="0.1" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Serving Unit</label>
+                        <select class="form-input" id="edit-serving-unit">
+                            <option value="g">Grams (g)</option>
+                            <option value="ml">Millilitres (ml)</option>
+                            <option value="oz">Ounces (oz)</option>
+                            <option value="fl oz">Fluid Ounces (fl oz)</option>
+                            <option value="piece">Piece</option>
+                            <option value="serving">Serving</option>
+                            <option value="slice">Slice</option>
+                            <option value="cup">Cup</option>
+                            <option value="tbsp">Tablespoon (tbsp)</option>
+                            <option value="tsp">Teaspoon (tsp)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nutrition Values Are</label>
+                        <select class="form-input" id="edit-is-per-unit">
+                            <option value="false">Per 100g (standard)</option>
+                            <option value="true">Per Unit/Serving</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Save Status -->
                 <div id="save-status" style="margin-top: 16px; padding: 8px; border-radius: 4px; display: none;">
                 </div>
@@ -1148,6 +1187,9 @@
                     break;
                 case 'logs':
                     loadSystemLogs();
+                    break;
+                case 'reports':
+                    loadFoodReports();
                     break;
                 default:
                     loadOverviewData();
@@ -2120,14 +2162,15 @@
                 // Remove duplicates based on ID
                 const uniqueResults = [];
                 const seenIds = new Set();
-                
+
                 allResults.forEach(food => {
-                    const id = food.id || `${food.name}-${food.brand}` || food.name;
+                    const id = food.id || food.objectID || `${food.name}-${food.brand}` || food.name;
                     if (id && !seenIds.has(id)) {
                         seenIds.add(id);
                         uniqueResults.push({
                             ...food,
-                            collection: 'verifiedFoods' // Set default collection
+                            id: id, // Ensure id is always set
+                            collection: food.collection || 'verifiedFoods' // Preserve collection or set default
                         });
                     }
                 });
@@ -2449,6 +2492,375 @@
             displayEmptyState('System logs - Coming soon');
         }
 
+        // Food Reports functionality
+        let foodReportsData = [];
+        let selectedReportIds = new Set();
+
+        async function loadFoodReports() {
+            const container = document.getElementById('main-data-container');
+            container.innerHTML = `
+                <div style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>📋 User Food Reports</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="report-status-filter" class="form-input" style="width: 150px;" onchange="filterReports()">
+                                <option value="all">All Status</option>
+                                <option value="pending" selected>Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="dismissed">Dismissed</option>
+                            </select>
+                            <button class="panel-btn" onclick="refreshReports()">🔄 Refresh</button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Actions Bar -->
+                    <div id="bulk-actions-bar" style="display: none; background: var(--accent-primary); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span id="selected-count" style="font-weight: bold;">0 selected</span>
+                            <button class="panel-btn" onclick="selectAllReports()" style="background: rgba(255,255,255,0.2);">☑️ Select All</button>
+                            <button class="panel-btn" onclick="deselectAllReports()" style="background: rgba(255,255,255,0.2);">☐ Deselect All</button>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="panel-btn" onclick="searchTescoForSelected()" style="background: #0055a3;">🔍 Search Tesco & Update</button>
+                            <button class="panel-btn" onclick="bulkUpdateStatus('resolved')" style="background: var(--success-color);">✅ Mark Resolved</button>
+                            <button class="panel-btn" onclick="bulkUpdateStatus('dismissed')" style="background: var(--error-color);">❌ Dismiss</button>
+                        </div>
+                    </div>
+
+                    <div id="reports-list" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            Loading reports...
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            await fetchFoodReports();
+        }
+
+        async function fetchFoodReports(status = 'pending') {
+            try {
+                const response = await fetch(`${API_BASE}/getUserReports?status=${status}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    foodReportsData = data.reports || [];
+                    displayFoodReports();
+                } else {
+                    showAlert('Failed to load reports', 'error');
+                }
+            } catch (error) {
+                console.error('Error fetching reports:', error);
+                showAlert('Error loading reports', 'error');
+            }
+        }
+
+        function displayFoodReports() {
+            const container = document.getElementById('reports-list');
+            if (!container) return;
+
+            if (foodReportsData.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <span style="font-size: 48px;">📭</span>
+                        <p>No reports found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = foodReportsData.map(report => `
+                <div class="report-card" style="background: var(--background-secondary); border-radius: 8px; padding: 16px; display: flex; gap: 16px; align-items: flex-start;">
+                    <input type="checkbox" class="report-checkbox" data-id="${report.id}"
+                        ${selectedReportIds.has(report.id) ? 'checked' : ''}
+                        onchange="toggleReportSelection('${report.id}')"
+                        style="width: 20px; height: 20px; cursor: pointer; margin-top: 4px;">
+
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <div>
+                                <h4 style="margin: 0; color: var(--text-primary);">${report.foodName || 'Unknown Food'}</h4>
+                                <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 12px;">
+                                    ${report.brandName ? `Brand: ${report.brandName} | ` : ''}
+                                    ${report.barcode ? `Barcode: ${report.barcode}` : 'No barcode'}
+                                </p>
+                            </div>
+                            <span class="status-badge status-${report.status}" style="padding: 4px 8px; border-radius: 4px; font-size: 11px;">
+                                ${report.status || 'pending'}
+                            </span>
+                        </div>
+
+                        <div style="background: var(--background-tertiary); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 13px;">
+                                <strong>Issue:</strong> ${report.reportType || 'Incomplete data'}
+                            </p>
+                            ${report.reportMessage ? `<p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 13px;">${report.reportMessage}</p>` : ''}
+                            ${report.missingFields ? `<p style="margin: 8px 0 0 0; color: var(--warning-color); font-size: 12px;">Missing: ${report.missingFields.join(', ')}</p>` : ''}
+                        </div>
+
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="panel-btn" onclick="editReportFood('${report.id}')" style="font-size: 12px; padding: 6px 12px;">
+                                ✏️ Edit Food
+                            </button>
+                            <button class="panel-btn" onclick="searchTescoForReport('${report.id}')" style="font-size: 12px; padding: 6px 12px; background: #0055a3;">
+                                🔍 Search Tesco
+                            </button>
+                            <button class="panel-btn" onclick="updateReportStatus('${report.id}', 'resolved')" style="font-size: 12px; padding: 6px 12px; background: var(--success-color);">
+                                ✅ Resolve
+                            </button>
+                            <button class="panel-btn" onclick="updateReportStatus('${report.id}', 'dismissed')" style="font-size: 12px; padding: 6px 12px; background: var(--error-color);">
+                                ❌ Dismiss
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            updateBulkActionsBar();
+        }
+
+        function toggleReportSelection(reportId) {
+            if (selectedReportIds.has(reportId)) {
+                selectedReportIds.delete(reportId);
+            } else {
+                selectedReportIds.add(reportId);
+            }
+            updateBulkActionsBar();
+        }
+
+        function selectAllReports() {
+            foodReportsData.forEach(report => selectedReportIds.add(report.id));
+            displayFoodReports();
+        }
+
+        function deselectAllReports() {
+            selectedReportIds.clear();
+            displayFoodReports();
+        }
+
+        function updateBulkActionsBar() {
+            const bar = document.getElementById('bulk-actions-bar');
+            const countSpan = document.getElementById('selected-count');
+            if (bar && countSpan) {
+                bar.style.display = selectedReportIds.size > 0 ? 'flex' : 'none';
+                countSpan.textContent = `${selectedReportIds.size} selected`;
+            }
+        }
+
+        async function filterReports() {
+            const status = document.getElementById('report-status-filter').value;
+            selectedReportIds.clear();
+            await fetchFoodReports(status === 'all' ? '' : status);
+        }
+
+        async function refreshReports() {
+            const status = document.getElementById('report-status-filter')?.value || 'pending';
+            await fetchFoodReports(status === 'all' ? '' : status);
+            showAlert('Reports refreshed', 'success');
+        }
+
+        async function updateReportStatus(reportId, status) {
+            try {
+                const response = await fetch(`${API_BASE}/updateUserReport`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reportId, status })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert(`Report marked as ${status}`, 'success');
+                    await refreshReports();
+                } else {
+                    showAlert('Failed to update report', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating report:', error);
+                showAlert('Error updating report', 'error');
+            }
+        }
+
+        async function bulkUpdateStatus(status) {
+            if (selectedReportIds.size === 0) {
+                showAlert('No reports selected', 'error');
+                return;
+            }
+
+            const confirmMsg = `Mark ${selectedReportIds.size} reports as ${status}?`;
+            if (!confirm(confirmMsg)) return;
+
+            let successCount = 0;
+            for (const reportId of selectedReportIds) {
+                try {
+                    const response = await fetch(`${API_BASE}/updateUserReport`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reportId, status })
+                    });
+                    const data = await response.json();
+                    if (data.success) successCount++;
+                } catch (error) {
+                    console.error(`Error updating report ${reportId}:`, error);
+                }
+            }
+
+            showAlert(`Updated ${successCount}/${selectedReportIds.size} reports`, 'success');
+            selectedReportIds.clear();
+            await refreshReports();
+        }
+
+        function editReportFood(reportId) {
+            console.log('editReportFood called with reportId:', reportId);
+            const report = foodReportsData.find(r => r.id === reportId);
+            if (!report) {
+                showAlert('Report not found', 'error');
+                return;
+            }
+            console.log('Found report:', report);
+
+            // Validate we have a food ID before opening edit
+            const foodId = report.foodId;
+            if (!foodId) {
+                showAlert('Cannot edit: No food ID associated with this report. The food may have been deleted or the report is corrupted.', 'error');
+                console.error('Missing foodId in report:', report);
+                return;
+            }
+            console.log('Using foodId:', foodId);
+
+            // Create a food object from the report data and open edit modal
+            const food = {
+                id: foodId,
+                name: report.foodName,
+                foodName: report.foodName,
+                brand: report.brandName,
+                brandName: report.brandName,
+                barcode: report.barcode,
+                calories: report.calories || { kcal: 0 },
+                protein: report.protein || { per100g: 0 },
+                carbs: report.carbs || { per100g: 0 },
+                fat: report.fat || { per100g: 0 },
+                fiber: report.fiber || { per100g: 0 },
+                sugar: report.sugar || { per100g: 0 },
+                sodium: report.sodium || { per100g: 0 },
+                ingredients: report.ingredients,
+                collection: report.collection || 'verifiedFoods',
+                source: report.source
+            };
+
+            // Use existing edit modal
+            currentEditingFood = food;
+            currentEditingCollection = food.collection;
+
+            // Populate edit form
+            document.getElementById('edit-food-name').value = food.foodName || '';
+            document.getElementById('edit-brand-name').value = food.brandName || '';
+            document.getElementById('edit-barcode').value = food.barcode || '';
+            document.getElementById('edit-ingredients').value = food.ingredients || '';
+            document.getElementById('edit-calories').value = food.calories?.kcal || food.calories || '';
+            document.getElementById('edit-protein').value = food.protein?.per100g || food.protein || '';
+            document.getElementById('edit-carbs').value = food.carbs?.per100g || food.carbs || '';
+            document.getElementById('edit-fat').value = food.fat?.per100g || food.fat || '';
+            document.getElementById('edit-fiber').value = food.fiber?.per100g || food.fiber || '';
+            document.getElementById('edit-sugar').value = food.sugar?.per100g || food.sugar || '';
+            document.getElementById('edit-sodium').value = food.sodium?.per100g || food.sodium || '';
+            document.getElementById('edit-salt').value = '';
+            document.getElementById('edit-saturated-fat').value = '';
+            document.getElementById('edit-collection').value = food.collection;
+            document.getElementById('edit-source').value = food.source || '';
+            document.getElementById('edit-serving-size').value = report.servingDescription || report.servingSize || '';
+            document.getElementById('edit-serving-size-g').value = report.servingSizeG || '';
+            document.getElementById('edit-serving-unit').value = report.servingUnit || 'g';
+            document.getElementById('edit-is-per-unit').value = report.isPerUnit === true ? 'true' : 'false';
+
+            document.getElementById('food-edit-modal').style.display = 'block';
+        }
+
+        async function searchTescoForReport(reportId) {
+            const report = foodReportsData.find(r => r.id === reportId);
+            if (!report) {
+                showAlert('Report not found', 'error');
+                return;
+            }
+
+            showAlert('Searching Tesco...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/searchTescoAndUpdate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        foodId: report.foodId || report.id,
+                        barcode: report.barcode,
+                        foodName: report.foodName,
+                        brandName: report.brandName,
+                        collection: report.collection || 'verifiedFoods',
+                        reportId: reportId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert(data.message || 'Food updated from Tesco!', 'success');
+                    await refreshReports();
+                } else {
+                    showAlert(data.error || 'No Tesco match found', 'error');
+                }
+            } catch (error) {
+                console.error('Error searching Tesco:', error);
+                showAlert('Error searching Tesco', 'error');
+            }
+        }
+
+        async function searchTescoForSelected() {
+            if (selectedReportIds.size === 0) {
+                showAlert('No reports selected', 'error');
+                return;
+            }
+
+            const confirmMsg = `Search Tesco and update ${selectedReportIds.size} foods?`;
+            if (!confirm(confirmMsg)) return;
+
+            showAlert(`Searching Tesco for ${selectedReportIds.size} foods...`, 'info');
+
+            let successCount = 0;
+            let notFoundCount = 0;
+
+            for (const reportId of selectedReportIds) {
+                const report = foodReportsData.find(r => r.id === reportId);
+                if (!report) continue;
+
+                try {
+                    const response = await fetch(`${API_BASE}/searchTescoAndUpdate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            foodId: report.foodId || report.id,
+                            barcode: report.barcode,
+                            foodName: report.foodName,
+                            brandName: report.brandName,
+                            collection: report.collection || 'verifiedFoods',
+                            reportId: reportId
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        notFoundCount++;
+                    }
+                } catch (error) {
+                    console.error(`Error searching Tesco for ${reportId}:`, error);
+                    notFoundCount++;
+                }
+            }
+
+            showAlert(`Updated ${successCount} foods, ${notFoundCount} not found`, successCount > 0 ? 'success' : 'warning');
+            selectedReportIds.clear();
+            await refreshReports();
+        }
+
         function exportData() {
             showAlert('Data export initiated', 'success');
         }
@@ -2469,9 +2881,9 @@
             try {
                 console.log('editDatabaseFood called with:', foodId, collection);
                 const food = databaseData.find(f => {
-                    const nameMatch = f.id === foodId || f.name === foodId || f.foodName === foodId;
+                    const idMatch = f.id === foodId || f.objectID === foodId || f.name === foodId || f.foodName === foodId;
                     const collectionMatch = !f.collection || f.collection === collection || collection === 'foods';
-                    return nameMatch && collectionMatch;
+                    return idMatch && collectionMatch;
                 });
                 console.log('Found food for editing:', food);
                 
@@ -2502,7 +2914,10 @@
                 document.getElementById('edit-collection').value = food.collection || collection;
                 document.getElementById('edit-source').value = food.source || '';
                 document.getElementById('edit-serving-size').value = food.servingSize || food.servingDescription || '';
-                
+                document.getElementById('edit-serving-size-g').value = food.servingSizeG || '';
+                document.getElementById('edit-serving-unit').value = food.servingUnit || 'g';
+                document.getElementById('edit-is-per-unit').value = food.isPerUnit === true ? 'true' : 'false';
+
                 currentEditingFood = food;
                 currentEditingCollection = collection;
                 document.getElementById('food-edit-modal').style.display = 'block';
@@ -2514,21 +2929,48 @@
         }
 
         async function saveFoodChanges() {
+            console.log('saveFoodChanges called');
+            console.log('currentEditingFood:', currentEditingFood);
+
             if (!currentEditingFood) {
                 showAlert('No food selected for editing', 'error');
                 return;
             }
 
+            // Validate food ID exists
+            const foodId = currentEditingFood.id || currentEditingFood.objectID;
+            console.log('foodId:', foodId);
+
+            if (!foodId) {
+                showAlert('Error: No food ID found. Cannot update this food.', 'error');
+                console.error('Missing foodId in currentEditingFood:', currentEditingFood);
+                return;
+            }
+
             const saveStatus = document.getElementById('save-status');
+            if (!saveStatus) {
+                console.error('save-status element not found');
+                showAlert('Error: Save status element not found', 'error');
+                return;
+            }
             saveStatus.style.display = 'block';
             saveStatus.style.background = 'rgba(0, 255, 136, 0.15)';
             saveStatus.style.color = 'var(--accent-primary)';
             saveStatus.textContent = '💾 Saving changes...';
 
             try {
-                // Gather form data
+                // Gather form data with defensive null checks
+                const servingSizeGEl = document.getElementById('edit-serving-size-g');
+                const servingUnitEl = document.getElementById('edit-serving-unit');
+                const isPerUnitEl = document.getElementById('edit-is-per-unit');
+
+                const servingSizeGValue = servingSizeGEl ? servingSizeGEl.value : '';
+                const servingUnitValue = servingUnitEl ? servingUnitEl.value : 'g';
+                const isPerUnitValue = isPerUnitEl ? isPerUnitEl.value : 'false';
+
                 const updatedData = {
-                    foodId: currentEditingFood.id,
+                    foodId: foodId,
+                    collection: document.getElementById('edit-collection').value || currentEditingCollection || 'verifiedFoods',
                     foodName: document.getElementById('edit-food-name').value.trim(),
                     brandName: document.getElementById('edit-brand-name').value.trim() || null,
                     barcode: document.getElementById('edit-barcode').value.trim() || null,
@@ -2549,6 +2991,9 @@
                     },
                     source: document.getElementById('edit-source').value.trim() || null,
                     servingSize: document.getElementById('edit-serving-size').value.trim() || 'per 100g',
+                    servingSizeG: servingSizeGValue ? parseFloat(servingSizeGValue) : null,
+                    servingUnit: servingUnitValue || 'g',
+                    isPerUnit: isPerUnitValue === 'true',
                     verifiedBy: 'admin',
                     verificationMethod: 'manual'
                 };
@@ -2573,17 +3018,20 @@
                     }
 
                     result = await response.json();
+                    console.log('API response:', result);
                 } catch (fetchError) {
                     console.error('Network error updating food:', fetchError);
                     saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
                     saveStatus.style.color = 'var(--accent-tertiary)';
-                    saveStatus.textContent = '❌ Network error: Food update function may not be deployed yet';
+                    saveStatus.textContent = '❌ Network error: ' + fetchError.message;
                     return;
                 }
-                
-                if (result.success) {
+
+                console.log('Checking result.success:', result.success, 'type:', typeof result.success);
+                if (result.success === true) {
+                    // Close modal on successful HTTP response (data was saved)
                     saveStatus.textContent = '✅ Changes saved successfully!';
-                    
+
                     // Update the cache with new food data
                     const updatedFood = {
                         ...currentEditingFood,
@@ -2607,22 +3055,24 @@
                         verifiedBy: 'admin',
                         updatedAt: new Date().toISOString()
                     };
-                    
+
                     // Use smart cache update
                     addFoodToCache(updatedFood);
                     updateCacheStats();
-                    
+
                     setTimeout(() => {
                         closeFoodEditModal();
                         showAlert('Food updated successfully', 'success');
                     }, 1500);
-                    
+
                 } else {
+                    // Handle any non-success response
+                    console.error('Save failed with result:', result);
                     saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
                     saveStatus.style.color = 'var(--accent-tertiary)';
-                    saveStatus.textContent = '❌ Error saving: ' + (result.error || 'Unknown error');
+                    saveStatus.textContent = '❌ Error saving: ' + (result.error || result.message || 'Unknown error from API');
                 }
-                
+
             } catch (error) {
                 console.error('Error saving food changes:', error);
                 saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
@@ -2650,7 +3100,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        foodIds: [currentEditingFood.id],
+                        foodIds: [currentEditingFood.id || currentEditingFood.objectID],
                         collection: currentEditingCollection || 'verifiedFoods'
                     })
                 });
@@ -2659,7 +3109,7 @@
                 
                 if (result.success) {
                     // Remove from local data
-                    const foodIndex = databaseData.findIndex(f => f.id === currentEditingFood.id);
+                    const foodIndex = databaseData.findIndex(f => (f.id || f.objectID) === (currentEditingFood.id || currentEditingFood.objectID));
                     if (foodIndex !== -1) {
                         databaseData.splice(foodIndex, 1);
                         filterDatabase();
@@ -2680,7 +3130,7 @@
         function openEditFromView() {
             closeFoodViewModal();
             if (currentEditingFood && currentEditingCollection) {
-                editDatabaseFood(currentEditingFood.id || currentEditingFood.name, currentEditingCollection);
+                editDatabaseFood(currentEditingFood.id || currentEditingFood.objectID || currentEditingFood.name, currentEditingCollection);
             }
         }
 
@@ -3641,7 +4091,8 @@ This will create a new "cleansedFoods" collection in Firebase.`;
 
                 if (response.ok) {
                     showAlert('Cleansed food updated successfully', 'success');
-                    await loadCleansedFoods(); // Refresh the list
+                    // Refresh list in background - don't block modal close
+                    loadCleansedFoods().catch(err => console.error('Error refreshing list:', err));
                     return true;
                 } else {
                     const error = await response.json();

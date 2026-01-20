@@ -1188,13 +1188,18 @@ struct LogReactionSheet: View {
 
     // Food source state - 4 options as requested
     @State private var foodSource: FoodSource = .diary
-    @State private var selectedFoodId: String? = nil
-    @State private var manualFoodName: String = ""
     @State private var recentMeals: [FoodEntry] = []
     @State private var isLoadingMeals = false
     @State private var showMealSelection = false
     @State private var showDatabaseSearch = false
-    @State private var selectedSearchFood: FoodSearchResult? = nil
+
+    // Multiple foods support - stores all selected foods
+    @State private var selectedFoods: [SelectedFood] = []
+
+    // Temporary state for adding a new food (cleared after adding)
+    @State private var tempSelectedFoodId: String? = nil
+    @State private var tempManualFoodName: String = ""
+    @State private var tempSelectedSearchFood: FoodSearchResult? = nil
 
     // Inline database search state
     @State private var databaseSearchText: String = ""
@@ -1218,6 +1223,7 @@ struct LogReactionSheet: View {
 
     // UI state
     @State private var isSaving: Bool = false
+    @State private var showSuccess: Bool = false
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
 
@@ -1235,6 +1241,20 @@ struct LogReactionSheet: View {
             case .ai: return "sparkles"
             case .manual: return "pencil"
             }
+        }
+    }
+
+    // Represents a food item selected for the reaction
+    struct SelectedFood: Identifiable, Equatable {
+        let id = UUID()
+        let name: String
+        let source: FoodSource
+        var ingredients: [String]
+        let diaryEntryId: String? // For diary entries
+        let searchResult: FoodSearchResult? // For database searches
+
+        static func == (lhs: SelectedFood, rhs: SelectedFood) -> Bool {
+            lhs.id == rhs.id
         }
     }
 
@@ -1286,6 +1306,8 @@ struct LogReactionSheet: View {
             .overlay {
                 if isSaving {
                     savingOverlay
+                } else if showSuccess {
+                    successOverlay
                 }
             }
         }
@@ -1294,7 +1316,7 @@ struct LogReactionSheet: View {
         }
         .sheet(isPresented: $showingInferredIngredientsSheet) {
             InferredIngredientsSheet(
-                foodName: manualFoodName.isEmpty ? "Food" : manualFoodName,
+                foodName: tempManualFoodName.isEmpty ? "Food" : tempManualFoodName,
                 inferredIngredients: $inferredIngredients
             )
         }
@@ -1311,9 +1333,6 @@ struct LogReactionSheet: View {
         }
         .onAppear {
             loadRecentMeals()
-        }
-        .onChange(of: selectedFoodId) { _, _ in
-            loadIngredientsFromSelectedMeal()
         }
         .onChange(of: inferredIngredients) { _, _ in
             // When AI inference completes, populate editable ingredients
@@ -1486,18 +1505,40 @@ struct LogReactionSheet: View {
 
     private var foodConnectionSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            sectionHeader(title: "Suspected food (optional)", icon: "fork.knife", color: .green)
+            HStack {
+                sectionHeader(title: "Suspected foods", icon: "fork.knife", color: .green)
+                Spacer()
+                if selectedFoods.isEmpty {
+                    Text("Required")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(6)
+                } else {
+                    Text("\(selectedFoods.count) added")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(6)
+                }
+            }
 
             // Food source picker - 4 compact buttons
             HStack(spacing: 6) {
                 ForEach(FoodSource.allCases, id: \.self) { source in
                     Button(action: {
                         foodSource = source
-                        // Reset state when switching modes
-                        selectedFoodId = nil
-                        manualFoodName = ""
+                        // Reset temporary state when switching modes
+                        tempSelectedFoodId = nil
+                        tempManualFoodName = ""
                         editableIngredients = []
                         inferredIngredients = []
+                        databaseSearchText = ""
+                        databaseSearchResults = []
                         if source == .diary {
                             loadRecentMeals()
                         }
@@ -1521,11 +1562,16 @@ struct LogReactionSheet: View {
                 }
             }
 
+            // Selected foods list
+            if !selectedFoods.isEmpty {
+                selectedFoodsSection
+            }
+
             // Food selection content based on mode
             foodSelectionContent
 
             // Info text
-            Text("The app will analyse your food diary to find patterns, even if you don't select a specific food.")
+            Text("Add all foods you think might be related to this reaction.")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1533,6 +1579,90 @@ struct LogReactionSheet: View {
         .padding(16)
         .background(cardBackground)
         .cornerRadius(16)
+    }
+
+    // MARK: - Selected Foods Section
+    private var selectedFoodsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Added foods:")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary)
+
+            VStack(spacing: 10) {
+                ForEach(selectedFoods) { food in
+                    selectedFoodCard(food)
+                }
+            }
+        }
+    }
+
+    private func selectedFoodCard(_ food: SelectedFood) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Food name header with remove button
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: food.source.icon)
+                        .font(.system(size: 12))
+                        .foregroundColor(.green)
+                    Text(food.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedFoods.removeAll { $0.id == food.id }
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            // Ingredients list
+            if !food.ingredients.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Ingredients:")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    FlowLayout(spacing: 4) {
+                        ForEach(food.ingredients.prefix(10), id: \.self) { ingredient in
+                            Text(ingredient)
+                                .font(.system(size: 11))
+                                .foregroundColor(.primary.opacity(0.8))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+                                .cornerRadius(4)
+                        }
+                        if food.ingredients.count > 10 {
+                            Text("+\(food.ingredients.count - 10) more")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                        }
+                    }
+                }
+            } else {
+                Text("No ingredients listed")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.7))
+                    .italic()
+            }
+        }
+        .padding(12)
+        .background(Color.green.opacity(0.08))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.green.opacity(0.2), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -1583,21 +1713,12 @@ struct LogReactionSheet: View {
             VStack(spacing: 12) {
                 Button(action: { showMealSelection = true }) {
                     HStack {
-                        if let selectedId = selectedFoodId,
-                           let selectedMeal = recentMeals.first(where: { $0.id == selectedId }) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(selectedMeal.foodName)
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(.primary)
-                                Text(selectedMeal.date, style: .relative)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-                        } else {
-                            Text("Select from recent meals")
-                                .font(.system(size: 15))
-                                .foregroundColor(.secondary)
-                        }
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.blue)
+                        Text("Add from recent meals")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.blue)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14))
@@ -1608,11 +1729,6 @@ struct LogReactionSheet: View {
                     .cornerRadius(12)
                 }
                 .buttonStyle(.plain)
-
-                // Show ingredients editor when a meal is selected
-                if selectedFoodId != nil {
-                    ingredientsEditorSection
-                }
             }
         }
     }
@@ -1743,34 +1859,6 @@ struct LogReactionSheet: View {
                 .padding(.vertical, 16)
             }
 
-            // Show selected food and ingredients
-            if !manualFoodName.isEmpty && databaseSearchText.isEmpty {
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text(manualFoodName)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Button(action: {
-                        // Clear selection
-                        manualFoodName = ""
-                        editableIngredients = []
-                        selectedSearchFood = nil
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(12)
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(10)
-            }
-
-            // Show ingredients if a food was selected from search
-            if !manualFoodName.isEmpty && !editableIngredients.isEmpty {
-                ingredientsEditorSection
-            }
         }
     }
 
@@ -1807,19 +1895,28 @@ struct LogReactionSheet: View {
     }
 
     private func selectDatabaseFood(_ food: FoodSearchResult) {
-        manualFoodName = food.name
-        selectedSearchFood = food
-
-        // Load ingredients from the selected food
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
+        // Parse ingredients from the selected food
+        var ingredients: [String] = []
+        if let foodIngredients = food.ingredients, !foodIngredients.isEmpty {
             // Check if ingredients came as a single comma-separated string
-            if ingredients.count == 1, let first = ingredients.first, first.contains(",") {
-                editableIngredients = first.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            if foodIngredients.count == 1, let first = foodIngredients.first, first.contains(",") {
+                ingredients = first.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             } else {
-                editableIngredients = ingredients
+                ingredients = foodIngredients
             }
-        } else {
-            editableIngredients = []
+        }
+
+        // Add to selected foods list
+        let newFood = SelectedFood(
+            name: food.name,
+            source: .database,
+            ingredients: ingredients,
+            diaryEntryId: nil,
+            searchResult: food
+        )
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedFoods.append(newFood)
         }
 
         // Clear search state
@@ -1831,14 +1928,14 @@ struct LogReactionSheet: View {
     // MARK: - AI Estimate Content
     private var aiEstimateContent: some View {
         VStack(spacing: 12) {
-            TextField("Food name (e.g., chippy sausage, doner kebab)", text: $manualFoodName)
+            TextField("Food name (e.g., chippy sausage, doner kebab)", text: $tempManualFoodName)
                 .textFieldStyle(.plain)
                 .textInputAutocapitalization(.words)
                 .padding(14)
                 .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
                 .cornerRadius(12)
 
-            if !manualFoodName.isEmpty {
+            if !tempManualFoodName.isEmpty {
                 Button(action: { showingInferredIngredientsSheet = true }) {
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
@@ -1866,6 +1963,9 @@ struct LogReactionSheet: View {
                 // Show inferred ingredients as editable chips after AI estimation
                 if !inferredIngredients.isEmpty {
                     ingredientsEditorSection
+
+                    // Add food button
+                    addFoodButton(source: .ai)
                 } else {
                     Text("AI estimates likely ingredients for generic foods like takeaways")
                         .font(.system(size: 11))
@@ -1878,7 +1978,7 @@ struct LogReactionSheet: View {
     // MARK: - Manual Entry Content
     private var manualEntryContent: some View {
         VStack(spacing: 12) {
-            TextField("Food name", text: $manualFoodName)
+            TextField("Food name", text: $tempManualFoodName)
                 .textFieldStyle(.plain)
                 .textInputAutocapitalization(.words)
                 .padding(14)
@@ -1886,8 +1986,60 @@ struct LogReactionSheet: View {
                 .cornerRadius(12)
 
             // Always show ingredients editor for manual entry
-            ingredientsEditorSection
+            if !tempManualFoodName.isEmpty {
+                ingredientsEditorSection
+
+                // Add food button
+                addFoodButton(source: .manual)
+            }
         }
+    }
+
+    // MARK: - Add Food Button
+    private func addFoodButton(source: FoodSource) -> some View {
+        Button(action: {
+            addCurrentFoodToList(source: source)
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 16))
+                Text("Add to suspected foods")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                LinearGradient(colors: [.green, .green.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
+            )
+            .cornerRadius(10)
+        }
+        .buttonStyle(.plain)
+        .disabled(tempManualFoodName.trimmingCharacters(in: .whitespaces).isEmpty)
+    }
+
+    private func addCurrentFoodToList(source: FoodSource) {
+        let name = tempManualFoodName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+
+        let ingredients = source == .ai ? inferredIngredients.map { $0.name } : editableIngredients
+
+        let newFood = SelectedFood(
+            name: name,
+            source: source,
+            ingredients: ingredients,
+            diaryEntryId: nil,
+            searchResult: nil
+        )
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedFoods.append(newFood)
+        }
+
+        // Clear temporary state
+        tempManualFoodName = ""
+        editableIngredients = []
+        inferredIngredients = []
     }
 
     // MARK: - Ingredients Editor Section
@@ -1976,29 +2128,6 @@ struct LogReactionSheet: View {
         newIngredientText = ""
     }
 
-    private func loadIngredientsFromSelectedMeal() {
-        guard let selectedId = selectedFoodId,
-              let selectedMeal = recentMeals.first(where: { $0.id == selectedId }) else {
-            editableIngredients = []
-            return
-        }
-
-        // Load from exact ingredients first, then inferred
-        if let ingredients = selectedMeal.ingredients, !ingredients.isEmpty {
-            // Check if ingredients came as a single comma-separated string (first element contains commas)
-            if ingredients.count == 1, let first = ingredients.first, first.contains(",") {
-                // Split the comma-separated string into individual ingredients
-                editableIngredients = first.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            } else {
-                editableIngredients = ingredients
-            }
-        } else if let inferred = selectedMeal.inferredIngredients, !inferred.isEmpty {
-            editableIngredients = inferred.map { $0.name }
-        } else {
-            editableIngredients = []
-        }
-    }
-
     // MARK: - Analysis Window Section
 
     private var analysisWindowSection: some View {
@@ -2038,36 +2167,67 @@ struct LogReactionSheet: View {
     // MARK: - Save Button
 
     private var saveButton: some View {
-        Button(action: {
-            Task { await saveReaction() }
-        }) {
-            HStack(spacing: 10) {
-                if isSaving {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(0.9)
-                } else {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20))
+        VStack(spacing: 8) {
+            // Show validation hints if not valid
+            if !isValid && !isSaving {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(.orange)
+                    Text(validationHint)
+                        .font(.system(size: 13))
+                        .foregroundColor(.orange)
                 }
-                Text(isSaving ? "Analysing..." : "Save & Analyse")
-                    .font(.system(size: 17, weight: .semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
             }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                LinearGradient(
-                    colors: isValid ? [Color(red: 0.3, green: 0.5, blue: 1.0), Color(red: 0.5, green: 0.3, blue: 0.9)] : [.gray],
-                    startPoint: .leading,
-                    endPoint: .trailing
+
+            Button(action: {
+                Task { await saveReaction() }
+            }) {
+                HStack(spacing: 10) {
+                    if isSaving {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.9)
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 20))
+                    }
+                    Text(isSaving ? "Saving..." : "Log Reaction")
+                        .font(.system(size: 17, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    LinearGradient(
+                        colors: isValid ? [Color(red: 0.3, green: 0.5, blue: 1.0), Color(red: 0.5, green: 0.3, blue: 0.9)] : [.gray.opacity(0.6), .gray.opacity(0.4)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
                 )
-            )
-            .cornerRadius(14)
-            .shadow(color: isValid ? .blue.opacity(0.3) : .clear, radius: 8, x: 0, y: 4)
+                .cornerRadius(14)
+                .shadow(color: isValid ? .blue.opacity(0.3) : .clear, radius: 8, x: 0, y: 4)
+            }
+            .disabled(isSaving || !isValid)
         }
-        .disabled(isSaving || !isValid)
         .padding(.top, 8)
+    }
+
+    private var validationHint: String {
+        if selectedTypes.isEmpty {
+            return "Select at least one reaction type"
+        }
+        if selectedTypes.contains(.custom) && selectedTypes.count == 1 && customType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Describe your custom reaction"
+        }
+        if selectedFoods.isEmpty {
+            return "Add at least one suspected food"
+        }
+        return ""
     }
 
     // MARK: - Helpers
@@ -2097,11 +2257,11 @@ struct LogReactionSheet: View {
                     .scaleEffect(1.5)
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
 
-                Text("Analyzing your food history...")
+                Text("Saving reaction...")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white)
 
-                Text("Finding potential triggers")
+                Text("Analyzing your food history")
                     .font(.system(size: 14))
                     .foregroundColor(.white.opacity(0.8))
             }
@@ -2112,57 +2272,72 @@ struct LogReactionSheet: View {
         }
     }
 
-    private var mealSelectionSheet: some View {
-        NavigationView {
-            List {
-                Section {
-                    Button(action: {
-                        selectedFoodId = nil
-                        showMealSelection = false
-                    }) {
-                        HStack {
-                            Text("No specific food")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if selectedFoodId == nil {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                    }
+    private var successOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.2))
+                        .frame(width: 100, height: 100)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.green)
                 }
 
-                Section(header: Text("Recent Meals")) {
-                    ForEach(recentMeals) { meal in
-                        Button(action: {
-                            selectedFoodId = meal.id
-                            showMealSelection = false
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(meal.foodName)
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.primary)
-                                    HStack(spacing: 4) {
-                                        Text(meal.date, style: .date)
-                                        Text("•")
-                                        Text(meal.date, style: .time)
-                                    }
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                if selectedFoodId == meal.id {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.blue)
-                                }
+                Text("Reaction Logged")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Text("\(selectedFoods.count) food\(selectedFoods.count == 1 ? "" : "s") recorded")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 50)
+            .padding(.vertical, 40)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(colorScheme == .dark ? Color(.systemGray5) : Color.white)
+                    .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+            )
+        }
+        .transition(.opacity)
+    }
+
+    private var mealSelectionSheet: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header showing count of added foods
+                if !selectedFoods.isEmpty {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("\(selectedFoods.count) food\(selectedFoods.count == 1 ? "" : "s") added")
+                            .font(.system(size: 14, weight: .medium))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.green.opacity(0.1))
+                }
+
+                List {
+                    Section(header: Text("Tap to add meals from the past 7 days")) {
+                        if recentMeals.isEmpty {
+                            Text("No meals found in your diary")
+                                .foregroundColor(.secondary)
+                                .padding(.vertical, 8)
+                        } else {
+                            ForEach(recentMeals) { meal in
+                                mealSelectionRow(meal)
                             }
-                            .padding(.vertical, 4)
                         }
                     }
                 }
             }
-            .navigationTitle("Select Meal")
+            .navigationTitle("Add Meals")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -2172,6 +2347,99 @@ struct LogReactionSheet: View {
                     .fontWeight(.semibold)
                 }
             }
+        }
+    }
+
+    private func mealSelectionRow(_ meal: FoodEntry) -> some View {
+        let isAlreadyAdded = selectedFoods.contains { $0.diaryEntryId == meal.id }
+
+        // Get ingredients preview
+        let ingredientsPreview: String = {
+            if let ingredients = meal.ingredients, !ingredients.isEmpty {
+                if ingredients.count == 1, let first = ingredients.first, first.contains(",") {
+                    let parsed = first.components(separatedBy: ",").prefix(3).map { $0.trimmingCharacters(in: .whitespaces) }
+                    return parsed.joined(separator: ", ")
+                } else {
+                    return ingredients.prefix(3).joined(separator: ", ")
+                }
+            } else if let inferred = meal.inferredIngredients, !inferred.isEmpty {
+                return inferred.prefix(3).map { $0.name }.joined(separator: ", ")
+            }
+            return ""
+        }()
+
+        return Button(action: {
+            if !isAlreadyAdded {
+                addDiaryMealToList(meal)
+            }
+        }) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(meal.foodName)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(isAlreadyAdded ? .secondary : .primary)
+
+                    HStack(spacing: 4) {
+                        Text(meal.date, style: .date)
+                        Text("•")
+                        Text(meal.date, style: .time)
+                    }
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+
+                    if !ingredientsPreview.isEmpty {
+                        Text(ingredientsPreview + "...")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+                if isAlreadyAdded {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Added")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.green)
+                    }
+                } else {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.blue)
+                }
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isAlreadyAdded)
+        .opacity(isAlreadyAdded ? 0.6 : 1.0)
+    }
+
+    private func addDiaryMealToList(_ meal: FoodEntry) {
+        // Get ingredients from the meal
+        var ingredients: [String] = []
+        if let mealIngredients = meal.ingredients, !mealIngredients.isEmpty {
+            if mealIngredients.count == 1, let first = mealIngredients.first, first.contains(",") {
+                ingredients = first.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            } else {
+                ingredients = mealIngredients
+            }
+        } else if let inferred = meal.inferredIngredients, !inferred.isEmpty {
+            ingredients = inferred.map { $0.name }
+        }
+
+        let newFood = SelectedFood(
+            name: meal.foodName,
+            source: .diary,
+            ingredients: ingredients,
+            diaryEntryId: meal.id,
+            searchResult: nil
+        )
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedFoods.append(newFood)
         }
     }
 
@@ -2200,6 +2468,9 @@ struct LogReactionSheet: View {
         // Must have at least one symptom selected
         guard !selectedTypes.isEmpty else { return false }
 
+        // Must have at least one food selected
+        guard !selectedFoods.isEmpty else { return false }
+
         // If "Other" is selected, must have custom text
         if selectedTypes.contains(.custom) {
             // If ONLY custom is selected, require custom text
@@ -2213,10 +2484,10 @@ struct LogReactionSheet: View {
 
     private func saveReaction() async {
         isSaving = true
-        defer { isSaving = false }
 
         print("🔵 [LogReactionSheet] saveReaction started")
         print("🔵 [LogReactionSheet] Manager reactionLogs count BEFORE: \(manager.reactionLogs.count)")
+        print("🔵 [LogReactionSheet] Selected foods count: \(selectedFoods.count)")
 
         do {
             // Build array of selected symptom types
@@ -2227,42 +2498,21 @@ struct LogReactionSheet: View {
 
             // Use first symptom as primary reaction type for backward compatibility
             let reactionType = symptomStrings.first ?? "Unknown"
-            var notesText = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            let notesText = notes.trimmingCharacters(in: .whitespacesAndNewlines)
 
             print("🔵 [LogReactionSheet] Reaction type: \(reactionType)")
             print("🔵 [LogReactionSheet] Reaction date: \(reactionDate)")
 
-            // Build food info to include in the reaction
-            var foodInfo: String? = nil
+            // Combine all food names
+            let foodNames = selectedFoods.map { $0.name }
+            let combinedFoodName = foodNames.joined(separator: ", ")
 
-            // Get food name based on source
-            let foodName: String? = {
-                switch foodSource {
-                case .diary:
-                    if let selectedId = selectedFoodId,
-                       let meal = recentMeals.first(where: { $0.id == selectedId }) {
-                        return meal.foodName
-                    }
-                    return nil
-                case .database, .ai, .manual:
-                    return manualFoodName.isEmpty ? nil : manualFoodName
-                }
-            }()
+            // Combine all ingredients from selected foods
+            let allIngredients = selectedFoods.flatMap { $0.ingredients }
+            let uniqueIngredients = Array(Set(allIngredients))
 
-            // Get ingredients (either from editable list or inferred)
-            let ingredientsList: [String] = {
-                if !editableIngredients.isEmpty {
-                    return editableIngredients
-                } else if !inferredIngredients.isEmpty {
-                    return inferredIngredients.map { $0.name }
-                }
-                return []
-            }()
-
-            // Food info is stored separately in the FoodReaction model,
-            // so we don't need to add it to notes anymore.
-            // The notes field should only contain the user's actual notes.
-            _ = foodInfo // Silence unused variable warning
+            print("🔵 [LogReactionSheet] Foods: \(combinedFoodName)")
+            print("🔵 [LogReactionSheet] Ingredients count: \(uniqueIngredients.count)")
 
             print("🔵 [LogReactionSheet] Calling manager.saveReactionLog...")
             let savedEntry = try await manager.saveReactionLog(
@@ -2278,23 +2528,40 @@ struct LogReactionSheet: View {
             // Also update the FoodReactionsView's ReactionManager so Health tab shows the reaction
             // Create a FoodReaction from the saved entry data with ALL selected symptoms
             let foodReaction = FoodReaction(
-                foodName: foodName ?? reactionType,
+                foodName: combinedFoodName,
                 foodId: nil,
                 foodBrand: nil,
                 timestamp: FirebaseFirestore.Timestamp(date: reactionDate),
                 severity: selectedSeverity,
                 symptoms: symptomStrings,
-                suspectedIngredients: ingredientsList,
+                suspectedIngredients: uniqueIngredients,
                 notes: notesText.isEmpty ? nil : notesText
             )
             await ReactionManager.shared.addReaction(foodReaction)
             print("✅ [LogReactionSheet] Also added to ReactionManager for Health tab with \(symptomStrings.count) symptoms")
 
-            dismiss()
+            // Show success state before dismissing
+            await MainActor.run {
+                isSaving = false
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showSuccess = true
+                }
+            }
+
+            // Wait a moment so user sees the success confirmation
+            try? await Task.sleep(nanoseconds: 1_200_000_000) // 1.2 seconds
+
+            // Dismiss
+            await MainActor.run {
+                dismiss()
+            }
         } catch {
             print("❌ [LogReactionSheet] Save FAILED: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
-            showError = true
+            await MainActor.run {
+                isSaving = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
         }
     }
 

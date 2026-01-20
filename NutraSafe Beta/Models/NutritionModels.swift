@@ -653,7 +653,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     // NOTE: Avoid short generic words that could match unrelated foods
     // e.g., "flake" matches "cornflakes" - use "cadbury flake" instead
     private static let chocolateBarProducts: Set<String> = [
-        "mars bar", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat",
+        "mars bar", "mars chocolate", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat",
         "aero bar", "yorkie", "wispa bar", "cadbury flake", "flake bar", "crunchie", "double decker",
         "boost bar", "picnic bar", "dairy milk bar", "fruit & nut", "whole nut", "caramel bar",
         "turkish delight", "fudge bar", "curly wurly", "chomp", "freddo", "timeout",
@@ -729,7 +729,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
         // Actual chocolate BAR products (single bars, not bags)
         // NOTE: Avoid short words that could match unrelated foods (e.g., "flake" matches "cornflakes")
-        let chocolateBarProducts = ["mars bar", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat", "aero bar", "yorkie", "wispa bar", "cadbury flake", "flake bar", "crunchie", "double decker", "boost bar", "picnic bar", "dairy milk bar", "fruit & nut", "whole nut", "caramel bar", "turkish delight", "fudge bar", "curly wurly", "chomp", "freddo", "timeout", "toffee crisp", "drifter", "lion bar", "star bar", "topic bar"]
+        let chocolateBarProducts = ["mars bar", "mars chocolate", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat", "aero bar", "yorkie", "wispa bar", "cadbury flake", "flake bar", "crunchie", "double decker", "boost bar", "picnic bar", "dairy milk bar", "fruit & nut", "whole nut", "caramel bar", "turkish delight", "fudge bar", "curly wurly", "chomp", "freddo", "timeout", "toffee crisp", "drifter", "lion bar", "star bar", "topic bar"]
 
         // Sweet/candy brands
         let sweetBrands = ["haribo", "maynards", "rowntrees", "skittles", "starburst", "jelly belly", "swizzels", "chupa chups", "chewits", "refreshers", "drumstick", "love hearts", "parma violets"]
@@ -842,10 +842,59 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     }
 
     /// Returns true if this food category represents a liquid/drink
+    /// IMPORTANT: Chocolate products are NEVER liquid, even if their serving description mentions ml
     var isLiquidCategory: Bool {
+        let nameLower = name.lowercased()
+
+        // FIRST: Check for explicit powder/mix forms - these are ALWAYS solids (grams)
+        // "Hot Chocolate Powder", "Milkshake Mix", "Coffee Granules" etc
+        let powderIndicators = ["powder", "mix", "granules", "instant", "sachet", "packet",
+                                "dry mix", "concentrate"]
+        if powderIndicators.contains(where: { nameLower.contains($0) }) {
+            return false  // Powders are measured in grams
+        }
+
+        // SECOND: Use serving size to detect likely powders even without "powder" in name
+        // Hot chocolate/cocoa/milkshake with small serving (under 50g) is almost certainly powder
+        // Ready-to-drink versions are typically 200-500ml
+        let couldBePowder = nameLower.contains("hot chocolate") || nameLower.contains("cocoa") ||
+                           nameLower.contains("milkshake") || nameLower.contains("drinking chocolate")
+        if couldBePowder, let servingG = servingSizeG, servingG > 0 && servingG < 50 {
+            return false  // Small serving size indicates powder form
+        }
+
+        // THEN: Check for explicit drink indicators (ready-to-drink liquids)
+        // This ensures "Chocolate Milkshake", "Mars Milk Drink" etc are correctly treated as liquids
+        let drinkIndicators = ["milkshake", "milk shake", "shake", "smoothie", "drink", "juice",
+                               "squash", "cordial", "lemonade", "cola", "pepsi", "fanta", "sprite",
+                               "water", "tea", "coffee", "latte", "cappuccino", "espresso",
+                               "frappuccino", "mocha", "hot chocolate", "cocoa"]
+        if drinkIndicators.contains(where: { nameLower.contains($0) }) {
+            return true
+        }
+
+        // THEN: Check for chocolate BARS/SNACKS (not drinks - those were caught above)
+        // This prevents "Mars Chocolate Bar" from showing ml portions
+        let chocolateSnackIndicators = ["chocolate bar", "mars bar", "snickers", "twix", "bounty",
+                                        "kitkat", "kit kat", "milky way bar", "aero bar", "yorkie",
+                                        "wispa", "flake", "crunchie", "double decker", "boost",
+                                        "picnic", "dairy milk", "freddo", "timeout", "lion bar"]
+        if chocolateSnackIndicators.contains(where: { nameLower.contains($0) }) {
+            return false
+        }
+
+        // Also check for generic "chocolate" WITHOUT drink indicators (already checked above)
+        // If it just says "chocolate" and isn't a drink, it's likely a bar/snack
+        if nameLower.contains("chocolate") && !nameLower.contains("milk") {
+            return false
+        }
+
         switch detectedCategory {
         case .softDrink, .cordial, .juice, .hotDrink, .water, .alcoholicDrink, .milk:
             return true
+        case .chocolateBar, .chocolateBag, .sweets, .crisps:
+            // Never treat snacks as liquid
+            return false
         default:
             return false
         }

@@ -14,7 +14,7 @@ export { fastSearchFoods } from './fast-search';
 export { searchFoodsWeb } from './search-foods-web';
 export { getFoodDetails } from './food-details';
 export { searchFoodsByCollection } from './search-foods-by-collection';
-export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, moveFoodBetweenCollections, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes } from './food-management';
+export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, moveFoodBetweenCollections, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes, searchTescoAndUpdate } from './food-management';
 export { getOverviewStats, getAnalyticsData } from './analytics';
 export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp } from './user-management';
 export { getContextualNutritionScore } from './contextual-nutrition';

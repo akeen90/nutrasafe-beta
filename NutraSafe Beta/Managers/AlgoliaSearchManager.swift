@@ -492,7 +492,12 @@ final class AlgoliaSearchManager {
 
     // MARK: - Search Methods
 
-    /// Search all food indices directly via Algolia REST API
+    /// Multi-stage search pipeline for optimal UK food database results
+    /// Stage 1: Exact/canonical matches
+    /// Stage 2: Strong partial matches
+    /// Stage 3: Fuzzy matches (misspellings)
+    /// Stage 4: Generic fallbacks
+    ///
     /// - Parameters:
     ///   - query: Search query string
     ///   - hitsPerPage: Number of results per page (default 20)
@@ -510,47 +515,59 @@ final class AlgoliaSearchManager {
                 // Check if cached results have ingredients - if not, invalidate cache
                 // (handles migration from old cache entries without ingredients)
                 let hasIngredients = cached.results.first?.ingredients?.isEmpty == false
-                                if hasIngredients {
+                if hasIngredients {
                     return cached.results
                 } else {
                     // Cache is stale (missing ingredients) - force refresh
-                                        searchCache.removeObject(forKey: cacheKey)
+                    searchCache.removeObject(forKey: cacheKey)
                 }
             } else {
                 searchCache.removeObject(forKey: cacheKey)
             }
         }
 
-        // Expand query with brand synonyms (e.g., "coke" -> also search "coca-cola")
-        let expandedQueries = expandSearchQuery(trimmedQuery)
+        // === STAGE 0: NORMALIZE INPUT ===
+        let normalized = SearchQueryNormalizer.normalize(trimmedQuery)
+
+        // Build comprehensive query set from:
+        // 1. Normalized variants (compound word expansion, UK spelling)
+        // 2. Brand synonym expansion
+        // 3. Word order flexibility
+        var querySet = Set<String>()
+
+        // Add normalized variants
+        for variant in normalized.variants {
+            querySet.insert(variant)
+            // Also expand each variant with brand synonyms
+            let expanded = expandSearchQuery(variant)
+            for exp in expanded {
+                querySet.insert(exp.lowercased())
+            }
+        }
 
         // Add word order variants for 2-word queries
-        // PERFORMANCE: Use Set to deduplicate queries before executing them
-        var querySet = Set<String>()
-        for query in expandedQueries {
-            if shouldUseFlexibleWordOrder(query) {
-                let variants = generateWordOrderVariants(query)
+        for existingQuery in Array(querySet) {
+            if shouldUseFlexibleWordOrder(existingQuery) {
+                let variants = generateWordOrderVariants(existingQuery)
                 for variant in variants {
                     querySet.insert(variant.lowercased())
                 }
-            } else {
-                querySet.insert(query.lowercased())
             }
         }
-        let allSearchQueries = Array(querySet)
 
-        // PERFORMANCE: Search all queries in parallel instead of sequentially
-        // This reduces search time from (N x 200ms) to ~200ms for N query variants
+        // === STAGES 1-3: PARALLEL SEARCH ===
+        // Search all query variants in parallel
         var allResults: [FoodSearchResult] = []
         var seenIds = Set<String>()
+        let allSearchQueries = Array(querySet)
 
         await withTaskGroup(of: [FoodSearchResult].self) { group in
             for searchQuery in allSearchQueries {
                 group.addTask {
                     do {
-                        return try await self.searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage)
+                        return try await self.searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage * 2)
                     } catch {
-                                                return []
+                        return []
                     }
                 }
             }
@@ -563,8 +580,38 @@ final class AlgoliaSearchManager {
             }
         }
 
-        // Re-rank combined results
-        let rankedResults = rankResultsForSynonymSearch(allResults, originalQuery: trimmedQuery, hitsPerPage: hitsPerPage)
+        // === STAGE 3B: FUZZY MATCHING ===
+        // If results are sparse, try fuzzy variants
+        if allResults.count < 5 {
+            let fuzzyVariants = FuzzyMatcher.generateMisspellingVariants(normalized.primary)
+            await withTaskGroup(of: [FoodSearchResult].self) { group in
+                for fuzzyQuery in fuzzyVariants.prefix(5) {  // Limit fuzzy searches
+                    group.addTask {
+                        do {
+                            return try await self.searchMultipleIndices(query: fuzzyQuery, hitsPerPage: 10)
+                        } catch {
+                            return []
+                        }
+                    }
+                }
+
+                for await results in group {
+                    for result in results where !seenIds.contains(result.id) {
+                        seenIds.insert(result.id)
+                        allResults.append(result)
+                    }
+                }
+            }
+        }
+
+        // === FINAL RANKING ===
+        // Apply multi-stage ranking with intent awareness
+        let rankedResults = rankResultsMultiStage(
+            allResults,
+            originalQuery: trimmedQuery,
+            normalizedQuery: normalized,
+            hitsPerPage: hitsPerPage
+        )
 
         // Cache results
         searchCache.setObject(
@@ -575,134 +622,148 @@ final class AlgoliaSearchManager {
         return rankedResults
     }
 
-    /// Re-rank results from synonym-expanded searches, prioritizing original query matches
-    private func rankResultsForSynonymSearch(_ results: [FoodSearchResult], originalQuery: String, hitsPerPage: Int) -> [FoodSearchResult] {
+    // MARK: - Multi-Stage Ranking
+
+    /// Advanced ranking that considers search intent, canonical products, and UK defaults
+    private func rankResultsMultiStage(
+        _ results: [FoodSearchResult],
+        originalQuery: String,
+        normalizedQuery: NormalizedQuery,
+        hitsPerPage: Int
+    ) -> [FoodSearchResult] {
         let queryLower = originalQuery.lowercased()
         let queryWords = Set(queryLower.split(separator: " ").map { String($0) })
 
-        let scored = results.map { result -> (result: FoodSearchResult, score: Int) in
+        let scored = results.map { result -> (result: FoodSearchResult, score: Int, tier: Int) in
             let nameLower = result.name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
             let brandLower = result.brand?.lowercased() ?? ""
 
             var score = 0
+            var tier = 4  // Default tier (lowest)
 
-            // Exact match with original query (highest priority)
-            if nameLower == queryLower || brandLower == queryLower {
+            // === TIER 1: EXACT & CANONICAL MATCHES (10000+ points) ===
+
+            // Exact name match
+            if nameLower == queryLower {
                 score += 10000
+                tier = 1
             }
-            // Name starts with query AND query is a complete word (e.g., "Mars Bar" for "mars")
-            // This should rank higher than generic "contains word" matches
+            // Name starts with query AND query is a complete word
             else if nameLower.hasPrefix(queryLower) && nameWords.contains(queryLower) {
-                score += 8000  // High score: starts with query as complete word
-                // Extra bonus for short product names (e.g., "Mars Bar" vs "Mars Bar Multipack 6x45g")
+                score += 9500
+                tier = 1
+                // Extra bonus for short product names (canonical products tend to be short)
                 if nameWords.count <= 3 {
                     score += 1500
                 }
             }
-            // Name starts with query (but query might be partial word)
-            else if nameLower.hasPrefix(queryLower) {
-                score += 5000
-            }
-            // Brand starts with query (e.g., brand "Mars" for query "mars")
-            else if brandLower.hasPrefix(queryLower) {
-                score += 4500
-            }
-            // PRIORITY: Query word appears as EXACT COMPLETE WORD in name
-            // e.g., "milk" matches "Whole Milk", "Semi-Skimmed Milk" but NOT "Milkybar"
-            else if queryWords.count == 1, nameWords.contains(queryLower) {
-                score += 6000  // Higher than prefix match - exact word is better
-                // Extra bonus if it's a short/generic name like "Whole Milk" (2-3 words)
-                if nameWords.count <= 3 {
-                    score += 1500
+            // Brand + product exact match (e.g., "mars bar" matches "Mars Bar")
+            else if let brand = result.brand?.lowercased(),
+                    queryWords.contains(brand) || brand.hasPrefix(queryLower.split(separator: " ").first ?? "") {
+                let productWords = queryWords.filter { $0 != brand }
+                let allProductWordsMatch = productWords.allSatisfy { word in
+                    nameWords.contains(word) || nameWords.contains { $0.hasPrefix(word) }
                 }
-            }
-            // All query words appear in name (e.g., "boiled egg" finds "Egg Boiled")
-            else if queryWords.allSatisfy({ queryWord in
-                nameWords.contains { $0.hasPrefix(queryWord) || $0 == queryWord }
-            }) {
-                // Check if ALL query words are EXACT matches (not just prefixes)
-                let allExactWordMatches = queryWords.allSatisfy({ queryWord in
-                    nameWords.contains(queryWord)
-                })
-
-                if allExactWordMatches {
-                    score += 5500  // Higher for exact word matches
-                } else {
-                    score += 4500  // Prefix matches
+                if allProductWordsMatch && !productWords.isEmpty {
+                    score += 9000
+                    tier = 1
                 }
-
-                // BONUS: If name has ONLY the query words (reversed match)
-                if nameWords.count == queryWords.count {
-                    score += 2000
-                }
-            }
-            // Name/brand contains original query as substring (but not as complete word)
-            // e.g., "milk" in "Milkybar" - should be LOWER priority
-            else if nameLower.contains(queryLower) || brandLower.contains(queryLower) {
-                score += 1500  // Reduced from 3000 - substring matches are less relevant
-            }
-            // Matches via synonym (still good, but lower priority)
-            else {
-                score += 1000
             }
 
-            // Brand bonus - only give high bonus when query is primarily a brand search
-            // Prioritize name matches over brand-only matches
-            if let brand = result.brand?.lowercased() {
-                let normalizedBrand = brand.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
-                let normalizedQuery = queryLower.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
+            // === CANONICAL PRODUCT SCORING ===
+            let canonicalBonus = CanonicalProductDetector.canonicalScore(productName: result.name, forQuery: queryLower)
+            score += canonicalBonus
+            if canonicalBonus >= 3000 {
+                tier = min(tier, 1)
+            }
 
-                // Check if query words primarily match the food NAME (not just brand)
-                // e.g., "mars bar" - "mars" and "bar" both in name = name focused search
-                let queryWordsInName = queryWords.filter { queryWord in
-                    nameWords.contains(queryWord) || nameWords.contains(where: { $0.hasPrefix(queryWord) })
-                }.count
-                let queryWordsInBrand = queryWords.filter { normalizedBrand.contains($0) }.count
-                let isNameFocusedSearch = queryWordsInName >= queryWordsInBrand && queryWordsInName > 0
+            // === UK DEFAULT SCORING (for generic foods like "milk") ===
+            if case .genericFood(_) = normalizedQuery.intent {
+                let defaultBonus = UKFoodDefaults.defaultScore(productName: result.name, forQuery: queryLower)
+                score += defaultBonus
+                if defaultBonus >= 3000 {
+                    tier = min(tier, 1)
+                }
+            }
 
-                // Only give high brand bonus when query is a pure brand search
-                if normalizedBrand == normalizedQuery && !isNameFocusedSearch {
-                    // Pure brand search like "mars" when looking at Revels by Mars
-                    score += 8000
+            // === TIER 2: STRONG PARTIAL MATCHES (6000-8999 points) ===
+
+            if tier > 2 {
+                // Query is an exact word in name
+                if queryWords.count == 1 && nameWords.contains(queryLower) {
+                    score += 7500
+                    tier = 2
+                    if nameWords.count <= 3 {
+                        score += 1500  // Short name bonus
+                    }
                 }
-                else if normalizedBrand == normalizedQuery && isNameFocusedSearch {
-                    // Brand matches but name also matches - reduce brand bonus
-                    score += 2000
+                // All query words present as exact words
+                else if queryWords.allSatisfy({ nameWords.contains($0) }) {
+                    score += 7000
+                    tier = 2
+                    if nameWords.count == queryWords.count {
+                        score += 2000  // Exact word count match
+                    }
                 }
-                else if normalizedBrand.hasPrefix(normalizedQuery) && !isNameFocusedSearch {
-                    score += 4000
+                // Name starts with query
+                else if nameLower.hasPrefix(queryLower) {
+                    score += 6500
+                    tier = 2
                 }
-                else if let canonical = synonymToCanonical[normalizedQuery],
-                        normalizedBrand.contains(canonical.replacingOccurrences(of: "'", with: "")),
-                        !isNameFocusedSearch {
+                // Brand exact match (pure brand search)
+                else if brandLower == queryLower {
+                    score += 6000
+                    tier = 2
+                }
+            }
+
+            // === TIER 3: PARTIAL MATCHES (3000-5999 points) ===
+
+            if tier > 3 {
+                // All query words as prefixes in name
+                if queryWords.allSatisfy({ queryWord in
+                    nameWords.contains { $0.hasPrefix(queryWord) }
+                }) {
+                    score += 5000
+                    tier = 3
+                }
+                // Query as substring (not at word boundary)
+                else if nameLower.contains(queryLower) {
                     score += 3500
+                    tier = 3
                 }
-                else if normalizedBrand.contains(normalizedQuery) && !isNameFocusedSearch {
-                    score += 1000
+                // Brand contains query
+                else if brandLower.contains(queryLower) {
+                    score += 3000
+                    tier = 3
                 }
             }
 
-            // Bonus for shorter names (more specific)
-            score += max(0, 500 - result.name.count * 10)
+            // === TIER 4: FUZZY/WEAK MATCHES (1000-2999 points) ===
 
-            // PENALTY for multipacks - demote items like "8pk", "6 pack", "multipack", "x4", etc.
-            // These are bulk items, not individual portions that users typically want to log
+            if tier > 3 {
+                // Fuzzy match scoring
+                let fuzzyScore = FuzzyMatcher.fuzzyScore(queryLower, nameLower)
+                if fuzzyScore >= 80 {
+                    score += 2000 + (fuzzyScore - 80) * 20
+                    tier = 4
+                } else if fuzzyScore >= 60 {
+                    score += 1000 + (fuzzyScore - 60) * 20
+                    tier = 4
+                }
+            }
+
+            // === UNIVERSAL MODIFIERS ===
+
+            // MULTIPACK PENALTY (applied regardless of tier)
             let multipackPatterns = [
-                "\\d+pk\\b",           // 8pk, 6pk, 4pk
-                "\\d+\\s*pack\\b",     // 8 pack, 6pack, 4 pack
-                "\\bx\\d+\\b",         // x4, x6, x8
-                "\\d+\\s*x\\s*\\d+",   // 6x4, 8 x 45g
-                "\\bmultipack\\b",     // multipack
-                "\\bmulti-pack\\b",    // multi-pack
-                "\\bmulti pack\\b",    // multi pack
-                "\\bfamily pack\\b",   // family pack
-                "\\bbulk\\b",          // bulk
-                "\\bsharing\\b",       // sharing bag/pack
-                "\\bselection\\b",     // selection box
-                "\\bvariety\\b",       // variety pack
-                "\\bcase\\b",          // case of
-                "\\btray\\b"           // tray of
+                "\\d+pk\\b", "\\d+\\s*pack\\b", "\\bx\\d+\\b", "\\d+\\s*x\\s*\\d+",
+                "\\bmultipack\\b", "\\bmulti-pack\\b", "\\bmulti pack\\b",
+                "\\bfamily pack\\b", "\\bbulk\\b", "\\bsharing\\b",
+                "\\bselection\\b", "\\bvariety\\b", "\\bcase\\b", "\\btray\\b",
+                "\\bmini\\b", "\\bminis\\b", "\\bfunsize\\b", "\\bfun size\\b",
+                "\\bbite\\b", "\\bbites\\b"
             ]
             let multipackRegex = try? NSRegularExpression(
                 pattern: multipackPatterns.joined(separator: "|"),
@@ -710,111 +771,103 @@ final class AlgoliaSearchManager {
             )
             if let regex = multipackRegex,
                regex.firstMatch(in: nameLower, options: [], range: NSRange(nameLower.startIndex..., in: nameLower)) != nil {
-                score -= 2500  // Stronger demotion for multipacks
+                score -= 3000  // Strong demotion for multipacks/minis
             }
 
-            // BONUS for single-serve indicators (cans, single bars, standard portions)
-            // Users searching "coke" want "Coca-Cola 330ml Can" not "Coca-Cola 24x330ml"
-            let hasSingleServeIndicator = singleServeIndicators.contains { indicator in
-                nameLower.contains(indicator)
-            }
-            if hasSingleServeIndicator {
-                score += 1200  // Strong bonus for single-serve items
+            // SINGLE-SERVE BONUS
+            if singleServeIndicators.contains(where: { nameLower.contains($0) }) {
+                score += 1500
             }
 
-            // Extra check for bulk indicators from our defined set
-            let hasBulkIndicator = bulkIndicators.contains { indicator in
-                nameLower.contains(indicator)
-            }
-            if hasBulkIndicator {
-                score -= 1500  // Additional penalty for bulk terms
+            // BULK INDICATORS PENALTY
+            if bulkIndicators.contains(where: { nameLower.contains($0) }) {
+                score -= 2000
             }
 
-            // BONUS/PENALTY for serving size - prefer individual portions over bulk
+            // SERVING SIZE SCORING
             if let servingGrams = result.servingSizeG, servingGrams > 0 {
                 if servingGrams <= 50 {
-                    score += 1000  // Strong bonus for small portions (snacks, single items)
+                    score += 1200  // Snack-sized
                 } else if servingGrams <= 100 {
-                    score += 600   // Good bonus for standard portions
+                    score += 800   // Standard portion
                 } else if servingGrams <= 200 {
-                    score += 200   // Slight bonus for reasonable portions
+                    score += 300   // Reasonable portion
                 } else if servingGrams > 500 {
-                    score -= 500   // Penalty for very large serving sizes (likely bulk)
-                } else if servingGrams > 1000 {
-                    score -= 1000  // Strong penalty for >1kg items
+                    score -= 600   // Large portion (likely bulk)
+                }
+                if servingGrams > 1000 {
+                    score -= 1200  // Very large (definitely bulk)
                 }
             }
 
-            // Bonus for verified items
-            if result.isVerified {
-                score += 200
-            }
+            // NAME LENGTH BONUS (shorter = more canonical)
+            let lengthBonus = max(0, 600 - result.name.count * 12)
+            score += lengthBonus
 
-            // TIER 1 PRIORITY: Tesco products get significant boost (official UK supermarket data)
+            // SOURCE TIER BONUS
             if let source = result.source {
-                if source == "tesco_products" {
-                    score += 300  // Tesco tier 1 boost
-                } else if source == "uk_foods_cleaned" {
-                    score += 250  // UK Foods tier 2 boost
+                switch source {
+                case "tesco_products": score += 400
+                case "uk_foods_cleaned": score += 350
+                case "foods": score += 200
+                case "fast_foods_database": score += 150
+                default: score += 50
                 }
             }
 
-            // RAW/WHOLE FOOD PRIORITY: When searching single words like "apple", "banana",
-            // prioritize raw/whole versions over processed (juice, pie, dried, etc.)
-            // BUT: Don't apply this logic to known snack/drink/chocolate searches
-            let isSnackOrDrinkSearch = ukCommonFoodExpansions[queryLower] != nil &&
-                (queryLower.contains("coke") || queryLower.contains("pepsi") || queryLower.contains("mars") ||
-                 queryLower.contains("snickers") || queryLower.contains("kitkat") || queryLower.contains("crisps") ||
-                 queryLower.contains("chocolate") || queryLower.contains("biscuit"))
+            // VERIFIED BONUS
+            if result.isVerified {
+                score += 250
+            }
 
-            if queryWords.count == 1 && queryLower.count >= 3 && !isSnackOrDrinkSearch {
-                let rawFoodIndicators: Set<String> = [
-                    "large", "medium", "small", "raw", "fresh", "whole", "ripe",
-                    "plain", "natural", "unflavoured", "unsweetened", "organic"
-                ]
-                // Note: "chips" removed from processed indicators - UK users want chips (fries)
-                // "bar" kept for raw food searches but shouldn't penalize chocolate bar searches
-                let processedIndicators: Set<String> = ["juice", "pie", "cake", "bread", "dried",
-                    "smoothie", "jam", "jelly", "sauce", "syrup", "yogurt", "yoghurt", "flavour", "flavor",
-                    "candy", "sweet", "drink", "cordial", "squash", "concentrate", "puree", "purée",
-                    "crumble", "tart", "turnover", "strudel", "compote", "preserve", "spread", "butter",
-                    "ice", "cream", "sorbet", "frozen", "canned", "tinned", "cocktail", "wine", "cider", "vinegar",
-                    "flavoured", "coated", "dipped", "covered"]
+            // === INTENT-SPECIFIC SCORING ===
 
-                let hasRawIndicator = nameWords.contains { rawFoodIndicators.contains($0) }
-                let hasProcessedIndicator = nameWords.contains { processedIndicators.contains($0) }
-                let startsWithQuery = nameLower.hasPrefix(queryLower)
-
-                // Big boost for raw foods that start with the query (e.g., "Apple (Large)" for "apple")
-                if startsWithQuery && hasRawIndicator && !hasProcessedIndicator {
-                    score += 3000
+            switch normalizedQuery.intent {
+            case .brandOnly(let brand):
+                // Pure brand search - boost items where brand matches exactly
+                if brandLower == brand || brandLower.hasPrefix(brand) {
+                    score += 2000
                 }
-                // Boost for simple names starting with query (e.g., "Apple" or "Apple Raw")
-                else if startsWithQuery && nameWords.count <= 3 && !hasProcessedIndicator {
-                    score += 2500
-                }
-                // Penalty for processed foods
-                else if hasProcessedIndicator {
+                // Penalty for items where the brand is in the name but there's a different brand
+                if !brandLower.isEmpty && brandLower != brand && nameLower.contains(brand) {
                     score -= 1000
                 }
-            }
 
-            // SIMPLE PREPARED FOODS: Boost common UK preparations like "boiled egg", "toast"
-            let simplePrepIndicators: Set<String> = [
-                "boiled", "poached", "scrambled", "fried", "grilled",
-                "toasted", "steamed", "mashed", "baked", "roasted"
-            ]
-            if queryWords.count <= 2 {
-                let hasSimplePrepIndicator = nameWords.contains { simplePrepIndicators.contains($0) }
-                if hasSimplePrepIndicator && nameWords.count <= 4 {
-                    score += 1500  // Boost simple prepared foods
+            case .brandAndProduct(let brand, let product):
+                // Brand + product search - both must be present
+                let hasBrand = brandLower.contains(brand) || nameLower.contains(brand)
+                let productWords = Set(product.split(separator: " ").map { String($0) })
+                let hasProduct = productWords.allSatisfy { nameWords.contains($0) || nameWords.contains(where: { $0.hasPrefix($0) }) }
+
+                if hasBrand && hasProduct {
+                    score += 3000
+                } else if hasBrand {
+                    score += 500
                 }
+
+            case .genericFood(_):
+                // Generic food - already handled by UK defaults above
+                // Additional boost for simple names
+                if nameWords.count <= 3 {
+                    score += 800
+                }
+
+            default:
+                break
             }
 
-            return (result: result, score: score)
+            return (result: result, score: score, tier: tier)
         }
 
-        return Array(scored.sorted { $0.score > $1.score }.map { $0.result }.prefix(hitsPerPage))
+        // Sort by tier first, then by score within tier
+        let sorted = scored.sorted { a, b in
+            if a.tier != b.tier {
+                return a.tier < b.tier  // Lower tier = higher priority
+            }
+            return a.score > b.score  // Higher score = higher priority
+        }
+
+        return Array(sorted.map { $0.result }.prefix(hitsPerPage))
     }
 
     /// Search multiple indices in parallel using TaskGroup
