@@ -1101,6 +1101,13 @@
             startRealtimeUpdates();
             updateTime();
             setInterval(updateTime, 1000);
+
+            // Restore tab from URL if present
+            const urlTab = getTabFromURL();
+            console.log('🔄 URL tab:', urlTab);
+            if (urlTab) {
+                switchTab(urlTab);
+            }
         });
 
         function initializeDashboard() {
@@ -1146,6 +1153,21 @@
             currentTab = tabName;
             updatePanelTitle(tabName);
             loadTabData(tabName);
+
+            // Persist tab in URL so refresh keeps position
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            // Reset page when switching tabs
+            if (tabName !== 'database') {
+                url.searchParams.delete('page');
+            }
+            window.history.replaceState({}, '', url);
+        }
+
+        // Get tab from URL on page load
+        function getTabFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('tab') || 'database'; // Default to database (matches HTML)
         }
 
         function updatePanelTitle(tabName) {
@@ -1861,6 +1883,8 @@
             // If we already have data in memory, show it
             if (databaseData && databaseData.length > 0) {
                 console.log(`📦 Found ${databaseData.length} foods already loaded in memory`);
+                // Restore page from URL if available
+                currentPage = getPageFromURL();
                 displayDatabaseResults();
                 updateRealStats();
                 return;
@@ -2403,7 +2427,18 @@
         
         function changePage(page) {
             currentPage = page;
+            // Persist page in URL so refresh keeps position
+            const url = new URL(window.location);
+            url.searchParams.set('page', page);
+            window.history.replaceState({}, '', url);
             displayDatabaseResults();
+        }
+
+        // Read page from URL on load
+        function getPageFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const page = parseInt(params.get('page'), 10);
+            return isNaN(page) ? 0 : page;
         }
         
         // Global variables for food editing
@@ -3019,6 +3054,12 @@
                 };
 
                 console.log('Updating food with data:', updatedData);
+                console.log('🎯 Saving to:', updatedData.collection, '/', updatedData.foodId);
+
+                // Show what we're saving to in the UI
+                if (saveStatus) {
+                    saveStatus.textContent = `💾 Saving to ${updatedData.collection}/${updatedData.foodId.substring(0, 20)}...`;
+                }
 
                 // Call the updateVerifiedFood function
                 let response;
