@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - Goals Screen (What brings you here?)
 
@@ -793,6 +794,361 @@ struct CompactProFeature: View {
                 .foregroundColor(Color(red: 0.95, green: 0.60, blue: 0.30).opacity(0.8))
         }
         .padding(.horizontal, 40)
+    }
+}
+
+// MARK: - Diet Setup Screen
+
+struct DietSetupScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Choose your")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("eating approach")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+            }
+            .multilineTextAlignment(.center)
+
+            Text("This sets your default macro targets")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 12)
+
+            Spacer().frame(height: 24)
+
+            // Diet options
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 10) {
+                    ForEach(DietType.allCases, id: \.rawValue) { diet in
+                        DietTypeCard(
+                            diet: diet,
+                            isSelected: state.selectedDietType == diet,
+                            palette: state.palette,
+                            onSelect: {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    state.selectedDietType = diet
+                                }
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+
+            Spacer()
+
+            // Buttons
+            VStack(spacing: 14) {
+                PremiumButton(
+                    text: "Continue",
+                    palette: state.palette,
+                    action: onContinue
+                )
+
+                Button(action: onSkip) {
+                    Text("Skip for now")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(white: 0.5))
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+}
+
+struct DietTypeCard: View {
+    let diet: DietType
+    let isSelected: Bool
+    let palette: OnboardingPalette
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 14) {
+                // Icon
+                Image(systemName: dietIcon)
+                    .font(.system(size: 20))
+                    .foregroundColor(isSelected ? .white : palette.primary)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle()
+                            .fill(isSelected ? palette.primary : palette.primary.opacity(0.1))
+                    )
+
+                // Text
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(diet.displayName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : Color(white: 0.2))
+
+                    Text(diet.shortDescription)
+                        .font(.system(size: 12))
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : Color(white: 0.5))
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                // Selection indicator
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.white)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isSelected ? palette.primary : Color.white.opacity(0.8))
+                    .shadow(color: isSelected ? palette.primary.opacity(0.3) : Color.black.opacity(0.05), radius: isSelected ? 10 : 4, y: isSelected ? 3 : 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var dietIcon: String {
+        switch diet {
+        case .flexible: return "checkmark.circle"
+        case .keto: return "flame"
+        case .lowCarb: return "leaf"
+        case .highProtein, .highProteinMax: return "dumbbell"
+        case .mediterranean: return "fish"
+        case .paleo: return "hare"
+        }
+    }
+}
+
+// MARK: - Calorie Target Screen
+
+struct CalorieTargetScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+    let onSkip: () -> Void
+
+    @State private var calorieOffset: Int = 0 // -500 to +500 from baseline
+
+    private var baselineCalories: Int {
+        // Simple baseline based on activity level
+        switch state.activityLevel {
+        case .sedentary: return 1800
+        case .lightlyActive: return 2000
+        case .moderatelyActive: return 2200
+        case .veryActive: return 2500
+        case .extraActive: return 2800
+        }
+    }
+
+    private var adjustedCalories: Int {
+        // Adjust based on goals
+        var calories = baselineCalories + calorieOffset
+
+        if state.selectedGoals.contains(.loseWeight) {
+            calories -= 300 // Default deficit
+        } else if state.selectedGoals.contains(.buildMuscle) {
+            calories += 200 // Default surplus
+        }
+
+        return max(1200, min(4000, calories))
+    }
+
+    private var goalContext: String {
+        if state.selectedGoals.contains(.loseWeight) {
+            return "For steady, sustainable fat loss"
+        } else if state.selectedGoals.contains(.buildMuscle) {
+            return "To support muscle growth"
+        } else {
+            return "To maintain your current weight"
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Your daily")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("calorie target")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+            }
+            .multilineTextAlignment(.center)
+
+            Text(goalContext)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 12)
+
+            Spacer().frame(height: 40)
+
+            // Big calorie display
+            VStack(spacing: 8) {
+                Text("\(adjustedCalories)")
+                    .font(.system(size: 72, weight: .bold, design: .rounded))
+                    .foregroundColor(state.palette.primary)
+
+                Text("calories per day")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(Color(white: 0.4))
+            }
+
+            Spacer().frame(height: 32)
+
+            // Adjustment slider
+            VStack(spacing: 12) {
+                Text("Adjust if needed")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(white: 0.5))
+
+                HStack(spacing: 16) {
+                    Text("Less")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(white: 0.5))
+
+                    Slider(value: Binding(
+                        get: { Double(calorieOffset) },
+                        set: { calorieOffset = Int($0) }
+                    ), in: -500...500, step: 50)
+                    .accentColor(state.palette.primary)
+
+                    Text("More")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(white: 0.5))
+                }
+                .padding(.horizontal, 32)
+            }
+
+            Spacer().frame(height: 24)
+
+            // Macro preview
+            HStack(spacing: 20) {
+                MacroPreviewPill(
+                    name: "Protein",
+                    grams: macrosForDiet.protein,
+                    color: Color.blue
+                )
+                MacroPreviewPill(
+                    name: "Carbs",
+                    grams: macrosForDiet.carbs,
+                    color: Color.orange
+                )
+                MacroPreviewPill(
+                    name: "Fat",
+                    grams: macrosForDiet.fat,
+                    color: Color.purple
+                )
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Buttons
+            VStack(spacing: 14) {
+                PremiumButton(
+                    text: "Continue",
+                    palette: state.palette,
+                    action: {
+                        state.targetCalories = adjustedCalories
+                        onContinue()
+                    }
+                )
+
+                Button(action: onSkip) {
+                    Text("Skip for now")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(white: 0.5))
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+
+    private var macrosForDiet: (protein: Int, carbs: Int, fat: Int) {
+        let calories = Double(adjustedCalories)
+
+        switch state.selectedDietType {
+        case .keto:
+            // 5% carbs, 20% protein, 75% fat
+            return (
+                protein: Int(calories * 0.20 / 4),
+                carbs: Int(calories * 0.05 / 4),
+                fat: Int(calories * 0.75 / 9)
+            )
+        case .lowCarb:
+            // 20% carbs, 30% protein, 50% fat
+            return (
+                protein: Int(calories * 0.30 / 4),
+                carbs: Int(calories * 0.20 / 4),
+                fat: Int(calories * 0.50 / 9)
+            )
+        case .highProtein:
+            // 40% carbs, 35% protein, 25% fat
+            return (
+                protein: Int(calories * 0.35 / 4),
+                carbs: Int(calories * 0.40 / 4),
+                fat: Int(calories * 0.25 / 9)
+            )
+        case .highProteinMax:
+            // 25% carbs, 50% protein, 25% fat
+            return (
+                protein: Int(calories * 0.50 / 4),
+                carbs: Int(calories * 0.25 / 4),
+                fat: Int(calories * 0.25 / 9)
+            )
+        case .mediterranean, .paleo, .flexible:
+            // 45% carbs, 25% protein, 30% fat
+            return (
+                protein: Int(calories * 0.25 / 4),
+                carbs: Int(calories * 0.45 / 4),
+                fat: Int(calories * 0.30 / 9)
+            )
+        }
+    }
+}
+
+struct MacroPreviewPill: View {
+    let name: String
+    let grams: Int
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("\(grams)g")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(color)
+
+            Text(name)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(Color(white: 0.5))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(color.opacity(0.1))
+        )
     }
 }
 

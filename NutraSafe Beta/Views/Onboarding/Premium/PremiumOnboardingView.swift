@@ -6,6 +6,7 @@
 //  Flow: Breath → Mirror → Processing → Synthesis → Promise →
 //        Goals → GoalsProcessing → Activity → ActivityProcessing →
 //        Habits → Experience → ProfileBuilding →
+//        DietSetup → CalorieTarget →
 //        PersonalDetails → Sensitivities → Camera → Health → Notifications →
 //        ProUpgrade → Honesty → Completion
 //
@@ -25,8 +26,8 @@ struct PremiumOnboardingView: View {
 
     let onComplete: (Bool) -> Void
 
-    // Total screens (0-19)
-    private let totalScreens = 20
+    // Total screens (0-21)
+    private let totalScreens = 22
 
     var body: some View {
         ZStack {
@@ -68,32 +69,46 @@ struct PremiumOnboardingView: View {
                     // Profile Building - "Building your profile..."
                     ProfileBuildingScreen(state: state, onComplete: { advanceScreen() })
                 case 12:
+                    // Diet Setup - Choose eating approach
+                    DietSetupScreen(
+                        state: state,
+                        onContinue: { advanceScreen() },
+                        onSkip: { advanceScreen() }
+                    )
+                case 13:
+                    // Calorie Target - Daily calorie goal
+                    CalorieTargetScreen(
+                        state: state,
+                        onContinue: { advanceScreen() },
+                        onSkip: { advanceScreen() }
+                    )
+                case 14:
                     // Personal Details (DOB, height, weight, gender)
                     PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
-                case 13:
+                case 15:
                     // Sensitivities (UK/EU Allergens + Preferences)
                     SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
-                case 14:
+                case 16:
                     // Camera Permission
                     CameraPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 15:
+                case 17:
                     // Apple Health Permission
                     HealthPermissionScreen(state: state, onContinue: { advanceScreen() })
                         .environmentObject(healthKitManager)
-                case 16:
+                case 18:
                     // Notifications Permission
                     NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 17:
+                case 19:
                     // Pro Upgrade CTA
                     ProUpgradeScreen(
                         state: state,
                         onUpgrade: { showingPaywall = true },
                         onContinueFree: { advanceScreen() }
                     )
-                case 18:
+                case 20:
                     // Honesty/Disclaimer screen
                     HonestyScreen(state: state, onContinue: { advanceScreen() })
-                case 19:
+                case 21:
                     // Completion screen
                     OnboardingCompletionScreen(state: state, onComplete: {
                         state.saveToManager()
@@ -151,14 +166,16 @@ struct PremiumOnboardingView: View {
         case 9: return "EatingHabits"
         case 10: return "DietExperience"
         case 11: return "ProfileBuilding"
-        case 12: return "PersonalDetails"
-        case 13: return "Sensitivities"
-        case 14: return "CameraPermission"
-        case 15: return "HealthPermission"
-        case 16: return "NotificationPermission"
-        case 17: return "ProUpgrade"
-        case 18: return "Honesty"
-        case 19: return "Completion"
+        case 12: return "DietSetup"
+        case 13: return "CalorieTarget"
+        case 14: return "PersonalDetails"
+        case 15: return "Sensitivities"
+        case 16: return "CameraPermission"
+        case 17: return "HealthPermission"
+        case 18: return "NotificationPermission"
+        case 19: return "ProUpgrade"
+        case 20: return "Honesty"
+        case 21: return "Completion"
         default: return "Unknown"
         }
     }

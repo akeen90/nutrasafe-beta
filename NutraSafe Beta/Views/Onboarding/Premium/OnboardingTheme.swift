@@ -319,6 +319,11 @@ class PremiumOnboardingState: ObservableObject {
     @Published var eatingHabits: Set<EatingHabitOption> = []
     @Published var dietExperience: DietExperienceOption = .tried
 
+    // Diet setup
+    @Published var selectedDietType: DietType = .flexible
+    @Published var targetCalories: Int = 2000
+    @Published var wantsDietSetup: Bool = true
+
     var palette: OnboardingPalette {
         OnboardingPalette.forIntent(selectedIntent)
     }
@@ -351,6 +356,10 @@ class PremiumOnboardingState: ObservableObject {
         let habitsArray = eatingHabits.map { $0.rawValue }
         UserDefaults.standard.set(habitsArray, forKey: "userEatingHabits")
         UserDefaults.standard.set(dietExperience.rawValue, forKey: "userDietExperience")
+
+        // Save diet setup
+        UserDefaults.standard.set(selectedDietType.rawValue, forKey: "cachedDietType")
+        UserDefaults.standard.set(targetCalories, forKey: "userTargetCalories")
     }
 
     // Load from UserDefaults
