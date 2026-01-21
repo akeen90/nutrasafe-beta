@@ -5876,18 +5876,18 @@ extension FoodDetailViewFromSearch {
 
     // MARK: - Redesigned Header Section
     private var redesignedHeaderSection: some View {
-        VStack(spacing: 12) {
-            // Product name - editorial style
+        VStack(spacing: 6) {
+            // Product name - more compact
             Text(displayFood.name)
-                .font(DesignTokens.Typography.headline(28))
+                .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundColor(palette.textPrimary)
                 .multilineTextAlignment(.center)
-                .lineLimit(3)
+                .lineLimit(2)
 
             // Brand - subtle secondary
             if let brand = displayFood.brand, !brand.isEmpty {
                 Text(brand)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(palette.textSecondary)
             }
 
@@ -5896,7 +5896,7 @@ extension FoodDetailViewFromSearch {
                 redesignedAllergenBanner
             }
         }
-        .padding(.top, 8)
+        .padding(.top, 4)
         .padding(.horizontal, DesignTokens.Spacing.sm)
     }
 
@@ -5934,22 +5934,22 @@ extension FoodDetailViewFromSearch {
         .padding(.top, 4)
     }
 
-    // MARK: - Redesigned Action Buttons (Onboarding CTA Style)
+    // MARK: - Redesigned Action Buttons (Compact)
     private var redesignedActionButtons: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             // Primary: Add to Diary
             Button(action: addToFoodLog) {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                     Text(diaryEntryId != nil ? "Update Diary Entry" : "Add to Diary")
-                        .font(DesignTokens.Typography.button)
+                        .font(.system(size: 15, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: DesignTokens.Size.buttonHeight)
+                .frame(height: 48)
                 .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    RoundedRectangle(cornerRadius: 14)
                         .fill(
                             LinearGradient(
                                 colors: [palette.accent, palette.primary],
@@ -5957,28 +5957,28 @@ extension FoodDetailViewFromSearch {
                                 endPoint: .trailing
                             )
                         )
-                        .shadow(color: palette.accent.opacity(0.3), radius: 12, y: 4)
+                        .shadow(color: palette.accent.opacity(0.25), radius: 8, y: 3)
                 )
             }
 
             // Secondary: Log & Start Fast
             if !isCurrentlyFasting && diaryEntryId == nil {
                 Button(action: addToFoodLogAndStartFast) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                         Text("Log Last Meal & Start Fast")
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                     }
                     .foregroundColor(palette.accent)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 48)
+                    .frame(height: 42)
                     .background(
-                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(palette.accent.opacity(0.08))
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        RoundedRectangle(cornerRadius: 12)
                             .stroke(palette.accent.opacity(0.2), lineWidth: 1)
                     )
                 }
@@ -5986,13 +5986,13 @@ extension FoodDetailViewFromSearch {
         }
     }
 
-    // MARK: - Redesigned Serving Section (Human & Interactive)
+    // MARK: - Redesigned Serving Section (Compact)
     private var redesignedServingSection: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             // Section header
             HStack {
                 Text("How much?")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(palette.textPrimary)
                 Spacer()
             }
@@ -6003,9 +6003,9 @@ extension FoodDetailViewFromSearch {
             // Portion cards - interactive, not spreadsheet
             redesignedPortionCards
         }
-        .padding(DesignTokens.Spacing.cardInternal)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
                 .shadow(
                     color: DesignTokens.Shadow.subtle.color,
@@ -6035,9 +6035,9 @@ extension FoodDetailViewFromSearch {
         }
     }
 
-    // MARK: - Redesigned Portion Cards
+    // MARK: - Redesigned Portion Cards (Compact)
     private var redesignedPortionCards: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             if isPerUnit {
                 // Per-unit foods: single intuitive card
                 redesignedPerUnitCard
@@ -6059,62 +6059,62 @@ extension FoodDetailViewFromSearch {
         }
     }
 
-    // MARK: - Redesigned Per-Unit Card
+    // MARK: - Redesigned Per-Unit Card (Compact)
     private var redesignedPerUnitCard: some View {
         let isSelected = selectedPortionName != "__custom__"
         return Button(action: { selectedPortionName = servingUnit }) {
-            HStack(spacing: 14) {
-                // Icon
+            HStack(spacing: 10) {
+                // Icon - smaller
                 ZStack {
                     Circle()
                         .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 36, height: 36)
                     Image(systemName: "fork.knife")
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
                 }
 
                 // Description
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(servingUnit.capitalized)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
                     Text("\(Int(food.calories)) kcal")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(palette.textSecondary)
                 }
 
                 Spacer()
 
-                // Selection indicator
+                // Selection indicator - smaller
                 ZStack {
                     Circle()
-                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 2)
-                        .frame(width: 24, height: 24)
+                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 1.5)
+                        .frame(width: 20, height: 20)
                     if isSelected {
                         Circle()
                             .fill(palette.accent)
-                            .frame(width: 24, height: 24)
+                            .frame(width: 20, height: 20)
                         Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
             }
-            .padding(14)
+            .padding(10)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(PlainButtonStyle())
     }
 
-    // MARK: - Redesigned Portion Card
+    // MARK: - Redesigned Portion Card (Compact)
     private func redesignedPortionCard(portion: PortionOption) -> some View {
         let isSelected = selectedPortionName == portion.name
         let multiplier = portion.serving_g / 100.0
@@ -6125,51 +6125,51 @@ extension FoodDetailViewFromSearch {
             servingAmount = String(format: "%.0f", portion.serving_g)
             servingUnit = food.isLiquidCategory ? "ml" : "g"
         }) {
-            HStack(spacing: 14) {
-                // Icon
+            HStack(spacing: 10) {
+                // Icon - smaller
                 ZStack {
                     Circle()
                         .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 36, height: 36)
                     Image(systemName: portionIcon(for: portion.name))
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
                 }
 
                 // Description
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(portion.name)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
                     Text("\(Int(portion.serving_g))\(food.isLiquidCategory ? "ml" : "g") • \(Int(portionCalories)) kcal")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(palette.textSecondary)
                 }
 
                 Spacer()
 
-                // Selection indicator
+                // Selection indicator - smaller
                 ZStack {
                     Circle()
-                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 2)
-                        .frame(width: 24, height: 24)
+                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 1.5)
+                        .frame(width: 20, height: 20)
                     if isSelected {
                         Circle()
                             .fill(palette.accent)
-                            .frame(width: 24, height: 24)
+                            .frame(width: 20, height: 20)
                         Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
             }
-            .padding(14)
+            .padding(10)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
             )
         }
@@ -6188,74 +6188,74 @@ extension FoodDetailViewFromSearch {
         return "fork.knife"
     }
 
-    // MARK: - Redesigned Custom Grams Card
+    // MARK: - Redesigned Custom Grams Card (Compact)
     private var redesignedCustomGramsCard: some View {
         let isSelected = selectedPortionName == "__custom__"
         return Button(action: { selectedPortionName = "__custom__" }) {
-            HStack(spacing: 14) {
-                // Icon
+            HStack(spacing: 10) {
+                // Icon - smaller
                 ZStack {
                     Circle()
                         .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 36, height: 36)
                     Image(systemName: "pencil.and.ruler")
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
                 }
 
                 // Input field
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("Custom amount")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
 
                     if isSelected {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             TextField("100", text: $gramsAmount)
                                 .keyboardType(.numberPad)
-                                .font(.system(size: 15, weight: .medium))
-                                .frame(width: 60)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
+                                .font(.system(size: 14, weight: .medium))
+                                .frame(width: 50)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8)
+                                    RoundedRectangle(cornerRadius: 6)
                                         .fill(palette.tertiary.opacity(0.1))
                                 )
                             Text(food.isLiquidCategory ? "ml" : "g")
-                                .font(.system(size: 14))
+                                .font(.system(size: 12))
                                 .foregroundColor(palette.textSecondary)
                         }
                     } else {
                         Text("Enter specific amount")
-                            .font(.system(size: 13))
+                            .font(.system(size: 12))
                             .foregroundColor(palette.textSecondary)
                     }
                 }
 
                 Spacer()
 
-                // Selection indicator
+                // Selection indicator - smaller
                 ZStack {
                     Circle()
-                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 2)
-                        .frame(width: 24, height: 24)
+                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 1.5)
+                        .frame(width: 20, height: 20)
                     if isSelected {
                         Circle()
                             .fill(palette.accent)
-                            .frame(width: 24, height: 24)
+                            .frame(width: 20, height: 20)
                         Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
             }
-            .padding(14)
+            .padding(10)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
             )
         }

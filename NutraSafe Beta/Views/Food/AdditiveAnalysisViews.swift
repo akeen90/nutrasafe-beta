@@ -2338,14 +2338,13 @@ struct EnhancedAdditiveCard: View {
                     }
                 }
                 .padding(.bottom, 12)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
         )
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
