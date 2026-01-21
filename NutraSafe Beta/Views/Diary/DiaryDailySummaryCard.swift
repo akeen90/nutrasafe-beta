@@ -174,17 +174,17 @@ struct DiaryDailySummaryCard: View {
         HStack(spacing: 10) {
             Image(systemName: "hands.clap.fill")
                 .font(.system(size: 18))
-                .foregroundColor(.green)
+                .foregroundColor(SemanticColors.positive)
 
             Text("Well done! You've hit your water goal!")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundColor(.green)
+                .foregroundColor(SemanticColors.positive)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.green.opacity(0.12))
+                .fill(SemanticColors.positive.opacity(0.12))
         )
         .transition(.scale.combined(with: .opacity))
     }
@@ -221,7 +221,7 @@ struct DiaryDailySummaryCard: View {
             return NutritionInsight(
                 icon: "waveform.path",  // Abstract signal icon
                 message: "Carb heavy day – \(Int((carbsOverage - 1) * 100))% over your goal",
-                color: .orange,
+                color: SemanticColors.neutral,
                 isPositive: false
             )
         }
@@ -231,7 +231,7 @@ struct DiaryDailySummaryCard: View {
             return NutritionInsight(
                 icon: "waveform.path",  // Abstract signal icon
                 message: "High sugar intake today – \(Int(totalSugar))g consumed",
-                color: .pink,
+                color: SemanticColors.caution,
                 isPositive: false
             )
         }
@@ -241,7 +241,7 @@ struct DiaryDailySummaryCard: View {
             return NutritionInsight(
                 icon: "waveform.path",  // Abstract signal icon
                 message: "Over calorie goal by \(Int((calorieOverage - 1) * 100))%",
-                color: .red,
+                color: SemanticColors.caution,
                 isPositive: false
             )
         }
@@ -251,7 +251,7 @@ struct DiaryDailySummaryCard: View {
             return NutritionInsight(
                 icon: "waveform.path",  // Abstract signal icon
                 message: "Fat intake \(Int((fatOverage - 1) * 100))% above target",
-                color: .yellow,
+                color: SemanticColors.neutral,
                 isPositive: false
             )
         }
@@ -262,7 +262,7 @@ struct DiaryDailySummaryCard: View {
             return NutritionInsight(
                 icon: "waveform.path",  // Abstract signal icon
                 message: "Great protein day! \(Int(proteinProgress * 100))% of goal",
-                color: .green,
+                color: SemanticColors.positive,
                 isPositive: true
             )
         }
@@ -272,7 +272,7 @@ struct DiaryDailySummaryCard: View {
             return NutritionInsight(
                 icon: "waveform.path",  // Abstract signal icon
                 message: "Well balanced day – on track!",
-                color: .green,
+                color: SemanticColors.positive,
                 isPositive: true
             )
         }
@@ -566,16 +566,7 @@ struct PremiumMacroProgressView: View {
                 ZStack(alignment: .leading) {
                     // Background track
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    Color(.systemGray6),
-                                    Color(.systemGray5).opacity(0.9)
-                                ]),
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(Color(.secondarySystemBackground))
                         .frame(height: 8)
                     
                     // Progress fill

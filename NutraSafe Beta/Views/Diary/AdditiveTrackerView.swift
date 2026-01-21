@@ -100,7 +100,7 @@ struct AdditiveTrackerSection: View {
                             verdictSection(
                                 title: "In moderation",
                                 subtitle: "Generally fine in small amounts",
-                                color: .orange,
+                                color: SemanticColors.neutral,
                                 additives: cautionAdditives
                             )
                         }
@@ -153,7 +153,7 @@ struct AdditiveTrackerSection: View {
     // MARK: - Time Period Picker
 
     private var timePeriodPicker: some View {
-        let additiveAccent = Color.orange
+        let additiveAccent = SemanticColors.additive
 
         return HStack(spacing: 8) {
             ForEach(AdditiveTimePeriod.allCases, id: \.self) { period in
@@ -186,7 +186,7 @@ struct AdditiveTrackerSection: View {
                                 } else {
                                     // Frosted neutral background
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color(.systemGray6).opacity(0.4))
+                                        .fill(palette.tertiary.opacity(0.15))
                                 }
                             }
                         )
@@ -369,10 +369,10 @@ private struct ExpandableAdditiveRow: View {
                             if additive.childWarning {
                                 Text("·")
                                     .foregroundColor(palette.textTertiary)
-                                NutraSafeSignalIcon(color: .orange, size: 10)
+                                NutraSafeSignalIcon(color: SemanticColors.neutral, size: 10)
                                 Text("Note for children")
                                     .font(.system(size: 11, design: .rounded))
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(SemanticColors.neutral)
                             }
                         }
                     }
@@ -497,11 +497,11 @@ private struct ExpandableAdditiveRow: View {
 
     private var safetyColor: Color {
         if additive.healthScore >= 70 {
-            return .green
+            return SemanticColors.positive
         } else if additive.healthScore >= 40 {
-            return .orange
+            return SemanticColors.neutral
         } else {
-            return .red
+            return SemanticColors.caution
         }
     }
 }

@@ -126,6 +126,40 @@ struct AppPalette {
     }
 }
 
+// MARK: - Semantic Colors (Feature-Specific, Palette-Independent)
+// These colors have semantic meaning tied to specific features.
+// Use these instead of hardcoded Color.orange, Color.green, etc.
+
+struct SemanticColors {
+    // MARK: - Feature Accents
+
+    /// Nutrient/vitamin green - replaces Color(hex: "#3FD17C") and .green
+    static let nutrient = Color(red: 0.25, green: 0.82, blue: 0.49)
+
+    /// Additive/ingredient orange - replaces hardcoded Color.orange
+    static let additive = Color(red: 0.95, green: 0.55, blue: 0.2)
+
+    /// Water/hydration blue - replaces hardcoded .cyan
+    static let hydration = Color(red: 0.2, green: 0.7, blue: 0.9)
+
+    /// Exercise/activity orange-red - for burned calories, steps
+    static let activity = Color(red: 1.0, green: 0.5, blue: 0.3)
+
+    // MARK: - Insight States (for warnings, tips, achievements)
+
+    /// Positive insight (success, achievement, good news)
+    static let positive = Color(red: 0.3, green: 0.75, blue: 0.4)
+
+    /// Neutral insight (information, suggestion, tip)
+    static let neutral = Color(red: 0.95, green: 0.6, blue: 0.2)
+
+    /// Caution insight (warning, concern, attention needed)
+    static let caution = Color(red: 0.9, green: 0.35, blue: 0.35)
+
+    // MARK: - Streak/Achievement
+    static let streak = Color(red: 0.95, green: 0.55, blue: 0.2)
+}
+
 // MARK: - Design Tokens (Strict Onboarding Alignment)
 
 struct DesignTokens {
@@ -455,6 +489,35 @@ struct NutraSafeIconButton: View {
                         .fill(isDestructive ? Color.red.opacity(0.1) : palette.accent.opacity(0.1))
                 )
         }
+    }
+}
+
+/// Unified icon wrapper - consistent weight, size, and palette awareness
+/// Use this for standalone icons that need consistent styling
+struct NutraSafeIcon: View {
+    let name: String
+    var size: CGFloat = 20
+    var weight: Font.Weight = .medium
+    var color: Color? = nil
+    var filled: Bool = false
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    private var iconName: String {
+        if filled && !name.hasSuffix(".fill") {
+            return "\(name).fill"
+        }
+        return name
+    }
+
+    var body: some View {
+        Image(systemName: iconName)
+            .font(.system(size: size, weight: weight))
+            .foregroundColor(color ?? palette.textSecondary)
     }
 }
 

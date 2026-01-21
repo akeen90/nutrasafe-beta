@@ -77,6 +77,10 @@ struct FoodDetailViewFromSearch: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var diaryDataManager: DiaryDataManager
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var showingDiaryLimitError = false
     @State private var showingPaywall = false
@@ -431,9 +435,9 @@ struct FoodDetailViewFromSearch: View {
 
         var color: Color {
             switch self {
-            case .additives: return .purple
-            case .allergies: return .red
-            case .vitamins: return .green
+            case .additives: return SemanticColors.additive
+            case .allergies: return SemanticColors.caution
+            case .vitamins: return SemanticColors.nutrient
             }
         }
     }
@@ -1174,7 +1178,7 @@ struct FoodDetailViewFromSearch: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.red)
+                    .background(SemanticColors.caution)
                     .foregroundColor(.white)
                     .clipShape(Capsule())
                 }
@@ -1570,9 +1574,9 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
-        .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+        .background(colorScheme == .dark ? Color.midnightBackground : Color.adaptiveCard)
         .presentationDragIndicator(.visible)
-        .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+        .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color.adaptiveCard)
         .onAppear {
             // Only initialize once per view instance, even if .onAppear is called multiple times
             guard !hasInitialized else { return }
@@ -1921,7 +1925,7 @@ struct FoodDetailViewFromSearch: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(manualSearchText.isEmpty ? Color.gray : AppPalette.standard.accent)
+                        .background(manualSearchText.isEmpty ? palette.tertiary : AppPalette.standard.accent)
                         .cornerRadius(10)
                     }
                     .disabled(manualSearchText.isEmpty)
@@ -2351,6 +2355,11 @@ private var nutritionFactsSection: some View {
         let per100Salt: Double
         let isPerUnit: Bool
         let servingUnitLabel: String
+        @Environment(\.colorScheme) private var colorScheme
+
+        private var palette: AppPalette {
+            AppPalette.forCurrentUser(colorScheme: colorScheme)
+        }
 
         var body: some View {
             VStack(alignment: .leading, spacing: 24) {
@@ -2402,7 +2411,7 @@ private var nutritionFactsSection: some View {
                             .fill(Color.adaptiveCard)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color(.systemGray4), lineWidth: 1.5)
+                                    .stroke(palette.tertiary.opacity(0.3), lineWidth: 1.5)
                             )
                             .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
                     )
@@ -2427,7 +2436,7 @@ private var nutritionFactsSection: some View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
-            .background(Color(.systemGray6))
+            .background(palette.tertiary.opacity(0.15))
             .cornerRadius(16)
         }
 
@@ -2472,6 +2481,10 @@ private var nutritionFactsSection: some View {
         @Binding var showingInferredIngredientsSheet: Bool
         let isEstimatingIngredients: Bool
         let onEstimateIngredients: () -> Void
+
+        private var palette: AppPalette {
+            AppPalette.forCurrentUser(colorScheme: colorScheme)
+        }
 
         // Common additive/processed ingredient patterns to highlight
         private let concerningPatterns = [
@@ -2567,17 +2580,17 @@ private var nutritionFactsSection: some View {
                             Text("Pending")
                         }
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.orange)
+                        .foregroundColor(SemanticColors.neutral)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.12))
+                        .background(SemanticColors.neutral.opacity(0.12))
                         .clipShape(Capsule())
                     }
 
                     if status == .verified {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 16))
-                            .foregroundColor(.green)
+                            .foregroundColor(SemanticColors.positive)
                     }
 
                     Text("Ingredients")
@@ -2587,7 +2600,7 @@ private var nutritionFactsSection: some View {
                     Spacer()
                 }
                 .padding(16)
-                .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                .background(colorScheme == .dark ? Color.midnightCard : Color.adaptiveCard)
 
                 // Ingredients content
                 if !processedIngredients.isEmpty {
@@ -2595,7 +2608,7 @@ private var nutritionFactsSection: some View {
                     FlowingIngredientsView(ingredients: processedIngredients, colorScheme: colorScheme, userAllergens: userAllergens)
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
-                        .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                        .background(colorScheme == .dark ? Color.midnightCard : Color.adaptiveCard)
 
                     // Summary footer
                     if concerningCount > 0 {
@@ -2603,7 +2616,7 @@ private var nutritionFactsSection: some View {
                             HStack(spacing: 4) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .font(.system(size: 11))
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(SemanticColors.neutral)
                                 Text("\(concerningCount) additive\(concerningCount == 1 ? "" : "s") to review")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.secondary)
@@ -2612,7 +2625,7 @@ private var nutritionFactsSection: some View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(colorScheme == .dark ? Color.midnightCardSecondary.opacity(0.5) : Color(.systemGray6))
+                        .background(colorScheme == .dark ? Color.midnightCardSecondary.opacity(0.5) : palette.tertiary.opacity(0.15))
                     }
                 } else if ingredients == nil {
                     VStack(alignment: .center, spacing: 8) {
@@ -2625,7 +2638,7 @@ private var nutritionFactsSection: some View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(24)
-                    .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    .background(colorScheme == .dark ? Color.midnightCard : Color.adaptiveCard)
                 } else {
                     // No ingredients - offer AI estimation for generic foods
                     VStack(spacing: 12) {
@@ -2668,14 +2681,14 @@ private var nutritionFactsSection: some View {
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity)
-                    .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    .background(colorScheme == .dark ? Color.midnightCard : Color.adaptiveCard)
                 }
             }
-            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+            .background(colorScheme == .dark ? Color.midnightCard : Color.adaptiveCard)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(colorScheme == .dark ? Color.gray.opacity(0.2) : Color(.systemGray4), lineWidth: 1.5)
+                    .stroke(colorScheme == .dark ? palette.tertiary.opacity(0.2) : palette.tertiary.opacity(0.3), lineWidth: 1.5)
             )
             .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
             .padding(.horizontal, 16)
@@ -2848,21 +2861,21 @@ private var nutritionFactsSection: some View {
                     if additiveAnalysis != nil {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
+                                .foregroundColor(SemanticColors.neutral)
                                 .font(.system(size: 14))
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Child Activity Warning")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(SemanticColors.neutral)
                                 Text("Contains additives that may affect activity and attention in children")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(SemanticColors.neutral)
                                     .lineLimit(nil)
                             }
                             Spacer()
                         }
                         .padding(10)
-                        .background(Color.orange.opacity(0.05))
+                        .background(SemanticColors.neutral.opacity(0.05))
                         .cornerRadius(8)
                     }
 
@@ -2871,10 +2884,10 @@ private var nutritionFactsSection: some View {
                         ForEach(detectedAllergens, id: \.rawValue) { allergen in
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
+                                    .foregroundColor(SemanticColors.caution)
                                 Text("Contains \(allergen.displayName)")
                                     .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.red)
+                                    .foregroundColor(SemanticColors.caution)
                                 Spacer()
                             }
                         }
@@ -2882,10 +2895,10 @@ private var nutritionFactsSection: some View {
                         if additiveAnalysis?.hasChildConcernAdditives != true {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
+                                    .foregroundColor(SemanticColors.positive)
                                 Text("No allergens or child-concern additives detected")
                                     .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.green)
+                                    .foregroundColor(SemanticColors.positive)
                                 Spacer()
                             }
                         } else {
@@ -2927,7 +2940,7 @@ private var nutritionFactsSection: some View {
             }
         }
         .padding(.horizontal, 16)
-        .background(Color(.systemGray6))
+        .background(palette.tertiary.opacity(0.15))
         .cornerRadius(12)
     }
 
@@ -2956,7 +2969,7 @@ private var nutritionFactsSection: some View {
             VStack(alignment: .center, spacing: 12) {
                 Image(systemName: "info.circle.fill")
                     .font(.largeTitle)
-                    .foregroundColor(.orange)
+                    .foregroundColor(SemanticColors.neutral)
 
                 Text("Something not looking right?")
                     .font(.system(size: 20, weight: .bold))
@@ -2991,18 +3004,18 @@ private var nutritionFactsSection: some View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(isNotifyingTeam ? Color.gray : Color.orange)
+                        .background(isNotifyingTeam ? palette.tertiary : SemanticColors.neutral)
                         .cornerRadius(10)
                     }
                     .disabled(isNotifyingTeam)
                 }
             }
             .padding(16)
-            .background(Color.orange.opacity(0.05))
+            .background(SemanticColors.neutral.opacity(0.05))
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                    .stroke(SemanticColors.neutral.opacity(0.3), lineWidth: 1)
             )
         }
     }
@@ -3013,7 +3026,7 @@ private var nutritionFactsSection: some View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.green)
+                        .foregroundColor(SemanticColors.positive)
                     Text("Ingredients Submitted for Review")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
@@ -3581,8 +3594,8 @@ private var nutritionFactsSection: some View {
                 .frame(width: 36, height: 28)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(isActive ? Color.accentColor.opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color.accentColor.opacity(0.08) : Color(.systemGray6)))
+                        .stroke(isActive ? Color.accentColor.opacity(0.5) : palette.tertiary.opacity(0.3), lineWidth: 1)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color.accentColor.opacity(0.08) : palette.tertiary.opacity(0.15)))
                 )
         }
         .buttonStyle(PlainButtonStyle())
@@ -3592,7 +3605,7 @@ private var nutritionFactsSection: some View {
     private func selectionIndicator(isSelected: Bool) -> some View {
         ZStack {
             Circle()
-                .stroke(isSelected ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1.5)
+                .stroke(isSelected ? Color.accentColor : palette.tertiary.opacity(0.3), lineWidth: 1.5)
                 .frame(width: 22, height: 22)
             if isSelected {
                 Circle()
@@ -3672,7 +3685,11 @@ private var nutritionFactsSection: some View {
 
     // MARK: - Serving Controls Section
     private var servingControlsSection: some View {
-        VStack(spacing: 16) {
+        // Pre-compute colors to help Swift type-checker
+        let tertiaryBg = palette.tertiary.opacity(0.15)
+        let tertiaryBgLight = palette.tertiary.opacity(0.2)
+
+        return VStack(spacing: 16) {
             // MARK: - Serving Sizes Section (shown for ALL foods)
             VStack(spacing: 0) {
                 // Header row - aligned with content rows
@@ -3743,8 +3760,8 @@ private var nutritionFactsSection: some View {
                                             .frame(width: 36, height: 28)
                                             .background(
                                                 RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(isSelected ? Color.accentColor.opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
-                                                    .background(RoundedRectangle(cornerRadius: 6).fill(isSelected ? Color.accentColor.opacity(0.08) : Color(.systemGray6)))
+                                                    .stroke(isSelected ? Color.accentColor.opacity(0.5) : palette.tertiary.opacity(0.3), lineWidth: 1)
+                                                    .background(RoundedRectangle(cornerRadius: 6).fill(isSelected ? Color.accentColor.opacity(0.08) : tertiaryBg))
                                             )
                                     }
                                     .buttonStyle(PlainButtonStyle())
@@ -3774,7 +3791,7 @@ private var nutritionFactsSection: some View {
                                     // Checkbox - right edge
                                     ZStack {
                                         Circle()
-                                            .stroke(isSelected ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1.5)
+                                            .stroke(isSelected ? Color.accentColor : palette.tertiary.opacity(0.3), lineWidth: 1.5)
                                             .frame(width: 22, height: 22)
                                         if isSelected {
                                             Circle()
@@ -3807,8 +3824,8 @@ private var nutritionFactsSection: some View {
                             .frame(width: 36, height: 28)
                             .background(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(.systemGray6)))
+                                    .stroke(palette.tertiary.opacity(0.3), lineWidth: 1)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(tertiaryBg))
                             )
 
                         // Weight input fields - flexible
@@ -3869,7 +3886,7 @@ private var nutritionFactsSection: some View {
                         // Checkbox - right edge
                         ZStack {
                             Circle()
-                                .stroke(isCustomSelected ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1.5)
+                                .stroke(isCustomSelected ? Color.accentColor : palette.tertiary.opacity(0.3), lineWidth: 1.5)
                                 .frame(width: 22, height: 22)
                             if isCustomSelected {
                                 Circle()
@@ -3912,7 +3929,7 @@ private var nutritionFactsSection: some View {
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 16).fill(selectedMeal == meal ? AppPalette.standard.accent : Color.gray.opacity(0.15))
+                                        RoundedRectangle(cornerRadius: 16).fill(selectedMeal == meal ? AppPalette.standard.accent : palette.tertiary.opacity(0.15))
                                     )
                             }
                         }
@@ -3977,7 +3994,7 @@ private var nutritionFactsSection: some View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color(.systemGray6)))
+        .background(RoundedRectangle(cornerRadius: 16).fill(tertiaryBg))
         .overlay(
             // Multiplier picker popup overlay
             Group {
@@ -4010,7 +4027,7 @@ private var nutritionFactsSection: some View {
                                             .frame(width: 52, height: 44)
                                             .background(
                                                 RoundedRectangle(cornerRadius: 10)
-                                                    .fill(isCurrentValue ? Color.accentColor : Color(.systemGray5))
+                                                    .fill(isCurrentValue ? Color.accentColor : tertiaryBgLight)
                                             )
                                     }
                                     .buttonStyle(PlainButtonStyle())
@@ -4124,6 +4141,11 @@ private var nutritionFactsSection: some View {
         let sugarScore: SugarContentScore?
         @Binding var showingInfo: Bool
         @Binding var showingSugarInfo: Bool
+        @Environment(\.colorScheme) private var colorScheme
+
+        private var palette: AppPalette {
+            AppPalette.forCurrentUser(colorScheme: colorScheme)
+        }
 
         private func color(for grade: String) -> Color {
             switch grade {
@@ -4245,7 +4267,7 @@ private var nutritionFactsSection: some View {
                             ZStack {
                                 // Background circle for icon
                                 Circle()
-                                    .fill(selectedWatchTab == tab ? tab.color : Color(.systemGray5))
+                                    .fill(selectedWatchTab == tab ? tab.color : palette.tertiary.opacity(0.2))
                                     .frame(width: 44, height: 44)
 
                                 Image(systemName: tab.icon)
@@ -4348,20 +4370,20 @@ private var nutritionFactsSection: some View {
                 ForEach(0..<3, id: \.self) { _ in
                     HStack(spacing: 12) {
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.2))
+                            .fill(palette.tertiary.opacity(0.2))
                             .frame(width: 50, height: 24)
                         VStack(alignment: .leading, spacing: 4) {
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.15))
+                                .fill(palette.tertiary.opacity(0.15))
                                 .frame(height: 14)
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.1))
+                                .fill(palette.tertiary.opacity(0.1))
                                 .frame(width: 120, height: 10)
                         }
                         Spacer()
                     }
                     .padding(10)
-                    .background(Color.gray.opacity(0.05))
+                    .background(palette.tertiary.opacity(0.05))
                     .cornerRadius(8)
                 }
             }
@@ -4372,11 +4394,11 @@ private var nutritionFactsSection: some View {
             VStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(Color.purple.opacity(0.12))
+                        .fill(SemanticColors.additive.opacity(0.12))
                         .frame(width: 44, height: 44)
                     Image(systemName: "lock.fill")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.purple)
+                        .foregroundColor(SemanticColors.additive)
                 }
 
                 Text("Additive Analysis")
@@ -4393,7 +4415,7 @@ private var nutritionFactsSection: some View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
-                        .background(Capsule().fill(Color.purple))
+                        .background(Capsule().fill(SemanticColors.additive))
                 }
                 .padding(.top, 4)
             }
@@ -4427,7 +4449,7 @@ private var nutritionFactsSection: some View {
                     VStack(spacing: 12) {
                         Image(systemName: "checkmark.shield.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(.green)
+                            .foregroundColor(SemanticColors.positive)
 
                         Text("No Common Allergens Detected")
                             .font(.system(size: 16, weight: .semibold))
@@ -4449,7 +4471,7 @@ private var nutritionFactsSection: some View {
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: "exclamationmark.circle")
                         .font(.system(size: 12))
-                        .foregroundColor(.orange)
+                        .foregroundColor(SemanticColors.neutral)
                     Text("Allergens may still be present if not shown. Ingredients may be outdated or incomplete. Always check the label if you have an allergy or intolerance.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -4535,7 +4557,7 @@ private var nutritionFactsSection: some View {
                                 .id(nutrientId)
                         } else {
                             Text("⚠️ Could not load info for: \(nutrientId)")
-                                .foregroundColor(.red)
+                                .foregroundColor(SemanticColors.caution)
                         }
                     }
                 }
@@ -4850,12 +4872,12 @@ struct AllergenWarningCard: View {
             // Warning icon
             ZStack {
                 Circle()
-                    .fill(Color.red.opacity(0.15))
+                    .fill(SemanticColors.caution.opacity(0.15))
                     .frame(width: 44, height: 44)
 
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.red)
+                    .foregroundColor(SemanticColors.caution)
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -4876,10 +4898,10 @@ struct AllergenWarningCard: View {
                 .fill(Color.adaptiveCard)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.red.opacity(0.2), lineWidth: 1.5)
+                        .strokeBorder(SemanticColors.caution.opacity(0.2), lineWidth: 1.5)
                 )
         )
-        .shadow(color: Color.red.opacity(0.08), radius: 8, x: 0, y: 2)
+        .shadow(color: SemanticColors.caution.opacity(0.08), radius: 8, x: 0, y: 2)
     }
 }
 
@@ -5142,7 +5164,7 @@ struct VitaminMineralRow: View {
         HStack(spacing: 12) {
             Image(systemName: "leaf.fill")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.green)
+                .foregroundColor(SemanticColors.positive)
 
             Text(name)
                 .font(.system(size: 14, weight: .medium))
@@ -5168,7 +5190,12 @@ struct ExpandableSection<Content: View>: View {
     let systemImage: String
     let content: () -> Content
     @State private var isExpanded = false
-    
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Button(action: {
@@ -5194,7 +5221,7 @@ struct ExpandableSection<Content: View>: View {
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
                 .padding(.horizontal, 16)
-                .background(Color(.systemGray6))
+                .background(palette.tertiary.opacity(0.15))
                 .cornerRadius(isExpanded ? 12 : 12)
             }
             .buttonStyle(PlainButtonStyle())
@@ -5218,7 +5245,12 @@ struct VitaminRow: View {
     let name: String
     let amount: String
     let dailyValue: String
-    
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         HStack {
             Text(name)
@@ -5238,7 +5270,7 @@ struct VitaminRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
-        .background(Color(.systemGray6))
+        .background(palette.tertiary.opacity(0.15))
         .cornerRadius(8)
     }
 }
@@ -5314,7 +5346,7 @@ struct NutrientInfoCard: View {
                     // Expand/collapse chevron
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.green)
+                        .foregroundColor(SemanticColors.positive)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .animation(.spring(response: 0.3), value: isExpanded)
                 }
@@ -5408,10 +5440,10 @@ struct NutrientInfoCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.green.opacity(0.08))
+                .fill(SemanticColors.positive.opacity(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(Color.green.opacity(0.3), lineWidth: 1.5)
+                        .strokeBorder(SemanticColors.positive.opacity(0.3), lineWidth: 1.5)
                 )
         )
         .fullScreenCover(isPresented: $showingCitations) {
@@ -5686,6 +5718,11 @@ struct NutraSafeGradeInfoView: View {
     let result: ProcessingScorer.NutraSafeProcessingGradeResult
     let food: FoodSearchResult
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     private func color(for grade: String) -> Color {
         switch grade.uppercased() {
@@ -5810,7 +5847,7 @@ struct NutraSafeGradeInfoView: View {
                                 }
                                 .padding(.vertical, 8)
                                 .padding(.horizontal, 12)
-                                .background(Color(.systemGray6))
+                                .background(palette.tertiary.opacity(0.15))
                                 .cornerRadius(10)
                             }
                         }
@@ -5833,6 +5870,11 @@ struct SugarScoreInfoView: View {
     let food: FoodSearchResult
     let perServingSugar: Double
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     private func description(for grade: SugarGrade) -> String {
         switch grade {
@@ -5905,7 +5947,7 @@ struct SugarScoreInfoView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color(.systemGray6))
+                .fill(palette.tertiary.opacity(0.15))
         )
     }
 
@@ -5949,7 +5991,7 @@ struct SugarScoreInfoView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "leaf.fill")
                                 .font(.system(size: 20))
-                                .foregroundColor(.green)
+                                .foregroundColor(SemanticColors.positive)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Natural Fruit Sugar")
@@ -5965,10 +6007,10 @@ struct SugarScoreInfoView: View {
                         .padding(14)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.green.opacity(0.1))
+                                .fill(SemanticColors.positive.opacity(0.1))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                                        .stroke(SemanticColors.positive.opacity(0.3), lineWidth: 1)
                                 )
                         )
                     }
@@ -6135,7 +6177,7 @@ struct SugarScoreInfoView: View {
                             .padding(12)
                             .background(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(.systemGray6))
+                                    .fill(palette.tertiary.opacity(0.15))
                             )
                         }
 
@@ -6147,7 +6189,7 @@ struct SugarScoreInfoView: View {
                 }
                 .padding(20)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.adaptiveBackground)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -6199,7 +6241,7 @@ struct BarcodeScannerForEnhancement: View {
                     VStack(spacing: 20) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 60))
-                            .foregroundColor(.green)
+                            .foregroundColor(SemanticColors.positive)
 
                         Text("Barcode Scanned")
                             .font(.title2.weight(.bold))
@@ -6207,7 +6249,7 @@ struct BarcodeScannerForEnhancement: View {
                         Text(code)
                             .font(.system(.title3, design: .monospaced))
                             .padding()
-                            .background(Color.gray.opacity(0.1))
+                            .background(AppPalette.standard.tertiary.opacity(0.1))
                             .cornerRadius(8)
 
                         Button(action: {

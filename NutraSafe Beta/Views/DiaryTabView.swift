@@ -900,7 +900,7 @@ struct DiaryTabView: View {
                 targetCalories: 450,
                 currentCalories: breakfastCalories,
                 foods: $breakfastFoods,
-                color: Color(.systemOrange),
+                color: palette.accent,
                 selectedTab: $selectedTab,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
@@ -915,7 +915,7 @@ struct DiaryTabView: View {
                 targetCalories: 600,
                 currentCalories: lunchCalories,
                 foods: $lunchFoods,
-                color: Color(.systemGreen),
+                color: SemanticColors.nutrient,
                 selectedTab: $selectedTab,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
@@ -930,7 +930,7 @@ struct DiaryTabView: View {
                 targetCalories: 600,
                 currentCalories: dinnerCalories,
                 foods: $dinnerFoods,
-                color: Color(.systemBlue),
+                color: palette.primary,
                 selectedTab: $selectedTab,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
@@ -945,7 +945,7 @@ struct DiaryTabView: View {
                 targetCalories: 150,
                 currentCalories: snackCalories,
                 foods: $snackFoods,
-                color: Color(.systemPurple),
+                color: palette.secondary,
                 selectedTab: $selectedTab,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
@@ -992,7 +992,7 @@ struct DiaryTabView: View {
             // Free users see unlock card
             PremiumUnlockCard(
                 icon: "chart.bar.doc.horizontal",
-                iconColor: .orange,
+                iconColor: SemanticColors.additive,
                 title: "Food Insights",
                 subtitle: "Understand what's really in your food with detailed additive tracking and vitamin & mineral analysis",
                 benefits: [
@@ -1010,9 +1010,9 @@ struct DiaryTabView: View {
     private func accentColor(for tab: InsightsSubTab) -> Color {
         switch tab {
         case .additives:
-            return .orange
+            return SemanticColors.additive
         case .nutrients:
-            return Color(hex: "#3FD17C") // Green/teal for nutrients
+            return SemanticColors.nutrient
         }
     }
 
@@ -1054,7 +1054,7 @@ struct DiaryTabView: View {
                                 } else {
                                     // Frosted neutral background for unselected
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemGray6).opacity(0.4))
+                                        .fill(palette.tertiary.opacity(0.15))
                                 }
                             }
                         )
@@ -1392,8 +1392,13 @@ struct CategoricalNutrientTrackingView: View {
     @StateObject private var vm = CategoricalNutrientViewModel()
     @State private var showingGaps: Bool = false
     @State private var selectedNutrientRow: CoverageRow?
+    @Environment(\.colorScheme) private var colorScheme
 
     @Binding var selectedDate: Date
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     // Week navigation state
     @State private var weekOffset: Int = 0 // 0 = current week, -1 = last week, etc.
@@ -1512,7 +1517,7 @@ struct CategoricalNutrientTrackingView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color(.systemGray6))
+                .background(palette.tertiary.opacity(0.15))
                 .cornerRadius(10)
             }
             .padding(.horizontal, 20)
@@ -1540,7 +1545,7 @@ struct CategoricalNutrientTrackingView: View {
             }
 
             // Week navigation buttons - soft, secondary styling
-            let nutrientAccent = Color(hex: "#3FD17C")
+            let nutrientAccent = SemanticColors.nutrient
             let isCurrentWeek = weekOffset == 0
 
             HStack(spacing: 8) {
@@ -1560,7 +1565,7 @@ struct CategoricalNutrientTrackingView: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(.systemGray6).opacity(0.5))
+                            .fill(palette.tertiary.opacity(0.15))
                     )
                 }
                 .buttonStyle(SubTabButtonStyle())
@@ -1598,7 +1603,7 @@ struct CategoricalNutrientTrackingView: View {
                                     .stroke(nutrientAccent.opacity(0.25), lineWidth: 1)
                             } else {
                                 RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(.systemGray6).opacity(0.5))
+                                    .fill(palette.tertiary.opacity(0.15))
                             }
                         }
                     )
@@ -1621,7 +1626,7 @@ struct CategoricalNutrientTrackingView: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(.systemGray6).opacity(0.5))
+                            .fill(palette.tertiary.opacity(0.15))
                     )
                 }
                 .buttonStyle(SubTabButtonStyle())
@@ -1651,7 +1656,7 @@ struct CategoricalNutrientTrackingView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .center, spacing: 8) {
                         // Signal icon - abstract indicator of nutrient tracking
-                        SignalIconContainer(color: Color(hex: "#3FD17C"), size: 28)
+                        SignalIconContainer(color: SemanticColors.nutrient, size: 28)
 
                         Text("Your Daily Nutrients")
                             .font(.system(size: 20, weight: .bold))
@@ -1768,20 +1773,20 @@ struct CategoricalNutrientTrackingView: View {
                     return (
                         text: "Found \(nutrientsFound) nutrients from \(daysLogged) day logged this week.",
                         icon: "leaf.fill",
-                        color: Color(hex: "#3FD17C")
+                        color: SemanticColors.nutrient
                     )
                 } else {
                     return (
                         text: "Found \(nutrientsFound) nutrients across \(daysLogged) days logged this week.",
                         icon: "leaf.fill",
-                        color: Color(hex: "#3FD17C")
+                        color: SemanticColors.nutrient
                     )
                 }
             } else {
                 return (
                     text: "Meals were logged but no nutrient data was captured this week.",
                     icon: "exclamationmark.triangle",
-                    color: .orange
+                    color: SemanticColors.neutral
                 )
             }
         }
@@ -1802,7 +1807,7 @@ struct CategoricalNutrientTrackingView: View {
             return (
                 text: "No meals logged in the last 3 days.",
                 icon: "calendar.badge.clock",
-                color: .orange
+                color: SemanticColors.neutral
             )
         }
 
@@ -1814,7 +1819,7 @@ struct CategoricalNutrientTrackingView: View {
                 return (
                     text: "Found \(nutrientsFound) nutrients from 1 day logged.",
                     icon: "leaf.fill",
-                    color: Color(hex: "#3FD17C")
+                    color: SemanticColors.nutrient
                 )
             } else {
                 return (
@@ -1841,7 +1846,7 @@ struct CategoricalNutrientTrackingView: View {
             return (
                 text: "\(consistent.count) nutrients appearing consistently this week.",
                 icon: "star.fill",
-                color: Color(hex: "#3FD17C")
+                color: SemanticColors.nutrient
             )
         }
 
@@ -1850,7 +1855,7 @@ struct CategoricalNutrientTrackingView: View {
             return (
                 text: "\(consistent.count) consistent nutrients detected this week.",
                 icon: "checkmark.circle.fill",
-                color: Color(hex: "#3FD17C")
+                color: SemanticColors.nutrient
             )
         }
 
@@ -1863,7 +1868,7 @@ struct CategoricalNutrientTrackingView: View {
                 return (
                     text: "\(gapNames) appear less frequently in your meals.",
                     icon: "lightbulb.fill",
-                    color: .orange
+                    color: SemanticColors.neutral
                 )
             }
         }
@@ -1873,7 +1878,7 @@ struct CategoricalNutrientTrackingView: View {
             return (
                 text: "\(nutrientsFound) nutrients found across \(daysLogged) days.",
                 icon: "leaf.fill",
-                color: Color(hex: "#57A5FF")
+                color: palette.accent
             )
         }
 
@@ -1919,13 +1924,13 @@ struct CategoricalNutrientTrackingView: View {
                 Circle()
                     .fill(
                         nutrientCount > 0
-                            ? Color(hex: "#3FD17C")
-                            : Color(.systemGray5)
+                            ? SemanticColors.nutrient
+                            : palette.tertiary.opacity(0.2)
                     )
                     .frame(width: 36, height: 36)
                     .overlay(
                         Circle()
-                            .stroke(isToday ? Color(hex: "#3FD17C") : Color.clear, lineWidth: 2)
+                            .stroke(isToday ? SemanticColors.nutrient : Color.clear, lineWidth: 2)
                             .padding(-2)
                     )
 
@@ -1952,7 +1957,7 @@ struct CategoricalNutrientTrackingView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 8) {
                 // Signal icon - abstract indicator matching NutraSafe design system
-                SignalIconContainer(color: Color(hex: "#3FD17C"), size: 28)
+                SignalIconContainer(color: SemanticColors.nutrient, size: 28)
 
                 Text("Nutrient Details")
                     .font(.system(size: 20, weight: .bold))
@@ -2019,12 +2024,12 @@ struct CategoricalNutrientTrackingView: View {
                                     .fill(
                                         foodCount > 0
                                             ? LinearGradient(
-                                                colors: [Color(hex: "#3FD17C").opacity(0.8), Color(hex: "#3FD17C")],
+                                                colors: [SemanticColors.nutrient.opacity(0.8), SemanticColors.nutrient],
                                                 startPoint: .top,
                                                 endPoint: .bottom
                                             )
                                             : LinearGradient(
-                                                colors: [Color(.systemGray5), Color(.systemGray5)],
+                                                colors: [palette.tertiary.opacity(0.2), palette.tertiary.opacity(0.2)],
                                                 startPoint: .top,
                                                 endPoint: .bottom
                                             )
@@ -2089,13 +2094,13 @@ struct CategoricalNutrientTrackingView: View {
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill(totalFoods > 0 ? Color(hex: "#3FD17C").opacity(0.12) : Color(.systemGray5).opacity(0.3))
+                .fill(totalFoods > 0 ? SemanticColors.nutrient.opacity(0.12) : palette.tertiary.opacity(0.1))
         )
         .overlay(
             Capsule()
-                .stroke(totalFoods > 0 ? Color(hex: "#3FD17C").opacity(0.3) : Color.clear, lineWidth: 1)
+                .stroke(totalFoods > 0 ? SemanticColors.nutrient.opacity(0.3) : Color.clear, lineWidth: 1)
         )
-        .foregroundColor(totalFoods > 0 ? Color(hex: "#3FD17C") : .secondary)
+        .foregroundColor(totalFoods > 0 ? SemanticColors.nutrient : .secondary)
     }
 
     private var emptyState: some View {

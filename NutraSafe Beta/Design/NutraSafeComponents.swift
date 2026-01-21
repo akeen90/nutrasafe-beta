@@ -552,6 +552,112 @@ struct NutraSafeListRow<Content: View>: View {
     }
 }
 
+// MARK: - NutraSafe Signal Icon (Unified Insight/Warning Icon)
+
+/// A neutral, flexible signal icon for insights, warnings, and notifications.
+/// This replaces generic box icons and alert triangles with a calm, observational symbol.
+/// Use this instead of exclamationmark.triangle or other alarm-like icons.
+struct NutraSafeSignalIcon: View {
+    let color: Color
+    var size: CGFloat = 18
+
+    var body: some View {
+        ZStack {
+            // Inner dot (core signal)
+            Circle()
+                .fill(color)
+                .frame(width: size * 0.33, height: size * 0.33)
+
+            // Middle arc (signal wave)
+            Circle()
+                .trim(from: 0.0, to: 0.25)
+                .stroke(color, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
+                .frame(width: size * 0.72, height: size * 0.72)
+                .rotationEffect(.degrees(-45))
+
+            // Outer arc (signal wave, faded)
+            Circle()
+                .trim(from: 0.0, to: 0.25)
+                .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
+                .frame(width: size, height: size)
+                .rotationEffect(.degrees(-45))
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Rounded container for signal icon with background
+struct SignalIconContainer: View {
+    let color: Color
+    var size: CGFloat = 32
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                .frame(width: size, height: size)
+
+            NutraSafeSignalIcon(color: color, size: size * 0.55)
+        }
+    }
+}
+
+// MARK: - NutraSafe Insight Banner
+
+/// Insight banner for nutrition tips, warnings, and achievements.
+/// Uses the signal icon for a calm, observational tone.
+struct NutraSafeInsightBanner: View {
+    let message: String
+    var level: InsightLevel = .neutral
+    var showIcon: Bool = true
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    enum InsightLevel {
+        case positive   // Good news, achievement, success
+        case neutral    // Information, suggestion, tip
+        case caution    // Warning, concern, attention needed
+
+        var color: Color {
+            switch self {
+            case .positive: return SemanticColors.positive
+            case .neutral: return SemanticColors.neutral
+            case .caution: return SemanticColors.caution
+            }
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.md) {
+            if showIcon {
+                NutraSafeSignalIcon(color: level.color, size: 20)
+            }
+
+            Text(message)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(palette.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(DesignTokens.Spacing.lineSpacing)
+
+            Spacer(minLength: 0)
+        }
+        .padding(DesignTokens.Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(level.color.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .stroke(level.color.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+}
+
 // MARK: - Preview
 
 #Preview {

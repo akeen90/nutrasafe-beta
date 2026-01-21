@@ -176,7 +176,7 @@ struct WaterMetricCard: View {
                     ZStack(alignment: .bottom) {
                         // Glass outline
                         WaterVesselShape()
-                            .stroke(Color(.systemGray3), lineWidth: 2)
+                            .stroke(palette.tertiary.opacity(0.4), lineWidth: 2)
                             .frame(width: 44, height: 50)
 
                         // Water fill
@@ -184,8 +184,8 @@ struct WaterMetricCard: View {
                             .fill(
                                 LinearGradient(
                                     colors: isComplete
-                                        ? [Color.green.opacity(0.6), Color.green]
-                                        : [Color.cyan.opacity(0.5), Color.cyan],
+                                        ? [SemanticColors.positive.opacity(0.6), SemanticColors.positive]
+                                        : [SemanticColors.hydration.opacity(0.5), SemanticColors.hydration],
                                     startPoint: .top,
                                     endPoint: .bottom
                                 )
@@ -216,7 +216,7 @@ struct WaterMetricCard: View {
                     HStack(spacing: 2) {
                         Text("\(waterCount)")
                             .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(isComplete ? .green : palette.textPrimary)
+                            .foregroundColor(isComplete ? SemanticColors.positive : palette.textPrimary)
                         Text("/\(dailyGoal)")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(palette.textTertiary)
@@ -238,12 +238,12 @@ struct WaterMetricCard: View {
             Text("\(streak)")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
         }
-        .foregroundColor(.orange)
+        .foregroundColor(SemanticColors.streak)
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
         .background(
             Capsule()
-                .fill(Color.orange.opacity(0.15))
+                .fill(SemanticColors.streak.opacity(0.15))
         )
     }
 }
@@ -708,56 +708,8 @@ struct InsightBadgeButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - NutraSafe Signal Icon
-
-/// Abstract signal icon (dot + ripple arcs) used across NutraSafe insight system
-/// Represents "the app noticed something" without implying success/failure
-/// Use this icon for: additive detection, nutrient observations, status messages
-struct NutraSafeSignalIcon: View {
-    let color: Color
-    var size: CGFloat = 18
-
-    var body: some View {
-        ZStack {
-            // Inner dot
-            Circle()
-                .fill(color)
-                .frame(width: size * 0.33, height: size * 0.33)
-
-            // Middle arc
-            Circle()
-                .trim(from: 0.0, to: 0.25)
-                .stroke(color, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
-                .frame(width: size * 0.72, height: size * 0.72)
-                .rotationEffect(.degrees(-45))
-
-            // Outer arc
-            Circle()
-                .trim(from: 0.0, to: 0.25)
-                .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
-                .frame(width: size, height: size)
-                .rotationEffect(.degrees(-45))
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-/// Rounded container for signal icon with background
-struct SignalIconContainer: View {
-    let color: Color
-    var size: CGFloat = 32
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(color.opacity(colorScheme == .dark ? 0.2 : 0.12))
-                .frame(width: size, height: size)
-
-            NutraSafeSignalIcon(color: color, size: size * 0.55)
-        }
-    }
-}
+// NOTE: NutraSafeSignalIcon and SignalIconContainer moved to NutraSafeComponents.swift
+// They are now part of the unified design system
 
 // MARK: - Hero Calorie Ring
 
@@ -963,10 +915,10 @@ struct CompactMetricItem: View {
                         Text("\(streak)")
                             .font(.system(size: 9, weight: .bold))
                     }
-                    .foregroundColor(.orange)
+                    .foregroundColor(SemanticColors.streak)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.orange.opacity(0.15)))
+                    .background(Capsule().fill(SemanticColors.streak.opacity(0.15)))
                 }
             }
 

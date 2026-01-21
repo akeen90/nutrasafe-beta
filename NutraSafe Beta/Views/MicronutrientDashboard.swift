@@ -15,6 +15,7 @@ struct MicronutrientDashboard: View {
     @StateObject private var diaryDataManager = DiaryDataManager.shared
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appPalette) private var palette
     @State private var selectedFilter: DashboardFilter = .all
     @State private var selectedNutrient: MicronutrientSummary?
     @State private var showingTimeline = false
@@ -112,6 +113,14 @@ struct MicronutrientDashboard: View {
                 .environmentObject(subscriptionManager)
         }
         .task {
+            // ONE-TIME MIGRATION: Clear cached micronutrient scores to apply strict validation rules
+            // This removes incorrect historical data (e.g., Revels showing vitamin C)
+            let migrationKey = "strictMicronutrientMigrationV1Completed"
+            if !UserDefaults.standard.bool(forKey: migrationKey) {
+                await trackingManager.clearCachedScores()
+                UserDefaults.standard.set(true, forKey: migrationKey)
+            }
+
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedData, !isLoading else {
                 return
