@@ -144,6 +144,7 @@
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* SubscriptionManager.swift */; };
 		WELCOMESCREEN001BUILD /* WelcomeScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WELCOMESCREEN001FILE /* WelcomeScreenView.swift */; };
+		DIETREDESIGN001BUILD /* DietManagementRedesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = DIETREDESIGN001FILE /* DietManagementRedesign.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -280,6 +281,7 @@
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
 		WELCOMESCREEN001FILE /* WelcomeScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeScreenView.swift; sourceTree = "<group>"; };
+		DIETREDESIGN001FILE /* DietManagementRedesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietManagementRedesign.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -608,6 +610,7 @@
 				PAYWALL0001FILE /* PaywallView.swift */,
 				34316E0BF18B3895987C4AAF /* TermsAndConditionsView.swift */,
 				55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */,
+				DIETREDESIGN001FILE /* DietManagementRedesign.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -701,6 +704,7 @@
 				DB01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift in Sources */,
 				DB02WEEKD000CACHE000ACTOR /* WeekDataCache.swift in Sources */,
 				C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */,
+				DIETREDESIGN001BUILD /* DietManagementRedesign.swift in Sources */,
 				PAYWALL0001BUILD /* PaywallView.swift in Sources */,
 				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
 				A1234567890123456789012302 /* ContentView.swift in Sources */,

@@ -977,12 +977,13 @@ struct NutritionGoalsSection: View {
             Task { await loadNutritionGoals() }
         }
         .fullScreenCover(isPresented: $showingMacroManagement) {
-            MacroManagementView(
+            DietManagementRedesigned(
                 macroGoals: $macroGoals,
                 dietType: $selectedDietType,
                 customCarbLimit: $customCarbLimit,
                 onSave: saveMacroGoals
             )
+            .environmentObject(firebaseManager)
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
