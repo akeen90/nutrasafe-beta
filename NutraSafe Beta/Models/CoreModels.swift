@@ -1300,7 +1300,7 @@ enum DietType: String, CaseIterable, Codable {
         case .keto:
             return URL(string: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8153354/")
         case .lowCarb:
-            return URL(string: "https://www.diabetes.org.uk/guide-to-diabetes/enjoy-food/eating-with-diabetes/food-groups/low-carb-diet")
+            return URL(string: "https://www.nhs.uk/live-well/eat-well/food-types/starchy-foods-and-carbohydrates/")
         case .highProtein, .highProteinMax:
             return URL(string: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5852756/")
         case .mediterranean:
@@ -1315,7 +1315,7 @@ enum DietType: String, CaseIterable, Codable {
         switch self {
         case .flexible: return "NHS"
         case .keto: return "NIH Research"
-        case .lowCarb: return "Diabetes UK"
+        case .lowCarb: return "NHS"
         case .highProtein, .highProteinMax: return "NIH Research"
         case .mediterranean: return "British Heart Foundation"
         case .paleo: return "NIH Research"
