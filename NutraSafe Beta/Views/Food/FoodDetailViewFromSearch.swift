@@ -4147,13 +4147,14 @@ private var nutritionFactsSection: some View {
             AppPalette.forCurrentUser(colorScheme: colorScheme)
         }
 
-        private func color(for grade: String) -> Color {
+        // Onboarding-style soft colors for grades
+        private func gradeColor(for grade: String) -> Color {
             switch grade {
-            case "A+", "A": return .green
-            case "B": return .yellow
-            case "C", "D": return .orange
-            case "F": return .red
-            default: return .gray
+            case "A+", "A": return SemanticColors.positive
+            case "B": return SemanticColors.nutrient
+            case "C", "D": return SemanticColors.neutral
+            case "F": return SemanticColors.caution
+            default: return Color.secondary
             }
         }
 
@@ -4168,71 +4169,79 @@ private var nutritionFactsSection: some View {
         }
 
         var body: some View {
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 HStack(spacing: 12) {
                     if let ns = ns {
+                        // Onboarding-style grade card - calm and informational
                         Button(action: { showingInfo = true }) {
-                            VStack(spacing: 4) {
+                            VStack(spacing: 8) {
                                 Text("PROCESSING")
-                                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.secondary)
                                     .tracking(0.5)
+
                                 Text(ns.grade)
-                                    .font(.system(size: 26, weight: .black, design: .rounded))
-                                    .foregroundColor(color(for: ns.grade))
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(gradeColor(for: ns.grade))
+
                                 Text(ns.label)
-                                    .font(.system(size: 9, weight: .medium))
+                                    .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.primary)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
+
                                 Text("Tap to learn more")
-                                    .font(.system(size: 8, weight: .medium))
+                                    .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                                     .padding(.top, 2)
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 105)
+                            .padding(.vertical, 16)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(PlainButtonStyle())
                         .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(color(for: ns.grade).opacity(0.08))
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(gradeColor(for: ns.grade).opacity(0.08))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(color(for: ns.grade).opacity(0.2), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(gradeColor(for: ns.grade).opacity(0.15), lineWidth: 1)
                                 )
                         )
                     }
 
                     if let s = sugarScore, s.grade != .unknown {
+                        // Onboarding-style sugar card - calm and informational
                         Button(action: { showingSugarInfo = true }) {
-                            VStack(spacing: 4) {
+                            VStack(spacing: 8) {
                                 Text("SUGAR")
-                                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.secondary)
                                     .tracking(0.5)
+
                                 Text(s.grade.rawValue)
-                                    .font(.system(size: 26, weight: .black, design: .rounded))
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
                                     .foregroundColor(s.color)
+
                                 Text(sugarDescription(for: s.grade))
-                                    .font(.system(size: 9, weight: .medium))
+                                    .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.primary)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
+
                                 Text("Tap to learn more")
-                                    .font(.system(size: 8, weight: .medium))
+                                    .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                                     .padding(.top, 2)
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 105)
+                            .padding(.vertical, 16)
                             .background(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                RoundedRectangle(cornerRadius: 16)
                                     .fill(s.color.opacity(0.08))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .stroke(s.color.opacity(0.2), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(s.color.opacity(0.15), lineWidth: 1)
                                     )
                             )
                         }
@@ -4241,12 +4250,22 @@ private var nutritionFactsSection: some View {
                     }
                 }
 
-                // Helpful explanation for UK users unfamiliar with these scores
-                Text("A = closest to natural, F = heavily processed. Based on ingredients, additives, and nutritional balance.")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
+                // Onboarding-style info card for explanation
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 14))
+                        .foregroundColor(palette.accent)
+
+                    Text("A = closest to natural, F = heavily processed. Based on ingredients, additives, and nutritional balance.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(palette.accent.opacity(0.06))
+                )
             }
         }
     }
@@ -4255,36 +4274,36 @@ private var nutritionFactsSection: some View {
     // MARK: - Combined Watch Tabs Section
     private var watchTabsSection: some View {
         VStack(spacing: 0) {
-            // Modern Tab Selector with pill design
-            HStack(spacing: 8) {
+            // Onboarding-style tab selector - simpler, calmer design
+            HStack(spacing: 0) {
                 ForEach(WatchTab.allCases, id: \.self) { tab in
                     Button(action: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                        withAnimation(.easeOut(duration: 0.2)) {
                             selectedWatchTab = tab
                         }
                     }) {
-                        VStack(spacing: 6) {
+                        HStack(spacing: 8) {
+                            // Smaller icon in colored circle
                             ZStack {
-                                // Background circle for icon
                                 Circle()
-                                    .fill(selectedWatchTab == tab ? tab.color : palette.tertiary.opacity(0.2))
-                                    .frame(width: 44, height: 44)
+                                    .fill(selectedWatchTab == tab ? tab.color : palette.tertiary.opacity(0.15))
+                                    .frame(width: 32, height: 32)
 
                                 Image(systemName: tab.icon)
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(selectedWatchTab == tab ? .white : .secondary)
                             }
 
-                            Text(tab.rawValue)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(selectedWatchTab == tab ? tab.color : .secondary)
+                            Text(tab.rawValue.replacingOccurrences(of: " & ", with: "\n& "))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(selectedWatchTab == tab ? .primary : .secondary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .frame(height: 28)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 98)
+                        .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
+                        .padding(.horizontal, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(selectedWatchTab == tab ? tab.color.opacity(0.08) : Color.clear)
@@ -4293,7 +4312,7 @@ private var nutritionFactsSection: some View {
                     .buttonStyle(PlainButtonStyle())
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 8)
             .padding(.top, 12)
             .padding(.bottom, 8)
             .background(Color.adaptiveCard)
