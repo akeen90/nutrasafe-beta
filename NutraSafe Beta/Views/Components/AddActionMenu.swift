@@ -102,7 +102,6 @@ struct AddActionMenu: View {
                 // Section label
                 sectionHeader(title: "Quick Actions", icon: "bolt.fill")
                     .opacity(primaryActionsVisible ? 1 : 0)
-                    .offset(y: primaryActionsVisible ? 0 : 15)
 
                 // Primary action tiles - 2x2 grid
                 primaryActionsGrid
@@ -113,7 +112,6 @@ struct AddActionMenu: View {
                 // Section label for trackers
                 sectionHeader(title: "Quick Trackers", icon: "chart.line.uptrend.xyaxis")
                     .opacity(quickActionsVisible ? 1 : 0)
-                    .offset(y: quickActionsVisible ? 0 : 15)
 
                 // Secondary quick trackers
                 quickTrackersSection
@@ -257,7 +255,7 @@ struct AddActionMenu: View {
             // Bottom row
             HStack(spacing: 10) {
                 CommandTile(
-                    icon: "refrigerator.fill",
+                    icon: "calendar.badge.clock",
                     iconGradient: [Color(red: 0.95, green: 0.65, blue: 0.3), Color(red: 0.95, green: 0.5, blue: 0.25)],
                     title: "Use By",
                     subtitle: "Track freshness",
@@ -268,7 +266,7 @@ struct AddActionMenu: View {
                 }
 
                 CommandTile(
-                    icon: "camera.viewfinder",
+                    icon: "sparkles.rectangle.stack",
                     iconGradient: [Color(red: 0.0, green: 0.7, blue: 0.65), Color(red: 0.0, green: 0.6, blue: 0.55)],
                     title: "Meal Scan",
                     subtitle: "AI recognition",
@@ -292,14 +290,13 @@ struct AddActionMenu: View {
             // Water control - inline stepper style
             waterTrackerRow
                 .opacity(quickActionsVisible ? 1 : 0)
-                .offset(y: quickActionsVisible ? 0 : 12)
-                .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.25), value: quickActionsVisible)
+                .animation(.easeOut(duration: 0.2).delay(0.25), value: quickActionsVisible)
 
             trackerDivider
 
             // Weight row
             QuickTrackerRow(
-                icon: "scalemass.fill",
+                icon: "figure.stand.scale",
                 iconColor: Color(red: 0.95, green: 0.55, blue: 0.2),
                 title: "Weight",
                 subtitle: "Log weigh-in",
@@ -594,8 +591,7 @@ struct CommandTile: View {
             )
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .opacity(isVisible ? 1 : 0)
-            .offset(y: isVisible ? 0 : 15)
-            .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(delay), value: isVisible)
+            .animation(.easeOut(duration: 0.2).delay(delay), value: isVisible)
         }
         .buttonStyle(PlainButtonStyle())
         .simultaneousGesture(
@@ -623,10 +619,10 @@ struct CommandTile: View {
             LogFoodIcon(size: iconSize, gradient: iconGradient)
         case "barcode.viewfinder":
             BarcodeScanIcon(size: iconSize, gradient: iconGradient)
-        case "refrigerator.fill":
-            UseByCalendarIcon(size: iconSize, gradient: iconGradient)
-        case "camera.viewfinder":
-            MealScanIcon(size: iconSize, gradient: iconGradient)
+        case "calendar.badge.clock":
+            PremiumCalendarIcon(size: iconSize)
+        case "sparkles.rectangle.stack":
+            PremiumAIIcon(size: iconSize)
         default:
             // Fallback to SF Symbol with enhanced styling
             Image(systemName: icon)
@@ -744,8 +740,7 @@ struct QuickTrackerRow: View {
                         : Color.clear)
             )
             .opacity(isVisible ? 1 : 0)
-            .offset(y: isVisible ? 0 : 12)
-            .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(delay), value: isVisible)
+            .animation(.easeOut(duration: 0.2).delay(delay), value: isVisible)
         }
         .buttonStyle(PlainButtonStyle())
         .simultaneousGesture(
@@ -769,8 +764,8 @@ struct QuickTrackerRow: View {
     private var customIcon: some View {
         let iconSize: CGFloat = 18
         switch icon {
-        case "scalemass.fill":
-            BodyWeightIcon(size: iconSize, gradient: [iconColor, iconColor.opacity(0.8)])
+        case "figure.stand.scale":
+            PremiumBathroomScaleIcon(size: iconSize)
         case "heart.text.square.fill":
             ReactionIcon(size: iconSize, gradient: [iconColor, iconColor.opacity(0.8)])
         default:
@@ -1360,6 +1355,203 @@ struct BathroomScaleIcon: View {
                 .fill(color.opacity(0.6))
                 .frame(width: size * 0.08, height: size * 0.08)
                 .offset(y: -size * 0.15)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - AAA Premium Icons
+
+/// Premium Calendar Icon - Clean, modern calendar for Use By tracking
+struct PremiumCalendarIcon: View {
+    var size: CGFloat
+
+    var body: some View {
+        ZStack {
+            // Calendar body with rounded corners
+            RoundedRectangle(cornerRadius: size * 0.15)
+                .fill(Color.white)
+                .frame(width: size * 0.78, height: size * 0.72)
+                .offset(y: size * 0.06)
+
+            // Top header bar (month area)
+            UnevenRoundedRectangle(
+                topLeadingRadius: size * 0.15,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: size * 0.15
+            )
+            .fill(Color.white.opacity(0.7))
+            .frame(width: size * 0.78, height: size * 0.22)
+            .offset(y: -size * 0.19)
+
+            // Calendar rings/binding
+            HStack(spacing: size * 0.22) {
+                ForEach(0..<2, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: size * 0.02)
+                        .fill(Color.white)
+                        .frame(width: size * 0.08, height: size * 0.16)
+                }
+            }
+            .offset(y: -size * 0.33)
+
+            // Date grid - 3x2 dots representing dates
+            VStack(spacing: size * 0.1) {
+                ForEach(0..<2, id: \.self) { row in
+                    HStack(spacing: size * 0.12) {
+                        ForEach(0..<3, id: \.self) { col in
+                            RoundedRectangle(cornerRadius: size * 0.02)
+                                .fill(Color.white.opacity(row == 1 && col == 1 ? 1.0 : 0.4))
+                                .frame(width: size * 0.12, height: size * 0.08)
+                        }
+                    }
+                }
+            }
+            .offset(y: size * 0.15)
+
+            // Clock badge indicator (urgency/time tracking)
+            ZStack {
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: size * 0.28, height: size * 0.28)
+
+                // Clock hands
+                Rectangle()
+                    .fill(Color.white.opacity(0.5))
+                    .frame(width: size * 0.02, height: size * 0.09)
+                    .offset(y: -size * 0.025)
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.5))
+                    .frame(width: size * 0.02, height: size * 0.06)
+                    .rotationEffect(.degrees(90))
+                    .offset(x: size * 0.02)
+            }
+            .offset(x: size * 0.32, y: -size * 0.28)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Premium AI Icon - Modern sparkle design for AI-powered features
+struct PremiumAIIcon: View {
+    var size: CGFloat
+
+    var body: some View {
+        ZStack {
+            // Main large sparkle (4-pointed star)
+            FourPointStar()
+                .fill(Color.white)
+                .frame(width: size * 0.55, height: size * 0.55)
+                .offset(x: -size * 0.08, y: size * 0.05)
+
+            // Secondary sparkle (top right)
+            FourPointStar()
+                .fill(Color.white.opacity(0.85))
+                .frame(width: size * 0.32, height: size * 0.32)
+                .offset(x: size * 0.24, y: -size * 0.22)
+
+            // Tertiary sparkle (small, bottom)
+            FourPointStar()
+                .fill(Color.white.opacity(0.6))
+                .frame(width: size * 0.18, height: size * 0.18)
+                .offset(x: size * 0.28, y: size * 0.2)
+
+            // Tiny accent sparkle
+            FourPointStar()
+                .fill(Color.white.opacity(0.5))
+                .frame(width: size * 0.12, height: size * 0.12)
+                .offset(x: -size * 0.3, y: -size * 0.28)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Four-pointed star shape for AI sparkles
+struct FourPointStar: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let outerRadius = min(rect.width, rect.height) / 2
+        let innerRadius = outerRadius * 0.35
+
+        for i in 0..<8 {
+            let angle = (Double(i) * .pi / 4) - .pi / 2
+            let radius = i.isMultiple(of: 2) ? outerRadius : innerRadius
+            let point = CGPoint(
+                x: center.x + CGFloat(cos(angle)) * radius,
+                y: center.y + CGFloat(sin(angle)) * radius
+            )
+
+            if i == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Premium Bathroom Scale Icon - Classic analogue scale dial design
+struct PremiumBathroomScaleIcon: View {
+    var size: CGFloat
+
+    var body: some View {
+        ZStack {
+            // Scale platform base
+            UnevenRoundedRectangle(
+                topLeadingRadius: size * 0.35,
+                bottomLeadingRadius: size * 0.12,
+                bottomTrailingRadius: size * 0.12,
+                topTrailingRadius: size * 0.35
+            )
+            .fill(Color.white)
+            .frame(width: size * 0.9, height: size * 0.75)
+            .offset(y: size * 0.08)
+
+            // Dial circle (main display)
+            Circle()
+                .fill(Color.white.opacity(0.5))
+                .frame(width: size * 0.48, height: size * 0.48)
+                .offset(y: -size * 0.05)
+
+            // Inner dial ring
+            Circle()
+                .stroke(Color.white.opacity(0.4), lineWidth: size * 0.02)
+                .frame(width: size * 0.38, height: size * 0.38)
+                .offset(y: -size * 0.05)
+
+            // Scale tick marks
+            ForEach(0..<8, id: \.self) { i in
+                Rectangle()
+                    .fill(Color.white.opacity(0.35))
+                    .frame(width: size * 0.015, height: size * 0.06)
+                    .offset(y: -size * 0.17)
+                    .rotationEffect(.degrees(Double(i) * 45 - 90))
+            }
+            .offset(y: -size * 0.05)
+
+            // Needle/pointer
+            Rectangle()
+                .fill(Color.white)
+                .frame(width: size * 0.02, height: size * 0.15)
+                .offset(y: -size * 0.05)
+                .rotationEffect(.degrees(30))
+                .offset(y: -size * 0.05)
+
+            // Center pivot point
+            Circle()
+                .fill(Color.white)
+                .frame(width: size * 0.08, height: size * 0.08)
+                .offset(y: -size * 0.05)
+
+            // Platform surface highlight
+            RoundedRectangle(cornerRadius: size * 0.02)
+                .fill(Color.white.opacity(0.35))
+                .frame(width: size * 0.5, height: size * 0.04)
+                .offset(y: size * 0.32)
         }
         .frame(width: size, height: size)
     }
