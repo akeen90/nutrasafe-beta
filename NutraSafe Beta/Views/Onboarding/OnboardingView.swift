@@ -2,18 +2,29 @@
 //  OnboardingView.swift
 //  NutraSafe Beta
 //
-//  Lean 4-page onboarding: Welcome → Profile → Permissions → Disclaimer/Email
+//  Comprehensive onboarding flow with goals and lifestyle questionnaire
+//  Flow: Welcome → Profile → Goals → Activity → Habits → Experience → Measurements → Analysis → Setup Choice → Permissions → Disclaimer
 //
 
 import SwiftUI
 import UserNotifications
 
 // MARK: - Main Onboarding View
+
 struct OnboardingView: View {
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var currentPage = 0
     @State private var emailMarketingConsent = false
-    let totalPages = 4
+
+    // Questionnaire state - shared across all pages
+    @StateObject private var questionnaireState = OnboardingQuestionnaireState()
+
+    // Diet setup sheet
+    @State private var showingDietSetup = false
+
+    // Total pages: Welcome(0) → Profile(1) → Goals(2) → Activity(3) → Habits(4) → Experience(5) → Measurements(6) → Analysis(7) → SetupChoice(8) → Permissions(9) → Disclaimer(10)
+    let totalPages = 11
     let onComplete: (Bool) -> Void
 
     var body: some View {
@@ -28,22 +39,64 @@ struct OnboardingView: View {
                     switch currentPage {
                     case 0:
                         LeanWelcomePage(
-                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } }
+                            onContinue: { goToPage(1) }
                         )
                     case 1:
                         LeanProfilePage(
-                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 0 } },
-                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 2 } }
+                            onBack: { goToPage(0) },
+                            onContinue: { goToPage(2) }
                         )
                     case 2:
-                        LeanPermissionsPage(
-                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } },
-                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 3 } }
+                        OnboardingGoalsPage(
+                            state: questionnaireState,
+                            onBack: { goToPage(1) },
+                            onContinue: { goToPage(3) }
                         )
                     case 3:
+                        OnboardingActivityPage(
+                            state: questionnaireState,
+                            onBack: { goToPage(2) },
+                            onContinue: { goToPage(4) }
+                        )
+                    case 4:
+                        OnboardingHabitsPage(
+                            state: questionnaireState,
+                            onBack: { goToPage(3) },
+                            onContinue: { goToPage(5) }
+                        )
+                    case 5:
+                        OnboardingExperiencePage(
+                            state: questionnaireState,
+                            onBack: { goToPage(4) },
+                            onContinue: { goToPage(6) }
+                        )
+                    case 6:
+                        OnboardingMeasurementsPage(
+                            state: questionnaireState,
+                            onBack: { goToPage(5) },
+                            onContinue: { goToPage(7) },
+                            onSkip: { goToPage(7) }
+                        )
+                    case 7:
+                        OnboardingAnalysisPage(
+                            state: questionnaireState,
+                            onComplete: { goToPage(8) }
+                        )
+                    case 8:
+                        OnboardingSetupChoicePage(
+                            state: questionnaireState,
+                            onSetupNow: { showingDietSetup = true },
+                            onSetupLater: { goToPage(9) }
+                        )
+                    case 9:
+                        LeanPermissionsPage(
+                            onBack: { goToPage(8) },
+                            onContinue: { goToPage(10) }
+                        )
+                    case 10:
                         LeanDisclaimerPage(
                             emailMarketingConsent: $emailMarketingConsent,
-                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 2 } },
+                            onBack: { goToPage(9) },
                             onComplete: {
                                 OnboardingManager.shared.acceptDisclaimer()
                                 OnboardingManager.shared.completeOnboarding()
@@ -52,23 +105,29 @@ struct OnboardingView: View {
                         )
                     default:
                         LeanWelcomePage(
-                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } }
+                            onContinue: { goToPage(1) }
                         )
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Clean progress dots
-                HStack(spacing: 8) {
-                    ForEach(0..<totalPages, id: \.self) { index in
-                        Circle()
-                            .fill(index == currentPage ? Color.accentColor : Color.primary.opacity(0.2))
-                            .frame(width: index == currentPage ? 10 : 8, height: index == currentPage ? 10 : 8)
-                            .animation(.easeInOut(duration: 0.2), value: currentPage)
-                    }
-                }
-                .padding(.bottom, 24)
+                // Progress dots - grouped into phases for cleaner UI
+                ProgressDotsView(currentPage: currentPage, totalPages: totalPages)
+                    .padding(.bottom, 24)
             }
+        }
+        .sheet(isPresented: $showingDietSetup) {
+            DietManagementRedesigned(
+                macroGoals: .constant(MacroGoal.defaultMacros),
+                dietType: .constant(.flexible),
+                customCarbLimit: .constant(50),
+                onSave: { _ in
+                    showingDietSetup = false
+                    goToPage(9)
+                }
+            )
+            .environmentObject(firebaseManager)
+            .interactiveDismissDisabled()
         }
         .onAppear {
             AnalyticsManager.shared.trackOnboardingStep(step: currentPage, stepName: onboardingStepName(currentPage))
@@ -78,18 +137,76 @@ struct OnboardingView: View {
         }
     }
 
+    private func goToPage(_ page: Int) {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            currentPage = page
+        }
+    }
+
     private func onboardingStepName(_ page: Int) -> String {
         switch page {
         case 0: return "Welcome"
         case 1: return "Profile"
-        case 2: return "Permissions"
-        case 3: return "Disclaimer"
+        case 2: return "Goals"
+        case 3: return "Activity"
+        case 4: return "Habits"
+        case 5: return "Experience"
+        case 6: return "Measurements"
+        case 7: return "Analysis"
+        case 8: return "SetupChoice"
+        case 9: return "Permissions"
+        case 10: return "Disclaimer"
         default: return "Unknown"
         }
     }
 }
 
+// MARK: - Progress Dots View
+
+struct ProgressDotsView: View {
+    let currentPage: Int
+    let totalPages: Int
+
+    // Group pages into phases for cleaner visualization
+    private var currentPhase: Int {
+        switch currentPage {
+        case 0: return 0     // Welcome
+        case 1: return 1     // Profile
+        case 2...6: return 2 // Questionnaire (Goals, Activity, Habits, Experience, Measurements)
+        case 7...8: return 3 // Analysis & Setup Choice
+        case 9: return 4     // Permissions
+        case 10: return 5    // Disclaimer
+        default: return 0
+        }
+    }
+
+    private let totalPhases = 6
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<totalPhases, id: \.self) { phase in
+                if phase == 2 && (currentPage >= 2 && currentPage <= 6) {
+                    // Show sub-progress for questionnaire phase
+                    HStack(spacing: 4) {
+                        ForEach(0..<5, id: \.self) { subIndex in
+                            Circle()
+                                .fill((currentPage - 2) >= subIndex ? Color.accentColor : Color.accentColor.opacity(0.3))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                } else {
+                    Circle()
+                        .fill(phase <= currentPhase ? Color.accentColor : Color.primary.opacity(0.2))
+                        .frame(width: phase == currentPhase ? 10 : 8, height: phase == currentPhase ? 10 : 8)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: currentPage)
+    }
+}
+
 // MARK: - Page 1: Welcome
+
 struct LeanWelcomePage: View {
     @Environment(\.colorScheme) var colorScheme
     let onContinue: () -> Void
@@ -158,7 +275,7 @@ struct LeanWelcomePage: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
-                    .background(AppPalette.standard.accent)
+                    .background(Color.accentColor)
                     .cornerRadius(14)
             }
             .padding(.horizontal, 24)
@@ -168,6 +285,7 @@ struct LeanWelcomePage: View {
 }
 
 // MARK: - Feature Row
+
 struct FeatureRow: View {
     @Environment(\.colorScheme) var colorScheme
     let icon: String
@@ -197,12 +315,13 @@ struct FeatureRow: View {
             Spacer()
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(14)
     }
 }
 
 // MARK: - Page 2: Profile (Gender & Birthday)
+
 struct LeanProfilePage: View {
     @Environment(\.colorScheme) var colorScheme
     let onBack: () -> Void
@@ -237,7 +356,7 @@ struct LeanProfilePage: View {
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.primary)
 
-                        Text("Help us personalise your nutrition goals")
+                        Text("Help us personalise your experience")
                             .font(.system(size: 15))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -291,7 +410,7 @@ struct LeanProfilePage: View {
                             .labelsHidden()
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
-                            .background(Color(.secondarySystemBackground))
+                            .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(12)
                             .onChange(of: selectedBirthday) { _, _ in
                                 hasBirthdayBeenSet = true
@@ -342,7 +461,7 @@ struct LeanProfilePage: View {
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color(UIColor.secondarySystemBackground))
                     .cornerRadius(12)
                 }
 
@@ -359,7 +478,7 @@ struct LeanProfilePage: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(AppPalette.standard.accent)
+                        .background(Color.accentColor)
                         .cornerRadius(12)
                 }
             }
@@ -376,6 +495,7 @@ struct LeanProfilePage: View {
 }
 
 // MARK: - Gender Selection Button
+
 struct GenderSelectionButton: View {
     @Environment(\.colorScheme) var colorScheme
     let gender: UserGender
@@ -411,7 +531,7 @@ struct GenderSelectionButton: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color(UIColor.secondarySystemBackground))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14)
                             .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
@@ -422,7 +542,8 @@ struct GenderSelectionButton: View {
     }
 }
 
-// MARK: - Page 2: Permissions
+// MARK: - Page: Permissions
+
 struct LeanPermissionsPage: View {
     let onBack: () -> Void
     let onContinue: () -> Void
@@ -443,7 +564,7 @@ struct LeanPermissionsPage: View {
                     VStack(spacing: 8) {
                         Image(systemName: "gearshape.2.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(AppPalette.standard.accent)
+                            .foregroundColor(.accentColor)
                             .padding(.bottom, 8)
 
                         Text("Enhance Your Experience")
@@ -526,7 +647,7 @@ struct LeanPermissionsPage: View {
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color(UIColor.secondarySystemBackground))
                     .cornerRadius(12)
                 }
 
@@ -536,7 +657,7 @@ struct LeanPermissionsPage: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(AppPalette.standard.accent)
+                        .background(Color.accentColor)
                         .cornerRadius(12)
                 }
             }
@@ -562,11 +683,11 @@ struct LeanPermissionsPage: View {
     }
 
     private func requestNotifications() {
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             DispatchQueue.main.async {
                 notificationsRequested = true
                 notificationsGranted = granted
-                }
+            }
         }
     }
 
@@ -586,6 +707,7 @@ struct LeanPermissionsPage: View {
 }
 
 // MARK: - Permission Card with Detailed Benefits
+
 struct PermissionCardDetailed: View {
     @Environment(\.colorScheme) var colorScheme
     let icon: String
@@ -655,7 +777,7 @@ struct PermissionCardDetailed: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .background(isGranted ? Color.green.opacity(0.12) : Color(.tertiarySystemBackground))
+                .background(isGranted ? Color.green.opacity(0.12) : Color(UIColor.tertiarySystemBackground))
                 .cornerRadius(10)
             } else {
                 HStack(spacing: 10) {
@@ -675,19 +797,20 @@ struct PermissionCardDetailed: View {
                             .foregroundColor(.secondary)
                             .frame(width: 60)
                             .frame(height: 44)
-                            .background(Color(.tertiarySystemBackground))
+                            .background(Color(UIColor.tertiarySystemBackground))
                             .cornerRadius(10)
                     }
                 }
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(16)
     }
 }
 
 // MARK: - Simple Permission Card (for compatibility)
+
 struct PermissionCard: View {
     @Environment(\.colorScheme) var colorScheme
     let icon: String
@@ -713,7 +836,8 @@ struct PermissionCard: View {
     }
 }
 
-// MARK: - Page 3: Disclaimer + Email Consent
+// MARK: - Page: Disclaimer + Email Consent
+
 struct LeanDisclaimerPage: View {
     @Environment(\.colorScheme) var colorScheme
     @Binding var emailMarketingConsent: Bool
@@ -749,7 +873,7 @@ struct LeanDisclaimerPage: View {
                         DisclaimerPoint(
                             icon: "info.circle.fill",
                             text: "NutraSafe helps track nutrition and food safety",
-                            color: AppPalette.standard.accent
+                            color: .accentColor
                         )
                         DisclaimerPoint(
                             icon: "cross.circle.fill",
@@ -775,11 +899,11 @@ struct LeanDisclaimerPage: View {
                         HStack(spacing: 12) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(hasAcceptedDisclaimer ? AppPalette.standard.accent : Color.secondary.opacity(0.4), lineWidth: 2)
+                                    .stroke(hasAcceptedDisclaimer ? Color.accentColor : Color.secondary.opacity(0.4), lineWidth: 2)
                                     .frame(width: 24, height: 24)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(hasAcceptedDisclaimer ? AppPalette.standard.accent : Color.clear)
+                                            .fill(hasAcceptedDisclaimer ? Color.accentColor : Color.clear)
                                     )
 
                                 if hasAcceptedDisclaimer {
@@ -800,10 +924,10 @@ struct LeanDisclaimerPage: View {
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(hasAcceptedDisclaimer ? AppPalette.standard.accent.opacity(0.1) : Color(.secondarySystemBackground))
+                            .fill(hasAcceptedDisclaimer ? Color.accentColor.opacity(0.1) : Color(UIColor.secondarySystemBackground))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .stroke(hasAcceptedDisclaimer ? AppPalette.standard.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                                    .stroke(hasAcceptedDisclaimer ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1.5)
                             )
                     )
                     .padding(.horizontal, 24)
@@ -820,11 +944,11 @@ struct LeanDisclaimerPage: View {
                         HStack(spacing: 12) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(emailMarketingConsent ? AppPalette.standard.accent : Color.secondary.opacity(0.4), lineWidth: 2)
+                                    .stroke(emailMarketingConsent ? Color.accentColor : Color.secondary.opacity(0.4), lineWidth: 2)
                                     .frame(width: 24, height: 24)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(emailMarketingConsent ? AppPalette.standard.accent : Color.clear)
+                                            .fill(emailMarketingConsent ? Color.accentColor : Color.clear)
                                     )
 
                                 if emailMarketingConsent {
@@ -847,7 +971,7 @@ struct LeanDisclaimerPage: View {
                         }
                     }
                     .padding(16)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color(UIColor.secondarySystemBackground))
                     .cornerRadius(14)
                     .padding(.horizontal, 24)
 
@@ -866,7 +990,7 @@ struct LeanDisclaimerPage: View {
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color(UIColor.secondarySystemBackground))
                     .cornerRadius(12)
                 }
 
@@ -880,7 +1004,7 @@ struct LeanDisclaimerPage: View {
                         .foregroundColor(hasAcceptedDisclaimer ? .white : .secondary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(hasAcceptedDisclaimer ? AppPalette.standard.accent : Color(.tertiarySystemBackground))
+                        .background(hasAcceptedDisclaimer ? Color.accentColor : Color(UIColor.tertiarySystemBackground))
                         .cornerRadius(12)
                 }
                 .disabled(!hasAcceptedDisclaimer)
@@ -892,6 +1016,7 @@ struct LeanDisclaimerPage: View {
 }
 
 // MARK: - Disclaimer Point
+
 struct DisclaimerPoint: View {
     @Environment(\.colorScheme) var colorScheme
     let icon: String
@@ -912,12 +1037,13 @@ struct DisclaimerPoint: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(isBold ? color.opacity(colorScheme == .dark ? 0.15 : 0.08) : Color(.secondarySystemBackground))
+        .background(isBold ? color.opacity(colorScheme == .dark ? 0.15 : 0.08) : Color(UIColor.secondarySystemBackground))
         .cornerRadius(10)
     }
 }
 
 // MARK: - Legacy Components (for compatibility)
+
 struct WelcomeFeatureRow: View {
     @Environment(\.colorScheme) var colorScheme
     let icon: String
@@ -976,8 +1102,10 @@ struct OnboardingBackground: View {
 }
 
 // MARK: - Preview
+
 #Preview {
     OnboardingView { consent in
     }
     .environmentObject(HealthKitManager.shared)
+    .environmentObject(FirebaseManager.shared)
 }

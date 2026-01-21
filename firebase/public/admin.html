@@ -404,6 +404,15 @@
             background: #dc2626;
         }
 
+        .btn-success {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #16a34a;
+        }
+
         .btn-secondary {
             background: var(--bg-tertiary);
             color: var(--text-primary);
@@ -593,10 +602,51 @@
         }
 
         /* Reports View */
+        .reports-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
         .reports-filters {
             display: flex;
             gap: 12px;
-            margin-bottom: 20px;
+        }
+
+        .reports-bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .select-all-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .select-all-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .report-checkbox {
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+        }
+
+        .report-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
 
         .report-card {
@@ -609,9 +659,17 @@
 
         .report-header {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .report-header .report-title {
+            flex: 1;
+        }
+
+        .report-header .report-status {
+            margin-left: auto;
         }
 
         .report-title {
@@ -4667,6 +4725,12 @@
             font-weight: 500;
         }
 
+        .result-item .category-badge.new-category {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
         .result-item .serving-info {
             color: #6b7280;
             font-size: 13px;
@@ -4890,13 +4954,25 @@
 
         <!-- Reports View -->
         <div id="reports-view" class="view">
-            <div class="reports-filters">
-                <select id="report-status-filter" class="filter-select">
-                    <option value="all">All Reports</option>
-                    <option value="pending">Pending</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                </select>
+            <div class="reports-toolbar">
+                <div class="reports-filters">
+                    <select id="report-status-filter" class="filter-select">
+                        <option value="all">All Reports</option>
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+                <div class="reports-bulk-actions">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="select-all-reports" onchange="app.toggleSelectAllReports()">
+                        Select All
+                    </label>
+                    <span id="selected-count" style="display:none; margin-left: 10px; color: #666;">0 selected</span>
+                    <button class="btn btn-danger btn-sm" id="bulk-delete-btn" style="display:none; margin-left: 10px;" onclick="app.bulkDeleteReports()">
+                        🗑️ Delete Selected
+                    </button>
+                </div>
             </div>
             <div id="reports-list">
                 <div class="loading">
@@ -5606,6 +5682,12 @@
                     <button class="btn btn-primary btn-large" id="cat-start-btn" onclick="app.startCategorization()" disabled>
                         🤖 Start AI Categorization
                     </button>
+                    <button class="btn btn-danger" id="cat-stop-btn" onclick="app.stopCategorization()" style="display: none;">
+                        ⏹️ Stop
+                    </button>
+                    <button class="btn btn-secondary" id="cat-reset-btn" onclick="app.resetCategorization()" style="display: none;">
+                        🔄 Start Fresh
+                    </button>
                     <button class="btn btn-secondary" onclick="app.refreshCategoryStats()">
                         🔄 Refresh Stats
                     </button>
@@ -5818,8 +5900,19 @@
                         <input type="text" id="report-barcode">
                     </div>
                     <div class="form-group">
-                        <label>Serving Size</label>
-                        <input type="text" id="report-serving-size" placeholder="e.g., 100g">
+                        <label>Serving Description</label>
+                        <input type="text" id="report-serving-size" placeholder="e.g., Tall (12oz), per slice">
+                    </div>
+                    <div class="form-group">
+                        <label>Serving Size (g/ml)</label>
+                        <input type="number" id="report-serving-size-g" placeholder="e.g., 354" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <select id="report-serving-unit">
+                            <option value="g">g (grams)</option>
+                            <option value="ml">ml (liquid)</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Category</label>
@@ -5876,8 +5969,9 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="app.closeReportModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="app.deleteReportedFood()">🗑️ Delete Food</button>
-                <button class="btn btn-secondary" onclick="app.dismissReport()">Dismiss Report</button>
-                <button class="btn btn-primary" onclick="app.saveAndResolve()">Save & Resolve</button>
+                <button class="btn btn-secondary" onclick="app.dismissReport()">Dismiss</button>
+                <button class="btn btn-success" onclick="app.saveOnly()">💾 Save</button>
+                <button class="btn btn-primary" onclick="app.saveAndResolve()">✓ Save & Resolve</button>
             </div>
         </div>
     </div>
@@ -6915,6 +7009,8 @@
                 const indexName = document.getElementById('collection-filter').value;
 
                 try {
+                    this.showToast('Deleting...', 'info');
+
                     const response = await fetch(`${CONFIG.API_BASE}/deleteFoodFromAlgolia`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -6925,7 +7021,20 @@
 
                     if (result.success) {
                         this.showToast(`Food deleted from ${indexName}!`, 'success');
-                        this.loadFoods(state.currentQuery, state.currentPage);
+
+                        // Remove from local state immediately for instant UI feedback
+                        state.foods = state.foods.filter(f => f.objectID !== id);
+                        state.filteredFoods = state.filteredFoods.filter(f => f.objectID !== id);
+                        state.totalHits = Math.max(0, state.totalHits - 1);
+                        this.renderFoods();
+                        this.updatePagination();
+
+                        // Also refresh from server after a delay to ensure sync
+                        setTimeout(() => {
+                            // Reinitialize index to clear any client cache
+                            currentIndex = algoliaClient.initIndex(indexName);
+                            this.loadFoods(state.currentQuery, state.currentPage);
+                        }, 1500);
                     } else {
                         this.showToast('Error deleting food: ' + (result.error || 'Unknown error'), 'error');
                     }
@@ -6985,12 +7094,17 @@
 
                 if (reports.length === 0) {
                     reportsList.innerHTML = '<div class="empty-state">No reports found.</div>';
+                    document.getElementById('select-all-reports').checked = false;
+                    this.updateBulkDeleteUI();
                     return;
                 }
 
                 const html = reports.map(report => `
                     <div class="report-card" data-id="${report.id}">
                         <div class="report-header">
+                            <label class="report-checkbox" onclick="event.stopPropagation()">
+                                <input type="checkbox" class="report-select" data-report-id="${report.id}" onchange="app.updateBulkDeleteUI()">
+                            </label>
                             <span class="report-title">${this.escapeHtml(report.foodName || 'Unknown Food')}</span>
                             <span class="report-status ${report.status}">${this.formatStatus(report.status)}</span>
                         </div>
@@ -7001,15 +7115,15 @@
                         </div>
                         <div class="report-description">${this.escapeHtml(report.description || 'No description provided.')}</div>
                         <div class="report-actions">
-                            ${report.status !== 'resolved' ? `
-                                <button class="btn btn-primary" onclick="app.openReportModal('${report.id}')">Review</button>
-                            ` : ''}
-                            <button class="btn btn-danger" onclick="app.deleteReport('${report.id}')">Delete</button>
+                            <button class="btn btn-primary" onclick="app.openReportModal('${report.id}')">Review</button>
+                            <button class="btn btn-danger btn-sm" onclick="app.deleteReport('${report.id}')">Delete</button>
                         </div>
                     </div>
                 `).join('');
 
                 reportsList.innerHTML = html;
+                document.getElementById('select-all-reports').checked = false;
+                this.updateBulkDeleteUI();
             },
 
             async updateReportStatus(id, status) {
@@ -7049,7 +7163,9 @@
 
                     if (result.success) {
                         this.showToast('Report deleted!', 'success');
-                        this.loadReports();
+                        // Remove from local state instead of reloading
+                        state.reports = state.reports.filter(r => r.id !== id);
+                        this.renderReports(state.reports);
                         this.loadReportsCount();
                     } else {
                         this.showToast('Error deleting report', 'error');
@@ -7057,6 +7173,78 @@
                 } catch (error) {
                     console.error('Error deleting report:', error);
                     this.showToast('Error deleting report', 'error');
+                }
+            },
+
+            // Bulk selection functions
+            toggleSelectAllReports() {
+                const selectAll = document.getElementById('select-all-reports').checked;
+                document.querySelectorAll('.report-select').forEach(cb => cb.checked = selectAll);
+                this.updateBulkDeleteUI();
+            },
+
+            updateBulkDeleteUI() {
+                const selected = document.querySelectorAll('.report-select:checked');
+                const count = selected.length;
+                const countEl = document.getElementById('selected-count');
+                const deleteBtn = document.getElementById('bulk-delete-btn');
+
+                if (count > 0) {
+                    countEl.style.display = 'inline';
+                    countEl.textContent = `${count} selected`;
+                    deleteBtn.style.display = 'inline-block';
+                } else {
+                    countEl.style.display = 'none';
+                    deleteBtn.style.display = 'none';
+                }
+
+                // Update select all checkbox state
+                const total = document.querySelectorAll('.report-select').length;
+                const selectAllCb = document.getElementById('select-all-reports');
+                selectAllCb.checked = total > 0 && count === total;
+                selectAllCb.indeterminate = count > 0 && count < total;
+            },
+
+            async bulkDeleteReports() {
+                const selected = document.querySelectorAll('.report-select:checked');
+                const ids = Array.from(selected).map(cb => cb.dataset.reportId);
+
+                if (ids.length === 0) return;
+
+                if (!confirm(`Delete ${ids.length} report(s)? This cannot be undone.`)) return;
+
+                this.showToast(`Deleting ${ids.length} reports...`, 'info');
+
+                let deleted = 0;
+                let failed = 0;
+
+                // Delete in parallel for speed
+                await Promise.all(ids.map(async (id) => {
+                    try {
+                        const response = await fetch(`${CONFIG.API_BASE}/deleteUserReport`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reportId: id })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            deleted++;
+                            state.reports = state.reports.filter(r => r.id !== id);
+                        } else {
+                            failed++;
+                        }
+                    } catch (e) {
+                        failed++;
+                    }
+                }));
+
+                this.renderReports(state.reports);
+                this.loadReportsCount();
+
+                if (failed === 0) {
+                    this.showToast(`Deleted ${deleted} reports`, 'success');
+                } else {
+                    this.showToast(`Deleted ${deleted}, failed ${failed}`, 'error');
                 }
             },
 
@@ -7086,6 +7274,8 @@
                 document.getElementById('report-brand-name').value = food.brand || report.brandName || '';
                 document.getElementById('report-barcode').value = food.barcode || report.barcode || '';
                 document.getElementById('report-serving-size').value = food.servingDescription || food.servingSize || '';
+                document.getElementById('report-serving-size-g').value = food.servingSizeG || '';
+                document.getElementById('report-serving-unit').value = food.servingUnit || (food.servingSizeG && food.servingDescription && food.servingDescription.toLowerCase().includes('ml') ? 'ml' : 'g');
                 document.getElementById('report-category').value = food.category || '';
                 document.getElementById('report-ingredients').value = Array.isArray(food.ingredients) ? food.ingredients.join(', ') : (food.ingredients || '');
                 document.getElementById('report-calories').value = food.calories || '';
@@ -7287,30 +7477,28 @@
                 window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
             },
 
-            async saveAndResolve() {
+            // Helper to get food data from form
+            _getFoodDataFromForm() {
                 const foodId = document.getElementById('report-food-id').value;
-                const reportId = document.getElementById('report-id').value;
-
-                if (!foodId) {
-                    this.showToast('No food ID found', 'error');
-                    return;
-                }
-
                 const ingredientsRaw = document.getElementById('report-ingredients').value;
                 const ingredients = ingredientsRaw ? ingredientsRaw.split(',').map(i => i.trim()).filter(i => i) : [];
+                const foodIndex = document.getElementById('report-food-index').value;
 
-                const foodData = {
+                return {
                     foodId: foodId,
+                    collection: foodIndex,
                     foodName: document.getElementById('report-food-name').value,
                     brandName: document.getElementById('report-brand-name').value,
                     barcode: document.getElementById('report-barcode').value,
                     servingSize: document.getElementById('report-serving-size').value,
+                    servingSizeG: parseFloat(document.getElementById('report-serving-size-g').value) || null,
+                    servingUnit: document.getElementById('report-serving-unit').value || 'g',
                     category: document.getElementById('report-category').value,
                     extractedIngredients: ingredients,
                     nutritionData: {
                         calories: parseFloat(document.getElementById('report-calories').value) || null,
                         protein: parseFloat(document.getElementById('report-protein').value) || null,
-                        carbohydrates: parseFloat(document.getElementById('report-carbs').value) || null,
+                        carbs: parseFloat(document.getElementById('report-carbs').value) || null,
                         fat: parseFloat(document.getElementById('report-fat').value) || null,
                         fiber: parseFloat(document.getElementById('report-fiber').value) || null,
                         sugar: parseFloat(document.getElementById('report-sugar').value) || null,
@@ -7319,6 +7507,65 @@
                         saturatedFat: parseFloat(document.getElementById('report-saturated-fat').value) || null
                     }
                 };
+            },
+
+            // Save food without resolving report (keeps modal open for further edits)
+            async saveOnly() {
+                const foodData = this._getFoodDataFromForm();
+
+                if (!foodData.foodId) {
+                    this.showToast('No food ID found', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/updateVerifiedFood`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(foodData)
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        this.showToast('Food saved! Report still open for further edits.', 'success');
+                        // Update local report data with saved food info
+                        if (state.reviewingReport) {
+                            state.reviewingReport.food = {
+                                ...state.reviewingReport.food,
+                                name: foodData.foodName,
+                                brand: foodData.brandName,
+                                barcode: foodData.barcode,
+                                servingDescription: foodData.servingSize,
+                                servingSizeG: foodData.servingSizeG,
+                                servingUnit: foodData.servingUnit,
+                                ingredients: foodData.extractedIngredients,
+                                calories: foodData.nutritionData.calories,
+                                protein: foodData.nutritionData.protein,
+                                carbs: foodData.nutritionData.carbs,
+                                fat: foodData.nutritionData.fat,
+                                fiber: foodData.nutritionData.fiber,
+                                sugar: foodData.nutritionData.sugar,
+                                salt: foodData.nutritionData.salt,
+                                saturatedFat: foodData.nutritionData.saturatedFat
+                            };
+                        }
+                    } else {
+                        this.showToast('Error saving: ' + (result.error || 'Unknown error'), 'error');
+                    }
+                } catch (error) {
+                    console.error('Save error:', error);
+                    this.showToast('Error saving changes', 'error');
+                }
+            },
+
+            async saveAndResolve() {
+                const foodData = this._getFoodDataFromForm();
+                const reportId = document.getElementById('report-id').value;
+
+                if (!foodData.foodId) {
+                    this.showToast('No food ID found', 'error');
+                    return;
+                }
 
                 try {
                     // 1. Save food changes
@@ -7343,9 +7590,11 @@
 
                     const reportResult = await reportResponse.json();
                     if (reportResult.success) {
-                        this.showToast('Report resolved and food updated!', 'success');
+                        this.showToast('Resolved!', 'success');
                         this.closeReportModal();
-                        this.loadReports();
+                        // Update local state instead of full reload
+                        state.reports = state.reports.filter(r => r.id !== reportId);
+                        this.renderReports(state.reports);
                         this.loadReportsCount();
                     } else {
                         this.showToast('Food saved but failed to update report status', 'error');
@@ -7397,6 +7646,8 @@
                 if (!confirm(`Are you sure you want to DELETE "${foodName}" from the database? This cannot be undone.`)) return;
 
                 try {
+                    this.showToast('Deleting food...', 'info');
+
                     // 1. Delete the food from Algolia (and Firestore if applicable)
                     const foodResponse = await fetch(`${CONFIG.API_BASE}/deleteFoodFromAlgolia`, {
                         method: 'POST',
@@ -7417,10 +7668,16 @@
                         body: JSON.stringify({ reportId: reportId, status: 'resolved' })
                     });
 
-                    this.showToast(`Food deleted from ${indexName} and report resolved!`, 'success');
+                    this.showToast(`Food deleted and report resolved!`, 'success');
                     this.closeReportModal();
-                    this.loadReports();
+
+                    // Remove from local state immediately for instant UI feedback
+                    state.reports = state.reports.filter(r => r.id !== reportId);
+                    this.renderReports(state.reports);
                     this.loadReportsCount();
+
+                    // Refresh from server after delay
+                    setTimeout(() => this.loadReports(), 1500);
                 } catch (error) {
                     console.error('Delete food error:', error);
                     this.showToast('Error deleting food', 'error');
@@ -13681,6 +13938,60 @@
 
             // Store pulled foods for categorization
             pulledFoods: [],
+            categorizationStopped: false,
+
+            // Stop categorization
+            stopCategorization() {
+                this.categorizationStopped = true;
+                document.getElementById('cat-stop-btn').textContent = '⏳ Stopping...';
+                document.getElementById('cat-stop-btn').disabled = true;
+            },
+
+            // Reset categorization progress to start fresh
+            async resetCategorization() {
+                const collection = document.getElementById('cat-collection-select').value;
+                if (!confirm(`Reset progress for ${collection}? This will start the categorization from the beginning.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/resetCategorizationProgress`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ collection })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        this.showToast('Progress reset. Click Start to begin fresh.', 'success');
+                        document.getElementById('cat-reset-btn').style.display = 'none';
+                        document.getElementById('cat-start-btn').textContent = '🤖 Start AI Categorization';
+                        this.existingProgress = null;
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    this.showToast('Failed to reset progress: ' + error.message, 'error');
+                }
+            },
+
+            // Check for existing progress on a collection
+            async checkExistingProgress(collection) {
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/getCategorizationProgress?collection=${collection}`);
+                    const data = await response.json();
+
+                    if (data.success && data.hasProgress && data.progress.status !== 'complete') {
+                        this.existingProgress = data.progress;
+                        return data.progress;
+                    }
+                    this.existingProgress = null;
+                    return null;
+                } catch (error) {
+                    console.error('Failed to check progress:', error);
+                    return null;
+                }
+            },
 
             // Pull foods from database for preview
             async pullUncategorizedFoods() {
@@ -13764,6 +14075,34 @@
 
                     previewList.innerHTML = html;
 
+                    // Check for existing progress
+                    const progress = await this.checkExistingProgress(collection);
+                    const resetBtn = document.getElementById('cat-reset-btn');
+
+                    if (progress && progress.totalProcessed > 0) {
+                        // Show resume option
+                        const percent = Math.round((progress.totalProcessed / progress.totalFoods) * 100);
+                        startBtn.textContent = `▶️ Resume (${percent}% done)`;
+                        resetBtn.style.display = 'inline-block';
+
+                        // Add progress info to preview
+                        const progressInfo = document.createElement('div');
+                        progressInfo.className = 'preview-item';
+                        progressInfo.style.cssText = 'background: #fef3c7; padding: 12px 16px; border-left: 3px solid #f59e0b;';
+                        progressInfo.innerHTML = `
+                            <span style="font-size: 13px; color: #92400e;">
+                                ⏸️ <strong>Previous progress found:</strong> ${progress.totalProcessed.toLocaleString()} / ${progress.totalFoods.toLocaleString()} foods (${percent}%)
+                                | Click Resume to continue or Start Fresh to restart
+                            </span>
+                        `;
+                        previewList.insertBefore(progressInfo, previewList.firstChild);
+
+                        this.showToast(`Found existing progress: ${percent}% complete. Click Resume to continue.`, 'info');
+                    } else {
+                        startBtn.textContent = '🤖 Start AI Categorization';
+                        resetBtn.style.display = 'none';
+                    }
+
                     // Enable start button
                     startBtn.disabled = false;
                     this.showToast(`Loaded ${totalFoods.toLocaleString()} foods ready to categorize`, 'success');
@@ -13839,17 +14178,24 @@
                 await this.runCategorization(false);
             },
 
-            // Run categorization
-            async runCategorization(saveResults = true) {
+            // Run categorization (resume = true to continue from where we left off)
+            async runCategorization(saveResults = true, resumeFromProgress = true) {
                 const collection = document.getElementById('cat-collection-select').value;
                 const batchSizeValue = document.getElementById('cat-batch-size').value;
                 const isFullScan = batchSizeValue === 'all';
-                const batchSize = isFullScan ? 50 : parseInt(batchSizeValue); // Process 50 at a time for full scan
+                const batchSize = isFullScan ? 500 : parseInt(batchSizeValue); // Process 500 at a time for full scan
                 const totalFoods = this.pulledFoods?.count || 0;
 
                 const progressSection = document.getElementById('cat-progress-section');
                 const resultsSection = document.getElementById('cat-results-section');
                 const startBtn = document.getElementById('cat-start-btn');
+                const stopBtn = document.getElementById('cat-stop-btn');
+
+                // Reset stop flag and show stop button
+                this.categorizationStopped = false;
+                stopBtn.style.display = 'inline-block';
+                stopBtn.disabled = false;
+                stopBtn.textContent = '⏹️ Stop';
 
                 // Show progress
                 progressSection.style.display = 'block';
@@ -13867,30 +14213,31 @@
 
                 let allResults = [];
                 let totalProcessed = 0;
-                let offset = 0;
                 let hasMore = true;
+                let isFirstBatch = true;
 
                 try {
                     if (isFullScan) {
-                        // Full database scan - process ALL foods with offset tracking
-                        progressText.textContent = `Starting full scan of ${collection} (${totalFoods.toLocaleString()} foods)...`;
+                        // Full database scan - process ALL foods with backend progress tracking
+                        progressText.textContent = resumeFromProgress
+                            ? `Checking for existing progress on ${collection}...`
+                            : `Starting fresh scan of ${collection} (${totalFoods.toLocaleString()} foods)...`;
 
-                        while (hasMore) {
-                            progressText.textContent = `Processing batch at offset ${offset}... (${totalProcessed} done)`;
-
+                        while (hasMore && !this.categorizationStopped) {
                             const response = await fetch(`${CONFIG.API_BASE}/categorizeFoodsFromDatabase`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     collection,
                                     limit: batchSize,
-                                    offset: offset,
                                     saveResults,
+                                    resume: isFirstBatch ? resumeFromProgress : true, // First batch: respect user choice, then always resume
                                     onlyUncategorized: false // Process ALL foods, overwrite existing
                                 })
                             });
 
                             const data = await response.json();
+                            isFirstBatch = false;
 
                             if (!data.success) {
                                 throw new Error(data.error || 'Batch failed');
@@ -13898,41 +14245,52 @@
 
                             if (data.results && data.results.length > 0) {
                                 allResults = allResults.concat(data.results);
-                                totalProcessed += data.processed;
-                                offset += data.processed;
+                            }
 
-                                // Update progress based on total foods
-                                const percent = totalFoods > 0 ? Math.round((totalProcessed / totalFoods) * 100) : 100;
-                                progressBar.style.width = Math.min(percent, 100) + '%';
-                                progressText.textContent = `Processed ${totalProcessed.toLocaleString()} / ${totalFoods.toLocaleString()} foods (${percent}%)`;
+                            // Use backend's progress tracking
+                            totalProcessed = data.totalProcessed || totalProcessed + (data.processed || 0);
+                            const serverTotalFoods = data.totalFoods || totalFoods;
+                            hasMore = data.hasMore !== undefined ? data.hasMore : false;
 
-                                // Check if more to process
-                                hasMore = data.processed >= batchSize && totalProcessed < totalFoods;
+                            // Update progress from server
+                            const percent = data.percentComplete || (serverTotalFoods > 0 ? Math.round((totalProcessed / serverTotalFoods) * 100) : 100);
+                            progressBar.style.width = Math.min(percent, 100) + '%';
+                            progressText.textContent = `Processed ${totalProcessed.toLocaleString()} / ${serverTotalFoods.toLocaleString()} foods (${percent}%)`;
 
-                                // Small delay to prevent rate limiting
-                                if (hasMore) {
-                                    await new Promise(r => setTimeout(r, 100)); // 100ms delay between batches
-                                }
-                            } else {
-                                hasMore = false;
+                            // Small delay to prevent rate limiting
+                            if (hasMore && !this.categorizationStopped) {
+                                await new Promise(r => setTimeout(r, 100)); // 100ms delay between batches
                             }
                         }
 
-                        progressBar.style.width = '100%';
-                        statusBadge.textContent = 'Complete';
-                        statusBadge.className = 'status-badge status-idle';
-                        progressText.textContent = `Full scan complete: ${totalProcessed.toLocaleString()} foods categorized`;
+                        // Check if stopped by user
+                        if (this.categorizationStopped) {
+                            statusBadge.textContent = 'Paused';
+                            statusBadge.className = 'status-badge status-warning';
+                            progressText.textContent = `Paused at ${totalProcessed.toLocaleString()} foods. Progress saved - click Start to resume.`;
+                            this.showToast(`Categorization paused. Progress saved. Click Start to resume.`, 'warning');
+                        } else {
+                            progressBar.style.width = '100%';
+                            statusBadge.textContent = 'Complete';
+                            statusBadge.className = 'status-badge status-idle';
+                            progressText.textContent = `Full scan complete: ${totalProcessed.toLocaleString()} foods categorized`;
+                        }
 
                         // Show results (limit display to last 100)
                         this.renderResults({
                             processed: totalProcessed,
                             results: allResults.slice(-100),
-                            totalRemaining: 0
+                            totalRemaining: 0,
+                            newCategoriesCreated: allResults.filter(r => r.isNewCategory).length > 0
+                                ? allResults.filter(r => r.isNewCategory).map(r => ({ name: r.categoryName }))
+                                : []
                         }, saveResults, allResults.length > 100 ? `Showing last 100 of ${allResults.length} results` : null);
                         resultsSection.style.display = 'block';
 
                         await this.refreshCategoryStats();
-                        this.showToast(`Full scan complete: ${totalProcessed.toLocaleString()} foods categorized${saveResults ? ' and saved' : ''}`, 'success');
+                        if (!this.categorizationStopped) {
+                            this.showToast(`Full scan complete: ${totalProcessed.toLocaleString()} foods categorized${saveResults ? ' and saved' : ''}`, 'success');
+                        }
 
                     } else {
                         // Single batch processing
@@ -13996,6 +14354,9 @@
                 } finally {
                     startBtn.disabled = false;
                     startBtn.textContent = '🤖 Start AI Categorization';
+                    stopBtn.style.display = 'none';
+                    stopBtn.disabled = false;
+                    stopBtn.textContent = '⏹️ Stop';
                 }
             },
 
@@ -14004,10 +14365,17 @@
                 const summaryEl = document.getElementById('cat-results-summary');
                 const listEl = document.getElementById('cat-results-list');
 
+                // Check for new categories created
+                const newCats = data.newCategoriesCreated || [];
+                const newCatHtml = newCats.length > 0
+                    ? `<br><span style="color: #10b981;">✨ ${newCats.length} new categories created: ${newCats.map(c => c.name).join(', ')}</span>`
+                    : '';
+
                 summaryEl.innerHTML = `
                     <strong>${data.processed} foods categorized</strong>
                     ${saved ? ' and saved to database' : ' (preview only - not saved)'}
                     ${data.totalRemaining !== 'N/A' ? ` | ${data.totalRemaining} uncategorized remaining` : ''}
+                    ${newCatHtml}
                 `;
 
                 if (!data.results || data.results.length === 0) {
@@ -14018,7 +14386,7 @@
                 listEl.innerHTML = data.results.map(result => `
                     <div class="result-item">
                         <span class="food-name">${this.escapeHtml(result.foodName)}</span>
-                        <span class="category-badge">${result.categoryName}</span>
+                        <span class="category-badge ${result.isNewCategory ? 'new-category' : ''}">${result.categoryName}${result.isNewCategory ? ' ✨' : ''}</span>
                         <span class="serving-info">${result.suggestedServingSize}${result.servingUnit}</span>
                         <span class="confidence-badge ${result.confidence}">${result.confidence}</span>
                     </div>

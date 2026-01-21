@@ -115,13 +115,61 @@ exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).h
                 return;
             }
             const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
-            // Prepare Algolia update object
+            // Prepare Algolia update object with flattened nutrition data
             const algoliaUpdate = {
                 objectID: foodId,
-                ...updateData,
                 updatedAt: new Date().toISOString()
             };
-            delete algoliaUpdate.updatedAt; // Remove Firestore timestamp
+            // Add basic fields
+            if (updateData.foodName || updateData.name) {
+                algoliaUpdate.name = updateData.foodName || updateData.name;
+                algoliaUpdate.foodName = updateData.foodName || updateData.name;
+            }
+            if (updateData.brandName || updateData.brand) {
+                algoliaUpdate.brand = updateData.brandName || updateData.brand;
+                algoliaUpdate.brandName = updateData.brandName || updateData.brand;
+            }
+            if (updateData.barcode !== undefined)
+                algoliaUpdate.barcode = updateData.barcode;
+            if (updateData.ingredients || updateData.extractedIngredients) {
+                algoliaUpdate.ingredients = updateData.ingredients || updateData.extractedIngredients;
+            }
+            if (updateData.servingSize || updateData.servingDescription) {
+                algoliaUpdate.servingDescription = updateData.servingSize || updateData.servingDescription;
+            }
+            if (updateData.servingSizeG !== undefined)
+                algoliaUpdate.servingSizeG = updateData.servingSizeG;
+            if (updateData.servingUnit !== undefined)
+                algoliaUpdate.servingUnit = updateData.servingUnit;
+            // Flatten nutrition data for Algolia (handle both carbs and carbohydrates)
+            if (updateData.nutritionData) {
+                const nd = updateData.nutritionData;
+                if (nd.calories !== undefined && nd.calories !== null)
+                    algoliaUpdate.calories = nd.calories;
+                if (nd.protein !== undefined && nd.protein !== null)
+                    algoliaUpdate.protein = nd.protein;
+                // Handle both carbs and carbohydrates field names
+                const carbsValue = nd.carbs !== undefined ? nd.carbs : nd.carbohydrates;
+                if (carbsValue !== undefined && carbsValue !== null)
+                    algoliaUpdate.carbs = carbsValue;
+                if (nd.fat !== undefined && nd.fat !== null)
+                    algoliaUpdate.fat = nd.fat;
+                if (nd.fiber !== undefined && nd.fiber !== null)
+                    algoliaUpdate.fiber = nd.fiber;
+                if (nd.sugar !== undefined && nd.sugar !== null)
+                    algoliaUpdate.sugar = nd.sugar;
+                if (nd.salt !== undefined && nd.salt !== null)
+                    algoliaUpdate.salt = nd.salt;
+                if (nd.sodium !== undefined && nd.sodium !== null)
+                    algoliaUpdate.sodium = nd.sodium;
+                if (nd.saturatedFat !== undefined && nd.saturatedFat !== null)
+                    algoliaUpdate.saturatedFat = nd.saturatedFat;
+            }
+            // Remove undefined values
+            Object.keys(algoliaUpdate).forEach(key => {
+                if (algoliaUpdate[key] === undefined)
+                    delete algoliaUpdate[key];
+            });
             await client.partialUpdateObject({
                 indexName: targetCollection,
                 objectID: foodId,
@@ -175,16 +223,29 @@ exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).h
                     source: updateData.source,
                     updatedAt: new Date().toISOString()
                 };
-                // Flatten nutrition data for Algolia
+                // Flatten nutrition data for Algolia (handle both carbs and carbohydrates)
                 if (updateData.nutritionData) {
-                    algoliaUpdate.calories = updateData.nutritionData.calories || 0;
-                    algoliaUpdate.protein = updateData.nutritionData.protein || 0;
-                    algoliaUpdate.carbs = updateData.nutritionData.carbs || 0;
-                    algoliaUpdate.fat = updateData.nutritionData.fat || 0;
-                    algoliaUpdate.fiber = updateData.nutritionData.fiber || 0;
-                    algoliaUpdate.sugar = updateData.nutritionData.sugar || 0;
-                    algoliaUpdate.sodium = updateData.nutritionData.sodium || 0;
-                    algoliaUpdate.saturatedFat = updateData.nutritionData.saturatedFat || 0;
+                    const nd = updateData.nutritionData;
+                    if (nd.calories !== undefined && nd.calories !== null)
+                        algoliaUpdate.calories = nd.calories;
+                    if (nd.protein !== undefined && nd.protein !== null)
+                        algoliaUpdate.protein = nd.protein;
+                    // Handle both carbs and carbohydrates field names
+                    const carbsValue = nd.carbs !== undefined ? nd.carbs : nd.carbohydrates;
+                    if (carbsValue !== undefined && carbsValue !== null)
+                        algoliaUpdate.carbs = carbsValue;
+                    if (nd.fat !== undefined && nd.fat !== null)
+                        algoliaUpdate.fat = nd.fat;
+                    if (nd.fiber !== undefined && nd.fiber !== null)
+                        algoliaUpdate.fiber = nd.fiber;
+                    if (nd.sugar !== undefined && nd.sugar !== null)
+                        algoliaUpdate.sugar = nd.sugar;
+                    if (nd.salt !== undefined && nd.salt !== null)
+                        algoliaUpdate.salt = nd.salt;
+                    if (nd.sodium !== undefined && nd.sodium !== null)
+                        algoliaUpdate.sodium = nd.sodium;
+                    if (nd.saturatedFat !== undefined && nd.saturatedFat !== null)
+                        algoliaUpdate.saturatedFat = nd.saturatedFat;
                 }
                 // Remove undefined values
                 Object.keys(algoliaUpdate).forEach(key => {

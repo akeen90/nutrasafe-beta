@@ -104,3 +104,16 @@ firebase serve
 - Web dashboard: https://nutrasafe-705c7.web.app
 
 Remember: Security first, features second. Never compromise on API key safety.
+
+## 🗑️ Dead Code to Remove
+
+When you encounter old/duplicate code, add it here for future cleanup:
+
+### SettingsView.swift
+- **`MacroManagementView`** (line ~2662): Old diet management view, replaced by `DietManagementRedesigned`
+- **`BMRCalculatorSheet`** (line ~3384): Old BMR calculator, replaced by `BMRCalculatorRedesigned` in DietManagementRedesign.swift
+
+### Guidelines
+- Always use redesigned views (`*Redesigned`) over old versions
+- When creating new views, prefix old ones for removal here
+- Before builds, check this list and remove dead code when safe

@@ -2729,6 +2729,239 @@ class FirebaseManager: ObservableObject {
         return 0.0
     }
 
+    // MARK: - Firebase Search Fallback (when Algolia unavailable)
+
+    /// Fallback search method that queries Firebase directly when Algolia is unavailable
+    /// This is slower than Algolia but ensures the app remains functional
+    /// - Parameters:
+    ///   - query: Search query string
+    ///   - limit: Maximum results per collection (default 10)
+    /// - Returns: Array of FoodSearchResult from Firebase collections
+    func searchFoodsFirebaseFallback(query: String, limit: Int = 10) async throws -> [FoodSearchResult] {
+        let searchTerm = query.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !searchTerm.isEmpty else { return [] }
+
+        // Collections to search (in priority order matching Algolia tiers)
+        // Note: Firestore doesn't support full-text search, so we use prefix matching
+        let collections = [
+            ("verifiedFoods", "name"),           // Admin-verified foods
+            ("consumer_foods", "searchableName"), // Consumer-friendly generic foods
+            ("uk_foods_cleaned", "name"),        // UK Foods
+            ("tesco_products", "name"),          // Tesco products
+            ("foods", "name"),                   // Original foods database
+            ("fast_foods_database", "name"),     // Fast food
+        ]
+
+        var allResults: [FoodSearchResult] = []
+        var seenIds = Set<String>()
+
+        // Search collections in parallel
+        await withTaskGroup(of: [FoodSearchResult].self) { group in
+            for (collectionName, nameField) in collections {
+                group.addTask {
+                    do {
+                        return try await self.searchFirebaseCollection(
+                            collectionName: collectionName,
+                            nameField: nameField,
+                            searchTerm: searchTerm,
+                            limit: limit
+                        )
+                    } catch {
+                        print("⚠️ Firebase fallback search failed for \(collectionName): \(error.localizedDescription)")
+                        return []
+                    }
+                }
+            }
+
+            for await results in group {
+                for result in results where !seenIds.contains(result.id) {
+                    seenIds.insert(result.id)
+                    allResults.append(result)
+                }
+            }
+        }
+
+        // Sort by relevance (exact matches first, then prefix matches, then contains)
+        let sorted = allResults.sorted { a, b in
+            let aName = a.name.lowercased()
+            let bName = b.name.lowercased()
+
+            // Exact match
+            if aName == searchTerm && bName != searchTerm { return true }
+            if bName == searchTerm && aName != searchTerm { return false }
+
+            // Starts with query
+            if aName.hasPrefix(searchTerm) && !bName.hasPrefix(searchTerm) { return true }
+            if bName.hasPrefix(searchTerm) && !aName.hasPrefix(searchTerm) { return false }
+
+            // Shorter names first (more likely to be canonical)
+            return a.name.count < b.name.count
+        }
+
+        return Array(sorted.prefix(20))
+    }
+
+    /// Search a single Firebase collection with prefix matching
+    private func searchFirebaseCollection(
+        collectionName: String,
+        nameField: String,
+        searchTerm: String,
+        limit: Int
+    ) async throws -> [FoodSearchResult] {
+        // Firestore prefix search using range query
+        // This matches documents where the name starts with searchTerm
+        let snapshot = try await db.collection(collectionName)
+            .whereField(nameField, isGreaterThanOrEqualTo: searchTerm.capitalized)
+            .whereField(nameField, isLessThan: searchTerm.capitalized + "\u{f8ff}")
+            .limit(to: limit)
+            .getDocuments()
+
+        // Also try lowercase search
+        let lowercaseSnapshot = try await db.collection(collectionName)
+            .whereField(nameField, isGreaterThanOrEqualTo: searchTerm)
+            .whereField(nameField, isLessThan: searchTerm + "\u{f8ff}")
+            .limit(to: limit)
+            .getDocuments()
+
+        // Combine results
+        var allDocs = snapshot.documents
+        let existingIds = Set(allDocs.map { $0.documentID })
+        for doc in lowercaseSnapshot.documents where !existingIds.contains(doc.documentID) {
+            allDocs.append(doc)
+        }
+
+        return allDocs.compactMap { doc -> FoodSearchResult? in
+            let data = doc.data()
+            return parseFirestoreDocToFoodSearchResult(docId: doc.documentID, data: data, source: collectionName)
+        }
+    }
+
+    /// Parse a Firestore document into FoodSearchResult
+    private func parseFirestoreDocToFoodSearchResult(docId: String, data: [String: Any], source: String) -> FoodSearchResult? {
+        // Get name from various possible fields
+        guard let name = (data["name"] as? String)
+            ?? (data["foodName"] as? String)
+            ?? (data["product_name"] as? String) else {
+            return nil
+        }
+
+        let id = (data["id"] as? String) ?? docId
+        let brand = (data["brandName"] as? String) ?? (data["brand"] as? String)
+        let barcode = data["barcode"] as? String
+
+        // Extract nutrition values
+        let calories = (data["calories"] as? Double) ?? (data["energy_kcal"] as? Double) ?? 0
+        let protein = (data["protein"] as? Double) ?? (data["proteins"] as? Double) ?? 0
+        let carbs = (data["carbs"] as? Double) ?? (data["carbohydrates"] as? Double) ?? 0
+        let fat = (data["fat"] as? Double) ?? (data["fats"] as? Double) ?? 0
+        let saturatedFat = (data["saturatedFat"] as? Double) ?? (data["saturated_fat"] as? Double)
+        let fiber = (data["fiber"] as? Double) ?? (data["fibre"] as? Double) ?? 0
+        let sugar = (data["sugar"] as? Double) ?? (data["sugars"] as? Double) ?? 0
+        let sodium = (data["sodium"] as? Double) ?? ((data["salt"] as? Double).map { $0 * 400 }) ?? 0
+
+        // Serving info
+        let servingSizeG = (data["servingSizeG"] as? Double) ?? (data["serving_size_g"] as? Double) ?? 100
+        let servingDescription = (data["servingSize"] as? String) ?? (data["serving_description"] as? String) ?? "\(Int(servingSizeG))g"
+
+        // Ingredients
+        var ingredients: [String]? = nil
+        if let ingredientsList = data["ingredients"] as? [String] {
+            ingredients = ingredientsList
+        } else if let ingredientsString = data["ingredients"] as? String, !ingredientsString.isEmpty {
+            ingredients = ingredientsString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        }
+
+        // Verification status
+        let isVerified = (data["isVerified"] as? Bool) ?? (data["verified"] as? Bool) ?? false
+        let isPerUnit = data["per_unit_nutrition"] as? Bool
+
+        // Micronutrient profile
+        var micronutrientProfile: MicronutrientProfile? = nil
+        if let profileData = data["micronutrientProfile"] as? [String: Any] {
+            micronutrientProfile = parseMicronutrientProfileFromFirestore(profileData)
+        }
+
+        return FoodSearchResult(
+            id: id,
+            name: name,
+            brand: brand,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            saturatedFat: saturatedFat,
+            fiber: fiber,
+            sugar: sugar,
+            sodium: sodium,
+            servingDescription: servingDescription,
+            servingSizeG: servingSizeG,
+            isPerUnit: isPerUnit,
+            ingredients: ingredients,
+            isVerified: isVerified,
+            barcode: barcode,
+            micronutrientProfile: micronutrientProfile,
+            source: source
+        )
+    }
+
+    /// Parse micronutrient profile from Firestore data
+    private func parseMicronutrientProfileFromFirestore(_ data: [String: Any]) -> MicronutrientProfile? {
+        var vitamins: [String: Double] = [:]
+        var minerals: [String: Double] = [:]
+
+        if let vitaminsData = data["vitamins"] as? [String: Any] {
+            for (key, value) in vitaminsData {
+                if let doubleValue = value as? Double {
+                    vitamins[key] = doubleValue
+                } else if let intValue = value as? Int {
+                    vitamins[key] = Double(intValue)
+                }
+            }
+        }
+
+        if let mineralsData = data["minerals"] as? [String: Any] {
+            for (key, value) in mineralsData {
+                if let doubleValue = value as? Double {
+                    minerals[key] = doubleValue
+                } else if let intValue = value as? Int {
+                    minerals[key] = Double(intValue)
+                }
+            }
+        }
+
+        guard !vitamins.isEmpty || !minerals.isEmpty else { return nil }
+
+        let dailyValues: [String: Double] = [
+            "vitaminA": 900, "vitaminC": 90, "vitaminD": 20, "vitaminE": 15, "vitaminK": 120,
+            "thiamine": 1.2, "riboflavin": 1.3, "niacin": 16, "pantothenicAcid": 5,
+            "vitaminB6": 1.7, "biotin": 30, "folate": 400, "vitaminB12": 2.4, "choline": 550,
+            "calcium": 1000, "iron": 18, "magnesium": 420, "phosphorus": 1250, "potassium": 4700,
+            "sodium": 2300, "zinc": 11, "copper": 0.9, "manganese": 2.3, "selenium": 55,
+            "chromium": 35, "molybdenum": 45, "iodine": 150
+        ]
+
+        let recommendedIntakes = RecommendedIntakes(age: 30, gender: .other, dailyValues: dailyValues)
+
+        let confidenceScore: MicronutrientConfidence
+        if let confidenceString = data["confidenceScore"] as? String {
+            switch confidenceString.lowercased() {
+            case "high": confidenceScore = .high
+            case "low": confidenceScore = .low
+            case "estimated": confidenceScore = .estimated
+            default: confidenceScore = .medium
+            }
+        } else {
+            confidenceScore = .medium
+        }
+
+        return MicronutrientProfile(
+            vitamins: vitamins,
+            minerals: minerals,
+            recommendedIntakes: recommendedIntakes,
+            confidenceScore: confidenceScore
+        )
+    }
+
     // MARK: - AI-Improved Foods
 
     /// Save AI-improved food data to Firebase

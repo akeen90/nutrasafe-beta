@@ -111,6 +111,7 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .scrollContentBackground(.hidden)
             .background(AppAnimatedBackground().ignoresSafeArea())
             .onTapGesture {
@@ -1881,6 +1882,7 @@ struct AppPreferencesSection: View {
     @State private var showingNotificationSettings = false
     @State private var showingAppleHealth = false
     @State private var showingEmailPreferences = false
+    @State private var showingFeatureTipsReset = false
 
     var body: some View {
         SettingsSection(title: "App Preferences") {
@@ -1964,8 +1966,7 @@ struct AppPreferencesSection: View {
                         FeatureTipsManager.shared.resetAllTips()
                         let generator = UINotificationFeedbackGenerator()
                         generator.notificationOccurred(.success)
-                        selectedTab?.wrappedValue = .diary
-                        dismiss()
+                        showingFeatureTipsReset = true
                     }
                 )
             }
@@ -1991,6 +1992,14 @@ struct AppPreferencesSection: View {
         }
         .fullScreenCover(isPresented: $showingEmailPreferences) {
             EmailMarketingConsentView()
+        }
+        .alert("Tips Reset", isPresented: $showingFeatureTipsReset) {
+            Button("OK") {
+                selectedTab?.wrappedValue = .diary
+                dismiss()
+            }
+        } message: {
+            Text("All feature tips have been reset. You'll see them again as you use the app.")
         }
     }
 }
@@ -5494,13 +5503,7 @@ struct EmailMarketingConsentView: View {
                                         .frame(height: 50)
                                 }
                             }
-                            .background(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                            .background(AppPalette.standard.accent)
                             .cornerRadius(12)
                             .disabled(isSaving)
                         }

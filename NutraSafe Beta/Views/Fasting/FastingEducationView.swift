@@ -2,99 +2,660 @@ import SwiftUI
 
 struct FastingEducationView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingSources = false
+    @State private var showContent = false
+    @State private var visibleSections: Set<Int> = []
+
+    // Use a calming sage/teal palette for fasting education
+    private let palette = OnboardingPalette.control
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 16) {
-                        Image(systemName: "graduationcap.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(AppPalette.standard.accent)
+                VStack(spacing: 32) {
+                    // Editorial header
+                    VStack(spacing: 20) {
+                        // Subtle icon with gradient
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [palette.primary.opacity(0.2), palette.accent.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 80, height: 80)
 
-                        Text("Understanding Fasting")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-
-                        Text("Learn about different fasting approaches and what happens during your fast")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.top)
-
-                    // Philosophy Information (Display Only)
-                    VStack(spacing: 16) {
-                        Text("Allowed Drinks Philosophy")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        Text("Choose your approach when creating or editing a fasting plan")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        ForEach(AllowedDrinksPhilosophy.allCases, id: \.self) { mode in
-                            PhilosophyInfoCard(mode: mode)
+                            Image(systemName: "leaf.fill")
+                                .font(.system(size: 36, weight: .medium))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [palette.primary, palette.accent],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         }
+                        .opacity(showContent ? 1 : 0)
+                        .scaleEffect(showContent ? 1 : 0.8)
+
+                        // Serif editorial headline
+                        Text("Understanding\nYour Fast")
+                            .font(.system(size: 34, weight: .bold, design: .serif))
+                            .tracking(-0.5)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(colorScheme == .dark ? .white : .primary)
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+
+                        Text("A gentle guide to what happens in your body—and how to support it.")
+                            .font(.system(size: 17, weight: .regular))
+                            .tracking(0.2)
+                            .lineSpacing(4)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.secondary)
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 15)
                     }
-                    
-                    // Phase Timeline Education
-                    PhaseTimelineEducation()
+                    .padding(.top, 20)
 
-                    // Scientific Sources Button
-                    Button(action: {
-                        showingSources = true
-                    }) {
-                        HStack {
-                            Image(systemName: "doc.text.fill")
-                                .foregroundColor(AppPalette.standard.accent)
+                    // Philosophy section
+                    FastingPhilosophySection(palette: palette, isVisible: visibleSections.contains(0))
+                        .onAppear { animateSection(0) }
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("View Scientific Sources")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
+                    // Phase Timeline
+                    FastingTimelineSection(palette: palette, isVisible: visibleSections.contains(1))
+                        .onAppear { animateSection(1) }
 
-                                Text("All claims backed by peer-reviewed research")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                    // Scientific sources card
+                    FastingSourcesCard(palette: palette, showingSources: $showingSources, isVisible: visibleSections.contains(2))
+                        .onAppear { animateSection(2) }
 
-                            Spacer()
+                    // Tips section
+                    FastingTipsSection(palette: palette, isVisible: visibleSections.contains(3))
+                        .onAppear { animateSection(3) }
 
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .cardBackground(cornerRadius: 12)
-                    }
-                    .buttonStyle(.plain)
+                    // Getting started section
+                    FastingGettingStartedSection(palette: palette, isVisible: visibleSections.contains(4))
+                        .onAppear { animateSection(4) }
 
-                    // Tips and Guidelines
-                    TipsSection()
-
-                    // Getting Started
-                    GettingStartedSection()
+                    Spacer(minLength: 40)
                 }
-                .padding()
+                .padding(.horizontal, 24)
             }
-            .navigationTitle("Fasting Education")
+            .background {
+                FastingEducationBackground(palette: palette)
+                    .ignoresSafeArea()
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 32, height: 32)
+                            .background(Color.secondary.opacity(0.1))
+                            .clipShape(Circle())
                     }
                 }
             }
             .fullScreenCover(isPresented: $showingSources) {
                 FastingCitationsView()
             }
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.6)) {
+                    showContent = true
+                }
+            }
         }
+    }
+
+    private func animateSection(_ index: Int) {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1 + Double(index) * 0.15)) {
+            _ = visibleSections.insert(index)
+        }
+    }
+}
+
+// MARK: - Background
+
+struct FastingEducationBackground: View {
+    let palette: OnboardingPalette
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            // Base
+            (colorScheme == .dark ? Color.black : palette.background)
+
+            // Soft gradient orbs
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [palette.primary.opacity(colorScheme == .dark ? 0.15 : 0.08), .clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 200
+                    )
+                )
+                .frame(width: 400, height: 400)
+                .offset(x: -100, y: -200)
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [palette.accent.opacity(colorScheme == .dark ? 0.1 : 0.05), .clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 250
+                    )
+                )
+                .frame(width: 500, height: 500)
+                .offset(x: 150, y: 400)
+        }
+    }
+}
+
+// MARK: - Philosophy Section
+
+struct FastingPhilosophySection: View {
+    let palette: OnboardingPalette
+    let isVisible: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Section header
+            HStack(spacing: 10) {
+                Image(systemName: "drop.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [palette.primary, palette.accent],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text("Allowed Drinks")
+                    .font(.system(size: 20, weight: .semibold, design: .serif))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+            }
+
+            Text("Choose your approach when creating a fasting plan")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+
+            ForEach(Array(AllowedDrinksPhilosophy.allCases.enumerated()), id: \.element) { index, mode in
+                PhilosophyInfoCardRedesigned(mode: mode, palette: palette, delay: Double(index) * 0.1)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.9))
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.06), radius: 15, x: 0, y: 6)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 30)
+    }
+}
+
+struct PhilosophyInfoCardRedesigned: View {
+    let mode: AllowedDrinksPhilosophy
+    let palette: OnboardingPalette
+    var delay: Double = 0
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isVisible = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(colorForMode.opacity(0.15))
+                        .frame(width: 40, height: 40)
+
+                    Image(systemName: iconForMode)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(colorForMode)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mode.displayName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .primary)
+
+                    Text(mode.tone)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                }
+
+                Spacer()
+            }
+
+            Text(mode.description)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .lineSpacing(3)
+
+            // Allowed items
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(allowedItems, id: \.self) { item in
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(colorForMode)
+
+                        Text(item)
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.top, 4)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.03) : colorForMode.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(colorForMode.opacity(0.15), lineWidth: 1)
+                )
+        )
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 15)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay + 0.2)) {
+                isVisible = true
+            }
+        }
+    }
+
+    private var iconForMode: String {
+        switch mode {
+        case .strict: return "drop.fill"
+        case .practical: return "leaf.fill"
+        }
+    }
+
+    private var colorForMode: Color {
+        switch mode {
+        case .strict: return .blue
+        case .practical: return palette.accent
+        }
+    }
+
+    private var allowedItems: [String] {
+        switch mode {
+        case .strict:
+            return ["Water (still or sparkling)", "Plain black coffee", "Plain tea", "Electrolytes"]
+        case .practical:
+            return ["All strict items", "Sugar-free drinks", "Zero-calorie flavoured water"]
+        }
+    }
+}
+
+// MARK: - Timeline Section
+
+struct FastingTimelineSection: View {
+    let palette: OnboardingPalette
+    let isVisible: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "timeline.selection")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.purple, .purple.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text("Your Fasting Timeline")
+                    .font(.system(size: 20, weight: .semibold, design: .serif))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+            }
+
+            Text("What happens in your body at each stage")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+
+            VStack(spacing: 0) {
+                ForEach(Array(FastingPhase.allCases.enumerated()), id: \.element) { index, phase in
+                    PhaseTimelineRow(phase: phase, isLast: index == FastingPhase.allCases.count - 1, index: index)
+                }
+            }
+
+            // Disclaimer
+            Text("Everyone's body is different. These are general guidelines.")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .italic()
+                .padding(.top, 8)
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.9))
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.06), radius: 15, x: 0, y: 6)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 30)
+    }
+}
+
+struct PhaseTimelineRow: View {
+    let phase: FastingPhase
+    let isLast: Bool
+    let index: Int
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isVisible = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Timeline indicator
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.purple.opacity(0.2), .purple.opacity(0.1)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+
+                    VStack(spacing: 0) {
+                        Text("\(phase.timeRange.lowerBound)")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.purple)
+                        Text("hrs")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.purple.opacity(0.7))
+                    }
+                }
+
+                if !isLast {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.purple.opacity(0.3), .purple.opacity(0.1)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 2, height: 40)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(phase.displayName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+
+                Text(phase.description)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .lineSpacing(2)
+            }
+            .padding(.vertical, 8)
+
+            Spacer()
+        }
+        .opacity(isVisible ? 1 : 0)
+        .offset(x: isVisible ? 0 : -20)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3 + Double(index) * 0.08)) {
+                isVisible = true
+            }
+        }
+    }
+}
+
+// MARK: - Sources Card
+
+struct FastingSourcesCard: View {
+    let palette: OnboardingPalette
+    @Binding var showingSources: Bool
+    let isVisible: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button {
+            showingSources = true
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.accent.opacity(0.2), palette.primary.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(palette.accent)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Scientific Sources")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .primary)
+
+                    Text("All claims backed by peer-reviewed research")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.9))
+                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.06), radius: 12, x: 0, y: 4)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 30)
+    }
+}
+
+// MARK: - Tips Section
+
+struct FastingTipsSection: View {
+    let palette: OnboardingPalette
+    let isVisible: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let tips: [(icon: String, title: String, description: String)] = [
+        ("drop.fill", "Stay Hydrated", "Drink plenty of water throughout your fast to reduce hunger and support your body."),
+        ("timer", "Start Slow", "Begin with 12-14 hour fasts and gradually increase as your body adapts."),
+        ("heart.fill", "Listen to Your Body", "If you feel unwell, break your fast. Your wellbeing comes first."),
+        ("calendar.badge.clock", "Be Consistent", "Regular fasting is more beneficial than occasional long fasts."),
+        ("leaf.fill", "Break Gently", "End your fast with small, easily digestible foods.")
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.orange, .yellow],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text("Helpful Tips")
+                    .font(.system(size: 20, weight: .semibold, design: .serif))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(tips.enumerated()), id: \.offset) { index, tip in
+                    FastingTipRow(icon: tip.icon, title: tip.title, description: tip.description, index: index)
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.9))
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.06), radius: 15, x: 0, y: 6)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 30)
+    }
+}
+
+struct FastingTipRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    let index: Int
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isVisible = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.orange.opacity(0.2), Color.yellow.opacity(0.15)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.orange, .yellow],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+
+                Text(description)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .lineSpacing(2)
+            }
+        }
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 12)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.3 + Double(index) * 0.08)) {
+                isVisible = true
+            }
+        }
+    }
+}
+
+// MARK: - Getting Started Section
+
+struct FastingGettingStartedSection: View {
+    let palette: OnboardingPalette
+    let isVisible: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let affirmations = ["Every hour counts", "Trust the process", "Your body adapts"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "flag.checkered")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [palette.accent, palette.primary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text("Ready to Begin")
+                    .font(.system(size: 20, weight: .semibold, design: .serif))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Fasting is a personal journey. Start with what feels manageable, and adjust as you learn what your body needs.")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .lineSpacing(3)
+
+                // Motivational quote
+                Text("Progress compounds.\nConsistency over perfection.")
+                    .font(.system(size: 16, weight: .medium, design: .serif))
+                    .foregroundColor(palette.accent)
+                    .italic()
+                    .padding(.vertical, 8)
+            }
+
+            // Affirmation chips - use wrapping HStack
+            HStack(spacing: 8) {
+                ForEach(affirmations, id: \.self) { message in
+                    Text(message)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(palette.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(palette.accent.opacity(0.1))
+                        )
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.9))
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.06), radius: 15, x: 0, y: 6)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 30)
     }
 }
 

@@ -970,7 +970,21 @@
                     <label class="form-label">Serving Size Description</label>
                     <input type="text" class="form-input" id="edit-serving-size" placeholder="e.g., per 100g, per serving..." />
                 </div>
-                
+
+                <div class="form-group" style="display: flex; gap: 12px;">
+                    <div style="flex: 1;">
+                        <label class="form-label">Serving Size (numeric)</label>
+                        <input type="number" class="form-input" id="edit-serving-size-g" placeholder="e.g., 40, 330..." step="0.1" min="0" />
+                    </div>
+                    <div style="flex: 0 0 100px;">
+                        <label class="form-label">Unit</label>
+                        <select class="form-input" id="edit-serving-unit">
+                            <option value="g">g (grams)</option>
+                            <option value="ml">ml (liquid)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Save Status -->
                 <div id="save-status" style="margin-top: 16px; padding: 8px; border-radius: 4px; display: none;">
                 </div>
@@ -2502,7 +2516,12 @@
                 document.getElementById('edit-collection').value = food.collection || collection;
                 document.getElementById('edit-source').value = food.source || '';
                 document.getElementById('edit-serving-size').value = food.servingSize || food.servingDescription || '';
-                
+
+                // Serving size numeric and unit
+                document.getElementById('edit-serving-size-g').value = food.servingSizeG || '';
+                const servingUnit = food.servingUnit || food.suggestedServingUnit || 'g';
+                document.getElementById('edit-serving-unit').value = servingUnit === 'ml' ? 'ml' : 'g';
+
                 currentEditingFood = food;
                 currentEditingCollection = collection;
                 document.getElementById('food-edit-modal').style.display = 'block';
@@ -2549,6 +2568,8 @@
                     },
                     source: document.getElementById('edit-source').value.trim() || null,
                     servingSize: document.getElementById('edit-serving-size').value.trim() || 'per 100g',
+                    servingSizeG: parseFloat(document.getElementById('edit-serving-size-g').value) || null,
+                    servingUnit: document.getElementById('edit-serving-unit').value || 'g',
                     verifiedBy: 'admin',
                     verificationMethod: 'manual'
                 };
@@ -3734,11 +3755,30 @@ This will create a new "cleansedFoods" collection in Firebase.`;
                                                 border-radius: 4px; color: var(--text-primary);">
                                         </div>
                                         <div>
-                                            <label style="font-weight: bold; color: var(--text-primary);">Serving Size:</label>
+                                            <label style="font-weight: bold; color: var(--text-primary);">Serving Description:</label>
                                             <input type="text" id="edit-serving" value="${servingSize}" style="
-                                                width: 100%; margin-top: 5px; padding: 8px; 
-                                                background: var(--bg-tertiary); border: 1px solid var(--border); 
+                                                width: 100%; margin-top: 5px; padding: 8px;
+                                                background: var(--bg-tertiary); border: 1px solid var(--border);
                                                 border-radius: 4px; color: var(--text-primary);">
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 120px; gap: 15px; margin-top: 15px;">
+                                        <div>
+                                            <label style="font-weight: bold; color: var(--text-primary);">Serving Size (numeric):</label>
+                                            <input type="number" id="edit-serving-g" value="${cleanedData.servingSizeG || ''}" step="0.1" min="0" style="
+                                                width: 100%; margin-top: 5px; padding: 8px;
+                                                background: var(--bg-tertiary); border: 1px solid var(--border);
+                                                border-radius: 4px; color: var(--text-primary);">
+                                        </div>
+                                        <div>
+                                            <label style="font-weight: bold; color: var(--text-primary);">Unit:</label>
+                                            <select id="edit-serving-unit-cleanse" style="
+                                                width: 100%; margin-top: 5px; padding: 8px;
+                                                background: var(--bg-tertiary); border: 1px solid var(--border);
+                                                border-radius: 4px; color: var(--text-primary);">
+                                                <option value="g" ${(cleanedData.servingUnit || 'g') === 'g' ? 'selected' : ''}>g (grams)</option>
+                                                <option value="ml" ${cleanedData.servingUnit === 'ml' ? 'selected' : ''}>ml (liquid)</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -3885,11 +3925,16 @@ This will create a new "cleansedFoods" collection in Firebase.`;
         async function saveCleansedDataChanges(foodId) {
             try {
                 // Get updated values from form
+                const servingSizeGInput = document.getElementById('edit-serving-g');
+                const servingUnitInput = document.getElementById('edit-serving-unit-cleanse');
+
                 const updatedData = {
                     name: document.getElementById('edit-name').value,
                     brand: document.getElementById('edit-brand').value,
                     barcode: document.getElementById('edit-barcode').value,
                     servingSize: document.getElementById('edit-serving').value,
+                    servingSizeG: servingSizeGInput ? (parseFloat(servingSizeGInput.value) || null) : null,
+                    servingUnit: servingUnitInput ? (servingUnitInput.value || 'g') : 'g',
                     ingredients: document.getElementById('edit-ingredients').value,
                     nutritionData: {
                         calories: parseFloat(document.getElementById('edit-calories').value) || 0,
@@ -3909,7 +3954,7 @@ This will create a new "cleansedFoods" collection in Firebase.`;
                 const response = await fetch(`${API_BASE}/updateCleansedFood`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ foodId, updatedData })
+                    body: JSON.stringify({ foodId, updatedFood: updatedData })
                 });
 
                 if (response.ok) {

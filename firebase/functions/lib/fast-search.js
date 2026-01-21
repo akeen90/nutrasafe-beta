@@ -1,14 +1,174 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fastSearchFoods = void 0;
+exports.loadCustomCategories = loadCustomCategories;
+exports.generateServingOptions = generateServingOptions;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const food_categories_1 = require("./food-categories");
 // In-memory cache for search results (will reset on function cold start)
 const searchCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 // Precomputed frequent search results (warm cache)
 let commonFoodsCache = [];
 let lastCacheUpdate = 0;
+// Cache for custom categories
+let customCategoriesCache = [];
+let customCategoriesCacheTime = 0;
+const CUSTOM_CATEGORIES_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+// Load custom categories from Firestore (exported for future use)
+async function loadCustomCategories() {
+    const now = Date.now();
+    if (customCategoriesCache.length > 0 && (now - customCategoriesCacheTime) < CUSTOM_CATEGORIES_CACHE_DURATION) {
+        return customCategoriesCache;
+    }
+    try {
+        const snapshot = await admin.firestore().collection('customFoodCategories').get();
+        customCategoriesCache = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: data.id || doc.id,
+                name: data.name,
+                description: data.description || '',
+                defaultServingSize: data.defaultServingSize,
+                servingUnit: data.servingUnit || 'g',
+                servingDescription: data.servingDescription,
+                keywords: data.keywords || []
+            };
+        });
+        customCategoriesCacheTime = now;
+        return customCategoriesCache;
+    }
+    catch (error) {
+        console.error('Failed to load custom categories:', error);
+        return customCategoriesCache; // Return stale cache on error
+    }
+}
+// Get category by ID (checks both built-in and custom)
+function getCategoryById(categoryId, customCategories) {
+    const builtIn = food_categories_1.FOOD_CATEGORIES.find(c => c.id === categoryId);
+    if (builtIn)
+        return builtIn;
+    return customCategories.find(c => c.id === categoryId) || null;
+}
+// Generate smart serving options based on category and actual data (exported for future use)
+function generateServingOptions(categoryId, actualServingSizeG, actualServingDescription, customCategories) {
+    const options = [];
+    // Get category-based serving if we have a category
+    let categoryServing = null;
+    if (categoryId) {
+        const category = getCategoryById(categoryId, customCategories);
+        if (category) {
+            categoryServing = {
+                size: category.defaultServingSize,
+                unit: category.servingUnit,
+                description: category.servingDescription
+            };
+        }
+    }
+    const isActual100g = actualServingSizeG === 100 || actualServingDescription === '100g serving' || actualServingDescription === 'per 100g';
+    if (isActual100g) {
+        // Actual serving is 100g - use category suggestion as primary
+        if (categoryServing && categoryServing.size !== 100) {
+            options.push({
+                size: categoryServing.size,
+                unit: categoryServing.unit,
+                description: categoryServing.description,
+                isDefault: true
+            });
+            // Add half portion option
+            const halfSize = Math.round(categoryServing.size / 2);
+            if (halfSize >= 10) {
+                options.push({
+                    size: halfSize,
+                    unit: categoryServing.unit,
+                    description: `Small portion (${halfSize}${categoryServing.unit})`,
+                    isDefault: false
+                });
+            }
+            // Add double portion option
+            const doubleSize = categoryServing.size * 2;
+            if (doubleSize <= 500) {
+                options.push({
+                    size: doubleSize,
+                    unit: categoryServing.unit,
+                    description: `Large portion (${doubleSize}${categoryServing.unit})`,
+                    isDefault: false
+                });
+            }
+        }
+        else {
+            // No category or category also says 100g - just use 100g with some options
+            options.push({
+                size: 100,
+                unit: 'g',
+                description: 'per 100g',
+                isDefault: true
+            });
+            options.push({
+                size: 50,
+                unit: 'g',
+                description: 'Half portion (50g)',
+                isDefault: false
+            });
+            options.push({
+                size: 150,
+                unit: 'g',
+                description: 'Large portion (150g)',
+                isDefault: false
+            });
+        }
+    }
+    else {
+        // Actual serving is NOT 100g - use category as primary, actual at bottom
+        if (categoryServing && categoryServing.size !== actualServingSizeG) {
+            // Category suggestion first
+            options.push({
+                size: categoryServing.size,
+                unit: categoryServing.unit,
+                description: categoryServing.description,
+                isDefault: true
+            });
+        }
+        // Add a middle option if there's room
+        if (categoryServing && actualServingSizeG > 0) {
+            const midSize = Math.round((categoryServing.size + actualServingSizeG) / 2);
+            if (midSize !== categoryServing.size && midSize !== actualServingSizeG && midSize > 10) {
+                options.push({
+                    size: midSize,
+                    unit: 'g',
+                    description: `${midSize}g portion`,
+                    isDefault: options.length === 0
+                });
+            }
+        }
+        // Actual serving at the bottom
+        if (actualServingSizeG > 0 && actualServingSizeG !== 100) {
+            const unit = actualServingDescription.includes('ml') ? 'ml' : 'g';
+            options.push({
+                size: actualServingSizeG,
+                unit: unit,
+                description: actualServingDescription,
+                isDefault: options.length === 0
+            });
+        }
+    }
+    // Ensure we have at least one option
+    if (options.length === 0) {
+        options.push({
+            size: 100,
+            unit: 'g',
+            description: 'per 100g',
+            isDefault: true
+        });
+    }
+    // Ensure exactly one default
+    const hasDefault = options.some(o => o.isDefault);
+    if (!hasDefault && options.length > 0) {
+        options[0].isDefault = true;
+    }
+    return options;
+}
 exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
     const startTime = Date.now();
     // Set CORS headers
@@ -52,6 +212,8 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
             });
             return;
         }
+        // Load custom categories for serving size lookups
+        const customCategories = await loadCustomCategories();
         // Optimized single query strategy
         let searchResults = [];
         // Strategy 1: Direct prefix match (fastest)
@@ -66,7 +228,7 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
                 .get();
             searchResults = snapshot.docs.map(doc => {
                 const data = doc.data();
-                return formatFoodResult(doc.id, data);
+                return formatFoodResult(doc.id, data, customCategories);
             });
         }
         catch (error) {
@@ -83,7 +245,7 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
                     .get();
                 const additionalResults = snapshot.docs.map(doc => {
                     const data = doc.data();
-                    return formatFoodResult(doc.id, data);
+                    return formatFoodResult(doc.id, data, customCategories);
                 });
                 // Merge results, avoiding duplicates
                 const existingIds = new Set(searchResults.map(r => r.id));
@@ -108,7 +270,7 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
                     .get();
                 const tescoResults = tescoSnapshot.docs.map(doc => {
                     const data = doc.data();
-                    return formatFoodResult(doc.id, data);
+                    return formatFoodResult(doc.id, data, customCategories);
                 });
                 // Merge results, avoiding duplicates
                 const existingIds = new Set(searchResults.map(r => r.id));
@@ -161,7 +323,7 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
     }
 });
 // Simplified food result formatting
-function formatFoodResult(id, data) {
+function formatFoodResult(id, data, customCategories = []) {
     const nutrition = data.nutritionData || data.nutrition || {};
     // Extract serving size from multiple possible field names
     let servingDescription = data.servingDescription ||
@@ -175,11 +337,17 @@ function formatFoodResult(id, data) {
         data.servingWeightG ||
         extractRawServingSize(servingDescription);
     // Validate and fix bad serving size data (e.g., RI% mistaken for grams)
-    let servingSizeG = validateServingSize(rawServingSizeG, servingDescription);
+    const servingSizeG = validateServingSize(rawServingSizeG, servingDescription);
     // If serving size was reset due to bad data, update description too
     if (rawServingSizeG < 50 && rawServingSizeG > 0 && servingSizeG === 100) {
         servingDescription = '100g serving';
     }
+    // Get food category
+    const foodCategory = data.foodCategory || null;
+    // Generate smart serving options based on category
+    const servingOptions = generateServingOptions(foodCategory, servingSizeG, servingDescription, customCategories);
+    // Get the default serving from options
+    const defaultServing = servingOptions.find(o => o.isDefault) || servingOptions[0];
     return {
         id: id,
         name: data.foodName || data.title || data.name || '',
@@ -192,8 +360,10 @@ function formatFoodResult(id, data) {
         fiber: extractNutritionValue(nutrition.fiber || nutrition.fibre || data.fiber),
         sugar: extractNutritionValue(nutrition.sugar || nutrition.sugars || data.sugar),
         sodium: extractNutritionValue(nutrition.sodium || (nutrition.salt ? nutrition.salt * 1000 : 0)),
-        servingDescription: servingDescription,
-        servingSizeG: servingSizeG,
+        servingDescription: defaultServing.description,
+        servingSizeG: defaultServing.size,
+        servingOptions: servingOptions,
+        foodCategory: foodCategory,
         ingredients: data.extractedIngredients || data.ingredients || null,
         additives: data.additives || null,
         verifiedBy: data.verifiedBy || null,
@@ -261,12 +431,14 @@ async function updateCommonFoodsCache() {
     if (now - lastCacheUpdate < 10 * 60 * 1000)
         return; // Update every 10 minutes
     try {
+        // Load custom categories for serving size lookups
+        const customCategories = await loadCustomCategories();
         const snapshot = await admin.firestore()
             .collection('verifiedFoods')
             .where('verifiedBy', '==', 'company') // Prioritize verified foods
             .limit(200)
             .get();
-        commonFoodsCache = snapshot.docs.map(doc => formatFoodResult(doc.id, doc.data()));
+        commonFoodsCache = snapshot.docs.map(doc => formatFoodResult(doc.id, doc.data(), customCategories));
         lastCacheUpdate = now;
         console.log(`Updated common foods cache: ${commonFoodsCache.length} foods`);
     }

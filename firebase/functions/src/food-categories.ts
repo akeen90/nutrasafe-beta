@@ -595,6 +595,15 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     keywords: ['carrot', 'broccoli', 'cauliflower', 'peas', 'beans', 'sweetcorn', 'spinach', 'lettuce', 'tomato', 'cucumber', 'pepper', 'courgette', 'aubergine', 'mushroom', 'onion']
   },
   {
+    id: 'aromatics',
+    name: 'Aromatics',
+    description: 'Garlic, ginger and other flavouring ingredients',
+    defaultServingSize: 3,
+    servingUnit: 'g',
+    servingDescription: 'per clove/piece',
+    keywords: ['garlic', 'ginger', 'shallot', 'garlic clove', 'fresh ginger', 'root ginger', 'galangal', 'lemongrass']
+  },
+  {
     id: 'salad_bag',
     name: 'Bagged Salad',
     description: 'Pre-washed salad bags',
@@ -913,34 +922,60 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
 ];
 
 /**
- * Get category by ID
+ * Custom category interface (for AI-created categories)
  */
-export function getCategoryById(categoryId: string): FoodCategory | undefined {
-  return FOOD_CATEGORIES.find(cat => cat.id === categoryId);
+export interface CustomCategory {
+  id: string;
+  name: string;
+  description: string;
+  defaultServingSize: number;
+  servingUnit: 'g' | 'ml';
+  servingDescription: string;
+  createdAt: Date;
+  createdFor: string; // The food name that triggered this category
+}
+
+/**
+ * Get category by ID (checks built-in first, then custom)
+ */
+export function getCategoryById(categoryId: string, customCategories: CustomCategory[] = []): FoodCategory | CustomCategory | undefined {
+  // Check built-in categories first
+  const builtIn = FOOD_CATEGORIES.find(cat => cat.id === categoryId);
+  if (builtIn) return builtIn;
+
+  // Check custom categories
+  return customCategories.find(cat => cat.id === categoryId);
 }
 
 /**
  * Get all category IDs for AI prompt
  */
-export function getCategoryIds(): string[] {
-  return FOOD_CATEGORIES.map(cat => cat.id);
+export function getCategoryIds(customCategories: CustomCategory[] = []): string[] {
+  const builtInIds = FOOD_CATEGORIES.map(cat => cat.id);
+  const customIds = customCategories.map(cat => cat.id);
+  return [...builtInIds, ...customIds];
 }
 
 /**
- * Get category descriptions for AI prompt
+ * Get category descriptions for AI prompt (includes custom categories)
  */
-export function getCategoryDescriptions(): string {
-  return FOOD_CATEGORIES
+export function getCategoryDescriptions(customCategories: CustomCategory[] = []): string {
+  const builtInDescriptions = FOOD_CATEGORIES
     .filter(cat => cat.id !== 'unknown')
-    .map(cat => `- ${cat.id}: ${cat.name} - ${cat.description} (e.g., ${cat.keywords.slice(0, 3).join(', ')})`)
-    .join('\n');
+    .map(cat => `- ${cat.id}: ${cat.name} - ${cat.description} (e.g., ${cat.keywords.slice(0, 3).join(', ')})`);
+
+  const customDescriptions = customCategories.map(cat =>
+    `- ${cat.id}: ${cat.name} - ${cat.description} [CUSTOM]`
+  );
+
+  return [...builtInDescriptions, ...customDescriptions].join('\n');
 }
 
 /**
  * Get serving size info for a category
  */
-export function getServingSizeForCategory(categoryId: string): { size: number; unit: 'g' | 'ml'; description: string } | null {
-  const category = getCategoryById(categoryId);
+export function getServingSizeForCategory(categoryId: string, customCategories: CustomCategory[] = []): { size: number; unit: 'g' | 'ml'; description: string } | null {
+  const category = getCategoryById(categoryId, customCategories);
   if (!category) return null;
 
   return {
@@ -948,4 +983,20 @@ export function getServingSizeForCategory(categoryId: string): { size: number; u
     unit: category.servingUnit,
     description: category.servingDescription
   };
+}
+
+/**
+ * Validate a new category ID (must be snake_case, not already exist)
+ */
+export function isValidNewCategoryId(categoryId: string, customCategories: CustomCategory[] = []): boolean {
+  // Must be snake_case
+  if (!/^[a-z][a-z0-9_]*$/.test(categoryId)) return false;
+
+  // Must not exist in built-in categories
+  if (FOOD_CATEGORIES.some(cat => cat.id === categoryId)) return false;
+
+  // Must not exist in custom categories
+  if (customCategories.some(cat => cat.id === categoryId)) return false;
+
+  return true;
 }

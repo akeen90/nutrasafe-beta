@@ -775,7 +775,7 @@ struct FastingPlanSettingsRedesigned: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header (always visible, tappable)
             Button {
-                withAnimation(DesignTokens.Animation.standard) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     showingHowItWorks.toggle()
                 }
             } label: {
@@ -790,9 +790,10 @@ struct FastingPlanSettingsRedesigned: View {
 
                     Spacer()
 
-                    Image(systemName: showingHowItWorks ? "chevron.up" : "chevron.down")
+                    Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(palette.textTertiary)
+                        .rotationEffect(.degrees(showingHowItWorks ? 90 : 0))
                 }
                 .padding(DesignTokens.Spacing.md)
             }
@@ -851,6 +852,7 @@ struct FastingPlanSettingsRedesigned: View {
                 .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
                 .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
         )
+        .clipped()
     }
 
     private func howItWorksStep(number: String, title: String, description: String) -> some View {

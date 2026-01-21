@@ -427,32 +427,33 @@ final class AlgoliaSearchManager {
     }
 
     // Index names with priority - lower number = higher priority
-    // TIER 0: Admin-verified foods (highest quality - human verified)
-    // TIER 1: Tesco products (official UK supermarket data)
-    // TIER 2: Other UK/verified sources
+    // TIER 0: Admin-verified (highest quality)
+    // TIER 1: Branded/retail sources (Tesco, etc)
+    // TIER 2: AI-enhanced sources
+    // TIER 3: Generic foods (consumer_foods - only boosted for generic searches)
     // Results are deduplicated, so items from lower-priority indices only appear if not in higher-priority ones
     private var indices: [(String, Int)] {
         return [
-            ("verified_foods", 0),       // TIER 0: Admin-verified foods (human verified - highest quality)
-            ("ai_enhanced", 1),          // TIER 1: AI-enhanced foods (AI verified with human approval)
-            ("ai_manually_added", 1),    // TIER 1: AI manually added foods (from AI scanner)
-            ("tesco_products", 2),       // TIER 2: Tesco UK (official supermarket data)
+            ("verified_foods", 0),       // TIER 0: Admin-verified foods (human verified)
+            ("tesco_products", 1),       // TIER 1: Tesco UK (official supermarket data - has branded products)
+            ("ai_enhanced", 2),          // TIER 2: AI-enhanced foods (AI verified with human approval)
+            ("ai_manually_added", 2),    // TIER 2: AI manually added foods (from AI scanner)
             ("uk_foods_cleaned", 3),     // UK Foods Cleaned (59k records)
             ("foods", 4),                // Original foods (fallback - fills gaps)
             ("fast_foods_database", 5),  // Fast Food restaurants
-            ("generic_database", 6),     // Generic food items
+            ("consumer_foods", 6),       // TIER 6: Generic foods (boosted only for generic food intent)
             ("user_added", 7),           // User's custom foods
         ]
     }
 
     /// Returns indices with adjusted priorities for generic food searches
-    /// When searching for generic foods (banana, apple, etc.), boost generic_database to top priority
+    /// When searching for generic foods (banana, apple, etc.), boost consumer_foods to top priority
     private func indicesForIntent(_ intent: SearchIntent) -> [(String, Int)] {
         switch intent {
         case .genericFood(_):
-            // For generic food searches, prioritize generic_database alongside verified_foods
+            // For generic food searches, prioritize consumer_foods alongside verified_foods
             return [
-                ("generic_database", 0),     // BOOSTED: Generic foods get top priority for generic searches
+                ("consumer_foods", 0),       // BOOSTED: Consumer foods get top priority for generic searches
                 ("verified_foods", 0),       // TIER 0: Admin-verified foods
                 ("uk_foods_cleaned", 1),     // UK Foods often has raw ingredients
                 ("foods", 2),                // Original foods database
@@ -523,6 +524,7 @@ final class AlgoliaSearchManager {
     /// Stage 2: Strong partial matches
     /// Stage 3: Fuzzy matches (misspellings)
     /// Stage 4: Generic fallbacks
+    /// Stage 5: Firebase fallback (when Algolia unavailable)
     ///
     /// - Parameters:
     ///   - query: Search query string
@@ -552,6 +554,11 @@ final class AlgoliaSearchManager {
             }
         }
 
+        // Track if Algolia search fails completely
+        var algoliaFailed = false
+        var allResults: [FoodSearchResult] = []
+
+        do {
         // === STAGE 0: NORMALIZE INPUT ===
         let normalized = SearchQueryNormalizer.normalize(trimmedQuery)
 
@@ -584,7 +591,6 @@ final class AlgoliaSearchManager {
         // === STAGES 1-3: PARALLEL SEARCH ===
         // Search all query variants in parallel
         // Use intent-based indices for generic food searches
-        var allResults: [FoodSearchResult] = []
         var seenIds = Set<String>()
         let allSearchQueries = Array(querySet)
         let searchIndices = indicesForIntent(normalized.intent)
@@ -648,6 +654,34 @@ final class AlgoliaSearchManager {
         )
 
         return rankedResults
+
+        } catch {
+            // Algolia search failed - mark for fallback
+            print("⚠️ Algolia search failed: \(error.localizedDescription)")
+            algoliaFailed = true
+        }
+
+        // === STAGE 5: FIREBASE FALLBACK ===
+        // If Algolia failed completely or returned no results, try Firebase
+        if algoliaFailed || allResults.isEmpty {
+            print("🔄 Using Firebase fallback search for: \(trimmedQuery)")
+            do {
+                let firebaseResults = try await FirebaseManager.shared.searchFoodsFirebaseFallback(query: trimmedQuery)
+                if !firebaseResults.isEmpty {
+                    // Cache Firebase results too
+                    searchCache.setObject(
+                        SearchCacheEntry(results: firebaseResults, timestamp: Date()),
+                        forKey: cacheKey
+                    )
+                    return firebaseResults
+                }
+            } catch {
+                print("❌ Firebase fallback also failed: \(error.localizedDescription)")
+            }
+        }
+
+        // If both Algolia and Firebase failed, return empty results
+        return allResults
     }
 
     // MARK: - Multi-Stage Ranking
@@ -666,6 +700,7 @@ final class AlgoliaSearchManager {
             let nameLower = result.name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
             let brandLower = result.brand?.lowercased() ?? ""
+            let sourceLower = result.source?.lowercased() ?? ""
 
             var score = 0
             var tier = 4  // Default tier (lowest)
@@ -1084,6 +1119,7 @@ final class AlgoliaSearchManager {
             let name = item.result.name
             let nameLower = name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
+            let sourceLower = item.result.source?.lowercased() ?? ""
 
             var score = 0
 

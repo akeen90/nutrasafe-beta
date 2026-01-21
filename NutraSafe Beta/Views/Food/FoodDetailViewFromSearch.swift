@@ -522,6 +522,13 @@ struct FoodDetailViewFromSearch: View {
             return 1.0
         }
 
+        // For custom grams entry, use gramsAmount directly
+        if selectedPortionName == "__custom__" {
+            let amount = Double(gramsAmount) ?? 100.0
+            // gramsAmount is already in g or ml (treated as g for liquids)
+            return amount
+        }
+
         // For per-100g foods, convert to grams
         let amount = Double(servingAmount) ?? 1.0
         let unit = servingUnit

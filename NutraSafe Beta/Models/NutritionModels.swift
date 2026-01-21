@@ -54,7 +54,13 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let portions: [PortionOption]? // Available portion sizes (e.g., McNuggets 6pc, 9pc, 20pc)
     let source: String? // Source index (e.g., "tesco_products", "uk_foods_cleaned") for tier-based ranking
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil) {
+    // Firebase category-based serving sizes (from AI categorization)
+    let foodCategory: String? // Category ID (e.g., "chocolate_bar", "raw_beef", "spirits")
+    let suggestedServingSize: Double? // Default serving size for this category (e.g., 45, 150, 25)
+    let suggestedServingUnit: String? // "g" or "ml"
+    let suggestedServingDescription: String? // e.g., "per bar", "per portion", "per 25ml measure"
+
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -81,6 +87,10 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.micronutrientProfile = micronutrientProfile
         self.portions = portions
         self.source = source
+        self.foodCategory = foodCategory
+        self.suggestedServingSize = suggestedServingSize
+        self.suggestedServingUnit = suggestedServingUnit
+        self.suggestedServingDescription = suggestedServingDescription
     }
 
     // Custom decoder to handle flexible payloads from Cloud Functions
@@ -114,6 +124,11 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case isPerUnit = "per_unit_nutrition"
         case portions
         case source
+        // Firebase category-based serving sizes
+        case foodCategory
+        case suggestedServingSize
+        case suggestedServingUnit
+        case suggestedServingDescription
     }
     
     // Helper structs for nested nutrition format from Firebase
@@ -232,6 +247,11 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.isPerUnit = try? c.decode(Bool.self, forKey: .isPerUnit)
         self.portions = try? c.decode([PortionOption].self, forKey: .portions)
         self.source = try? c.decode(String.self, forKey: .source)
+        // Firebase category-based serving sizes
+        self.foodCategory = try? c.decode(String.self, forKey: .foodCategory)
+        self.suggestedServingSize = try? c.decode(Double.self, forKey: .suggestedServingSize)
+        self.suggestedServingUnit = try? c.decode(String.self, forKey: .suggestedServingUnit)
+        self.suggestedServingDescription = try? c.decode(String.self, forKey: .suggestedServingDescription)
     }
 
     /// Returns true if this food has multiple portion options (e.g., McNuggets with 6pc, 9pc, 20pc)
@@ -268,6 +288,84 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         return (isPerUnit == true) ? "per unit" : "per 100g"
     }
 
+    // MARK: - Firebase Category-Based Portions
+
+    /// Returns true if this food has Firebase category data with suggested serving size
+    var hasFirebaseCategoryPortions: Bool {
+        guard let category = foodCategory, !category.isEmpty,
+              let servingSize = suggestedServingSize, servingSize > 0 else {
+            return false
+        }
+        return true
+    }
+
+    /// Generates portion options based on Firebase category data (from AI categorization)
+    /// These are more accurate than local detection since they're determined by Gemini AI
+    var firebaseCategoryPortions: [PortionOption] {
+        guard let servingSize = suggestedServingSize, servingSize > 0 else { return [] }
+
+        let unit = suggestedServingUnit ?? "g"
+        let description = suggestedServingDescription ?? "1 serving"
+        let caloriesPer100 = calories
+        let isLiquid = unit == "ml"
+
+        // Generate smart portion options based on the default serving size
+        // Create 4 options: half, 1x, 1.5x, and 2x the suggested serving
+
+        // Format the portion name with the unit
+        func formatPortion(_ grams: Double, _ label: String) -> String {
+            let rounded = Int(grams)
+            return "\(label) (\(rounded)\(unit))"
+        }
+
+        // Calculate calories for a given portion size
+        func caloriesFor(_ grams: Double) -> Double {
+            return caloriesPer100 * (grams / 100)
+        }
+
+        // Clean up the description for display (remove "per " prefix if present)
+        let cleanDesc = description.hasPrefix("per ") ? String(description.dropFirst(4)) : description
+
+        // For very small servings (like aromatics: 3g), use different multipliers
+        if servingSize < 15 {
+            return [
+                PortionOption(name: formatPortion(servingSize, "1 \(cleanDesc)"), calories: caloriesFor(servingSize), serving_g: servingSize),
+                PortionOption(name: formatPortion(servingSize * 2, "2x"), calories: caloriesFor(servingSize * 2), serving_g: servingSize * 2),
+                PortionOption(name: formatPortion(servingSize * 3, "3x"), calories: caloriesFor(servingSize * 3), serving_g: servingSize * 3),
+                PortionOption(name: formatPortion(servingSize * 4, "4x"), calories: caloriesFor(servingSize * 4), serving_g: servingSize * 4)
+            ]
+        }
+
+        // For liquid portions, use appropriate multipliers
+        if isLiquid {
+            // Round to nice ml values
+            let half = (servingSize * 0.5).rounded()
+            let one = servingSize
+            let oneHalf = (servingSize * 1.5).rounded()
+            let double = servingSize * 2
+
+            return [
+                PortionOption(name: formatPortion(half, "Half"), calories: caloriesFor(half), serving_g: half),
+                PortionOption(name: formatPortion(one, "1 \(cleanDesc)"), calories: caloriesFor(one), serving_g: one),
+                PortionOption(name: formatPortion(oneHalf, "Large"), calories: caloriesFor(oneHalf), serving_g: oneHalf),
+                PortionOption(name: formatPortion(double, "2x"), calories: caloriesFor(double), serving_g: double)
+            ]
+        }
+
+        // For solid portions
+        let half = (servingSize * 0.5).rounded()
+        let one = servingSize
+        let oneHalf = (servingSize * 1.5).rounded()
+        let double = servingSize * 2
+
+        return [
+            PortionOption(name: formatPortion(half, "Half"), calories: caloriesFor(half), serving_g: half),
+            PortionOption(name: formatPortion(one, "1 \(cleanDesc)"), calories: caloriesFor(one), serving_g: one),
+            PortionOption(name: formatPortion(oneHalf, "1.5x"), calories: caloriesFor(oneHalf), serving_g: oneHalf),
+            PortionOption(name: formatPortion(double, "2x"), calories: caloriesFor(double), serving_g: double)
+        ]
+    }
+
     // MARK: - Auto-detected Food Category for Smart Portion Presets
 
     /// Food category for determining preset portion sizes
@@ -278,7 +376,8 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case juice          // Fruit juices, smoothies
         case hotDrink       // Coffee, tea
         case water          // Water, flavoured water
-        case alcoholicDrink // Beer, wine, spirits
+        case alcoholicDrink // Beer, wine (larger portions)
+        case spirit         // Vodka, gin, whisky, rum (shot portions)
         // Snacks
         case chocolateBar   // Chocolate bars (Mars, Snickers, Twix)
         case chocolateBag   // Bagged/boxed chocolates (Revels, Maltesers, M&Ms)
@@ -288,19 +387,27 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         // Generic Foods
         case oil            // Cooking oils
         case butter         // Butter, spreads
+        case condiment      // Jam, honey, mayo, ketchup, sauces
+        case dip            // Hummus, guacamole, salsa, tzatziki
         case fruit          // Whole fruits (apple, banana, orange)
+        case driedFruit     // Raisins, dates, prunes, dried apricots
         case egg            // Eggs
         case rice           // Cooked rice, grains
         case pasta          // Cooked pasta
         case bread          // Sliced bread, toast
+        case bakeryItem     // Whole items: bagels, croissants, muffins, naan, pitta
+        case cereal         // Oats, granola, muesli, cornflakes
         case nuts           // Nuts and seeds
         case cheese         // Cheese portions
         case milk           // Milk, plant milk
         case yogurt         // Yogurt, fromage frais
-        case meat           // Meat portions
+        case processedMeat  // Bacon, sausages, ham (per-item portions)
+        case meat           // Meat portions (chicken, beef, pork, lamb)
         case fish           // Fish portions
         case vegetable      // Vegetable portions
+        case aromatics      // Garlic, ginger, shallots (small portions)
         case legume         // Beans, lentils
+        case tofu           // Tofu, tempeh, seitan
         case other          // Default - no presets
     }
 
@@ -675,33 +782,6 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         "tango", "oasis", "schweppes", "san pellegrino", "fever-tree"
     ]
 
-    // MARK: - Safe Output Portions
-
-    /// Generic weight-based portions for when confidence is low or item is composite/ambiguous
-    /// These avoid form-factor assumptions like "small fillet" or "1 slice"
-    var safePortionOptions: [PortionOption] {
-        let caloriesPer100 = calories
-        return [
-            PortionOption(name: "100g", calories: caloriesPer100 * 1.0, serving_g: 100),
-            PortionOption(name: "150g", calories: caloriesPer100 * 1.5, serving_g: 150),
-            PortionOption(name: "200g", calories: caloriesPer100 * 2.0, serving_g: 200),
-            PortionOption(name: "250g", calories: caloriesPer100 * 2.5, serving_g: 250),
-            PortionOption(name: "300g", calories: caloriesPer100 * 3.0, serving_g: 300),
-        ]
-    }
-
-    /// Safe portion options for liquids
-    var safeLiquidPortionOptions: [PortionOption] {
-        let caloriesPer100 = calories
-        return [
-            PortionOption(name: "100ml", calories: caloriesPer100 * 1.0, serving_g: 100),
-            PortionOption(name: "150ml", calories: caloriesPer100 * 1.5, serving_g: 150),
-            PortionOption(name: "200ml", calories: caloriesPer100 * 2.0, serving_g: 200),
-            PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
-            PortionOption(name: "300ml", calories: caloriesPer100 * 3.0, serving_g: 300),
-        ]
-    }
-
     // Track the query used for this food item (for serving classification)
     // This is set when the food is selected from search results
     private var _searchQuery: String = ""
@@ -716,6 +796,13 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         let nameLower = name.lowercased()
         let brandLower = (brand ?? "").lowercased()
         let servingLower = (servingDescription ?? "").lowercased()
+
+        // Helper to check if word appears with word boundaries (not as substring of another word)
+        // e.g., "tea" should match "green tea" but NOT "steak" (s-tea-k)
+        func containsWholeWord(_ text: String, _ word: String) -> Bool {
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: word))\\b"
+            return text.range(of: pattern, options: .regularExpression) != nil
+        }
 
         // Drink brands
         let softDrinkBrands = ["coca-cola", "coca cola", "coke", "diet coke", "coke zero", "pepsi", "pepsi max", "fanta", "sprite", "7up", "7-up", "dr pepper", "irn-bru", "irn bru", "lucozade", "red bull", "monster", "relentless", "rockstar", "tango", "oasis", "ribena", "vimto", "schweppes", "san pellegrino", "fever-tree"]
@@ -769,7 +856,8 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         let juiceKeywords = ["juice", "smoothie"]  // Removed squash/cordial - now separate category
         let hotDrinkKeywords = ["coffee", "tea", "latte", "cappuccino", "espresso", "americano", "hot chocolate", "mocha"]
         let waterKeywords = ["water", "sparkling water", "still water", "mineral water"]
-        let alcoholKeywords = ["beer", "lager", "ale", "wine", "vodka", "gin", "whisky", "whiskey", "rum", "brandy", "cider"]
+        let alcoholKeywords = ["beer", "lager", "ale", "wine", "cider", "prosecco", "champagne"]
+        let spiritKeywords = ["vodka", "gin", "whisky", "whiskey", "rum", "brandy", "tequila", "bourbon", "scotch", "liqueur", "schnapps", "sambuca", "jagermeister", "baileys"]
         let chocolateKeywords = ["chocolate bar", "chocolate", "truffle"]
         let sweetKeywords = ["gummy", "jelly", "sweets", "candy", "lollipop", "toffee", "fudge", "mints"]
         let crispKeywords = ["crisps", "chips", "pretzels", "popcorn", "puffs"]
@@ -783,9 +871,20 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
         if softDrinkKeywords.contains(where: { nameLower.contains($0) }) { return .softDrink }
         if juiceKeywords.contains(where: { nameLower.contains($0) }) { return .juice }
-        if hotDrinkKeywords.contains(where: { nameLower.contains($0) }) { return .hotDrink }
-        if waterKeywords.contains(where: { nameLower.contains($0) }) { return .water }
-        if alcoholKeywords.contains(where: { nameLower.contains($0) }) { return .alcoholicDrink }
+        // Use word boundary matching for short words that could be substrings
+        // "tea" in "steak", "water" in "freshwater fish", "ale" in "bale"
+        let hotDrinkShortWords = ["tea", "coffee", "latte", "mocha", "cocoa"]
+        let hotDrinkLongWords = ["cappuccino", "espresso", "americano", "hot chocolate"]
+        if hotDrinkLongWords.contains(where: { nameLower.contains($0) }) { return .hotDrink }
+        if hotDrinkShortWords.contains(where: { containsWholeWord(nameLower, $0) }) { return .hotDrink }
+        // Water - use word boundary to avoid "freshwater fish", "watermelon" etc.
+        if containsWholeWord(nameLower, "water") && !nameLower.contains("watermelon") { return .water }
+        if spiritKeywords.contains(where: { nameLower.contains($0) }) { return .spirit }
+        // Alcohol - use word boundary for "ale" (could be in "bale", "sale", etc.)
+        let alcoholShortWords = ["ale", "beer", "wine"]
+        let alcoholLongWords = ["lager", "cider", "prosecco", "champagne"]
+        if alcoholLongWords.contains(where: { nameLower.contains($0) }) { return .alcoholicDrink }
+        if alcoholShortWords.contains(where: { containsWholeWord(nameLower, $0) }) { return .alcoholicDrink }
         if chocolateKeywords.contains(where: { nameLower.contains($0) }) { return .chocolateBar }
         if sweetKeywords.contains(where: { nameLower.contains($0) }) { return .sweets }
         if crispKeywords.contains(where: { nameLower.contains($0) }) { return .crisps }
@@ -793,23 +892,41 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         // Generic food keywords (check AFTER snacks/drinks to avoid false matches)
         let oilKeywords = ["olive oil", "vegetable oil", "sunflower oil", "coconut oil", "rapeseed oil", "sesame oil", "avocado oil", "cooking oil"]
         let butterKeywords = ["butter", "margarine", "spread"]
-        let fruitKeywords = ["apple", "banana", "orange", "pear", "peach", "plum", "grape", "strawberr", "blueberr", "raspberr", "blackberr", "cherry", "mango", "pineapple", "kiwi", "melon", "watermelon", "grapefruit", "nectarine", "apricot", "fig", "papaya", "pomegranate", "passion fruit", "lychee", "dragon fruit"]
+        let condimentKeywords = ["jam", "marmalade", "honey", "syrup", "maple syrup", "golden syrup", "treacle", "mayonnaise", "mayo", "ketchup", "mustard", "brown sauce", "bbq sauce", "hot sauce", "sriracha", "pesto", "chutney", "pickle", "relish", "salad cream", "tartar sauce", "vinaigrette", "dressing"]
+        let fruitKeywords = ["apple", "banana", "orange", "pear", "peach", "plum", "grape", "strawberr", "blueberr", "raspberr", "blackberr", "cherry", "mango", "pineapple", "kiwi", "melon", "watermelon", "grapefruit", "nectarine", "apricot", "fig", "papaya", "pomegranate", "passion fruit", "lychee", "dragon fruit", "avocado", "clementine", "satsuma", "tangerine", "lime", "lemon"]
+        let driedFruitKeywords = ["raisin", "sultana", "currant", "dried apricot", "dried mango", "dried cranberr", "dried fig", "prune", "date", "dried fruit", "trail mix", "mixed dried"]
         let eggKeywords = ["egg", "eggs", "omelette", "scrambled", "poached egg", "fried egg", "boiled egg"]
         let riceKeywords = ["rice", "basmati", "jasmine rice", "brown rice", "wild rice", "risotto", "pilau", "pilaf", "fried rice", "quinoa", "couscous", "bulgur"]
         let pastaKeywords = ["pasta", "spaghetti", "penne", "fusilli", "tagliatelle", "linguine", "macaroni", "lasagne", "ravioli", "tortellini", "gnocchi", "noodles", "ramen", "udon"]
-        let breadKeywords = ["bread", "toast", "bagel", "croissant", "roll", "bun", "pitta", "naan", "chapati", "tortilla", "wrap", "ciabatta", "baguette", "sourdough", "brioche"]
+        // Sliced bread only - whole items moved to bakeryItem
+        let breadKeywords = ["bread", "toast", "sliced bread", "loaf", "sandwich bread"]
+        // Whole bakery items - not sliced
+        let bakeryItemKeywords = ["bagel", "croissant", "pitta", "pita", "naan", "chapati", "tortilla", "wrap", "ciabatta", "baguette", "brioche", "muffin", "english muffin", "scone", "crumpet", "pancake", "waffle", "roll", "bun", "hot dog bun", "burger bun", "sourdough roll", "flatbread", "roti", "paratha"]
+        let cerealKeywords = ["oats", "porridge", "oatmeal", "granola", "muesli", "cornflakes", "corn flakes", "bran flakes", "weetabix", "shreddies", "cheerios", "special k", "rice krispies", "coco pops", "frosties", "cereal"]
         let nutKeywords = ["almond", "walnut", "cashew", "pistachio", "hazelnut", "pecan", "macadamia", "brazil nut", "peanut", "mixed nuts", "sunflower seed", "pumpkin seed", "chia seed", "flaxseed", "sesame seed"]
         let cheeseKeywords = ["cheese", "cheddar", "mozzarella", "parmesan", "brie", "camembert", "stilton", "feta", "gouda", "edam", "gruyere", "emmental", "halloumi", "cottage cheese", "cream cheese", "ricotta", "mascarpone"]
         let milkKeywords = ["milk", "whole milk", "semi-skimmed", "skimmed milk", "oat milk", "almond milk", "soya milk", "coconut milk"]
         let yogurtKeywords = ["yogurt", "yoghurt", "greek yogurt", "natural yogurt", "fromage frais", "skyr", "kefir"]
-        let meatKeywords = ["chicken", "beef", "pork", "lamb", "turkey", "duck", "bacon", "ham", "sausage", "mince", "steak", "chop", "roast", "fillet", "breast", "thigh", "drumstick", "wing"]
+        // Processed meats with per-item portions (bacon rashers, sausages, ham slices)
+        let processedMeatKeywords = ["bacon", "sausage", "sausages", "ham", "salami", "chorizo", "pepperoni", "prosciutto", "pancetta", "hot dog", "frankfurter", "bratwurst", "black pudding", "white pudding", "haggis"]
+        // Regular meat portions (chicken breast, beef steak, etc.)
+        let meatKeywords = ["chicken", "beef", "pork", "lamb", "turkey", "duck", "mince", "steak", "chop", "roast", "fillet", "breast", "thigh", "drumstick", "wing", "ribeye", "sirloin", "rump"]
         let fishKeywords = ["salmon", "tuna", "cod", "haddock", "mackerel", "sardine", "trout", "sea bass", "bream", "plaice", "sole", "halibut", "prawn", "shrimp", "crab", "lobster", "mussel", "scallop", "squid", "fish finger", "fish cake"]
-        let vegetableKeywords = ["broccoli", "carrot", "potato", "sweet potato", "onion", "garlic", "pepper", "tomato", "cucumber", "lettuce", "spinach", "kale", "cabbage", "cauliflower", "courgette", "aubergine", "mushroom", "asparagus", "green bean", "pea", "sweetcorn", "beetroot", "parsnip", "turnip", "swede", "leek", "celery", "sprout"]
-        let legumeKeywords = ["beans", "lentils", "chickpea", "black bean", "kidney bean", "butter bean", "cannellini", "borlotti", "edamame", "hummus", "baked beans"]
+        // Aromatics - small portions (cloves, pieces)
+        let aromaticsKeywords = ["garlic", "ginger", "shallot", "fresh ginger", "garlic clove"]
+        // Vegetables (removed garlic - now in aromatics)
+        let vegetableKeywords = ["broccoli", "carrot", "potato", "sweet potato", "onion", "pepper", "tomato", "cucumber", "lettuce", "spinach", "kale", "cabbage", "cauliflower", "courgette", "aubergine", "zucchini", "mushroom", "asparagus", "green bean", "pea", "sweetcorn", "beetroot", "parsnip", "turnip", "swede", "leek", "celery", "sprout"]
+        // Dips - tablespoon portions
+        let dipKeywords = ["hummus", "houmous", "guacamole", "salsa", "tzatziki", "raita", "baba ganoush", "taramasalata", "sour cream dip", "onion dip", "cheese dip", "bean dip"]
+        // Legumes (removed hummus - now in dips)
+        let legumeKeywords = ["beans", "lentils", "chickpea", "black bean", "kidney bean", "butter bean", "cannellini", "borlotti", "edamame", "baked beans"]
+        let tofuKeywords = ["tofu", "tempeh", "seitan", "quorn", "textured vegetable protein", "tvp", "soya mince", "veggie mince"]
 
         // Check generic food categories (order matters - more specific first)
         if oilKeywords.contains(where: { nameLower.contains($0) }) { return .oil }
         if butterKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("peanut butter") && !nameLower.contains("almond butter") { return .butter }
+        if condimentKeywords.contains(where: { nameLower.contains($0) }) { return .condiment }
+        if dipKeywords.contains(where: { nameLower.contains($0) }) { return .dip }
         if eggKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("aubergine") { return .egg }
         if yogurtKeywords.contains(where: { nameLower.contains($0) }) { return .yogurt }
         if cheeseKeywords.contains(where: { nameLower.contains($0) }) { return .cheese }
@@ -819,14 +936,25 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
            !nameLower.contains("chocolate milk") &&
            !nameLower.contains("buttermilk") &&
            !butterKeywords.contains(where: { nameLower.contains($0) }) { return .milk }
+        if cerealKeywords.contains(where: { nameLower.contains($0) }) { return .cereal }
         if nutKeywords.contains(where: { nameLower.contains($0) }) { return .nuts }
         if riceKeywords.contains(where: { nameLower.contains($0) }) { return .rice }
         if pastaKeywords.contains(where: { nameLower.contains($0) }) { return .pasta }
+        // Check bakery items BEFORE bread (more specific - whole items vs sliced)
+        if bakeryItemKeywords.contains(where: { nameLower.contains($0) }) { return .bakeryItem }
         if breadKeywords.contains(where: { nameLower.contains($0) }) { return .bread }
+        if tofuKeywords.contains(where: { nameLower.contains($0) }) { return .tofu }
+        // Check processed meats BEFORE general meat (per-item vs weight portions)
+        if processedMeatKeywords.contains(where: { nameLower.contains($0) }) { return .processedMeat }
         if meatKeywords.contains(where: { nameLower.contains($0) }) { return .meat }
         if fishKeywords.contains(where: { nameLower.contains($0) }) { return .fish }
+        // Check aromatics BEFORE vegetables (small portions vs regular)
+        if aromaticsKeywords.contains(where: { nameLower.contains($0) }) { return .aromatics }
+        // Check dips BEFORE legumes (hummus is a dip, not a bean dish)
         if legumeKeywords.contains(where: { nameLower.contains($0) }) { return .legume }
         if vegetableKeywords.contains(where: { nameLower.contains($0) }) { return .vegetable }
+        // Check dried fruit BEFORE fresh fruit (more specific)
+        if driedFruitKeywords.contains(where: { nameLower.contains($0) }) { return .driedFruit }
         if fruitKeywords.contains(where: { nameLower.contains($0) }) { return .fruit }
 
         // Check serving description for ml - but ONLY if it's clearly a drink
@@ -844,6 +972,12 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// Returns true if this food category represents a liquid/drink
     /// IMPORTANT: Chocolate products are NEVER liquid, even if their serving description mentions ml
     var isLiquidCategory: Bool {
+        // PRIORITY: Firebase category data is authoritative (from AI categorization)
+        // If the backend says it uses "ml", it's a liquid
+        if let unit = suggestedServingUnit, !unit.isEmpty {
+            return unit == "ml"
+        }
+
         let nameLower = name.lowercased()
 
         // FIRST: Check for explicit powder/mix forms - these are ALWAYS solids (grams)
@@ -865,11 +999,39 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
         // THEN: Check for explicit drink indicators (ready-to-drink liquids)
         // This ensures "Chocolate Milkshake", "Mars Milk Drink" etc are correctly treated as liquids
-        let drinkIndicators = ["milkshake", "milk shake", "shake", "smoothie", "drink", "juice",
-                               "squash", "cordial", "lemonade", "cola", "pepsi", "fanta", "sprite",
-                               "water", "tea", "coffee", "latte", "cappuccino", "espresso",
-                               "frappuccino", "mocha", "hot chocolate", "cocoa"]
-        if drinkIndicators.contains(where: { nameLower.contains($0) }) {
+        // IMPORTANT: Use word boundary matching for short words to avoid false positives
+        // e.g., "steak" contains "tea", "water" is in "freshwater fish"
+
+        // Helper to check if word appears with word boundaries (not as substring of another word)
+        func containsWholeWord(_ text: String, _ word: String) -> Bool {
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: word))\\b"
+            return text.range(of: pattern, options: .regularExpression) != nil
+        }
+
+        // Long/specific drink words - safe to use simple contains
+        let safeDrinkIndicators = ["milkshake", "milk shake", "smoothie", "lemonade", "cappuccino",
+                                   "espresso", "frappuccino", "hot chocolate", "drinking chocolate",
+                                   "flat white", "americano", "macchiato", "iced coffee", "cold brew"]
+        if safeDrinkIndicators.contains(where: { nameLower.contains($0) }) {
+            return true
+        }
+
+        // Coffee shop brands - almost everything they sell is a drink
+        let coffeeShopBrands = ["starbucks", "costa", "caffe nero", "pret a manger", "pret"]
+        let brandLower = (brand ?? "").lowercased()
+        if coffeeShopBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            // Exception: food items from coffee shops
+            let foodExceptions = ["sandwich", "wrap", "panini", "cake", "muffin", "cookie", "brownie", "croissant", "pastry", "bagel", "toast"]
+            if !foodExceptions.contains(where: { nameLower.contains($0) }) {
+                return true
+            }
+        }
+
+        // Short words that could be substrings - use word boundary matching
+        // "tea" in "steak", "water" in "freshwater", "cola" in "chocolate", "juice" in various
+        let shortDrinkWords = ["tea", "coffee", "water", "cola", "juice", "drink", "shake",
+                               "squash", "cordial", "latte", "mocha", "cocoa", "pepsi", "fanta", "sprite"]
+        if shortDrinkWords.contains(where: { containsWholeWord(nameLower, $0) }) {
             return true
         }
 
@@ -1054,44 +1216,41 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return dbPortions
         }
 
-        // 2. Per-unit items don't need presets
+        // 2. If food has a real serving size (not default 100g), just use that
+        // No need for multiple presets - user can adjust with quantity or custom amount
+        if let servingG = servingSizeG, servingG > 0 && servingG != 100 {
+            let unit = isLiquidCategory ? "ml" : "g"
+            let caloriesForServing = calories * (servingG / 100)
+            return [
+                PortionOption(name: "1 serving (\(Int(servingG))\(unit))", calories: caloriesForServing, serving_g: servingG)
+            ]
+        }
+
+        // 3. Firebase category-based portions (from AI categorization)
+        // Only used when serving size is default 100g
+        if hasFirebaseCategoryPortions {
+            return firebaseCategoryPortions
+        }
+
+        // 4. Per-unit items don't need presets
         if isPerUnit == true {
             return []
         }
 
-        // 3. Fast food items don't need presets
+        // 5. Fast food items don't need presets
         let brandLower = (brand?.lowercased() ?? "").replacingOccurrences(of: "'", with: "'")
         let nameLower = name.lowercased().replacingOccurrences(of: "'", with: "'")
         if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
             return []
         }
 
-        // 4. Calculate confidence and classification
-        let confidence = servingConfidence(forQuery: query)
-
-        // 5. Return appropriate portions based on classification
-        switch confidence.classification {
-        case .compositeDish, .ambiguous:
-            // ALWAYS use safe output for composite dishes and ambiguous queries
-            return isLiquidCategory ? safeLiquidPortionOptions : safePortionOptions
-
-        case .brandedPackaged:
-            // Branded items can use their category-specific presets if detected
-            if detectedCategory != .other {
-                return presetPortions
-            }
-            return safePortionOptions
-
-        case .atomicRaw, .atomicPrepared:
-            // Atomic items: use category presets if confidence is high enough
-            if confidence.usesSafeOutput {
-                return isLiquidCategory ? safeLiquidPortionOptions : safePortionOptions
-            }
-            if detectedCategory != .other {
-                return presetPortions
-            }
-            return safePortionOptions
+        // 6. Fallback: Only show local category presets if detected, otherwise no presets
+        if detectedCategory != .other {
+            return presetPortions
         }
+
+        // No presets - user can use custom amount
+        return []
     }
 
     /// Preset serving size options based on food category
@@ -1146,6 +1305,12 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "250ml Glass", calories: caloriesPer100 * 2.5, serving_g: 250),
                 PortionOption(name: "330ml Bottle", calories: caloriesPer100 * 3.3, serving_g: 330)
             ]
+        case .spirit:
+            return [
+                PortionOption(name: "Single (25ml)", calories: caloriesPer100 * 0.25, serving_g: 25),
+                PortionOption(name: "Double (50ml)", calories: caloriesPer100 * 0.50, serving_g: 50),
+                PortionOption(name: "Large (75ml)", calories: caloriesPer100 * 0.75, serving_g: 75)
+            ]
         case .chocolateBar:
             return [
                 PortionOption(name: "Fun Size (20g)", calories: caloriesPer100 * 0.2, serving_g: 20),
@@ -1194,11 +1359,32 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "1 tbsp (14g)", calories: caloriesPer100 * 0.14, serving_g: 14),
                 PortionOption(name: "Generous (20g)", calories: caloriesPer100 * 0.20, serving_g: 20)
             ]
+        case .condiment:
+            return [
+                PortionOption(name: "1 tsp (7g)", calories: caloriesPer100 * 0.07, serving_g: 7),
+                PortionOption(name: "1 tbsp (15g)", calories: caloriesPer100 * 0.15, serving_g: 15),
+                PortionOption(name: "2 tbsp (30g)", calories: caloriesPer100 * 0.30, serving_g: 30),
+                PortionOption(name: "Generous (50g)", calories: caloriesPer100 * 0.50, serving_g: 50)
+            ]
+        case .dip:
+            return [
+                PortionOption(name: "1 tbsp (15g)", calories: caloriesPer100 * 0.15, serving_g: 15),
+                PortionOption(name: "2 tbsp (30g)", calories: caloriesPer100 * 0.30, serving_g: 30),
+                PortionOption(name: "Small pot (50g)", calories: caloriesPer100 * 0.50, serving_g: 50),
+                PortionOption(name: "Regular pot (85g)", calories: caloriesPer100 * 0.85, serving_g: 85)
+            ]
         case .fruit:
             return [
                 PortionOption(name: "Small (80g)", calories: caloriesPer100 * 0.8, serving_g: 80),
                 PortionOption(name: "Medium (120g)", calories: caloriesPer100 * 1.2, serving_g: 120),
                 PortionOption(name: "Large (180g)", calories: caloriesPer100 * 1.8, serving_g: 180)
+            ]
+        case .driedFruit:
+            return [
+                PortionOption(name: "Small handful (20g)", calories: caloriesPer100 * 0.2, serving_g: 20),
+                PortionOption(name: "Handful (30g)", calories: caloriesPer100 * 0.3, serving_g: 30),
+                PortionOption(name: "Snack portion (40g)", calories: caloriesPer100 * 0.4, serving_g: 40),
+                PortionOption(name: "Generous (50g)", calories: caloriesPer100 * 0.5, serving_g: 50)
             ]
         case .egg:
             return [
@@ -1225,6 +1411,19 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "1 slice (36g)", calories: caloriesPer100 * 0.36, serving_g: 36),
                 PortionOption(name: "2 slices (72g)", calories: caloriesPer100 * 0.72, serving_g: 72),
                 PortionOption(name: "Thick slice (50g)", calories: caloriesPer100 * 0.50, serving_g: 50)
+            ]
+        case .bakeryItem:
+            return [
+                PortionOption(name: "Half (35g)", calories: caloriesPer100 * 0.35, serving_g: 35),
+                PortionOption(name: "1 item (70g)", calories: caloriesPer100 * 0.70, serving_g: 70),
+                PortionOption(name: "Large (100g)", calories: caloriesPer100 * 1.0, serving_g: 100)
+            ]
+        case .cereal:
+            return [
+                PortionOption(name: "Small bowl (30g)", calories: caloriesPer100 * 0.30, serving_g: 30),
+                PortionOption(name: "Regular bowl (45g)", calories: caloriesPer100 * 0.45, serving_g: 45),
+                PortionOption(name: "Large bowl (60g)", calories: caloriesPer100 * 0.60, serving_g: 60),
+                PortionOption(name: "Extra large (80g)", calories: caloriesPer100 * 0.80, serving_g: 80)
             ]
         case .nuts:
             return [
@@ -1253,6 +1452,13 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "Regular pot (150g)", calories: caloriesPer100 * 1.50, serving_g: 150),
                 PortionOption(name: "Large pot (200g)", calories: caloriesPer100 * 2.0, serving_g: 200)
             ]
+        case .processedMeat:
+            return [
+                PortionOption(name: "1 rasher/slice (25g)", calories: caloriesPer100 * 0.25, serving_g: 25),
+                PortionOption(name: "2 rashers/slices (50g)", calories: caloriesPer100 * 0.50, serving_g: 50),
+                PortionOption(name: "3 rashers (75g)", calories: caloriesPer100 * 0.75, serving_g: 75),
+                PortionOption(name: "2 sausages (100g)", calories: caloriesPer100 * 1.0, serving_g: 100)
+            ]
         case .meat:
             return [
                 PortionOption(name: "Small (85g)", calories: caloriesPer100 * 0.85, serving_g: 85),
@@ -1266,6 +1472,13 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "Medium fillet (140g)", calories: caloriesPer100 * 1.4, serving_g: 140),
                 PortionOption(name: "Large fillet (180g)", calories: caloriesPer100 * 1.8, serving_g: 180)
             ]
+        case .aromatics:
+            return [
+                PortionOption(name: "1 clove (3g)", calories: caloriesPer100 * 0.03, serving_g: 3),
+                PortionOption(name: "2 cloves (6g)", calories: caloriesPer100 * 0.06, serving_g: 6),
+                PortionOption(name: "1 tsp minced (5g)", calories: caloriesPer100 * 0.05, serving_g: 5),
+                PortionOption(name: "1 tbsp minced (10g)", calories: caloriesPer100 * 0.10, serving_g: 10)
+            ]
         case .vegetable:
             return [
                 PortionOption(name: "1 portion (80g)", calories: caloriesPer100 * 0.8, serving_g: 80),
@@ -1277,6 +1490,29 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "Half cup (80g)", calories: caloriesPer100 * 0.8, serving_g: 80),
                 PortionOption(name: "Cup (160g)", calories: caloriesPer100 * 1.6, serving_g: 160),
                 PortionOption(name: "Half tin (200g)", calories: caloriesPer100 * 2.0, serving_g: 200)
+            ]
+        case .tofu:
+            return [
+                PortionOption(name: "Small (75g)", calories: caloriesPer100 * 0.75, serving_g: 75),
+                PortionOption(name: "Medium (100g)", calories: caloriesPer100 * 1.0, serving_g: 100),
+                PortionOption(name: "Large (150g)", calories: caloriesPer100 * 1.5, serving_g: 150),
+                PortionOption(name: "Block (200g)", calories: caloriesPer100 * 2.0, serving_g: 200)
+            ]
+        case .processedMeat:
+            return [
+                PortionOption(name: "1 slice (20g)", calories: caloriesPer100 * 0.2, serving_g: 20),
+                PortionOption(name: "2 slices (40g)", calories: caloriesPer100 * 0.4, serving_g: 40),
+                PortionOption(name: "3 slices (60g)", calories: caloriesPer100 * 0.6, serving_g: 60),
+                PortionOption(name: "1 sausage (50g)", calories: caloriesPer100 * 0.5, serving_g: 50),
+                PortionOption(name: "2 rashers bacon (60g)", calories: caloriesPer100 * 0.6, serving_g: 60)
+            ]
+        case .aromatics:
+            return [
+                PortionOption(name: "1 clove garlic (3g)", calories: caloriesPer100 * 0.03, serving_g: 3),
+                PortionOption(name: "1 tsp minced (5g)", calories: caloriesPer100 * 0.05, serving_g: 5),
+                PortionOption(name: "1 tbsp minced (15g)", calories: caloriesPer100 * 0.15, serving_g: 15),
+                PortionOption(name: "1 small onion (70g)", calories: caloriesPer100 * 0.7, serving_g: 70),
+                PortionOption(name: "1 medium onion (110g)", calories: caloriesPer100 * 1.1, serving_g: 110)
             ]
         case .other:
             return []

@@ -166,7 +166,7 @@ struct EatingHabitsScreen: View {
         } else if habits.contains(.snacker) {
             return ("chart.bar.fill", "We'll track snacks separately so you can see their real impact.")
         } else if habits.contains(.eatOut) || habits.contains(.fastFood) {
-            return ("magnifyingglass", "Our barcode scanner makes logging restaurant meals quick and easy.")
+            return ("camera.viewfinder", "Our AI meal scanner lets you snap a photo and log restaurant meals instantly.")
         } else if habits.contains(.mealPrep) || habits.contains(.homeCooking) {
             return ("star.fill", "Great foundation! Home cooking gives you the most control over ingredients.")
         } else if habits.contains(.busySchedule) {
@@ -358,8 +358,8 @@ struct FeatureBenefitsScreen: View {
         if state.selectedGoals.contains(.manageAllergies) {
             benefits.append((
                 icon: "exclamationmark.triangle.fill",
-                title: "Allergen Alerts",
-                description: "Set your allergens once and we'll warn you every time. Instant warnings for the 14 major allergens, cross-contamination risks, and hidden ingredients."
+                title: "Allergen Alerts & Pattern Analysis",
+                description: "Get instant warnings for the 14 major allergens. Log reactions and we'll analyse your 7-day food history to help identify trigger foods. Always verify labels yourself for safety."
             ))
         }
 
@@ -405,8 +405,8 @@ struct FeatureBenefitsScreen: View {
             if benefits.count < 4 {
                 benefits.append((
                     icon: "waveform.path.ecg",
-                    title: "Food Reaction Tracking",
-                    description: "Log how foods make you feel and spot patterns over time. Identify trigger foods and sensitivities—without the guesswork."
+                    title: "Reaction Tracking & Pattern Analysis",
+                    description: "Log symptoms after eating and we'll cross-reference with your 7-day meal history. Our pattern analysis spots recurring trigger foods across multiple reactions—giving you insights to share with your doctor."
                 ))
             }
         }
@@ -1009,7 +1009,7 @@ struct ProUpgradeScreen: View {
                         Image(systemName: "crown.fill")
                             .font(.system(size: 16))
 
-                        Text("Start 7-Day Free Trial")
+                        Text("Upgrade to Pro")
                             .font(.system(size: 17, weight: .semibold))
                     }
                     .foregroundColor(.white)

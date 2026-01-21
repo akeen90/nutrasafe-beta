@@ -47,6 +47,15 @@ export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, 
 // Algolia reverse sync (Algolia -> Firebase)
 export { checkAlgoliaFirebaseSync, syncAlgoliaToFirebase, getAlgoliaIndexStats } from './algolia-reverse-sync';
 
+// Generic foods enhancement (OpenFoodFacts data)
+export { enhanceGenericFoods, getEnhancementStats } from './enhance-generic-foods';
+
+// McCance & Widdowson UK Food Composition Database
+export { importMcCanceWiddowson, getGenericDatabaseStats, syncGenericDatabaseToAlgolia, cleanupGenericDatabase, clearGenericDatabase } from './import-mccance-widdowson';
+
+// Consumer-friendly foods database (built from MW data with everyday serving sizes)
+export { importConsumerFoods, getConsumerFoodsStats, syncConsumerFoodsToAlgolia, clearConsumerFoods, consolidateConsumerFoods } from './import-consumer-foods';
+
 // Algolia synonyms and query rules
 export { syncSynonymsToAlgolia, getSynonymStats, clearSynonymsFromAlgolia } from './food-synonyms';
 export { configureQueryRules, getQueryRulesStats, clearQueryRules } from './algolia-query-rules';
@@ -65,4 +74,4 @@ export { extractUKProductData, extractWithPuppeteer, lookupTescoProduct } from '
 export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, stopTescoBuild, resetTescoDatabase, getTescoDatabaseStats, configureTescoAlgoliaIndex, syncTescoToAlgolia, scheduledTescoBuild, cleanupTescoDatabase } from './tesco-database-builder';
 
 // AI Food Categorization - categorizes foods for intelligent serving size suggestions
-export { categorizeFoods, categorizeFoodsFromDatabase, getCategorizeStats, updateFoodCategory, getCategories, getFoodsForCategorization } from './categorize-foods';
+export { categorizeFoods, categorizeFoodsFromDatabase, getCategorizeStats, updateFoodCategory, getCategories, getFoodsForCategorization, getCategorizationProgress, resetCategorizationProgress, fixCustomCategoryServingSizes, fixFoodServingSizes } from './categorize-foods';
