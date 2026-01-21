@@ -53,6 +53,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let micronutrientProfile: MicronutrientProfile?
     let portions: [PortionOption]? // Available portion sizes (e.g., McNuggets 6pc, 9pc, 20pc)
     let source: String? // Source index (e.g., "tesco_products", "uk_foods_cleaned") for tier-based ranking
+    let imageUrl: String? // Product image URL (from Tesco/external sources)
 
     // Firebase category-based serving sizes (from AI categorization)
     let foodCategory: String? // Category ID (e.g., "chocolate_bar", "raw_beef", "spirits")
@@ -60,7 +61,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let suggestedServingUnit: String? // "g" or "ml"
     let suggestedServingDescription: String? // e.g., "per bar", "per portion", "per 25ml measure"
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, imageUrl: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -87,6 +88,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.micronutrientProfile = micronutrientProfile
         self.portions = portions
         self.source = source
+        self.imageUrl = imageUrl
         self.foodCategory = foodCategory
         self.suggestedServingSize = suggestedServingSize
         self.suggestedServingUnit = suggestedServingUnit
@@ -124,6 +126,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case isPerUnit = "per_unit_nutrition"
         case portions
         case source
+        case imageUrl
         // Firebase category-based serving sizes
         case foodCategory
         case suggestedServingSize
@@ -247,6 +250,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.isPerUnit = try? c.decode(Bool.self, forKey: .isPerUnit)
         self.portions = try? c.decode([PortionOption].self, forKey: .portions)
         self.source = try? c.decode(String.self, forKey: .source)
+        self.imageUrl = try? c.decode(String.self, forKey: .imageUrl)
         // Firebase category-based serving sizes
         self.foodCategory = try? c.decode(String.self, forKey: .foodCategory)
         self.suggestedServingSize = try? c.decode(Double.self, forKey: .suggestedServingSize)

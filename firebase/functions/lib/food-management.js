@@ -109,7 +109,7 @@ exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).h
         // Check if this is an Algolia-only index
         if (ALGOLIA_ONLY_INDICES.includes(targetCollection)) {
             // For Algolia-only indices, update directly in Algolia
-            const algoliaKey = algoliaAdminKey.value();
+            const algoliaKey = algoliaAdminKey.value()?.trim();
             if (!algoliaKey) {
                 res.status(500).json({ error: 'Algolia API key not configured' });
                 return;
@@ -193,7 +193,7 @@ exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).h
             });
             // Sync to Algolia in background (fire-and-forget for faster response)
             // This is safe because Firestore is the source of truth
-            const algoliaKey = algoliaAdminKey.value();
+            const algoliaKey = algoliaAdminKey.value()?.trim();
             if (algoliaKey) {
                 const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
                 // Map Firestore collection to Algolia index

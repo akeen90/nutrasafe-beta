@@ -270,17 +270,48 @@ struct FoodSearchResultRowEnhanced: View {
             )
             showingFoodDetail = true
         }) {
-            HStack(spacing: 14) {
-                // Food category icon in soft container
-                ZStack {
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                        .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
-                        .frame(width: 48, height: 48)
-
-                    Image(systemName: foodIcon.name)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(foodIcon.color)
+            VStack(spacing: 0) {
+                // Product image (only when available)
+                if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 120)
+                                .clipped()
+                        case .failure(_):
+                            // Hide on failure - don't show anything
+                            EmptyView()
+                        case .empty:
+                            // Loading state
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(height: 120)
+                                .overlay(
+                                    ProgressView()
+                                        .tint(.secondary)
+                                )
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
                 }
+
+                HStack(spacing: 14) {
+                    // Food category icon in soft container (only when no image)
+                    if food.imageUrl == nil || food.imageUrl?.isEmpty == true {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                .frame(width: 48, height: 48)
+
+                            Image(systemName: foodIcon.name)
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(foodIcon.color)
+                        }
+                    }
 
                 // Product name and serving info
                 VStack(alignment: .leading, spacing: 4) {
@@ -370,11 +401,13 @@ struct FoodSearchResultRowEnhanced: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.secondary.opacity(0.4))
-            }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 14)
+                }
+                .padding(.vertical, 14)
+                .padding(.horizontal, 14)
+            } // VStack
         }
         .buttonStyle(PlainButtonStyle())
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
                 .fill(
