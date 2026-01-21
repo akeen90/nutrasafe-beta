@@ -319,7 +319,6 @@ struct AdditiveWatchView: View {
     @State private var additiveResult: AdditiveDetectionResult?
     @State private var showingSources = false
     @State private var lastAnalyzedHash: Int = 0
-    @State private var isExpanded: Bool = false
 
     // Check if ingredients contain meaningful data (not just empty strings)
     private var hasMeaningfulIngredients: Bool {
@@ -336,78 +335,23 @@ struct AdditiveWatchView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Collapsible header
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack(spacing: 10) {
-                    Image(systemName: "flask.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.purple)
+        VStack(alignment: .leading, spacing: 12) {
+            // Traffic light explanation - subtle
+            Text("Traffic light system: green = safe, amber = moderate, red = best limited")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
 
-                    Text("Additives")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-
-                    if let result = additiveResult {
-                        let summary = calculateScoreSummary(result: result)
-                        // Show traffic light indicator
-                        Circle()
-                            .fill(summary.overallRisk.color)
-                            .frame(width: 10, height: 10)
-
-                        if issueCount > 0 {
-                            Text("(\(issueCount))")
-                                .font(.system(size: 13))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
-                    } else if hasMeaningfulIngredients {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .padding(14)
-                .background(colorScheme == .dark ? Color.midnightCardSecondary : Color(.systemGray6))
-                .cornerRadius(12)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            // Expandable content - contained within clipped bounds
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 16) {
-                    // UK-friendly explanation for additives
-                    Text("Additives are ingredients added to food to preserve it, enhance flavour, or improve texture. We use a traffic light system: green = safe, amber = use in moderation, red = best limited.")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 4)
-
-                    // Check if ingredients contain meaningful data
-                    if !hasMeaningfulIngredients {
-                        emptyIngredientsContent
-                    } else if let result = additiveResult {
-                        additiveContent(result: result)
-                    } else {
-                        loadingContent
-                            .frame(minHeight: 100)
-                    }
-                }
-                .padding(.top, 12)
+            // Content shown directly (no dropdown)
+            if !hasMeaningfulIngredients {
+                emptyIngredientsContent
+            } else if let result = additiveResult {
+                additiveContent(result: result)
+            } else {
+                loadingContent
+                    .frame(minHeight: 60)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .clipped()
-        .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
         .fullScreenCover(isPresented: $showingSources) {
             SourcesAndCitationsView()

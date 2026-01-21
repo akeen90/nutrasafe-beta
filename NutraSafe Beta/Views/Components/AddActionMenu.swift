@@ -351,7 +351,7 @@ struct AddActionMenu: View {
                 ? Color.white.opacity(0.08)
                 : Color.black.opacity(0.06))
             .frame(height: 1)
-            .padding(.leading, 94)
+            .padding(.leading, 60)
     }
 
     // MARK: - Water Tracker Row
@@ -692,14 +692,14 @@ struct QuickTrackerRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
-                // Icon with gradient background - doubled size for prominence
+            HStack(spacing: 12) {
+                // Icon with gradient background - compact
                 ZStack {
                     // Subtle glow
                     Circle()
                         .fill(iconColor.opacity(0.12))
-                        .frame(width: 76, height: 76)
-                        .blur(radius: 3)
+                        .frame(width: 38, height: 38)
+                        .blur(radius: 2)
 
                     // Background circle
                     Circle()
@@ -710,8 +710,8 @@ struct QuickTrackerRow: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 68, height: 68)
-                        .shadow(color: iconColor.opacity(0.3), radius: 6, y: 3)
+                        .frame(width: 34, height: 34)
+                        .shadow(color: iconColor.opacity(0.3), radius: 4, y: 2)
 
                     // Custom icon
                     customIcon
@@ -765,7 +765,7 @@ struct QuickTrackerRow: View {
 
     @ViewBuilder
     private var customIcon: some View {
-        let iconSize: CGFloat = 36
+        let iconSize: CGFloat = 18
         switch icon {
         case "figure.stand.scale":
             Image("ScaleIcon")
@@ -777,7 +777,7 @@ struct QuickTrackerRow: View {
         default:
             // Fallback to SF Symbol
             Image(systemName: icon)
-                .font(.system(size: 30, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
         }
     }
