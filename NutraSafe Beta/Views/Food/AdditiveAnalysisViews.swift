@@ -2169,7 +2169,7 @@ struct EnhancedAdditiveCard: View {
     let additive: AdditiveInfo
     let detailedAdditive: DetailedAdditive
     let riskLevel: AdditiveRiskLevel
-    @State private var showingDetail = false
+    @State private var isExpanded = false
     @Environment(\.colorScheme) var colorScheme
 
     private var palette: AppPalette {
@@ -2177,59 +2177,175 @@ struct EnhancedAdditiveCard: View {
     }
 
     var body: some View {
-        Button(action: { showingDetail = true }) {
-            HStack(alignment: .center, spacing: 10) {
-                // Soft risk indicator line
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(riskLevel.color)
-                    .frame(width: 3, height: 32)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header row - always visible
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(alignment: .center, spacing: 10) {
+                    // Soft risk indicator line
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(riskLevel.color)
+                        .frame(width: 3, height: 32)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(detailedAdditive.name)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(palette.textPrimary)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(detailedAdditive.name)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(palette.textPrimary)
+                            .lineLimit(1)
 
-                    HStack(spacing: 6) {
-                        if let code = detailedAdditive.code, !code.isEmpty {
-                            Text(code.uppercased())
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(riskLevel.color)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(
-                                    Capsule()
-                                        .fill(riskLevel.color.opacity(0.12))
-                                )
+                        HStack(spacing: 6) {
+                            if let code = detailedAdditive.code, !code.isEmpty {
+                                Text(code.uppercased())
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(riskLevel.color)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule()
+                                            .fill(riskLevel.color.opacity(0.12))
+                                    )
+                            }
+
+                            Text(additive.group.displayName)
+                                .font(.system(size: 11))
+                                .foregroundColor(palette.textTertiary)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(palette.textTertiary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Expanded content
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+                        .padding(.horizontal, 12)
+
+                    // Consumer info (detailed human-friendly guide) - show if available
+                    if let consumerInfo = additive.consumerInfo, !consumerInfo.isEmpty {
+                        Text(LocalizedStringKey(consumerInfo))
+                            .font(.system(size: 13))
+                            .foregroundColor(palette.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 12)
+                    } else {
+                        // Fallback to structured info if no consumer guide
+                        // What it is
+                        if !detailedAdditive.whatItIs.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("What it is")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(palette.textSecondary)
+                                Text(detailedAdditive.whatItIs)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(palette.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.horizontal, 12)
                         }
 
-                        Text(additive.group.displayName)
-                            .font(.system(size: 11))
-                            .foregroundColor(palette.textTertiary)
+                        // Origin - use whereItComesFrom if available for more interesting descriptions
+                        if let whereFrom = additive.whereItComesFrom, !whereFrom.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Where it comes from")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(palette.textSecondary)
+                                Text(whereFrom)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(palette.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.horizontal, 12)
+                        } else if !detailedAdditive.originSummary.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Origin")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(palette.textSecondary)
+                                Text(detailedAdditive.originSummary)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(palette.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.horizontal, 12)
+                        }
+
+                        // Effects/Safety - use effectsSummary for more detail
+                        if !additive.effectsSummary.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("What to know")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(palette.textSecondary)
+                                Text(additive.effectsSummary)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(palette.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.horizontal, 12)
+                        } else if !detailedAdditive.riskSummary.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Safety")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(palette.textSecondary)
+                                Text(detailedAdditive.riskSummary)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(palette.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.horizontal, 12)
+                        }
+                    }
+
+                    // Child warning if applicable
+                    if additive.hasChildWarning {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(SemanticColors.neutral)
+                            Text("Heads up: This one's flagged for potentially affecting attention in kids. UK/EU products carry a warning label.")
+                                .font(.system(size: 12))
+                                .foregroundColor(palette.textSecondary)
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(SemanticColors.neutral.opacity(0.08))
+                        )
+                        .padding(.horizontal, 12)
+                    }
+
+                    // Sources link if available
+                    if !additive.sources.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.text")
+                                .font(.system(size: 10))
+                            Text("\(additive.sources.count) source\(additive.sources.count == 1 ? "" : "s")")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(palette.textTertiary)
+                        .padding(.horizontal, 12)
                     }
                 }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(palette.textTertiary)
+                .padding(.bottom, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
         }
-        .buttonStyle(PlainButtonStyle())
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
         )
-        .sheet(isPresented: $showingDetail) {
-            AdditiveDetailSheet(
-                additive: additive,
-                detailedAdditive: detailedAdditive,
-                riskLevel: riskLevel
-            )
-        }
+        .animation(.easeInOut(duration: 0.2), value: isExpanded)
     }
 }
 
