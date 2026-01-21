@@ -26,8 +26,8 @@ struct PremiumOnboardingView: View {
 
     let onComplete: (Bool) -> Void
 
-    // Total screens (0-21)
-    private let totalScreens = 22
+    // Total screens (0-22) - added FeatureBenefits after GoalsProcessing
+    private let totalScreens = 23
 
     var body: some View {
         ZStack {
@@ -54,61 +54,64 @@ struct PremiumOnboardingView: View {
                     // Goals Processing - "Mapping your goals..."
                     GoalsProcessingScreen(state: state, onComplete: { advanceScreen() })
                 case 7:
+                    // Feature Benefits - Show how app helps with selected goals
+                    FeatureBenefitsScreen(state: state, onContinue: { advanceScreen() })
+                case 8:
                     // Activity Level
                     ActivityLevelScreen(state: state, onContinue: { advanceScreen() })
-                case 8:
+                case 9:
                     // Activity Processing - "Calculating your needs..."
                     ActivityProcessingScreen(state: state, onComplete: { advanceScreen() })
-                case 9:
+                case 10:
                     // Eating Habits
                     EatingHabitsScreen(state: state, onContinue: { advanceScreen() })
-                case 10:
+                case 11:
                     // Diet Experience
                     DietExperienceScreen(state: state, onContinue: { advanceScreen() })
-                case 11:
+                case 12:
                     // Profile Building - "Building your profile..."
                     ProfileBuildingScreen(state: state, onComplete: { advanceScreen() })
-                case 12:
+                case 13:
                     // Diet Setup - Choose eating approach
                     DietSetupScreen(
                         state: state,
                         onContinue: { advanceScreen() },
                         onSkip: { advanceScreen() }
                     )
-                case 13:
+                case 14:
                     // Calorie Target - Daily calorie goal
                     CalorieTargetScreen(
                         state: state,
                         onContinue: { advanceScreen() },
                         onSkip: { advanceScreen() }
                     )
-                case 14:
+                case 15:
                     // Personal Details (DOB, height, weight, gender)
                     PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
-                case 15:
+                case 16:
                     // Sensitivities (UK/EU Allergens + Preferences)
                     SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
-                case 16:
+                case 17:
                     // Camera Permission
                     CameraPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 17:
+                case 18:
                     // Apple Health Permission
                     HealthPermissionScreen(state: state, onContinue: { advanceScreen() })
                         .environmentObject(healthKitManager)
-                case 18:
+                case 19:
                     // Notifications Permission
                     NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 19:
+                case 20:
                     // Pro Upgrade CTA
                     ProUpgradeScreen(
                         state: state,
                         onUpgrade: { showingPaywall = true },
                         onContinueFree: { advanceScreen() }
                     )
-                case 20:
+                case 21:
                     // Honesty/Disclaimer screen
                     HonestyScreen(state: state, onContinue: { advanceScreen() })
-                case 21:
+                case 22:
                     // Completion screen
                     OnboardingCompletionScreen(state: state, onComplete: {
                         state.saveToManager()
@@ -161,21 +164,22 @@ struct PremiumOnboardingView: View {
         case 4: return "Promise"
         case 5: return "Goals"
         case 6: return "GoalsProcessing"
-        case 7: return "ActivityLevel"
-        case 8: return "ActivityProcessing"
-        case 9: return "EatingHabits"
-        case 10: return "DietExperience"
-        case 11: return "ProfileBuilding"
-        case 12: return "DietSetup"
-        case 13: return "CalorieTarget"
-        case 14: return "PersonalDetails"
-        case 15: return "Sensitivities"
-        case 16: return "CameraPermission"
-        case 17: return "HealthPermission"
-        case 18: return "NotificationPermission"
-        case 19: return "ProUpgrade"
-        case 20: return "Honesty"
-        case 21: return "Completion"
+        case 7: return "FeatureBenefits"
+        case 8: return "ActivityLevel"
+        case 9: return "ActivityProcessing"
+        case 10: return "EatingHabits"
+        case 11: return "DietExperience"
+        case 12: return "ProfileBuilding"
+        case 13: return "DietSetup"
+        case 14: return "CalorieTarget"
+        case 15: return "PersonalDetails"
+        case 16: return "Sensitivities"
+        case 17: return "CameraPermission"
+        case 18: return "HealthPermission"
+        case 19: return "NotificationPermission"
+        case 20: return "ProUpgrade"
+        case 21: return "Honesty"
+        case 22: return "Completion"
         default: return "Unknown"
         }
     }
@@ -818,18 +822,18 @@ struct PreAuthPremiumOnboardingView: View {
     @StateObject private var state = PremiumOnboardingState()
     @State private var currentScreen = 0
     @State private var transitionOpacity: Double = 1
-    @State private var showingPaywall = false
     @EnvironmentObject var healthKitManager: HealthKitManager
 
     let onComplete: (Bool) -> Void
 
-    // Pre-auth flow: Skip permission screens (16, 17, 18 in main flow)
+    // Pre-auth flow: Skip permission screens AND paywall (paywall shown post-auth after permissions)
     // Flow: Breath(0) → Mirror(1) → Processing(2) → Synthesis(3) → Promise(4) →
-    //       Goals(5) → GoalsProcessing(6) → Activity(7) → ActivityProcessing(8) →
-    //       Habits(9) → Experience(10) → ProfileBuilding(11) →
-    //       DietSetup(12) → CalorieTarget(13) →
-    //       PersonalDetails(14) → Sensitivities(15) →
-    //       ProUpgrade(16) → Honesty(17) → Completion(18)
+    //       Goals(5) → GoalsProcessing(6) → FeatureBenefits(7) → Activity(8) → ActivityProcessing(9) →
+    //       Habits(10) → Experience(11) → ProfileBuilding(12) →
+    //       PersonalDetails(13) → DietSetup(14) → CalorieTarget(15) →
+    //       Sensitivities(16) → Honesty(17) → Completion(18)
+    // Note: PersonalDetails moved BEFORE CalorieTarget for proper BMR calculation
+    // Note: ProUpgrade/Paywall moved to PostAuthPermissionsView (after permissions, before entering app)
     private let totalScreens = 19
 
     var body: some View {
@@ -855,38 +859,37 @@ struct PreAuthPremiumOnboardingView: View {
                 case 6:
                     GoalsProcessingScreen(state: state, onComplete: { advanceScreen() })
                 case 7:
-                    ActivityLevelScreen(state: state, onContinue: { advanceScreen() })
+                    // Feature Benefits - Show how app helps with selected goals
+                    FeatureBenefitsScreen(state: state, onContinue: { advanceScreen() })
                 case 8:
-                    ActivityProcessingScreen(state: state, onComplete: { advanceScreen() })
+                    ActivityLevelScreen(state: state, onContinue: { advanceScreen() })
                 case 9:
-                    EatingHabitsScreen(state: state, onContinue: { advanceScreen() })
+                    ActivityProcessingScreen(state: state, onComplete: { advanceScreen() })
                 case 10:
-                    DietExperienceScreen(state: state, onContinue: { advanceScreen() })
+                    EatingHabitsScreen(state: state, onContinue: { advanceScreen() })
                 case 11:
-                    ProfileBuildingScreen(state: state, onComplete: { advanceScreen() })
+                    DietExperienceScreen(state: state, onContinue: { advanceScreen() })
                 case 12:
+                    ProfileBuildingScreen(state: state, onComplete: { advanceScreen() })
+                case 13:
+                    // PersonalDetails BEFORE CalorieTarget so we have height/weight/age for BMR
+                    PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
+                case 14:
                     DietSetupScreen(
                         state: state,
                         onContinue: { advanceScreen() },
                         onSkip: { advanceScreen() }
                     )
-                case 13:
+                case 15:
                     CalorieTargetScreen(
                         state: state,
                         onContinue: { advanceScreen() },
                         onSkip: { advanceScreen() }
                     )
-                case 14:
-                    PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
-                case 15:
+                case 16:
                     SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
                 // SKIP: Camera, Health, Notifications (permissions) - these come after sign-up
-                case 16:
-                    ProUpgradeScreen(
-                        state: state,
-                        onUpgrade: { showingPaywall = true },
-                        onContinueFree: { advanceScreen() }
-                    )
+                // SKIP: ProUpgrade/Paywall - now shown after permissions in PostAuthPermissionsView
                 case 17:
                     HonestyScreen(state: state, onContinue: { advanceScreen() })
                 case 18:
@@ -905,12 +908,7 @@ struct PreAuthPremiumOnboardingView: View {
             }
             .opacity(transitionOpacity)
         }
-        .sheet(isPresented: $showingPaywall) {
-            PaywallView()
-                .onDisappear {
-                    advanceScreen()
-                }
-        }
+        // Note: Paywall removed from pre-auth flow - now shown in PostAuthPermissionsView after permissions
         .onAppear {
             AnalyticsManager.shared.trackOnboardingStep(step: currentScreen, stepName: "PreAuth_" + preAuthScreenName(currentScreen))
         }
@@ -943,16 +941,16 @@ struct PreAuthPremiumOnboardingView: View {
         case 4: return "Promise"
         case 5: return "Goals"
         case 6: return "GoalsProcessing"
-        case 7: return "ActivityLevel"
-        case 8: return "ActivityProcessing"
-        case 9: return "EatingHabits"
-        case 10: return "DietExperience"
-        case 11: return "ProfileBuilding"
-        case 12: return "DietSetup"
-        case 13: return "CalorieTarget"
-        case 14: return "PersonalDetails"
-        case 15: return "Sensitivities"
-        case 16: return "ProUpgrade"
+        case 7: return "FeatureBenefits"
+        case 8: return "ActivityLevel"
+        case 9: return "ActivityProcessing"
+        case 10: return "EatingHabits"
+        case 11: return "DietExperience"
+        case 12: return "ProfileBuilding"
+        case 13: return "PersonalDetails"
+        case 14: return "DietSetup"
+        case 15: return "CalorieTarget"
+        case 16: return "Sensitivities"
         case 17: return "Honesty"
         case 18: return "Completion"
         default: return "Unknown"

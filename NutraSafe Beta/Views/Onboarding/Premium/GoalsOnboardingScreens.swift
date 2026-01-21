@@ -154,9 +154,36 @@ struct EatingHabitsScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
 
+    // Personalized insight based on selected habits
+    private var personalizedInsight: (icon: String, text: String)? {
+        let habits = state.eatingHabits
+
+        // Priority-based insights
+        if habits.contains(.fastFood) && habits.contains(.busySchedule) {
+            return ("lightbulb.fill", "We'll help you find quick, healthier alternatives when you're short on time.")
+        } else if habits.contains(.skipBreakfast) && habits.contains(.lateDinner) {
+            return ("clock.fill", "Your eating window suggests intermittent fasting might work well for you.")
+        } else if habits.contains(.snacker) {
+            return ("chart.bar.fill", "We'll track snacks separately so you can see their real impact.")
+        } else if habits.contains(.eatOut) || habits.contains(.fastFood) {
+            return ("magnifyingglass", "Our barcode scanner makes logging restaurant meals quick and easy.")
+        } else if habits.contains(.mealPrep) || habits.contains(.homeCooking) {
+            return ("star.fill", "Great foundation! Home cooking gives you the most control over ingredients.")
+        } else if habits.contains(.busySchedule) {
+            return ("bolt.fill", "Quick-add and meal copying will save you time logging.")
+        } else if habits.contains(.healthyTrying) {
+            return ("heart.fill", "We'll show you which foods score highest for your health goals.")
+        } else if habits.contains(.lateDinner) {
+            return ("moon.fill", "We'll help you balance your daily intake even with late meals.")
+        } else if habits.contains(.bigLunches) {
+            return ("sun.max.fill", "Front-loading calories can actually support weight management.")
+        }
+        return nil
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: 60)
+            Spacer().frame(height: 50)
 
             // Headline
             VStack(spacing: 8) {
@@ -170,12 +197,12 @@ struct EatingHabitsScreen: View {
             }
             .multilineTextAlignment(.center)
 
-            Text("Select what describes you best.")
+            Text("Help us personalise your experience.")
                 .font(.system(size: 15, weight: .regular))
                 .foregroundColor(Color(white: 0.5))
                 .padding(.top, 12)
 
-            Spacer().frame(height: 32)
+            Spacer().frame(height: 24)
 
             // Habits flow layout
             ScrollView(showsIndicators: false) {
@@ -200,7 +227,32 @@ struct EatingHabitsScreen: View {
                 }
                 .padding(.horizontal, 24)
             }
-            .frame(maxHeight: 320)
+            .frame(maxHeight: 260)
+
+            // Personalized insight card - appears when relevant habits selected
+            if let insight = personalizedInsight {
+                HStack(spacing: 12) {
+                    Image(systemName: insight.icon)
+                        .font(.system(size: 18))
+                        .foregroundColor(state.palette.primary)
+                        .frame(width: 24)
+
+                    Text(insight.text)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color(white: 0.35))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(state.palette.primary.opacity(0.08))
+                )
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .animation(.easeOut(duration: 0.3), value: insight.text)
+            }
 
             Spacer()
 
@@ -277,6 +329,216 @@ struct DietExperienceScreen: View {
 
             Spacer()
         }
+    }
+}
+
+// MARK: - Feature Benefits Screen (shows how app helps with selected goals)
+
+struct FeatureBenefitsScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    @State private var showContent = false
+    @State private var visibleFeatures: Set<Int> = []
+
+    // Map goals to specific app features
+    private var featureBenefits: [(icon: String, title: String, description: String)] {
+        var benefits: [(icon: String, title: String, description: String)] = []
+
+        // Food Safety / Additives
+        if state.selectedGoals.contains(.foodSafety) {
+            benefits.append((
+                icon: "shield.checkered",
+                title: "Additive Scanner",
+                description: "Instantly identify E-numbers and additives. We flag preservatives, artificial colours, and controversial ingredients so you know exactly what's in your food."
+            ))
+        }
+
+        // Manage Allergies
+        if state.selectedGoals.contains(.manageAllergies) {
+            benefits.append((
+                icon: "exclamationmark.triangle.fill",
+                title: "Allergen Alerts",
+                description: "Set your allergens once and we'll warn you every time. Instant warnings for the 14 major allergens, cross-contamination risks, and hidden ingredients."
+            ))
+        }
+
+        // Lose Weight
+        if state.selectedGoals.contains(.loseWeight) {
+            benefits.append((
+                icon: "flame.fill",
+                title: "Smart Calorie Tracking",
+                description: "Log meals in seconds with barcode scanning and AI photo recognition. We calculate your deficit and show you exactly how you're progressing."
+            ))
+        }
+
+        // Build Muscle
+        if state.selectedGoals.contains(.buildMuscle) {
+            benefits.append((
+                icon: "dumbbell.fill",
+                title: "Protein & Macro Tracking",
+                description: "Hit your protein targets with detailed macro breakdowns. Track every gram and time your nutrition around workouts for maximum gains."
+            ))
+        }
+
+        // Eat Healthier
+        if state.selectedGoals.contains(.eatHealthier) {
+            benefits.append((
+                icon: "leaf.fill",
+                title: "Nutrition Scoring",
+                description: "Every food gets an A+ to F grade. See at a glance which choices support your health—and which ones to swap out."
+            ))
+        }
+
+        // Track Nutrition
+        if state.selectedGoals.contains(.trackNutrition) {
+            benefits.append((
+                icon: "chart.bar.fill",
+                title: "Complete Nutrient Insights",
+                description: "Track 30+ vitamins and minerals, not just calories. See your daily values and discover gaps in your nutrition before they become problems."
+            ))
+        }
+
+        // Always add food reactions if any safety-related goal is selected
+        if state.selectedGoals.contains(.foodSafety) || state.selectedGoals.contains(.manageAllergies) || state.selectedGoals.contains(.eatHealthier) {
+            // Check if we haven't already added too many
+            if benefits.count < 4 {
+                benefits.append((
+                    icon: "waveform.path.ecg",
+                    title: "Food Reaction Tracking",
+                    description: "Log how foods make you feel and spot patterns over time. Identify trigger foods and sensitivities—without the guesswork."
+                ))
+            }
+        }
+
+        // If no goals selected, show general benefits
+        if benefits.isEmpty {
+            benefits = [
+                (icon: "camera.viewfinder", title: "Instant Food Scanning", description: "Scan any barcode or snap a photo. Get complete nutrition info in seconds."),
+                (icon: "chart.bar.fill", title: "Smart Tracking", description: "Track calories, macros, and nutrients without the hassle."),
+                (icon: "shield.checkered", title: "Know Your Ingredients", description: "See exactly what's in your food—additives, allergens, and all.")
+            ]
+        }
+
+        // Limit to 3 features for clean display
+        return Array(benefits.prefix(3))
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 50)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Here's how we'll")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("help you succeed")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(state.palette.primary)
+            }
+            .multilineTextAlignment(.center)
+            .opacity(showContent ? 1 : 0)
+
+            Text("Based on your goals")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 12)
+                .opacity(showContent ? 1 : 0)
+
+            Spacer().frame(height: 32)
+
+            // Feature cards
+            VStack(spacing: 16) {
+                ForEach(Array(featureBenefits.enumerated()), id: \.offset) { index, feature in
+                    FeatureBenefitCard(
+                        icon: feature.icon,
+                        title: feature.title,
+                        description: feature.description,
+                        palette: state.palette,
+                        isVisible: visibleFeatures.contains(index)
+                    )
+                }
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Continue button
+            PremiumButton(
+                text: "Continue",
+                palette: state.palette,
+                action: onContinue
+            )
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+            .opacity(showContent ? 1 : 0)
+        }
+        .onAppear {
+            // Fade in header
+            withAnimation(.easeOut(duration: 0.5)) {
+                showContent = true
+            }
+
+            // Stagger feature card appearances
+            for i in 0..<featureBenefits.count {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3 + Double(i) * 0.2) {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        _ = visibleFeatures.insert(i)
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct FeatureBenefitCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let palette: OnboardingPalette
+    let isVisible: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Icon
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(palette.primary)
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(palette.primary.opacity(0.12))
+                )
+
+            // Text
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text(description)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(white: 0.5))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.85))
+                .shadow(color: Color.black.opacity(0.06), radius: 8, y: 3)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.5), lineWidth: 1)
+        )
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 20)
     }
 }
 
@@ -955,20 +1217,14 @@ struct CalorieTargetScreen: View {
 
     @State private var calorieOffset: Int = 0 // -500 to +500 from baseline
 
-    private var baselineCalories: Int {
-        // Simple baseline based on activity level
-        switch state.activityLevel {
-        case .sedentary: return 1800
-        case .lightlyActive: return 2000
-        case .moderatelyActive: return 2200
-        case .veryActive: return 2500
-        case .extraActive: return 2800
-        }
+    // Use proper BMR-based TDEE calculation from state
+    private var maintenanceCalories: Int {
+        state.tdee
     }
 
     private var adjustedCalories: Int {
         // Adjust based on goals
-        var calories = baselineCalories + calorieOffset
+        var calories = maintenanceCalories + calorieOffset
 
         if state.selectedGoals.contains(.loseWeight) {
             calories -= 300 // Default deficit
@@ -979,19 +1235,41 @@ struct CalorieTargetScreen: View {
         return max(1200, min(4000, calories))
     }
 
-    private var goalContext: String {
+    // Calorie deficit/surplus based on goal
+    private var goalAdjustment: Int {
         if state.selectedGoals.contains(.loseWeight) {
-            return "For steady, sustainable fat loss"
+            return -300
         } else if state.selectedGoals.contains(.buildMuscle) {
-            return "To support muscle growth"
+            return 200
+        }
+        return 0
+    }
+
+    private var goalExplanation: (title: String, detail: String) {
+        if state.selectedGoals.contains(.loseWeight) {
+            let deficit = abs(goalAdjustment + calorieOffset)
+            let weeklyLoss = Double(deficit * 7) / 3500.0 // ~3500 cal = 1 lb
+            let lossText = weeklyLoss >= 0.5 ? String(format: "~%.1f lb/week", weeklyLoss) : "gradual loss"
+            return (
+                "300 cal deficit from maintenance",
+                "This creates a sustainable deficit for \(lossText) fat loss without muscle loss."
+            )
+        } else if state.selectedGoals.contains(.buildMuscle) {
+            return (
+                "200 cal surplus for muscle growth",
+                "A moderate surplus supports muscle building while minimising fat gain."
+            )
         } else {
-            return "To maintain your current weight"
+            return (
+                "Maintenance calories",
+                "This will help you maintain your current weight and body composition."
+            )
         }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: 60)
+            Spacer().frame(height: 50)
 
             // Headline
             VStack(spacing: 8) {
@@ -1005,12 +1283,32 @@ struct CalorieTargetScreen: View {
             }
             .multilineTextAlignment(.center)
 
-            Text(goalContext)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(Color(white: 0.5))
-                .padding(.top, 12)
+            Spacer().frame(height: 24)
 
-            Spacer().frame(height: 40)
+            // Maintenance calories explanation
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "flame")
+                        .font(.system(size: 14))
+                        .foregroundColor(state.palette.primary)
+                    Text("Your maintenance: \(maintenanceCalories) cal/day")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(white: 0.35))
+                }
+
+                Text("Calculated from your BMR × \(state.activityLevel.rawValue.lowercased()) activity")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(state.palette.primary.opacity(0.08))
+            )
+            .padding(.horizontal, 32)
+
+            Spacer().frame(height: 28)
 
             // Big calorie display
             VStack(spacing: 8) {
@@ -1023,11 +1321,27 @@ struct CalorieTargetScreen: View {
                     .foregroundColor(Color(white: 0.4))
             }
 
-            Spacer().frame(height: 32)
+            // Goal adjustment explanation
+            if goalAdjustment != 0 || calorieOffset != 0 {
+                VStack(spacing: 4) {
+                    Text(goalExplanation.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(state.palette.primary)
+
+                    Text(goalExplanation.detail)
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(white: 0.5))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 12)
+                .padding(.horizontal, 40)
+            }
+
+            Spacer().frame(height: 24)
 
             // Adjustment slider
             VStack(spacing: 12) {
-                Text("Adjust if needed")
+                Text("Fine-tune your target")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(Color(white: 0.5))
 
@@ -1047,6 +1361,12 @@ struct CalorieTargetScreen: View {
                         .foregroundColor(Color(white: 0.5))
                 }
                 .padding(.horizontal, 32)
+
+                if calorieOffset != 0 {
+                    Text("\(calorieOffset > 0 ? "+" : "")\(calorieOffset) from recommended")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(white: 0.5))
+                }
             }
 
             Spacer().frame(height: 24)

@@ -60,7 +60,6 @@ struct DiaryTabView: View {
     // (HKObserverQuery + 30-second timer). Removed redundant DiaryTabView timer.
 
     // MARK: - Feature Tips
-    @State private var showingDiaryTip = false
     @State private var showingNutrientsTip = false
     @State private var showingInsightsTip = false
     @State private var showingAdditivesTip = false
@@ -648,7 +647,6 @@ struct DiaryTabView: View {
             }
             .background(AppAnimatedBackground())
             .trackScreen("Diary")
-            .featureTip(isPresented: $showingDiaryTip, tipKey: .diaryOverview)
             .featureTip(isPresented: $showingNutrientsTip, tipKey: .nutrientsOverview)
             .featureTip(isPresented: $showingInsightsTip, tipKey: .insightsOverview)
             .featureTip(isPresented: $showingAdditivesTip, tipKey: .additivesTracker)
@@ -669,15 +667,9 @@ struct DiaryTabView: View {
                 hasLoadedOnce = true
                 loadFoodData() // Initial load doesn't need debounce
 
-                // Show feature tip on first visit
-                // Use longer delay if user just completed onboarding to avoid immediate tip after permissions
-                if !FeatureTipsManager.shared.hasSeenTip(.diaryOverview) {
-                    let delay: Double = OnboardingManager.shared.justCompletedOnboarding ? 2.0 : 0.5
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                        showingDiaryTip = true
-                        // Reset the flag after showing the first tip
-                        OnboardingManager.shared.justCompletedOnboarding = false
-                    }
+                // Reset onboarding flag if needed
+                if OnboardingManager.shared.justCompletedOnboarding {
+                    OnboardingManager.shared.justCompletedOnboarding = false
                 }
             }
             .onChange(of: selectedTab) { _, newTab in
@@ -727,11 +719,8 @@ struct DiaryTabView: View {
                 deleteTrigger = false
             }
             .onChange(of: featureTipsManager.resetTrigger) { _, _ in
-                // When tips are reset, switch to overview sub-tab and show the diary tip
+                // When tips are reset, switch to overview sub-tab
                 diarySubTab = .overview
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    showingDiaryTip = true
-                }
             }
     }
 

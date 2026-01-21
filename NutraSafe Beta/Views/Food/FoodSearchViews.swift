@@ -572,6 +572,7 @@ struct AddFoodSearchView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var keyboardHeight: CGFloat = 0
     @State private var isEditingMode = false
+    @State private var hasScrolledToResults = false  // Prevents repeated auto-scrolling
 
     // PERFORMANCE: Debouncer to prevent search from running on every keystroke
     @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
@@ -794,31 +795,31 @@ struct AddFoodSearchView: View {
                     }
                     .frame(maxHeight: .infinity)
                     .scrollDismissesKeyboard(.interactively) // Dismiss keyboard on scroll, not tap (avoids gesture conflicts)
-                    .onChange(of: searchResults.count) { _, newCount in
-                        // Auto-scroll to show first result when results appear
-                        if newCount > 0 {
+                    .onChange(of: searchResults.count) { oldCount, newCount in
+                        // Auto-scroll to show first result only when results first appear (not repeatedly)
+                        if newCount > 0 && oldCount == 0 && !hasScrolledToResults {
+                            hasScrolledToResults = true
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 withAnimation(.easeOut(duration: 0.3)) {
                                     scrollProxy.scrollTo("result_0", anchor: .top)
                                 }
                             }
-                        }
-                    }
-                    .onChange(of: keyboardHeight) { _, height in
-                        // Also scroll when keyboard appears if we have results
-                        if height > 0 && !searchResults.isEmpty {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                withAnimation(.easeOut(duration: 0.3)) {
-                                    scrollProxy.scrollTo("result_0", anchor: .top)
-                                }
-                            }
+                        } else if newCount == 0 {
+                            // Reset flag when results are cleared (new search)
+                            hasScrolledToResults = false
                         }
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppAnimatedBackground())
+        .background {
+            // Opaque base layer to prevent underlying content showing through
+            Color.adaptiveBackground
+                .ignoresSafeArea()
+            // Then the animated gradient on top
+            AppAnimatedBackground()
+        }
         .onAppear {
             print("[AddFoodSearchView] onAppear called")
             setupKeyboardObservers()

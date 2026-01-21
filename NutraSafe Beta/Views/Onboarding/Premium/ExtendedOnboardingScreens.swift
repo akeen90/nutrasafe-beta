@@ -17,11 +17,13 @@ struct PersonalDetailsScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
 
-    @State private var selectedBirthday: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date())!
     @State private var hasBirthdayBeenSet = false
-    @State private var heightCm: Double = 170
-    @State private var weightKg: Double = 70
-    @State private var selectedGender: UserGender = .notSet
+    @State private var heightText: String = ""
+    @State private var weightText: String = ""
+    @State private var isEditingHeight = false
+    @State private var isEditingWeight = false
+    @FocusState private var heightFieldFocused: Bool
+    @FocusState private var weightFieldFocused: Bool
 
     // Height range (100cm - 250cm)
     private let heightRange: ClosedRange<Double> = 100...250
@@ -46,14 +48,14 @@ struct PersonalDetailsScreen: View {
                     .font(.system(size: 28, weight: .bold, design: .serif))
                     .foregroundColor(Color(white: 0.2))
 
-                Text("For personalised insights")
+                Text("For accurate calorie targets")
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(Color(white: 0.5))
             }
             .padding(.bottom, 8)
 
             // Helper text
-            Text("This helps us estimate calorie needs and track your progress more accurately.")
+            Text("We use this to calculate your personal BMR and daily calorie needs.")
                 .font(.system(size: 14, weight: .regular))
                 .foregroundColor(Color(white: 0.5))
                 .multilineTextAlignment(.center)
@@ -70,87 +72,150 @@ struct PersonalDetailsScreen: View {
                     ) {
                         DatePicker(
                             "Birthday",
-                            selection: $selectedBirthday,
+                            selection: $state.birthDate,
                             in: dateRange,
                             displayedComponents: .date
                         )
                         .datePickerStyle(.compact)
                         .labelsHidden()
-                        .onChange(of: selectedBirthday) { _, _ in
+                        .onChange(of: state.birthDate) { _, _ in
                             hasBirthdayBeenSet = true
                         }
 
-                        if hasBirthdayBeenSet {
-                            let age = calculateAge(from: selectedBirthday)
-                            Text("\(age) years old")
+                        if hasBirthdayBeenSet || state.age != 30 {
+                            Text("\(state.age) years old")
                                 .font(.system(size: 13))
                                 .foregroundColor(state.palette.primary)
                         }
                     }
 
-                    // Height
+                    // Height - with text input option
                     PersonalDetailCard(
                         icon: "ruler",
                         title: "Height",
                         palette: state.palette
                     ) {
-                        HStack(spacing: 12) {
-                            Slider(value: $heightCm, in: heightRange, step: 1)
-                                .accentColor(state.palette.primary)
+                        VStack(spacing: 8) {
+                            HStack(spacing: 12) {
+                                Slider(value: $state.heightCm, in: heightRange, step: 1)
+                                    .accentColor(state.palette.primary)
 
-                            Text("\(Int(heightCm)) cm")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Color(white: 0.3))
-                                .frame(width: 60)
+                                // Tappable text field
+                                Button {
+                                    heightText = "\(Int(state.heightCm))"
+                                    isEditingHeight = true
+                                    heightFieldFocused = true
+                                } label: {
+                                    if isEditingHeight {
+                                        TextField("", text: $heightText)
+                                            .keyboardType(.numberPad)
+                                            .multilineTextAlignment(.center)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: 50)
+                                            .focused($heightFieldFocused)
+                                            .onChange(of: heightFieldFocused) { _, focused in
+                                                if !focused {
+                                                    isEditingHeight = false
+                                                    if let value = Double(heightText), heightRange.contains(value) {
+                                                        state.heightCm = value
+                                                    }
+                                                }
+                                            }
+                                    } else {
+                                        Text("\(Int(state.heightCm))")
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: 50)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+
+                                Text("cm")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(Color(white: 0.5))
+                            }
+
+                            // Show feet/inches conversion
+                            let feet = Int(state.heightCm / 30.48)
+                            let inches = Int((state.heightCm / 2.54).truncatingRemainder(dividingBy: 12))
+                            Text("\(feet)'\(inches)\"")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.5))
                         }
-
-                        // Show feet/inches conversion
-                        let feet = Int(heightCm / 30.48)
-                        let inches = Int((heightCm / 2.54).truncatingRemainder(dividingBy: 12))
-                        Text("\(feet)'\(inches)\"")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(white: 0.5))
                     }
 
-                    // Weight
+                    // Weight - with text input option
                     PersonalDetailCard(
                         icon: "scalemass",
                         title: "Current weight",
                         palette: state.palette
                     ) {
-                        HStack(spacing: 12) {
-                            Slider(value: $weightKg, in: weightRange, step: 0.5)
-                                .accentColor(state.palette.primary)
+                        VStack(spacing: 8) {
+                            HStack(spacing: 12) {
+                                Slider(value: $state.weightKg, in: weightRange, step: 0.5)
+                                    .accentColor(state.palette.primary)
 
-                            Text(String(format: "%.1f kg", weightKg))
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Color(white: 0.3))
-                                .frame(width: 70)
+                                // Tappable text field
+                                Button {
+                                    weightText = String(format: "%.1f", state.weightKg)
+                                    isEditingWeight = true
+                                    weightFieldFocused = true
+                                } label: {
+                                    if isEditingWeight {
+                                        TextField("", text: $weightText)
+                                            .keyboardType(.decimalPad)
+                                            .multilineTextAlignment(.center)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: 55)
+                                            .focused($weightFieldFocused)
+                                            .onChange(of: weightFieldFocused) { _, focused in
+                                                if !focused {
+                                                    isEditingWeight = false
+                                                    if let value = Double(weightText), weightRange.contains(value) {
+                                                        state.weightKg = value
+                                                    }
+                                                }
+                                            }
+                                    } else {
+                                        Text(String(format: "%.1f", state.weightKg))
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: 55)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+
+                                Text("kg")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(Color(white: 0.5))
+                            }
+
+                            // Show stone/pounds conversion
+                            let totalPounds = state.weightKg * 2.20462
+                            let stone = Int(totalPounds / 14)
+                            let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
+                            Text("\(stone) st \(pounds) lb")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.5))
                         }
-
-                        // Show stone/pounds conversion
-                        let totalPounds = weightKg * 2.20462
-                        let stone = Int(totalPounds / 14)
-                        let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
-                        Text("\(stone) st \(pounds) lb")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(white: 0.5))
                     }
 
                     // Gender
                     PersonalDetailCard(
                         icon: "person",
-                        title: "Gender",
-                        subtitle: "Optional",
+                        title: "Biological sex",
+                        subtitle: "For BMR calculation",
                         palette: state.palette
                     ) {
                         HStack(spacing: 10) {
                             ForEach([UserGender.male, .female, .other], id: \.self) { gender in
                                 GenderChip(
                                     gender: gender,
-                                    isSelected: selectedGender == gender,
+                                    isSelected: state.gender == gender,
                                     palette: state.palette,
-                                    onSelect: { selectedGender = gender }
+                                    onSelect: { state.gender = gender }
                                 )
                             }
                         }
@@ -185,23 +250,21 @@ struct PersonalDetailsScreen: View {
             .padding(.horizontal, 32)
             .padding(.bottom, 50)
         }
-    }
-
-    private func calculateAge(from date: Date) -> Int {
-        let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year], from: date, to: Date())
-        return ageComponents.year ?? 0
+        .onTapGesture {
+            // Dismiss keyboard on tap outside
+            heightFieldFocused = false
+            weightFieldFocused = false
+        }
     }
 
     private func savePersonalDetails() {
+        // Save to OnboardingManager for persistence
         let manager = OnboardingManager.shared
-        if hasBirthdayBeenSet {
-            manager.saveBirthday(selectedBirthday)
-        }
-        manager.saveHeight(heightCm)
-        manager.saveWeight(weightKg)
-        if selectedGender != .notSet {
-            manager.saveGender(selectedGender)
+        manager.saveBirthday(state.birthDate)
+        manager.saveHeight(state.heightCm)
+        manager.saveWeight(state.weightKg)
+        if state.gender != .notSet {
+            manager.saveGender(state.gender)
         }
     }
 }
@@ -1039,12 +1102,13 @@ struct PostAuthPermissionsView: View {
     @StateObject private var state = PremiumOnboardingState()
     @State private var currentScreen = 0
     @State private var transitionOpacity: Double = 1
+    @State private var showingPaywall = false
     @EnvironmentObject var healthKitManager: HealthKitManager
 
     let onComplete: () -> Void
 
-    // Just the permission screens: Camera(0) → Health(1) → Notifications(2) → Done(3)
-    private let totalScreens = 4
+    // Permission screens + paywall: Camera(0) → Health(1) → Notifications(2) → ProUpgrade(3) → Done(4)
+    private let totalScreens = 5
 
     var body: some View {
         ZStack {
@@ -1062,6 +1126,13 @@ struct PostAuthPermissionsView: View {
                 case 2:
                     NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
                 case 3:
+                    // Paywall shown after permissions, before entering the app
+                    ProUpgradeScreen(
+                        state: state,
+                        onUpgrade: { showingPaywall = true },
+                        onContinueFree: { advanceScreen() }
+                    )
+                case 4:
                     PermissionsCompletionScreen(state: state, onComplete: {
                         OnboardingManager.shared.completePermissions()
                         OnboardingManager.shared.completeOnboarding()
@@ -1072,6 +1143,12 @@ struct PostAuthPermissionsView: View {
                 }
             }
             .opacity(transitionOpacity)
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .onDisappear {
+                    advanceScreen()
+                }
         }
         .onAppear {
             // Load user intent from saved preferences to get correct palette
@@ -1103,7 +1180,8 @@ struct PostAuthPermissionsView: View {
         case 0: return "CameraPermission"
         case 1: return "HealthPermission"
         case 2: return "NotificationPermission"
-        case 3: return "Completion"
+        case 3: return "ProUpgrade"
+        case 4: return "Completion"
         default: return "Unknown"
         }
     }

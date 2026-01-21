@@ -66,28 +66,38 @@ struct PreAuthOnboardingView: View {
     let onAlreadyMember: () -> Void
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            // The actual onboarding flow (but without permission screens - those come after sign-up)
-            PreAuthPremiumOnboardingView(onComplete: { _ in
-                onComplete()
-            })
-            .environmentObject(healthKitManager)
-
-            // "Already a member?" button in top-right
-            Button(action: onAlreadyMember) {
-                Text("Already a member?")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(Color(white: 0.4))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+        // The actual onboarding flow (but without permission screens - those come after sign-up)
+        PreAuthPremiumOnboardingView(onComplete: { _ in
+            onComplete()
+        })
+        .environmentObject(healthKitManager)
+        .safeAreaInset(edge: .top) {
+            // "Already a member?" button - positioned in safe area, doesn't overlap content
+            HStack {
+                Spacer()
+                Button(action: onAlreadyMember) {
+                    HStack(spacing: 6) {
+                        Text("Already a member?")
+                            .font(.system(size: 14, weight: .semibold))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(AppPalette.standard.accent)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
                     .background(
                         Capsule()
-                            .fill(Color.white.opacity(0.8))
-                            .shadow(color: Color.black.opacity(0.05), radius: 4, y: 2)
+                            .fill(Color.white.opacity(0.95))
+                            .shadow(color: AppPalette.standard.accent.opacity(0.15), radius: 6, y: 2)
                     )
+                    .overlay(
+                        Capsule()
+                            .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                .padding(.trailing, 16)
             }
-            .padding(.top, 60)
-            .padding(.trailing, 20)
+            .padding(.top, 8)
         }
     }
 }

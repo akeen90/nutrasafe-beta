@@ -25,7 +25,7 @@ enum UserIntent: String, CaseIterable {
     var personalizedMessage: String {
         switch self {
         case .safer:
-            return "We'll watch for allergens and sensitivities in everything you scan. Warnings will be clear, immediate, and impossible to miss. You'll never have to squint at a label again."
+            return "We'll flag potential allergens and sensitivities in everything you scan. Warnings will be clear and immediate—helping you make informed decisions faster."
         case .lighter:
             return "We'll surface what matters: energy, balance, how foods make you feel. No calorie obsession. Just clarity about what nourishes you."
         case .control:
@@ -36,7 +36,7 @@ enum UserIntent: String, CaseIterable {
     var personalizedMessageWithSensitivities: String {
         switch self {
         case .safer:
-            return "We'll watch for your specific sensitivities in everything you scan. Warnings will be clear, immediate, and impossible to miss. You'll never have to squint at a label again."
+            return "We'll flag your specific sensitivities in everything you scan. Warnings will be clear and immediate—helping you make informed decisions faster. Always check labels for your safety."
         case .lighter:
             return "We'll surface what matters while keeping an eye on your sensitivities. No calorie obsession. Just clarity about what nourishes you."
         case .control:
@@ -324,6 +324,40 @@ class PremiumOnboardingState: ObservableObject {
     @Published var targetCalories: Int = 2000
     @Published var wantsDietSetup: Bool = true
 
+    // Personal details (for BMR calculation)
+    @Published var heightCm: Double = 170
+    @Published var weightKg: Double = 70
+    @Published var birthDate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date())!
+    @Published var gender: UserGender = .notSet
+
+    var age: Int {
+        Calendar.current.dateComponents([.year], from: birthDate, to: Date()).year ?? 30
+    }
+
+    // Mifflin-St Jeor BMR calculation
+    var bmr: Double {
+        let weight = weightKg
+        let height = heightCm
+        let ageYears = Double(age)
+
+        switch gender {
+        case .male:
+            return (10 * weight) + (6.25 * height) - (5 * ageYears) + 5
+        case .female:
+            return (10 * weight) + (6.25 * height) - (5 * ageYears) - 161
+        case .other, .notSet:
+            // Average of male and female formulas
+            let male = (10 * weight) + (6.25 * height) - (5 * ageYears) + 5
+            let female = (10 * weight) + (6.25 * height) - (5 * ageYears) - 161
+            return (male + female) / 2
+        }
+    }
+
+    // TDEE (Total Daily Energy Expenditure) = BMR × Activity Multiplier
+    var tdee: Int {
+        Int(bmr * activityLevel.multiplier)
+    }
+
     var palette: OnboardingPalette {
         OnboardingPalette.forIntent(selectedIntent)
     }
@@ -360,6 +394,12 @@ class PremiumOnboardingState: ObservableObject {
         // Save diet setup
         UserDefaults.standard.set(selectedDietType.rawValue, forKey: "cachedDietType")
         UserDefaults.standard.set(targetCalories, forKey: "userTargetCalories")
+
+        // Save personal details
+        UserDefaults.standard.set(heightCm, forKey: "userHeightCm")
+        UserDefaults.standard.set(weightKg, forKey: "userWeightKg")
+        UserDefaults.standard.set(birthDate.timeIntervalSince1970, forKey: "userBirthDate")
+        UserDefaults.standard.set(gender.rawValue, forKey: "userGender")
     }
 
     // Load from UserDefaults
@@ -384,6 +424,22 @@ class PremiumOnboardingState: ObservableObject {
         if let experienceRaw = UserDefaults.standard.string(forKey: "userDietExperience"),
            let experience = DietExperienceOption(rawValue: experienceRaw) {
             dietExperience = experience
+        }
+
+        // Load personal details
+        if UserDefaults.standard.object(forKey: "userHeightCm") != nil {
+            heightCm = UserDefaults.standard.double(forKey: "userHeightCm")
+        }
+        if UserDefaults.standard.object(forKey: "userWeightKg") != nil {
+            weightKg = UserDefaults.standard.double(forKey: "userWeightKg")
+        }
+        if UserDefaults.standard.object(forKey: "userBirthDate") != nil {
+            let timestamp = UserDefaults.standard.double(forKey: "userBirthDate")
+            birthDate = Date(timeIntervalSince1970: timestamp)
+        }
+        if let genderRaw = UserDefaults.standard.string(forKey: "userGender"),
+           let loadedGender = UserGender(rawValue: genderRaw) {
+            gender = loadedGender
         }
     }
 }
