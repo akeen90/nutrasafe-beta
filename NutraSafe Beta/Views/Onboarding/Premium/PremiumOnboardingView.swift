@@ -2,8 +2,9 @@
 //  PremiumOnboardingView.swift
 //  NutraSafe Beta
 //
-//  Premium 9-screen onboarding flow with emotional journey
-//  Screens: Breath → Mirror → Processing → Depth → Synthesis → Promise → Access → Honesty → Threshold
+//  Premium onboarding flow with emotional journey and extended setup
+//  Flow: Breath → Mirror → Processing → Depth → Synthesis → Promise →
+//        PersonalDetails → Sensitivities → Camera → Health → Notifications → Honesty → Completion
 //
 
 import SwiftUI
@@ -20,8 +21,8 @@ struct PremiumOnboardingView: View {
 
     let onComplete: (Bool) -> Void
 
-    // Total screens (0-8)
-    private let totalScreens = 9
+    // Total screens (0-12)
+    private let totalScreens = 13
 
     var body: some View {
         ZStack {
@@ -44,11 +45,27 @@ struct PremiumOnboardingView: View {
                 case 5:
                     PromiseScreen(state: state, onContinue: { advanceScreen() })
                 case 6:
-                    AccessScreen(state: state, onContinue: { advanceScreen() })
+                    // NEW: Personal Details
+                    PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
                 case 7:
-                    HonestyScreen(state: state, onContinue: { advanceScreen() })
+                    // NEW: Sensitivities (Allergens + Preferences)
+                    SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
                 case 8:
-                    ThresholdScreen(state: state, onComplete: {
+                    // NEW: Camera Permission (with real trigger)
+                    CameraPermissionScreen(state: state, onContinue: { advanceScreen() })
+                case 9:
+                    // NEW: Apple Health Permission
+                    HealthPermissionScreen(state: state, onContinue: { advanceScreen() })
+                        .environmentObject(healthKitManager)
+                case 10:
+                    // NEW: Notifications Permission
+                    NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
+                case 11:
+                    // Honesty/Disclaimer screen
+                    HonestyScreen(state: state, onContinue: { advanceScreen() })
+                case 12:
+                    // NEW: Completion screen
+                    OnboardingCompletionScreen(state: state, onComplete: {
                         state.saveToManager()
                         OnboardingManager.shared.acceptDisclaimer()
                         OnboardingManager.shared.completeOnboarding()
@@ -91,9 +108,13 @@ struct PremiumOnboardingView: View {
         case 3: return "Depth"
         case 4: return "Synthesis"
         case 5: return "Promise"
-        case 6: return "Access"
-        case 7: return "Honesty"
-        case 8: return "Threshold"
+        case 6: return "PersonalDetails"
+        case 7: return "Sensitivities"
+        case 8: return "CameraPermission"
+        case 9: return "HealthPermission"
+        case 10: return "NotificationPermission"
+        case 11: return "Honesty"
+        case 12: return "Completion"
         default: return "Unknown"
         }
     }
@@ -625,109 +646,8 @@ struct PromiseScreen: View {
     }
 }
 
-// MARK: - Screen 7: The Access (Camera Permission)
-
-struct AccessScreen: View {
-    @ObservedObject var state: PremiumOnboardingState
-    let onContinue: () -> Void
-
-    @State private var permissionRequested = false
-    @State private var permissionGranted = false
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer().frame(height: 60)
-
-            // Headline
-            VStack(spacing: 8) {
-                Text("To protect you,")
-                    .font(.system(size: 26, weight: .bold, design: .serif))
-                    .foregroundColor(Color(white: 0.2))
-
-                Text("we need to see")
-                    .font(.system(size: 26, weight: .bold, design: .serif))
-                    .foregroundColor(Color(white: 0.2))
-
-                Text("what you see.")
-                    .font(.system(size: 26, weight: .bold, design: .serif))
-                    .foregroundColor(Color(white: 0.2))
-            }
-
-            // Subtext
-            Text("Camera access lets us read labels instantly.")
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(Color(white: 0.5))
-                .padding(.top, 12)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-
-            Spacer().frame(height: 50)
-
-            // Focus viewfinder animation
-            FocusViewfinder(palette: state.palette)
-                .frame(height: 200)
-
-            // Privacy assurance
-            HStack(spacing: 8) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(state.palette.primary)
-
-                Text("Your photos never leave your device unless you choose.")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(Color(white: 0.5))
-            }
-            .padding(.top, 30)
-            .padding(.horizontal, 32)
-
-            Spacer()
-
-            // Permission buttons
-            VStack(spacing: 12) {
-                if !permissionRequested {
-                    PremiumButton(
-                        text: "Allow Camera",
-                        palette: state.palette,
-                        action: requestCameraPermission
-                    )
-
-                    Button(action: {
-                        permissionRequested = true
-                        onContinue()
-                    }) {
-                        Text("Maybe Later")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(Color(white: 0.5))
-                    }
-                } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: permissionGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
-                        Text(permissionGranted ? "Camera enabled" : "Skipped for now")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
-                    }
-                    .frame(height: 56)
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 50)
-        }
-    }
-
-    private func requestCameraPermission() {
-        AVCaptureDevice.requestAccess(for: .video) { granted in
-            DispatchQueue.main.async {
-                permissionRequested = true
-                permissionGranted = granted
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    onContinue()
-                }
-            }
-        }
-    }
-}
+// MARK: - Screen 7: The Access (Camera Permission) - LEGACY (replaced by CameraPermissionScreen)
+// Kept for reference but no longer used in the main flow
 
 // MARK: - Screen 8: The Honesty (Disclaimer)
 
@@ -826,80 +746,8 @@ struct HonestyScreen: View {
     }
 }
 
-// MARK: - Screen 9: The Threshold (Final Launch)
-
-struct ThresholdScreen: View {
-    @ObservedObject var state: PremiumOnboardingState
-    let onComplete: () -> Void
-
-    @State private var showParticles = false
-    @State private var lensScale: CGFloat = 0.8
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-
-            // Headline
-            Text("You're ready.")
-                .font(.system(size: 34, weight: .bold, design: .serif))
-                .foregroundColor(Color(white: 0.2))
-
-            Text("Let's see what you're eating.")
-                .font(.system(size: 17, weight: .regular))
-                .foregroundColor(Color(white: 0.4))
-                .italic()
-                .padding(.top, 12)
-
-            Spacer().frame(height: 60)
-
-            // Personal lens with particles
-            ZStack {
-                if showParticles {
-                    FloatingParticles(palette: state.palette, count: 12)
-                }
-
-                PersonalLens(
-                    intent: state.selectedIntent,
-                    sensitivities: state.selectedSensitivities,
-                    size: 140
-                )
-                .scaleEffect(lensScale)
-            }
-            .frame(height: 300)
-
-            Spacer()
-
-            // Enter button with shimmer
-            PremiumButton(
-                text: "Enter NutraSafe",
-                palette: state.palette,
-                action: onComplete,
-                showShimmer: true
-            )
-            .padding(.horizontal, 32)
-            .padding(.bottom, 50)
-        }
-        .background(
-            // Rich background for final screen
-            LinearGradient(
-                colors: [
-                    state.palette.background,
-                    state.palette.primary.opacity(0.1),
-                    state.palette.background
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        )
-        .onAppear {
-            withAnimation(.easeOut(duration: 1)) {
-                showParticles = true
-                lensScale = 1.0
-            }
-        }
-    }
-}
+// MARK: - Screen 9: The Threshold (Final Launch) - LEGACY (replaced by OnboardingCompletionScreen)
+// Kept for reference but no longer used in the main flow
 
 // MARK: - Preview
 

@@ -1,0 +1,1032 @@
+//
+//  ExtendedOnboardingScreens.swift
+//  NutraSafe Beta
+//
+//  Extended onboarding screens for personal details, sensitivities, and permissions
+//  Designed to feel like a seamless continuation of the premium onboarding flow
+//
+
+import SwiftUI
+import AVFoundation
+import UserNotifications
+import HealthKit
+
+// MARK: - Personal Details Screen
+
+struct PersonalDetailsScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    @State private var selectedBirthday: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date())!
+    @State private var hasBirthdayBeenSet = false
+    @State private var heightCm: Double = 170
+    @State private var weightKg: Double = 70
+    @State private var selectedGender: UserGender = .notSet
+
+    // Height range (100cm - 250cm)
+    private let heightRange: ClosedRange<Double> = 100...250
+    // Weight range (30kg - 300kg)
+    private let weightRange: ClosedRange<Double> = 30...300
+
+    // Date range for birthday picker (ages 13 to 120)
+    private var dateRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let minAge = calendar.date(byAdding: .year, value: -120, to: Date())!
+        let maxAge = calendar.date(byAdding: .year, value: -13, to: Date())!
+        return minAge...maxAge
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 50)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("A little about you")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("For personalised insights")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.bottom, 8)
+
+            // Helper text
+            Text("This helps us estimate calorie needs and track your progress more accurately.")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+                .padding(.bottom, 24)
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // Date of Birth
+                    PersonalDetailCard(
+                        icon: "calendar",
+                        title: "Date of birth",
+                        palette: state.palette
+                    ) {
+                        DatePicker(
+                            "Birthday",
+                            selection: $selectedBirthday,
+                            in: dateRange,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.compact)
+                        .labelsHidden()
+                        .onChange(of: selectedBirthday) { _, _ in
+                            hasBirthdayBeenSet = true
+                        }
+
+                        if hasBirthdayBeenSet {
+                            let age = calculateAge(from: selectedBirthday)
+                            Text("\(age) years old")
+                                .font(.system(size: 13))
+                                .foregroundColor(state.palette.primary)
+                        }
+                    }
+
+                    // Height
+                    PersonalDetailCard(
+                        icon: "ruler",
+                        title: "Height",
+                        palette: state.palette
+                    ) {
+                        HStack(spacing: 12) {
+                            Slider(value: $heightCm, in: heightRange, step: 1)
+                                .accentColor(state.palette.primary)
+
+                            Text("\(Int(heightCm)) cm")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(Color(white: 0.3))
+                                .frame(width: 60)
+                        }
+
+                        // Show feet/inches conversion
+                        let feet = Int(heightCm / 30.48)
+                        let inches = Int((heightCm / 2.54).truncatingRemainder(dividingBy: 12))
+                        Text("\(feet)'\(inches)\"")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(white: 0.5))
+                    }
+
+                    // Weight
+                    PersonalDetailCard(
+                        icon: "scalemass",
+                        title: "Current weight",
+                        palette: state.palette
+                    ) {
+                        HStack(spacing: 12) {
+                            Slider(value: $weightKg, in: weightRange, step: 0.5)
+                                .accentColor(state.palette.primary)
+
+                            Text(String(format: "%.1f kg", weightKg))
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(Color(white: 0.3))
+                                .frame(width: 70)
+                        }
+
+                        // Show stone/pounds conversion
+                        let totalPounds = weightKg * 2.20462
+                        let stone = Int(totalPounds / 14)
+                        let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
+                        Text("\(stone) st \(pounds) lb")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(white: 0.5))
+                    }
+
+                    // Gender
+                    PersonalDetailCard(
+                        icon: "person",
+                        title: "Gender",
+                        subtitle: "Optional",
+                        palette: state.palette
+                    ) {
+                        HStack(spacing: 10) {
+                            ForEach([UserGender.male, .female, .other], id: \.self) { gender in
+                                GenderChip(
+                                    gender: gender,
+                                    isSelected: selectedGender == gender,
+                                    palette: state.palette,
+                                    onSelect: { selectedGender = gender }
+                                )
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+            .frame(maxHeight: 420)
+
+            // Note about changing later
+            HStack(spacing: 6) {
+                Image(systemName: "pencil.circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(white: 0.5))
+                Text("You can adjust these anytime in Settings")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.top, 16)
+
+            Spacer()
+
+            // Continue button
+            PremiumButton(
+                text: "Continue",
+                palette: state.palette,
+                action: {
+                    savePersonalDetails()
+                    onContinue()
+                }
+            )
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+
+    private func calculateAge(from date: Date) -> Int {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: date, to: Date())
+        return ageComponents.year ?? 0
+    }
+
+    private func savePersonalDetails() {
+        let manager = OnboardingManager.shared
+        if hasBirthdayBeenSet {
+            manager.saveBirthday(selectedBirthday)
+        }
+        manager.saveHeight(heightCm)
+        manager.saveWeight(weightKg)
+        if selectedGender != .notSet {
+            manager.saveGender(selectedGender)
+        }
+    }
+}
+
+// MARK: - Personal Detail Card
+
+struct PersonalDetailCard<Content: View>: View {
+    let icon: String
+    let title: String
+    var subtitle: String? = nil
+    let palette: OnboardingPalette
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(palette.primary)
+
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(white: 0.3))
+
+                if let subtitle = subtitle {
+                    Text("(\(subtitle))")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(white: 0.5))
+                }
+
+                Spacer()
+            }
+
+            content()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.8))
+                .shadow(color: Color.black.opacity(0.05), radius: 8, y: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.5), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Gender Chip
+
+struct GenderChip: View {
+    let gender: UserGender
+    let isSelected: Bool
+    let palette: OnboardingPalette
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(spacing: 6) {
+                Image(systemName: gender.icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(isSelected ? .white : Color(white: 0.4))
+
+                Text(shortLabel)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(isSelected ? .white : Color(white: 0.4))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? palette.primary : Color.white.opacity(0.6))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.clear : Color(white: 0.8), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var shortLabel: String {
+        switch gender {
+        case .male: return "Male"
+        case .female: return "Female"
+        case .other: return "Other"
+        case .notSet: return "Skip"
+        }
+    }
+}
+
+// MARK: - Sensitivities Screen
+
+struct SensitivitiesScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    @State private var selectedAllergens: Set<String> = []
+    @State private var selectedOtherSensitivities: Set<String> = []
+
+    // UK/EU Major Allergens (required by law)
+    private let majorAllergens: [(id: String, name: String, icon: String)] = [
+        ("celery", "Celery", "leaf"),
+        ("gluten", "Gluten", "leaf.circle"),
+        ("crustaceans", "Crustaceans", "drop"),
+        ("eggs", "Eggs", "oval"),
+        ("fish", "Fish", "fish"),
+        ("lupin", "Lupin", "leaf.fill"),
+        ("dairy", "Milk / Dairy", "cup.and.saucer"),
+        ("molluscs", "Molluscs", "tortoise"),
+        ("mustard", "Mustard", "leaf"),
+        ("nuts", "Tree Nuts", "leaf.arrow.circlepath"),
+        ("peanuts", "Peanuts", "p.circle"),
+        ("sesame", "Sesame", "circle.grid.3x3"),
+        ("soy", "Soya", "leaf"),
+        ("sulphites", "Sulphites", "s.circle")
+    ]
+
+    // Other sensitivities and preferences
+    private let otherSensitivities: [(id: String, name: String, icon: String)] = [
+        ("caffeine", "Caffeine", "cup.and.saucer.fill"),
+        ("highSugar", "High sugar", "cube"),
+        ("artificialSweeteners", "Artificial sweeteners", "drop.triangle"),
+        ("ultraProcessed", "Ultra-processed foods", "exclamationmark.triangle"),
+        ("additives", "Additives / E-numbers", "flask"),
+        ("alcohol", "Alcohol", "wineglass"),
+        ("histamines", "Histamines", "h.circle"),
+        ("nightshades", "Nightshades", "moon")
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 50)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Things you're sensitive to")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("We'll flag these when you scan foods")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.bottom, 24)
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Allergens Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.shield")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(state.palette.primary)
+
+                            Text("Allergens")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color(white: 0.3))
+                        }
+                        .padding(.horizontal, 4)
+
+                        OnboardingFlowLayout(spacing: 8) {
+                            ForEach(majorAllergens, id: \.id) { allergen in
+                                SensitivityChip(
+                                    name: allergen.name,
+                                    icon: allergen.icon,
+                                    isSelected: selectedAllergens.contains(allergen.id),
+                                    palette: state.palette,
+                                    onToggle: {
+                                        toggleAllergen(allergen.id)
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Other Sensitivities Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "hand.raised")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(state.palette.accent)
+
+                            Text("Other sensitivities & preferences")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color(white: 0.3))
+                        }
+                        .padding(.horizontal, 4)
+
+                        Text("These are preferences, not medical diagnoses")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(white: 0.5))
+                            .padding(.horizontal, 4)
+
+                        OnboardingFlowLayout(spacing: 8) {
+                            ForEach(otherSensitivities, id: \.id) { sensitivity in
+                                SensitivityChip(
+                                    name: sensitivity.name,
+                                    icon: sensitivity.icon,
+                                    isSelected: selectedOtherSensitivities.contains(sensitivity.id),
+                                    palette: state.palette,
+                                    isPreference: true,
+                                    onToggle: {
+                                        toggleOtherSensitivity(sensitivity.id)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+            .frame(maxHeight: 420)
+
+            // Note
+            HStack(spacing: 6) {
+                Image(systemName: "pencil.circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(white: 0.5))
+                Text("Adjust anytime in Settings")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.top, 16)
+
+            Spacer()
+
+            // Continue button
+            PremiumButton(
+                text: selectedAllergens.isEmpty && selectedOtherSensitivities.isEmpty ? "Skip for now" : "Continue",
+                palette: state.palette,
+                action: {
+                    saveSensitivities()
+                    onContinue()
+                }
+            )
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+
+    private func toggleAllergen(_ id: String) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            if selectedAllergens.contains(id) {
+                selectedAllergens.remove(id)
+            } else {
+                selectedAllergens.insert(id)
+            }
+        }
+
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+    }
+
+    private func toggleOtherSensitivity(_ id: String) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            if selectedOtherSensitivities.contains(id) {
+                selectedOtherSensitivities.remove(id)
+            } else {
+                selectedOtherSensitivities.insert(id)
+            }
+        }
+
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+    }
+
+    private func saveSensitivities() {
+        let manager = OnboardingManager.shared
+        manager.saveAllergens(Array(selectedAllergens))
+        manager.saveOtherSensitivities(Array(selectedOtherSensitivities))
+    }
+}
+
+// MARK: - Sensitivity Chip
+
+struct SensitivityChip: View {
+    let name: String
+    let icon: String
+    let isSelected: Bool
+    let palette: OnboardingPalette
+    var isPreference: Bool = false
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundColor(isSelected ? .white : Color(white: 0.4))
+
+                Text(name)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .white : Color(white: 0.4))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(isSelected ? (isPreference ? palette.accent : palette.primary) : Color.white.opacity(0.7))
+                    .shadow(color: isSelected ? (isPreference ? palette.accent : palette.primary).opacity(0.3) : Color.black.opacity(0.05), radius: isSelected ? 8 : 3, y: 2)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Camera Permission Screen (Updated Tone)
+
+struct CameraPermissionScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    @State private var permissionRequested = false
+    @State private var permissionGranted = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline - Updated tone (removed "protect you")
+            VStack(spacing: 8) {
+                Text("Scan labels instantly")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("Quick access to nutrition info")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+
+            // Subtext
+            Text("Camera access lets you scan barcodes and capture nutrition labels for analysis.")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+                .padding(.top, 12)
+
+            Spacer().frame(height: 50)
+
+            // Camera icon animation
+            ZStack {
+                Circle()
+                    .fill(state.palette.primary.opacity(0.1))
+                    .frame(width: 160, height: 160)
+
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 80, weight: .light))
+                    .foregroundColor(state.palette.primary)
+            }
+
+            // Privacy note
+            HStack(spacing: 8) {
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(white: 0.5))
+
+                Text("Images stay on your device unless you choose to share")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.top, 30)
+            .padding(.horizontal, 32)
+
+            Spacer()
+
+            // Permission buttons
+            VStack(spacing: 12) {
+                if !permissionRequested {
+                    PremiumButton(
+                        text: "Allow Camera Access",
+                        palette: state.palette,
+                        action: requestCameraPermission
+                    )
+
+                    Button(action: {
+                        permissionRequested = true
+                        onContinue()
+                    }) {
+                        Text("Maybe later")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color(white: 0.5))
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: permissionGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
+                        Text(permissionGranted ? "Camera enabled" : "Skipped for now")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
+                    }
+                    .frame(height: 56)
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+
+    private func requestCameraPermission() {
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            DispatchQueue.main.async {
+                permissionRequested = true
+                permissionGranted = granted
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    onContinue()
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Apple Health Permission Screen (Updated Tone)
+
+struct HealthPermissionScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    let onContinue: () -> Void
+
+    @State private var permissionRequested = false
+    @State private var permissionGranted = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Connect Apple Health")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("For a more complete picture")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+
+            // Subtext
+            Text("Sync steps, calories burned, and activity data to see how exercise fits with your nutrition.")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+                .padding(.top, 12)
+
+            Spacer().frame(height: 40)
+
+            // Health icon
+            ZStack {
+                Circle()
+                    .fill(Color.pink.opacity(0.1))
+                    .frame(width: 140, height: 140)
+
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.pink)
+            }
+
+            // What we read
+            VStack(alignment: .leading, spacing: 10) {
+                OnboardingHealthDataRow(icon: "figure.walk", text: "Steps & distance", color: .green)
+                OnboardingHealthDataRow(icon: "flame.fill", text: "Active calories", color: .orange)
+                OnboardingHealthDataRow(icon: "scalemass.fill", text: "Weight (read & write)", color: .blue)
+            }
+            .padding(.top, 30)
+            .padding(.horizontal, 40)
+
+            // Note
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(white: 0.5))
+
+                Text("This is optional and can be enabled later in Settings")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.top, 20)
+            .padding(.horizontal, 32)
+
+            Spacer()
+
+            // Permission buttons
+            VStack(spacing: 12) {
+                if !permissionRequested {
+                    Button(action: requestHealthPermission) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "heart.fill")
+                            Text("Connect Apple Health")
+                        }
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(
+                            LinearGradient(colors: [.pink, .red.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
+                        )
+                        .cornerRadius(16)
+                    }
+
+                    Button(action: {
+                        permissionRequested = true
+                        onContinue()
+                    }) {
+                        Text("Maybe later")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color(white: 0.5))
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: permissionGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
+                        Text(permissionGranted ? "Apple Health connected" : "Skipped for now")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
+                    }
+                    .frame(height: 56)
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+
+    private func requestHealthPermission() {
+        Task {
+            await healthKitManager.requestAuthorization()
+            await MainActor.run {
+                permissionRequested = true
+                permissionGranted = healthKitManager.isAuthorized
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    onContinue()
+                }
+            }
+        }
+    }
+}
+
+struct OnboardingHealthDataRow: View {
+    let icon: String
+    let text: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(color)
+                .frame(width: 24)
+
+            Text(text)
+                .font(.system(size: 15))
+                .foregroundColor(Color(white: 0.4))
+
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Notifications Permission Screen
+
+struct NotificationsPermissionScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    @State private var permissionRequested = false
+    @State private var permissionGranted = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Helpful reminders")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("Stay on track, your way")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+
+            // Subtext
+            Text("Get reminders for things like expiry dates, fasting timers, and gentle nudges to log meals.")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+                .padding(.top, 12)
+
+            Spacer().frame(height: 40)
+
+            // Bell icon
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.1))
+                    .frame(width: 140, height: 140)
+
+                Image(systemName: "bell.badge.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.orange)
+            }
+
+            // What notifications include
+            VStack(alignment: .leading, spacing: 10) {
+                OnboardingNotificationRow(icon: "calendar.badge.clock", text: "Food expiry reminders", color: .red)
+                OnboardingNotificationRow(icon: "timer", text: "Fasting stage updates", color: .purple)
+                OnboardingNotificationRow(icon: "chart.bar.fill", text: "Weekly nutrition summaries", color: .blue)
+            }
+            .padding(.top, 30)
+            .padding(.horizontal, 40)
+
+            // Note
+            HStack(spacing: 8) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(white: 0.5))
+
+                Text("Customise which notifications you receive in Settings")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            .padding(.top, 20)
+            .padding(.horizontal, 32)
+
+            Spacer()
+
+            // Permission buttons
+            VStack(spacing: 12) {
+                if !permissionRequested {
+                    PremiumButton(
+                        text: "Enable Notifications",
+                        palette: state.palette,
+                        action: requestNotificationPermission
+                    )
+
+                    Button(action: {
+                        permissionRequested = true
+                        onContinue()
+                    }) {
+                        Text("Maybe later")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color(white: 0.5))
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: permissionGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
+                        Text(permissionGranted ? "Notifications enabled" : "Skipped for now")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(permissionGranted ? .green : Color(white: 0.5))
+                    }
+                    .frame(height: 56)
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            DispatchQueue.main.async {
+                permissionRequested = true
+                permissionGranted = granted
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    onContinue()
+                }
+            }
+        }
+    }
+}
+
+struct OnboardingNotificationRow: View {
+    let icon: String
+    let text: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(color)
+                .frame(width: 24)
+
+            Text(text)
+                .font(.system(size: 15))
+                .foregroundColor(Color(white: 0.4))
+
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Completion Screen
+
+struct OnboardingCompletionScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onComplete: () -> Void
+
+    @State private var showCheckmark = false
+    @State private var showText = false
+    @State private var showButton = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Animated checkmark
+            ZStack {
+                Circle()
+                    .fill(state.palette.primary.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                    .scaleEffect(showCheckmark ? 1 : 0.5)
+                    .opacity(showCheckmark ? 1 : 0)
+
+                Image(systemName: "checkmark")
+                    .font(.system(size: 70, weight: .light))
+                    .foregroundColor(state.palette.primary)
+                    .scaleEffect(showCheckmark ? 1 : 0)
+                    .opacity(showCheckmark ? 1 : 0)
+            }
+            .padding(.bottom, 40)
+
+            // Headline
+            VStack(spacing: 12) {
+                Text("You're all set")
+                    .font(.system(size: 32, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+                    .opacity(showText ? 1 : 0)
+
+                Text("NutraSafe is ready to work for you")
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+                    .opacity(showText ? 1 : 0)
+            }
+            .padding(.bottom, 40)
+
+            // Summary points
+            VStack(alignment: .leading, spacing: 16) {
+                CompletionPoint(
+                    icon: "person.crop.circle",
+                    text: "Personalised based on your details",
+                    palette: state.palette,
+                    show: showText
+                )
+
+                CompletionPoint(
+                    icon: "exclamationmark.shield",
+                    text: "Foods will be flagged based on your preferences",
+                    palette: state.palette,
+                    show: showText
+                )
+
+                CompletionPoint(
+                    icon: "gearshape",
+                    text: "Adjust anything in Settings whenever you like",
+                    palette: state.palette,
+                    show: showText
+                )
+            }
+            .padding(.horizontal, 40)
+            .opacity(showText ? 1 : 0)
+
+            Spacer()
+
+            // Enter button
+            if showButton {
+                PremiumButton(
+                    text: "Start exploring",
+                    palette: state.palette,
+                    action: onComplete,
+                    showShimmer: true
+                )
+                .padding(.horizontal, 32)
+                .padding(.bottom, 50)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                showCheckmark = true
+            }
+
+            withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
+                showText = true
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    showButton = true
+                }
+            }
+        }
+    }
+}
+
+struct CompletionPoint: View {
+    let icon: String
+    let text: String
+    let palette: OnboardingPalette
+    let show: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(palette.primary)
+                .frame(width: 28)
+
+            Text(text)
+                .font(.system(size: 15))
+                .foregroundColor(Color(white: 0.4))
+
+            Spacer()
+        }
+        .opacity(show ? 1 : 0)
+    }
+}

@@ -20,6 +20,10 @@ class OnboardingManager: ObservableObject {
     private let userBirthdayKey = "userBirthday"
     private let userIntentKey = "userIntent"
     private let userSensitivitiesKey = "userSensitivities"
+    private let userHeightCmKey = "userHeightCm"
+    private let userWeightKgKey = "userWeightKg"
+    private let userAllergensKey = "userAllergens"
+    private let userOtherSensitivitiesKey = "userOtherSensitivities"
 
     /// Tracks if onboarding was just completed in this session (for tip delay)
     @Published var justCompletedOnboarding = false
@@ -30,12 +34,20 @@ class OnboardingManager: ObservableObject {
     /// Published user profile data
     @Published var userGender: UserGender = .notSet
     @Published var userBirthday: Date?
+    @Published var userHeightCm: Double?
+    @Published var userWeightKg: Double?
 
     /// User's selected intent from premium onboarding
     @Published var userIntent: String?
 
-    /// User's selected food sensitivities from premium onboarding
+    /// User's selected food sensitivities from premium onboarding (legacy)
     @Published var userSensitivities: [String] = []
+
+    /// User's allergens (maps to Allergen enum for detection)
+    @Published var userAllergens: [String] = []
+
+    /// User's other sensitivities/preferences (caffeine, high sugar, etc.)
+    @Published var userOtherSensitivities: [String] = []
 
     private init() {
         // Load saved values
@@ -54,14 +66,32 @@ class OnboardingManager: ObservableObject {
             userBirthday = savedBirthday
         }
 
+        // Load height and weight
+        if UserDefaults.standard.object(forKey: userHeightCmKey) != nil {
+            userHeightCm = UserDefaults.standard.double(forKey: userHeightCmKey)
+        }
+        if UserDefaults.standard.object(forKey: userWeightKgKey) != nil {
+            userWeightKg = UserDefaults.standard.double(forKey: userWeightKgKey)
+        }
+
         // Load intent (from premium onboarding)
         if let savedIntent = UserDefaults.standard.string(forKey: userIntentKey) {
             userIntent = savedIntent
         }
 
-        // Load sensitivities (from premium onboarding)
+        // Load sensitivities (from premium onboarding - legacy)
         if let savedSensitivities = UserDefaults.standard.stringArray(forKey: userSensitivitiesKey) {
             userSensitivities = savedSensitivities
+        }
+
+        // Load allergens
+        if let savedAllergens = UserDefaults.standard.stringArray(forKey: userAllergensKey) {
+            userAllergens = savedAllergens
+        }
+
+        // Load other sensitivities/preferences
+        if let savedOtherSensitivities = UserDefaults.standard.stringArray(forKey: userOtherSensitivitiesKey) {
+            userOtherSensitivities = savedOtherSensitivities
         }
     }
 
@@ -133,10 +163,42 @@ class OnboardingManager: ObservableObject {
         }
     }
 
-    /// Save user sensitivities (from premium onboarding)
+    /// Save user sensitivities (from premium onboarding - legacy)
     func saveSensitivities(_ sensitivities: [String]) {
         userSensitivities = sensitivities
         UserDefaults.standard.set(sensitivities, forKey: userSensitivitiesKey)
+    }
+
+    /// Save user height in centimeters
+    func saveHeight(_ heightCm: Double?) {
+        userHeightCm = heightCm
+        if let heightCm = heightCm {
+            UserDefaults.standard.set(heightCm, forKey: userHeightCmKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: userHeightCmKey)
+        }
+    }
+
+    /// Save user weight in kilograms
+    func saveWeight(_ weightKg: Double?) {
+        userWeightKg = weightKg
+        if let weightKg = weightKg {
+            UserDefaults.standard.set(weightKg, forKey: userWeightKgKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: userWeightKgKey)
+        }
+    }
+
+    /// Save user allergens
+    func saveAllergens(_ allergens: [String]) {
+        userAllergens = allergens
+        UserDefaults.standard.set(allergens, forKey: userAllergensKey)
+    }
+
+    /// Save user other sensitivities/preferences
+    func saveOtherSensitivities(_ sensitivities: [String]) {
+        userOtherSensitivities = sensitivities
+        UserDefaults.standard.set(sensitivities, forKey: userOtherSensitivitiesKey)
     }
 
     /// Calculate user's age from birthday
