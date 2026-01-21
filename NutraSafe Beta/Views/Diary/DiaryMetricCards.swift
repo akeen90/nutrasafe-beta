@@ -395,6 +395,8 @@ struct CaloriesBurnedMetricCard: View {
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundColor(palette.textTertiary)
                     }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                     Text("kcal burned")
                         .font(.system(size: 11, weight: .medium, design: .rounded))

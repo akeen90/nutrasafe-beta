@@ -48,6 +48,12 @@ struct DietManagementRedesigned: View {
     // Info sections
     @State private var showingHowItWorks: Bool = false
     @State private var showingMacroInfo: Bool = false
+    @State private var showingDietCustomization: Bool = false
+
+    // Calorie editing
+    @State private var isEditingCalories: Bool = false
+    @State private var calorieText: String = ""
+    @FocusState private var calorieFieldFocused: Bool
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
@@ -143,6 +149,7 @@ struct DietManagementRedesigned: View {
                 .padding(.horizontal, DesignTokens.Spacing.screenEdge)
                 .padding(.top, DesignTokens.Spacing.md)
             }
+            .scrollDismissesKeyboard(.interactively)
             .scrollContentBackground(.hidden)
             .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Your Nutrition")
@@ -217,11 +224,34 @@ struct DietManagementRedesigned: View {
                     .foregroundColor(palette.textPrimary)
             }
 
-            // Calorie display
+            // Calorie display with tap-to-edit
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(calorieGoal)")
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
-                    .foregroundColor(palette.accent)
+                if isEditingCalories {
+                    TextField("", text: $calorieText)
+                        .keyboardType(.numberPad)
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.accent)
+                        .multilineTextAlignment(.leading)
+                        .frame(width: 120)
+                        .focused($calorieFieldFocused)
+                        .onSubmit {
+                            commitCalorieEdit()
+                        }
+                        .onChange(of: calorieFieldFocused) { _, focused in
+                            if !focused {
+                                commitCalorieEdit()
+                            }
+                        }
+                } else {
+                    Text("\(calorieGoal)")
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.accent)
+                        .onTapGesture {
+                            calorieText = "\(calorieGoal)"
+                            isEditingCalories = true
+                            calorieFieldFocused = true
+                        }
+                }
 
                 Text("kcal")
                     .font(.system(size: 18, weight: .medium))
@@ -255,6 +285,13 @@ struct DietManagementRedesigned: View {
                     }
                     .disabled(calorieGoal >= 5000)
                 }
+            }
+
+            // Tap to edit hint
+            if !isEditingCalories {
+                Text("Tap the number to type directly")
+                    .font(.system(size: 11))
+                    .foregroundColor(palette.textTertiary)
             }
 
             Divider()
@@ -291,12 +328,31 @@ struct DietManagementRedesigned: View {
         .shadow(color: DesignTokens.Shadow.subtle.color, radius: DesignTokens.Shadow.subtle.radius, y: DesignTokens.Shadow.subtle.y)
     }
 
+    private func commitCalorieEdit() {
+        if let newValue = Int(calorieText), newValue >= 1000, newValue <= 5000 {
+            calorieGoal = newValue
+        }
+        isEditingCalories = false
+        calorieFieldFocused = false
+    }
+
+    /// Returns short names for extra macros to prevent truncation in segmented picker
+    private func shortExtraMacroName(_ macro: MacroType) -> String {
+        switch macro {
+        case .fiber: return "Fiber"
+        case .sugar: return "Sugar"
+        case .saturatedFat: return "Sat Fat"
+        case .salt: return "Salt"
+        default: return macro.displayName
+        }
+    }
+
     // MARK: - How It Works Section
 
     private var howItWorksSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     showingHowItWorks.toggle()
                 }
             } label: {
@@ -311,9 +367,10 @@ struct DietManagementRedesigned: View {
 
                     Spacer()
 
-                    Image(systemName: showingHowItWorks ? "chevron.up" : "chevron.down")
+                    Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(palette.textTertiary)
+                        .rotationEffect(.degrees(showingHowItWorks ? 90 : 0))
                 }
             }
             .buttonStyle(.plain)
@@ -348,7 +405,6 @@ struct DietManagementRedesigned: View {
                         .italic()
                         .padding(.top, DesignTokens.Spacing.xs)
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(DesignTokens.Spacing.cardInternal)
@@ -356,6 +412,7 @@ struct DietManagementRedesigned: View {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
                 .fill(Color.nutraSafeCard)
         )
+        .clipped()
     }
 
     private func howItWorksItem(icon: String, title: String, description: String) -> some View {
@@ -491,12 +548,294 @@ struct DietManagementRedesigned: View {
                 }
                 .padding(.top, 4)
             }
+
+            // Customization section
+            Divider()
+                .background(diet.accentColor.opacity(0.3))
+                .padding(.vertical, 8)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showingDietCustomization.toggle()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 14))
+                        .foregroundColor(diet.accentColor)
+
+                    Text("Adjust for your needs")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(palette.textPrimary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(palette.textTertiary)
+                        .rotationEffect(.degrees(showingDietCustomization ? 90 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+
+            if showingDietCustomization {
+                dietCustomizationControls(diet: diet)
+            }
         }
         .padding(DesignTokens.Spacing.cardInternal)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
                 .fill(diet.accentColor.opacity(0.08))
         )
+        .clipped()
+    }
+
+    // MARK: - Diet Customization Controls
+
+    private func dietCustomizationControls(diet: DietType) -> some View {
+        let adjustments = dietAdjustmentOptions(for: diet)
+
+        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            Text("Fine-tune your \(diet.displayName) approach")
+                .font(.system(size: 13))
+                .foregroundColor(palette.textSecondary)
+                .padding(.top, 4)
+
+            // Show adjustable macros based on diet type
+            ForEach(adjustments, id: \.macro) { adjustment in
+                dietMacroAdjuster(
+                    macro: adjustment.macro,
+                    label: adjustment.label,
+                    minValue: adjustment.min,
+                    maxValue: adjustment.max,
+                    currentValue: currentValueFor(adjustment.macro),
+                    accentColor: diet.accentColor,
+                    onChange: { newValue in
+                        adjustMacro(adjustment.macro, to: newValue, for: diet)
+                    }
+                )
+            }
+
+            // Reset to default button
+            Button {
+                withAnimation(.spring(response: 0.3)) {
+                    let ratios = diet.macroRatios
+                    proteinPercent = ratios.protein
+                    carbsPercent = ratios.carbs
+                    fatPercent = ratios.fat
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 12))
+                    Text("Reset to default")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(palette.textTertiary)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+        }
+        .padding(.top, 8)
+    }
+
+    private func dietMacroAdjuster(
+        macro: MacroType,
+        label: String,
+        minValue: Int,
+        maxValue: Int,
+        currentValue: Int,
+        accentColor: Color,
+        onChange: @escaping (Int) -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Circle()
+                    .fill(macro.color)
+                    .frame(width: 10, height: 10)
+
+                Text(label)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(palette.textPrimary)
+
+                Spacer()
+
+                Text("\(currentValue)%")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(accentColor)
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    if currentValue > minValue {
+                        onChange(currentValue - 5)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(currentValue > minValue ? accentColor : palette.textTertiary.opacity(0.4))
+                }
+                .disabled(currentValue <= minValue)
+                .buttonStyle(.plain)
+
+                // Progress bar
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(palette.textTertiary.opacity(0.15))
+
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(accentColor)
+                            .frame(width: geo.size.width * CGFloat(currentValue - minValue) / CGFloat(maxValue - minValue))
+                    }
+                }
+                .frame(height: 8)
+
+                Button {
+                    if currentValue < maxValue {
+                        onChange(currentValue + 5)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(currentValue < maxValue ? accentColor : palette.textTertiary.opacity(0.4))
+                }
+                .disabled(currentValue >= maxValue)
+                .buttonStyle(.plain)
+            }
+
+            HStack {
+                Text("\(minValue)%")
+                    .font(.system(size: 10))
+                    .foregroundColor(palette.textTertiary)
+                Spacer()
+                Text("\(maxValue)%")
+                    .font(.system(size: 10))
+                    .foregroundColor(palette.textTertiary)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.6))
+        )
+    }
+
+    // MARK: - Diet Adjustment Options
+
+    private struct MacroAdjustment {
+        let macro: MacroType
+        let label: String
+        let min: Int
+        let max: Int
+    }
+
+    private func dietAdjustmentOptions(for diet: DietType) -> [MacroAdjustment] {
+        switch diet {
+        case .keto:
+            // Keto: Can adjust carbs (very low), protein, and fat
+            return [
+                MacroAdjustment(macro: .carbs, label: "Carbs (keep very low)", min: 5, max: 10),
+                MacroAdjustment(macro: .protein, label: "Protein", min: 15, max: 30),
+                MacroAdjustment(macro: .fat, label: "Fat", min: 60, max: 80)
+            ]
+        case .lowCarb:
+            // Low carb: Primary adjustment is carbs
+            return [
+                MacroAdjustment(macro: .carbs, label: "Carbs", min: 15, max: 35),
+                MacroAdjustment(macro: .protein, label: "Protein", min: 25, max: 40),
+                MacroAdjustment(macro: .fat, label: "Fat", min: 35, max: 55)
+            ]
+        case .highProtein:
+            // High protein: Primary adjustment is protein level
+            return [
+                MacroAdjustment(macro: .protein, label: "Protein", min: 35, max: 50),
+                MacroAdjustment(macro: .carbs, label: "Carbs", min: 25, max: 45),
+                MacroAdjustment(macro: .fat, label: "Fat", min: 15, max: 35)
+            ]
+        case .highProteinMax:
+            // Very high protein
+            return [
+                MacroAdjustment(macro: .protein, label: "Protein (very high)", min: 45, max: 55),
+                MacroAdjustment(macro: .carbs, label: "Carbs", min: 20, max: 30),
+                MacroAdjustment(macro: .fat, label: "Fat", min: 20, max: 30)
+            ]
+        case .flexible:
+            // Flexible: All macros adjustable within balanced range
+            return [
+                MacroAdjustment(macro: .protein, label: "Protein", min: 20, max: 40),
+                MacroAdjustment(macro: .carbs, label: "Carbs", min: 30, max: 50),
+                MacroAdjustment(macro: .fat, label: "Fat", min: 20, max: 40)
+            ]
+        case .mediterranean:
+            // Mediterranean: Higher carbs, moderate fat
+            return [
+                MacroAdjustment(macro: .carbs, label: "Carbs", min: 40, max: 55),
+                MacroAdjustment(macro: .fat, label: "Fat (healthy fats)", min: 30, max: 40),
+                MacroAdjustment(macro: .protein, label: "Protein", min: 15, max: 25)
+            ]
+        case .paleo:
+            // Paleo: Moderate carbs, higher fat
+            return [
+                MacroAdjustment(macro: .carbs, label: "Carbs", min: 15, max: 30),
+                MacroAdjustment(macro: .protein, label: "Protein", min: 25, max: 40),
+                MacroAdjustment(macro: .fat, label: "Fat", min: 40, max: 60)
+            ]
+        }
+    }
+
+    private func currentValueFor(_ macro: MacroType) -> Int {
+        switch macro {
+        case .protein: return proteinPercent
+        case .carbs: return carbsPercent
+        case .fat: return fatPercent
+        default: return 0
+        }
+    }
+
+    private func adjustMacro(_ macro: MacroType, to newValue: Int, for diet: DietType) {
+        // Calculate the difference
+        let currentValue = currentValueFor(macro)
+        let difference = newValue - currentValue
+
+        // We need to adjust other macros to keep total at 100%
+        // Strategy: Distribute the difference to other macros proportionally
+
+        switch macro {
+        case .protein:
+            proteinPercent = newValue
+            // Split the difference between carbs and fat
+            let carbsShare = difference / 2
+            let fatShare = difference - carbsShare
+            carbsPercent = max(5, carbsPercent - carbsShare)
+            fatPercent = max(5, fatPercent - fatShare)
+        case .carbs:
+            carbsPercent = newValue
+            // Split the difference between protein and fat
+            let proteinShare = difference / 2
+            let fatShare = difference - proteinShare
+            proteinPercent = max(5, proteinPercent - proteinShare)
+            fatPercent = max(5, fatPercent - fatShare)
+        case .fat:
+            fatPercent = newValue
+            // Split the difference between protein and carbs
+            let proteinShare = difference / 2
+            let carbsShare = difference - proteinShare
+            proteinPercent = max(5, proteinPercent - proteinShare)
+            carbsPercent = max(5, carbsPercent - carbsShare)
+        default:
+            break
+        }
+
+        // Ensure total is 100
+        let total = proteinPercent + carbsPercent + fatPercent
+        if total != 100 {
+            // Adjust fat to balance
+            fatPercent += (100 - total)
+        }
     }
 
     // MARK: - Macro Breakdown Section
@@ -688,10 +1027,10 @@ struct DietManagementRedesigned: View {
                 .font(DesignTokens.Typography.caption)
                 .foregroundColor(palette.textSecondary)
 
-            // Picker
+            // Picker with short names to prevent truncation
             Picker("Extra Macro", selection: $selectedExtraMacro) {
                 ForEach(MacroType.extraMacros, id: \.self) { macro in
-                    Text(macro.displayName).tag(macro)
+                    Text(shortExtraMacroName(macro)).tag(macro)
                 }
             }
             .pickerStyle(.segmented)
@@ -728,7 +1067,7 @@ struct DietManagementRedesigned: View {
     private var macroInfoSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     showingMacroInfo.toggle()
                 }
             } label: {
@@ -743,9 +1082,10 @@ struct DietManagementRedesigned: View {
 
                     Spacer()
 
-                    Image(systemName: showingMacroInfo ? "chevron.up" : "chevron.down")
+                    Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(palette.textTertiary)
+                        .rotationEffect(.degrees(showingMacroInfo ? 90 : 0))
                 }
             }
             .buttonStyle(.plain)
@@ -783,7 +1123,6 @@ struct DietManagementRedesigned: View {
                         .italic()
                         .padding(.top, DesignTokens.Spacing.xs)
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(DesignTokens.Spacing.cardInternal)
@@ -791,6 +1130,7 @@ struct DietManagementRedesigned: View {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
                 .fill(Color.nutraSafeCard)
         )
+        .clipped()
     }
 
     private func macroInfoItem(color: Color, name: String, calories: String, description: String) -> some View {
@@ -981,6 +1321,7 @@ struct BMRCalculatorRedesigned: View {
                 .padding(.horizontal, DesignTokens.Spacing.screenEdge)
                 .padding(.top, DesignTokens.Spacing.md)
             }
+            .scrollDismissesKeyboard(.interactively)
             .scrollContentBackground(.hidden)
             .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Energy Calculator")
@@ -1020,7 +1361,7 @@ struct BMRCalculatorRedesigned: View {
         )
     }
 
-    // MARK: - Sex Selection
+    // MARK: - Sex Display (Read-only)
 
     private var sexSelectionSection: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
@@ -1028,29 +1369,36 @@ struct BMRCalculatorRedesigned: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(palette.textPrimary)
 
-            Text("This affects metabolism calculations")
+            Text("Used for metabolism calculation (from your profile)")
                 .font(DesignTokens.Typography.caption)
                 .foregroundColor(palette.textTertiary)
 
+            // Display current sex as read-only
             HStack(spacing: 12) {
-                sexButton(
-                    icon: "figure.stand.dress",
-                    label: "Female",
-                    isSelected: userSex == "female",
-                    color: .pink
-                ) {
-                    userSex = "female"
+                Image(systemName: userSex == "female" ? "figure.stand.dress" : "figure.stand")
+                    .font(.system(size: 28))
+                    .foregroundColor(userSex == "female" ? .pink : .blue)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(userSex == "female" ? "Female" : "Male")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+                    Text("Set in your profile")
+                        .font(.system(size: 12))
+                        .foregroundColor(palette.textTertiary)
                 }
 
-                sexButton(
-                    icon: "figure.stand",
-                    label: "Male",
-                    isSelected: userSex == "male",
-                    color: .blue
-                ) {
-                    userSex = "male"
-                }
+                Spacer()
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(userSex == "female" ? .pink : .blue)
             }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill((userSex == "female" ? Color.pink : Color.blue).opacity(0.1))
+            )
         }
         .padding(DesignTokens.Spacing.cardInternal)
         .background(
@@ -1058,30 +1406,6 @@ struct BMRCalculatorRedesigned: View {
                 .fill(Color.nutraSafeCard)
         )
         .shadow(color: DesignTokens.Shadow.subtle.color, radius: DesignTokens.Shadow.subtle.radius, y: DesignTokens.Shadow.subtle.y)
-    }
-
-    private func sexButton(icon: String, label: String, isSelected: Bool, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: {
-            action()
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }) {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 28))
-                    .foregroundColor(isSelected ? .white : color)
-
-                Text(label)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(isSelected ? .white : palette.textPrimary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                    .fill(isSelected ? color : color.opacity(0.1))
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Details Section
