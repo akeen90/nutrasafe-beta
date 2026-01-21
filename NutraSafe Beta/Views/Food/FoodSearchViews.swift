@@ -403,26 +403,12 @@ struct FoodSearchResultRowEnhanced: View {
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 8, y: 3)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .fullScreenCover(isPresented: Binding(
-            get: { showingFoodDetail },
-            set: { newValue in
-                if !newValue {
-                    // Disable animation when dismissing
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        showingFoodDetail = false
-                    }
-                } else {
-                    showingFoodDetail = newValue
-                }
-            }
-        )) {
+        .fullScreenCover(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
-            .interactiveDismissDisabled(false) // Enable smooth interactive dismiss
+            .interactiveDismissDisabled(false)
         }
         .overlay(
             Group {

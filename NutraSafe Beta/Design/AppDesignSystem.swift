@@ -60,8 +60,8 @@ struct AppPalette {
         backgroundDeep: Color(red: 0.08, green: 0.11, blue: 0.20),
         cardBackground: Color(red: 0.14, green: 0.18, blue: 0.28),
         textPrimary: Color(white: 0.95),
-        textSecondary: Color(white: 0.7),
-        textTertiary: Color(white: 0.5)
+        textSecondary: Color(white: 0.75),                       // Increased from 0.7 for better visibility
+        textTertiary: Color(white: 0.6)                          // Increased from 0.5 for better visibility
     )
 
     // MARK: - Intent-Based Palettes (From Onboarding)
