@@ -102,6 +102,7 @@
 		BDD6569256384DFA94AA3B4C /* SQLiteFoodDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B76858ACCE4497889EDFCC0 /* SQLiteFoodDatabase.swift */; };
 		BE43B1A4B3D845F3E0BC73CC /* NutrientDetailModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDD7105BF741325DAC10A12 /* NutrientDetailModal.swift */; };
 		BF231388045111DFD57DEE3C /* FastingMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B4E72CAAA222A7D0ACC1ED /* FastingMainView.swift */; };
+		FASTREDESIGN001BUILD /* FastingRedesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTREDESIGN001FILE /* FastingRedesign.swift */; };
 		BGTASKMGR001BLD /* BackgroundTaskManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BGTASKMGR001REF /* BackgroundTaskManager.swift */; };
 		C1D4E6259B6DDC850735FACC /* MicronutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */; };
 		C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FB33855679471485B474B4 /* SettingsView.swift */; };
@@ -157,6 +158,7 @@
 		22C6BF8B3C55423CB194379A /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Configuration/AppConfig.swift"; sourceTree = "<group>"; };
 		2748185AC3934123A2EE1CEC /* ReactionLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/ReactionLogManager.swift"; sourceTree = SOURCE_ROOT; };
 		30B4E72CAAA222A7D0ACC1ED /* FastingMainView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingMainView.swift; sourceTree = "<group>"; };
+		FASTREDESIGN001FILE /* FastingRedesign.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingRedesign.swift; sourceTree = "<group>"; };
 		33B4B31B7774BE3AE3988004 /* NutraSafeComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutraSafeComponents.swift; path = "NutraSafe Beta/Design/NutraSafeComponents.swift"; sourceTree = SOURCE_ROOT; };
 		3406DEB9F89048699F964329 /* FastingInsightsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingInsightsView.swift; sourceTree = "<group>"; };
 		34316E0BF18B3895987C4AAF /* TermsAndConditionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsAndConditionsView.swift; sourceTree = "<group>"; };
@@ -387,6 +389,7 @@
 				FASTHIST0001FILE /* FastingHistoryDropdown.swift */,
 				800A45E9-3EDE-4391-B526- /* FastingCitationsView.swift */,
 				30B4E72CAAA222A7D0ACC1ED /* FastingMainView.swift */,
+				FASTREDESIGN001FILE /* FastingRedesign.swift */,
 				A4CC825B3113A674F68A6B62 /* FastingPlanViews.swift */,
 				D3F02B35EB79BB96AD3D3301 /* FastingEducationView.swift */,
 				3406DEB9F89048699F964329 /* FastingInsightsView.swift */,
@@ -771,6 +774,7 @@
 				5ECB934A5DD68AD8E7E741B0 /* FastingViewModel.swift in Sources */,
 				1844CFD1E3BF18E3B1F4B94C /* FastingService.swift in Sources */,
 				BF231388045111DFD57DEE3C /* FastingMainView.swift in Sources */,
+				FASTREDESIGN001BUILD /* FastingRedesign.swift in Sources */,
 				170B8500767E821043D1D6E5 /* FastingPlanViews.swift in Sources */,
 				7FDF9EAC1D6C21BCED86078E /* FastingEducationView.swift in Sources */,
 				F30EE587A7676BDEA5D95EC6 /* FastingInsightsView.swift in Sources */,
