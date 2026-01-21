@@ -64,13 +64,23 @@ struct GoalsScreen: View {
 
             Spacer()
 
-            // Continue button
-            PremiumButton(
-                text: "Continue",
-                palette: state.palette,
-                action: onContinue,
-                isEnabled: !state.selectedGoals.isEmpty
-            )
+            // Continue/Skip buttons
+            VStack(spacing: 14) {
+                PremiumButton(
+                    text: "Continue",
+                    palette: state.palette,
+                    action: onContinue,
+                    isEnabled: !state.selectedGoals.isEmpty
+                )
+
+                if state.selectedGoals.isEmpty {
+                    Button(action: onContinue) {
+                        Text("Skip for now")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(Color(white: 0.5))
+                    }
+                }
+            }
             .padding(.horizontal, 32)
             .padding(.bottom, 50)
         }

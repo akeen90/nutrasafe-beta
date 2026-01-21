@@ -12,7 +12,10 @@ import AuthenticationServices
 
 struct AuthenticationView: View {
     @StateObject private var firebaseManager = FirebaseManager.shared
+    @EnvironmentObject var healthKitManager: HealthKitManager
     @State private var showingSignUp = false
+    @State private var showingSignIn = false
+    @State private var showOnboardingFirst = !OnboardingManager.shared.hasCompletedOnboarding
 
     var body: some View {
         if firebaseManager.isAuthenticated {
@@ -26,12 +29,65 @@ struct AuthenticationView: View {
                 EmailVerificationView()
             }
         } else {
-            // User is not signed in, show auth screen
-            if showingSignUp {
+            // User is not signed in
+            // NEW FLOW: Show onboarding BEFORE sign-up (unless they tap "Already a member")
+            if showOnboardingFirst && !OnboardingManager.shared.hasCompletedOnboarding {
+                // Show onboarding with "Already a member" option
+                PreAuthOnboardingView(
+                    onComplete: {
+                        // After onboarding completes, go to sign up
+                        showOnboardingFirst = false
+                        showingSignUp = true
+                    },
+                    onAlreadyMember: {
+                        // Skip to sign in
+                        showOnboardingFirst = false
+                        showingSignIn = true
+                    }
+                )
+                .environmentObject(healthKitManager)
+            } else if showingSignIn {
+                SignInView(showingSignUp: $showingSignUp)
+            } else if showingSignUp {
                 SignUpView(showingSignUp: $showingSignUp)
             } else {
                 SignInView(showingSignUp: $showingSignUp)
             }
+        }
+    }
+}
+
+// MARK: - Pre-Auth Onboarding View
+// Wraps PremiumOnboardingView but shows BEFORE authentication
+// Has "Already a member" button in top-right
+struct PreAuthOnboardingView: View {
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    let onComplete: () -> Void
+    let onAlreadyMember: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            // The actual onboarding flow (but without permission screens - those come after sign-up)
+            PreAuthPremiumOnboardingView(onComplete: { _ in
+                onComplete()
+            })
+            .environmentObject(healthKitManager)
+
+            // "Already a member?" button in top-right
+            Button(action: onAlreadyMember) {
+                Text("Already a member?")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Color(white: 0.4))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.8))
+                            .shadow(color: Color.black.opacity(0.05), radius: 4, y: 2)
+                    )
+            }
+            .padding(.top, 60)
+            .padding(.trailing, 20)
         }
     }
 }

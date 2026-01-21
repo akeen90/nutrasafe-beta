@@ -429,6 +429,8 @@ struct ContentView: View {
     @State private var deleteTrigger = false
     @StateObject private var healthKitManager = HealthKitManager.shared
     @State private var showOnboarding = !OnboardingManager.shared.hasCompletedOnboarding
+    // Post-auth permissions: Show if user completed pre-auth onboarding but not permissions
+    @State private var showPostAuthPermissions = OnboardingManager.shared.hasCompletedPreAuthOnboarding && !OnboardingManager.shared.hasCompletedPermissions
     @State private var showWelcomeScreen = false
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var firebaseManager: FirebaseManager
@@ -646,27 +648,42 @@ struct ContentView: View {
                 .environmentObject(subscriptionManager)
         }
         .fullScreenCover(isPresented: $showOnboarding) {
-            // Premium onboarding experience with emotional journey
-            PremiumOnboardingView(onComplete: { emailMarketingConsent in
-                // Note: PremiumOnboardingView already calls OnboardingManager.completeOnboarding()
-
-                // Save email consent to Firestore
-                Task {
-                    do {
-                        try await firebaseManager.updateEmailMarketingConsent(hasConsented: emailMarketingConsent)
-                    } catch {
-                        // Save to UserDefaults as fallback
-                        UserDefaults.standard.set(emailMarketingConsent, forKey: "emailMarketingConsent")
-                        if emailMarketingConsent {
-                            UserDefaults.standard.set(Date(), forKey: "emailMarketingConsentDate")
+            // Show onboarding ONLY if user hasn't completed pre-auth onboarding
+            // (If they did pre-auth, showPostAuthPermissions handles the rest)
+            if !OnboardingManager.shared.hasCompletedPreAuthOnboarding {
+                // Full premium onboarding for users who sign in without doing pre-auth onboarding
+                // (e.g., returning users who tapped "Already a member")
+                PremiumOnboardingView(onComplete: { emailMarketingConsent in
+                    // Save email consent to Firestore
+                    Task {
+                        do {
+                            try await firebaseManager.updateEmailMarketingConsent(hasConsented: emailMarketingConsent)
+                        } catch {
+                            // Save to UserDefaults as fallback
+                            UserDefaults.standard.set(emailMarketingConsent, forKey: "emailMarketingConsent")
+                            if emailMarketingConsent {
+                                UserDefaults.standard.set(Date(), forKey: "emailMarketingConsentDate")
+                            }
                         }
                     }
-                }
 
-                showOnboarding = false
-
-                // Premium onboarding already provides comprehensive introduction,
-                // so we skip the additional welcome screen
+                    showOnboarding = false
+                    OnboardingManager.shared.completeWelcome()
+                })
+                .environmentObject(healthKitManager)
+            } else {
+                // User already did pre-auth onboarding, just close this
+                // (showPostAuthPermissions will handle permissions)
+                Color.clear
+                    .onAppear {
+                        showOnboarding = false
+                    }
+            }
+        }
+        .fullScreenCover(isPresented: $showPostAuthPermissions) {
+            // Post-auth permissions flow for users who completed pre-auth onboarding
+            PostAuthPermissionsView(onComplete: {
+                showPostAuthPermissions = false
                 OnboardingManager.shared.completeWelcome()
             })
             .environmentObject(healthKitManager)
@@ -1081,6 +1098,7 @@ struct WeightTrackingView: View {
                 } else {
                     ZStack {
                         // MARK: Weight Tab Content
+                        if progressSubTab == .weight {
                         ScrollView {
                             // PERFORMANCE: LazyVStack defers rendering of off-screen content
                             LazyVStack(spacing: 24) {
@@ -1561,16 +1579,17 @@ struct WeightTrackingView: View {
                     }
                     .padding(.bottom, 100)
                 }
-                .opacity(progressSubTab == .weight ? 1 : 0)
-                .allowsHitTesting(progressSubTab == .weight)
+                .scrollDismissesKeyboard(.interactively)
+                } // End of Weight tab if
 
                         // MARK: Diet Tab Content
-                        ScrollView {
-                            DietManagementTabContent()
-                                .environmentObject(firebaseManager)
+                        if progressSubTab == .diet {
+                            ScrollView {
+                                DietManagementTabContent()
+                                    .environmentObject(firebaseManager)
+                            }
+                            .scrollDismissesKeyboard(.interactively)
                         }
-                        .opacity(progressSubTab == .diet ? 1 : 0)
-                        .allowsHitTesting(progressSubTab == .diet)
                     } // End of ZStack
                 } // End of loading else block
             }
@@ -1917,33 +1936,107 @@ struct DietManagementTabContent: View {
     @State private var stepGoal: Int = 10000
     @State private var exerciseGoal: Int = 400
 
+    // Calorie editing state
+    @State private var isEditingCalories: Bool = false
+    @State private var calorieText: String = ""
+    @FocusState private var calorieFieldFocused: Bool
+
+    // Step goal editing state
+    @State private var isEditingSteps: Bool = false
+    @State private var stepText: String = ""
+    @FocusState private var stepFieldFocused: Bool
+
+    // Exercise goal editing state
+    @State private var isEditingExercise: Bool = false
+    @State private var exerciseText: String = ""
+    @FocusState private var exerciseFieldFocused: Bool
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
-        LazyVStack(spacing: 20) {
+        LazyVStack(spacing: DesignTokens.Spacing.lg) {
+            // Welcome header
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text("Your Daily Goals")
+                    .font(DesignTokens.Typography.sectionTitle(20))
+                    .foregroundColor(palette.textPrimary)
+
+                Text("Tap any value to edit. These are guides, not rules.")
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundColor(palette.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, DesignTokens.Spacing.screenEdge)
+            .padding(.top, DesignTokens.Spacing.md)
+
             // Calorie Goal Card
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Daily Calorie Goal")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.primary)
-
-                // Large calorie display with +/- controls
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 HStack {
-                    Text("\(calorieGoal)")
-                        .font(.system(size: 48, weight: .bold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.orange, Color.red],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.orange)
 
-                    Text("kcal")
-                        .font(.system(size: 20))
-                        .foregroundColor(.secondary)
+                    Text("Daily Calories")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
 
                     Spacer()
 
-                    HStack(spacing: 16) {
+                    Button {
+                        showingBMRCalculator = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "function")
+                                .font(.system(size: 12))
+                            Text("BMR")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(palette.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(palette.accent.opacity(0.12))
+                        )
+                    }
+                }
+
+                // Calorie display with tap-to-edit
+                HStack(alignment: .center) {
+                    if isEditingCalories {
+                        TextField("", text: $calorieText)
+                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                            .foregroundColor(.orange)
+                            .keyboardType(.numberPad)
+                            .focused($calorieFieldFocused)
+                            .multilineTextAlignment(.leading)
+                            .frame(width: 140)
+                            .onSubmit { commitCalorieEdit() }
+                            .onChange(of: calorieFieldFocused) { focused in
+                                if !focused { commitCalorieEdit() }
+                            }
+                    } else {
+                        Text("\(calorieGoal)")
+                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                            .foregroundColor(.orange)
+                            .contentTransition(.numericText())
+                            .onTapGesture {
+                                calorieText = "\(calorieGoal)"
+                                isEditingCalories = true
+                                calorieFieldFocused = true
+                            }
+                    }
+
+                    Text("kcal")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(palette.textTertiary)
+
+                    Spacer()
+
+                    // Stepper controls
+                    HStack(spacing: 12) {
                         Button {
                             if calorieGoal > 1000 {
                                 calorieGoal -= 50
@@ -1952,8 +2045,8 @@ struct DietManagementTabContent: View {
                             }
                         } label: {
                             Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 36))
-                                .foregroundColor(calorieGoal > 1000 ? .red : Color(.systemGray4))
+                                .font(.system(size: 32))
+                                .foregroundColor(calorieGoal > 1000 ? palette.textSecondary : palette.textTertiary.opacity(0.4))
                         }
                         .disabled(calorieGoal <= 1000)
 
@@ -1965,22 +2058,20 @@ struct DietManagementTabContent: View {
                             }
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 36))
-                                .foregroundColor(calorieGoal < 5000 ? .green : Color(.systemGray4))
+                                .font(.system(size: 32))
+                                .foregroundColor(calorieGoal < 5000 ? palette.textSecondary : palette.textTertiary.opacity(0.4))
                         }
                         .disabled(calorieGoal >= 5000)
                     }
                 }
 
-                Divider()
+                // UK Recommendations
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                    Text("UK Reference Intake")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(palette.textTertiary)
 
-                // UK Recommendations - show based on user's gender
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("UK Recommended Daily Intake")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         // Show female option if gender is female, other/notSet, or not set
                         if OnboardingManager.shared.userGender != .male {
                             Button {
@@ -1988,18 +2079,18 @@ struct DietManagementTabContent: View {
                                 saveCalorieGoal()
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             } label: {
-                                HStack(spacing: 6) {
+                                HStack(spacing: 5) {
                                     Image(systemName: "figure.stand.dress")
-                                        .font(.system(size: 14))
-                                    Text(OnboardingManager.shared.userGender == .female ? "Recommended: 2,000" : "Women: 2,000")
-                                        .font(.system(size: 14, weight: .medium))
+                                        .font(.system(size: 13))
+                                    Text(OnboardingManager.shared.userGender == .female ? "2,000" : "Women: 2,000")
+                                        .font(.system(size: 13, weight: .medium))
                                 }
-                                .foregroundColor(calorieGoal == 2000 ? .white : .pink)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
+                                .foregroundColor(calorieGoal == 2000 ? .white : Color.pink)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(calorieGoal == 2000 ? Color.pink : Color.pink.opacity(0.15))
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                        .fill(calorieGoal == 2000 ? Color.pink : Color.pink.opacity(0.12))
                                 )
                             }
                         }
@@ -2011,236 +2102,293 @@ struct DietManagementTabContent: View {
                                 saveCalorieGoal()
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             } label: {
-                                HStack(spacing: 6) {
+                                HStack(spacing: 5) {
                                     Image(systemName: "figure.stand")
-                                        .font(.system(size: 14))
-                                    Text(OnboardingManager.shared.userGender == .male ? "Recommended: 2,500" : "Men: 2,500")
-                                        .font(.system(size: 14, weight: .medium))
+                                        .font(.system(size: 13))
+                                    Text(OnboardingManager.shared.userGender == .male ? "2,500" : "Men: 2,500")
+                                        .font(.system(size: 13, weight: .medium))
                                 }
-                                .foregroundColor(calorieGoal == 2500 ? .white : .blue)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
+                                .foregroundColor(calorieGoal == 2500 ? .white : palette.accent)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(calorieGoal == 2500 ? AppPalette.standard.accent : AppPalette.standard.accent.opacity(0.15))
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                        .fill(calorieGoal == 2500 ? palette.accent : palette.accent.opacity(0.12))
                                 )
                             }
                         }
                     }
                 }
-
-                // BMR Calculator Button
-                Button {
-                    showingBMRCalculator = true
-                } label: {
-                    HStack {
-                        Image(systemName: "function")
-                            .font(.system(size: 18))
-                        Text("Calculate Based on My BMR")
-                            .font(.system(size: 16, weight: .medium))
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                    }
-                    .foregroundColor(.green)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.green.opacity(0.1))
-                    )
-                }
             }
-            .padding(20)
+            .padding(DesignTokens.Spacing.cardInternal)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
-                    )
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                    .fill(palette.cardBackground)
             )
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .padding(.horizontal, DesignTokens.Spacing.screenEdge)
 
             // Current Diet Card
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 HStack {
-                    Text("Current Diet")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.primary)
+                    Image(systemName: "leaf.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.green)
+
+                    Text("Diet Style")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
 
                     Spacer()
 
                     Button {
                         showingDietManagement = true
                     } label: {
-                        Text("Change")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(AppPalette.standard.accent)
+                        HStack(spacing: 4) {
+                            Text("Customise")
+                                .font(.system(size: 13, weight: .medium))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(palette.accent)
                     }
                 }
 
                 if let diet = selectedDietType {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 14) {
                         Image(systemName: diet.icon)
-                            .font(.system(size: 28))
+                            .font(.system(size: 24))
                             .foregroundColor(diet.accentColor)
-                            .frame(width: 50, height: 50)
+                            .frame(width: 44, height: 44)
                             .background(
                                 Circle()
-                                    .fill(diet.accentColor.opacity(0.15))
+                                    .fill(diet.accentColor.opacity(0.12))
                             )
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(diet.displayName)
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(palette.textPrimary)
                             Text(diet.shortDescription)
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(palette.textSecondary)
+                                .lineLimit(2)
                         }
 
                         Spacer()
                     }
 
-                    // Macro breakdown bars
-                    VStack(spacing: 8) {
+                    // Macro breakdown - horizontal compact
+                    HStack(spacing: 0) {
                         let ratios = diet.macroRatios
-                        MacroBarRow(label: "Protein", percent: ratios.protein, color: .red)
-                        MacroBarRow(label: "Carbs", percent: ratios.carbs, color: .orange)
-                        MacroBarRow(label: "Fat", percent: ratios.fat, color: .yellow)
+
+                        MacroChip(label: "Protein", value: "\(ratios.protein)%", color: .red.opacity(0.8))
+
+                        Spacer()
+
+                        MacroChip(label: "Carbs", value: "\(ratios.carbs)%", color: .orange)
+
+                        Spacer()
+
+                        MacroChip(label: "Fat", value: "\(ratios.fat)%", color: .yellow.opacity(0.9))
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 4)
                 } else {
-                    Text("Custom macros")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 14) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 24))
+                            .foregroundColor(palette.accent)
+                            .frame(width: 44, height: 44)
+                            .background(
+                                Circle()
+                                    .fill(palette.accent.opacity(0.12))
+                            )
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Custom Macros")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(palette.textPrimary)
+                            Text("Your personalised balance")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+
+                        Spacer()
+                    }
                 }
             }
-            .padding(20)
+            .padding(DesignTokens.Spacing.cardInternal)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
-                    )
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                    .fill(palette.cardBackground)
             )
-            .padding(.horizontal, 16)
+            .padding(.horizontal, DesignTokens.Spacing.screenEdge)
 
             // Activity Goals Card
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Activity Goals")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.primary)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                HStack {
+                    Image(systemName: "figure.run")
+                        .font(.system(size: 18))
+                        .foregroundColor(palette.accent)
 
-                // Step Goal
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
+                    Text("Activity")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+
+                    Spacer()
+                }
+
+                // Step Goal Row
+                HStack {
+                    HStack(spacing: 10) {
                         Image(systemName: "figure.walk")
-                            .font(.system(size: 20))
+                            .font(.system(size: 18))
                             .foregroundColor(.green)
-                            .frame(width: 32)
+                            .frame(width: 28)
 
-                        Text("Daily Steps")
-                            .font(.system(size: 16, weight: .medium))
+                        Text("Steps")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(palette.textPrimary)
+                    }
 
-                        Spacer()
+                    Spacer()
 
-                        HStack(spacing: 12) {
-                            Button {
-                                if stepGoal > 1000 {
-                                    stepGoal -= 500
-                                    saveStepGoal()
-                                }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(stepGoal <= 1000 ? .gray.opacity(0.3) : .green)
+                    HStack(spacing: 10) {
+                        Button {
+                            if stepGoal > 1000 {
+                                stepGoal -= 500
+                                saveStepGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             }
-                            .disabled(stepGoal <= 1000)
-
-                            Text(formatStepCount(Double(stepGoal)))
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.green)
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-
-                            Button {
-                                if stepGoal < 30000 {
-                                    stepGoal += 500
-                                    saveStepGoal()
-                                }
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(stepGoal >= 30000 ? .gray.opacity(0.3) : .green)
-                            }
-                            .disabled(stepGoal >= 30000)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(stepGoal <= 1000 ? palette.textTertiary.opacity(0.4) : palette.textSecondary)
                         }
+                        .disabled(stepGoal <= 1000)
+
+                        if isEditingSteps {
+                            TextField("", text: $stepText)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.green)
+                                .keyboardType(.numberPad)
+                                .focused($stepFieldFocused)
+                                .multilineTextAlignment(.center)
+                                .frame(width: 70)
+                                .onSubmit { commitStepEdit() }
+                                .onChange(of: stepFieldFocused) { focused in
+                                    if !focused { commitStepEdit() }
+                                }
+                        } else {
+                            Text(formatStepCount(Double(stepGoal)))
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.green)
+                                .frame(minWidth: 60)
+                                .contentTransition(.numericText())
+                                .onTapGesture {
+                                    stepText = "\(stepGoal)"
+                                    isEditingSteps = true
+                                    stepFieldFocused = true
+                                }
+                        }
+
+                        Button {
+                            if stepGoal < 30000 {
+                                stepGoal += 500
+                                saveStepGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(stepGoal >= 30000 ? palette.textTertiary.opacity(0.4) : palette.textSecondary)
+                        }
+                        .disabled(stepGoal >= 30000)
                     }
                 }
 
                 Divider()
+                    .background(palette.textTertiary.opacity(0.3))
 
-                // Exercise Calories Goal
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "figure.run")
-                            .font(.system(size: 20))
+                // Exercise Calories Row
+                HStack {
+                    HStack(spacing: 10) {
+                        Image(systemName: "flame")
+                            .font(.system(size: 18))
                             .foregroundColor(.orange)
-                            .frame(width: 32)
+                            .frame(width: 28)
 
-                        Text("Calories Burned")
-                            .font(.system(size: 16, weight: .medium))
+                        Text("Burn")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(palette.textPrimary)
+                    }
 
-                        Spacer()
+                    Spacer()
 
-                        HStack(spacing: 12) {
-                            Button {
-                                if exerciseGoal > 100 {
-                                    exerciseGoal -= 50
-                                    saveExerciseGoal()
-                                }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(exerciseGoal <= 100 ? .gray.opacity(0.3) : .orange)
+                    HStack(spacing: 10) {
+                        Button {
+                            if exerciseGoal > 100 {
+                                exerciseGoal -= 50
+                                saveExerciseGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             }
-                            .disabled(exerciseGoal <= 100)
-
-                            Text("\(exerciseGoal)")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.orange)
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-
-                            Button {
-                                if exerciseGoal < 2000 {
-                                    exerciseGoal += 50
-                                    saveExerciseGoal()
-                                }
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(exerciseGoal >= 2000 ? .gray.opacity(0.3) : .orange)
-                            }
-                            .disabled(exerciseGoal >= 2000)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(exerciseGoal <= 100 ? palette.textTertiary.opacity(0.4) : palette.textSecondary)
                         }
+                        .disabled(exerciseGoal <= 100)
+
+                        if isEditingExercise {
+                            TextField("", text: $exerciseText)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.orange)
+                                .keyboardType(.numberPad)
+                                .focused($exerciseFieldFocused)
+                                .multilineTextAlignment(.center)
+                                .frame(width: 70)
+                                .onSubmit { commitExerciseEdit() }
+                                .onChange(of: exerciseFieldFocused) { focused in
+                                    if !focused { commitExerciseEdit() }
+                                }
+                        } else {
+                            HStack(spacing: 2) {
+                                Text("\(exerciseGoal)")
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                    .foregroundColor(.orange)
+                                Text("kcal")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(palette.textTertiary)
+                            }
+                            .frame(minWidth: 70)
+                            .contentTransition(.numericText())
+                            .onTapGesture {
+                                exerciseText = "\(exerciseGoal)"
+                                isEditingExercise = true
+                                exerciseFieldFocused = true
+                            }
+                        }
+
+                        Button {
+                            if exerciseGoal < 2000 {
+                                exerciseGoal += 50
+                                saveExerciseGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(exerciseGoal >= 2000 ? palette.textTertiary.opacity(0.4) : palette.textSecondary)
+                        }
+                        .disabled(exerciseGoal >= 2000)
                     }
                 }
             }
-            .padding(20)
+            .padding(DesignTokens.Spacing.cardInternal)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
-                    )
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                    .fill(palette.cardBackground)
             )
-            .padding(.horizontal, 16)
+            .padding(.horizontal, DesignTokens.Spacing.screenEdge)
 
             Spacer(minLength: 100)
         }
@@ -2252,7 +2400,7 @@ struct DietManagementTabContent: View {
             loadDietSettings()
         }
         .sheet(isPresented: $showingBMRCalculator) {
-            BMRCalculatorSheet(
+            BMRCalculatorRedesigned(
                 userSex: $userSex,
                 userAge: $userAge,
                 userHeightCm: $userHeightCm,
@@ -2277,6 +2425,35 @@ struct DietManagementTabContent: View {
             )
             .environmentObject(firebaseManager)
         }
+    }
+
+    // MARK: - Calorie Edit Helpers
+
+    private func commitCalorieEdit() {
+        isEditingCalories = false
+        if let newValue = Int(calorieText), newValue >= 1000, newValue <= 5000 {
+            calorieGoal = newValue
+            saveCalorieGoal()
+        }
+        calorieText = ""
+    }
+
+    private func commitStepEdit() {
+        isEditingSteps = false
+        if let newValue = Int(stepText), newValue >= 1000, newValue <= 30000 {
+            stepGoal = newValue
+            saveStepGoal()
+        }
+        stepText = ""
+    }
+
+    private func commitExerciseEdit() {
+        isEditingExercise = false
+        if let newValue = Int(exerciseText), newValue >= 100, newValue <= 2000 {
+            exerciseGoal = newValue
+            saveExerciseGoal()
+        }
+        exerciseText = ""
     }
 
     private func saveCalorieGoal() {
@@ -2372,6 +2549,31 @@ struct MacroBarRow: View {
                 .foregroundColor(.primary)
                 .frame(width: 40, alignment: .trailing)
         }
+    }
+}
+
+// MARK: - Macro Chip (for compact diet display)
+struct MacroChip: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let label: String
+    let value: String
+    let color: Color
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(color)
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(palette.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

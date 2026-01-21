@@ -1030,3 +1030,185 @@ struct CompletionPoint: View {
         .opacity(show ? 1 : 0)
     }
 }
+
+// MARK: - Post-Auth Permissions View
+// Shows permission screens AFTER user has signed up
+// This completes the onboarding flow started before authentication
+
+struct PostAuthPermissionsView: View {
+    @StateObject private var state = PremiumOnboardingState()
+    @State private var currentScreen = 0
+    @State private var transitionOpacity: Double = 1
+    @EnvironmentObject var healthKitManager: HealthKitManager
+
+    let onComplete: () -> Void
+
+    // Just the permission screens: Camera(0) → Health(1) → Notifications(2) → Done(3)
+    private let totalScreens = 4
+
+    var body: some View {
+        ZStack {
+            // Animated gradient background
+            AnimatedGradientBackground(palette: state.palette)
+
+            // Screen content
+            Group {
+                switch currentScreen {
+                case 0:
+                    CameraPermissionScreen(state: state, onContinue: { advanceScreen() })
+                case 1:
+                    HealthPermissionScreen(state: state, onContinue: { advanceScreen() })
+                        .environmentObject(healthKitManager)
+                case 2:
+                    NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
+                case 3:
+                    PermissionsCompletionScreen(state: state, onComplete: {
+                        OnboardingManager.shared.completePermissions()
+                        OnboardingManager.shared.completeOnboarding()
+                        onComplete()
+                    })
+                default:
+                    CameraPermissionScreen(state: state, onContinue: { advanceScreen() })
+                }
+            }
+            .opacity(transitionOpacity)
+        }
+        .onAppear {
+            // Load user intent from saved preferences to get correct palette
+            state.loadFromDefaults()
+            AnalyticsManager.shared.trackOnboardingStep(step: currentScreen, stepName: "PostAuth_" + postAuthScreenName(currentScreen))
+        }
+        .onChange(of: currentScreen) { _, newScreen in
+            AnalyticsManager.shared.trackOnboardingStep(step: newScreen, stepName: "PostAuth_" + postAuthScreenName(newScreen))
+        }
+    }
+
+    private func advanceScreen() {
+        guard currentScreen < totalScreens - 1 else { return }
+
+        withAnimation(.easeOut(duration: 0.3)) {
+            transitionOpacity = 0
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            currentScreen += 1
+            withAnimation(.easeIn(duration: 0.4)) {
+                transitionOpacity = 1
+            }
+        }
+    }
+
+    private func postAuthScreenName(_ screen: Int) -> String {
+        switch screen {
+        case 0: return "CameraPermission"
+        case 1: return "HealthPermission"
+        case 2: return "NotificationPermission"
+        case 3: return "Completion"
+        default: return "Unknown"
+        }
+    }
+}
+
+// MARK: - Permissions Completion Screen
+// Final screen after all permissions are granted
+
+struct PermissionsCompletionScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onComplete: () -> Void
+
+    @State private var showCheckmark = false
+    @State private var showText = false
+    @State private var showButton = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Animated checkmark
+            ZStack {
+                Circle()
+                    .fill(state.palette.primary.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                    .scaleEffect(showCheckmark ? 1 : 0.5)
+                    .opacity(showCheckmark ? 1 : 0)
+
+                Image(systemName: "checkmark")
+                    .font(.system(size: 70, weight: .light))
+                    .foregroundColor(state.palette.primary)
+                    .scaleEffect(showCheckmark ? 1 : 0)
+                    .opacity(showCheckmark ? 1 : 0)
+            }
+            .padding(.bottom, 40)
+
+            // Headline
+            VStack(spacing: 12) {
+                Text("You're all set")
+                    .font(.system(size: 32, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+                    .opacity(showText ? 1 : 0)
+
+                Text("NutraSafe is ready to work for you")
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+                    .opacity(showText ? 1 : 0)
+            }
+            .padding(.bottom, 40)
+
+            // Summary points
+            VStack(alignment: .leading, spacing: 16) {
+                CompletionPoint(
+                    icon: "camera.viewfinder",
+                    text: "Scan barcodes and labels instantly",
+                    palette: state.palette,
+                    show: showText
+                )
+
+                CompletionPoint(
+                    icon: "heart.fill",
+                    text: "Your health data is connected",
+                    palette: state.palette,
+                    show: showText
+                )
+
+                CompletionPoint(
+                    icon: "bell.fill",
+                    text: "Helpful reminders are enabled",
+                    palette: state.palette,
+                    show: showText
+                )
+            }
+            .padding(.horizontal, 40)
+            .opacity(showText ? 1 : 0)
+
+            Spacer()
+
+            // Start button
+            if showButton {
+                PremiumButton(
+                    text: "Start exploring",
+                    palette: state.palette,
+                    action: onComplete,
+                    showShimmer: true
+                )
+                .padding(.horizontal, 32)
+                .padding(.bottom, 50)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                showCheckmark = true
+            }
+
+            withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
+                showText = true
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    showButton = true
+                }
+            }
+        }
+    }
+}

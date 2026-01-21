@@ -810,6 +810,263 @@ struct HonestyScreen: View {
 // MARK: - Screen 9: The Threshold (Final Launch) - LEGACY (replaced by OnboardingCompletionScreen)
 // Kept for reference but no longer used in the main flow
 
+// MARK: - Pre-Auth Premium Onboarding View
+// This version runs BEFORE sign-up and SKIPS permission screens
+// Permissions are requested after the user creates an account
+
+struct PreAuthPremiumOnboardingView: View {
+    @StateObject private var state = PremiumOnboardingState()
+    @State private var currentScreen = 0
+    @State private var transitionOpacity: Double = 1
+    @State private var showingPaywall = false
+    @EnvironmentObject var healthKitManager: HealthKitManager
+
+    let onComplete: (Bool) -> Void
+
+    // Pre-auth flow: Skip permission screens (16, 17, 18 in main flow)
+    // Flow: Breath(0) → Mirror(1) → Processing(2) → Synthesis(3) → Promise(4) →
+    //       Goals(5) → GoalsProcessing(6) → Activity(7) → ActivityProcessing(8) →
+    //       Habits(9) → Experience(10) → ProfileBuilding(11) →
+    //       DietSetup(12) → CalorieTarget(13) →
+    //       PersonalDetails(14) → Sensitivities(15) →
+    //       ProUpgrade(16) → Honesty(17) → Completion(18)
+    private let totalScreens = 19
+
+    var body: some View {
+        ZStack {
+            // Animated gradient background
+            AnimatedGradientBackground(palette: state.palette)
+
+            // Screen content
+            Group {
+                switch currentScreen {
+                case 0:
+                    BreathScreen(palette: state.palette, onContinue: { advanceScreen() })
+                case 1:
+                    MirrorScreen(state: state, onContinue: { advanceScreen() })
+                case 2:
+                    ProcessingScreen(state: state, onComplete: { advanceScreen() })
+                case 3:
+                    SynthesisScreen(state: state, onComplete: { advanceScreen() })
+                case 4:
+                    PromiseScreen(state: state, onContinue: { advanceScreen() })
+                case 5:
+                    GoalsScreen(state: state, onContinue: { advanceScreen() })
+                case 6:
+                    GoalsProcessingScreen(state: state, onComplete: { advanceScreen() })
+                case 7:
+                    ActivityLevelScreen(state: state, onContinue: { advanceScreen() })
+                case 8:
+                    ActivityProcessingScreen(state: state, onComplete: { advanceScreen() })
+                case 9:
+                    EatingHabitsScreen(state: state, onContinue: { advanceScreen() })
+                case 10:
+                    DietExperienceScreen(state: state, onContinue: { advanceScreen() })
+                case 11:
+                    ProfileBuildingScreen(state: state, onComplete: { advanceScreen() })
+                case 12:
+                    DietSetupScreen(
+                        state: state,
+                        onContinue: { advanceScreen() },
+                        onSkip: { advanceScreen() }
+                    )
+                case 13:
+                    CalorieTargetScreen(
+                        state: state,
+                        onContinue: { advanceScreen() },
+                        onSkip: { advanceScreen() }
+                    )
+                case 14:
+                    PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
+                case 15:
+                    SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
+                // SKIP: Camera, Health, Notifications (permissions) - these come after sign-up
+                case 16:
+                    ProUpgradeScreen(
+                        state: state,
+                        onUpgrade: { showingPaywall = true },
+                        onContinueFree: { advanceScreen() }
+                    )
+                case 17:
+                    HonestyScreen(state: state, onContinue: { advanceScreen() })
+                case 18:
+                    // Pre-auth completion - save preferences but don't mark as fully complete
+                    // (user still needs to create account and grant permissions)
+                    PreAuthCompletionScreen(state: state, onComplete: {
+                        state.saveToManager()
+                        OnboardingManager.shared.acceptDisclaimer()
+                        OnboardingManager.shared.completePreAuthOnboarding()
+                        // DON'T call completeOnboarding() yet - permissions still needed after sign-up
+                        onComplete(state.emailConsent)
+                    })
+                default:
+                    BreathScreen(palette: state.palette, onContinue: { advanceScreen() })
+                }
+            }
+            .opacity(transitionOpacity)
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .onDisappear {
+                    advanceScreen()
+                }
+        }
+        .onAppear {
+            AnalyticsManager.shared.trackOnboardingStep(step: currentScreen, stepName: "PreAuth_" + preAuthScreenName(currentScreen))
+        }
+        .onChange(of: currentScreen) { _, newScreen in
+            AnalyticsManager.shared.trackOnboardingStep(step: newScreen, stepName: "PreAuth_" + preAuthScreenName(newScreen))
+        }
+    }
+
+    private func advanceScreen() {
+        guard currentScreen < totalScreens - 1 else { return }
+
+        withAnimation(.easeOut(duration: 0.3)) {
+            transitionOpacity = 0
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            currentScreen += 1
+            withAnimation(.easeIn(duration: 0.4)) {
+                transitionOpacity = 1
+            }
+        }
+    }
+
+    private func preAuthScreenName(_ screen: Int) -> String {
+        switch screen {
+        case 0: return "Breath"
+        case 1: return "Mirror"
+        case 2: return "Processing"
+        case 3: return "Synthesis"
+        case 4: return "Promise"
+        case 5: return "Goals"
+        case 6: return "GoalsProcessing"
+        case 7: return "ActivityLevel"
+        case 8: return "ActivityProcessing"
+        case 9: return "EatingHabits"
+        case 10: return "DietExperience"
+        case 11: return "ProfileBuilding"
+        case 12: return "DietSetup"
+        case 13: return "CalorieTarget"
+        case 14: return "PersonalDetails"
+        case 15: return "Sensitivities"
+        case 16: return "ProUpgrade"
+        case 17: return "Honesty"
+        case 18: return "Completion"
+        default: return "Unknown"
+        }
+    }
+}
+
+// MARK: - Pre-Auth Completion Screen
+// Shows after onboarding but before sign-up
+// Prompts user to create account to save their preferences
+
+struct PreAuthCompletionScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onComplete: () -> Void
+
+    @State private var showCheckmark = false
+    @State private var showText = false
+    @State private var showButton = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Animated checkmark
+            ZStack {
+                Circle()
+                    .fill(state.palette.primary.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                    .scaleEffect(showCheckmark ? 1 : 0.5)
+                    .opacity(showCheckmark ? 1 : 0)
+
+                Image(systemName: "checkmark")
+                    .font(.system(size: 70, weight: .light))
+                    .foregroundColor(state.palette.primary)
+                    .scaleEffect(showCheckmark ? 1 : 0)
+                    .opacity(showCheckmark ? 1 : 0)
+            }
+            .padding(.bottom, 40)
+
+            // Headline
+            VStack(spacing: 12) {
+                Text("You're almost there")
+                    .font(.system(size: 32, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+                    .opacity(showText ? 1 : 0)
+
+                Text("Create your account to save your preferences")
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundColor(Color(white: 0.5))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .opacity(showText ? 1 : 0)
+            }
+            .padding(.bottom, 40)
+
+            // Summary points
+            VStack(alignment: .leading, spacing: 16) {
+                CompletionPoint(
+                    icon: "person.crop.circle",
+                    text: "Your preferences are ready",
+                    palette: state.palette,
+                    show: showText
+                )
+
+                CompletionPoint(
+                    icon: "icloud",
+                    text: "Sync across all your devices",
+                    palette: state.palette,
+                    show: showText
+                )
+
+                CompletionPoint(
+                    icon: "lock.shield",
+                    text: "Keep your data safe and private",
+                    palette: state.palette,
+                    show: showText
+                )
+            }
+            .padding(.horizontal, 40)
+            .opacity(showText ? 1 : 0)
+
+            Spacer()
+
+            // Create Account button
+            if showButton {
+                PremiumButton(
+                    text: "Create Account",
+                    palette: state.palette,
+                    action: onComplete,
+                    showShimmer: true
+                )
+                .padding(.horizontal, 32)
+                .padding(.bottom, 50)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                showCheckmark = true
+            }
+
+            withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
+                showText = true
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    showButton = true
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Preview
 
 #Preview {

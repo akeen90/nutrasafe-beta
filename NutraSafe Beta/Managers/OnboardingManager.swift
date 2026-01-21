@@ -14,6 +14,8 @@ class OnboardingManager: ObservableObject {
     static let shared = OnboardingManager()
 
     private let hasCompletedKey = "hasCompletedOnboarding"
+    private let hasCompletedPreAuthKey = "hasCompletedPreAuthOnboarding"
+    private let hasCompletedPermissionsKey = "hasCompletedPermissions"
     private let hasAcceptedDisclaimerKey = "hasAcceptedDisclaimer"
     private let hasSeenWelcomeKey = "hasSeenWelcomeScreen"
     private let userGenderKey = "userGender"
@@ -110,7 +112,27 @@ class OnboardingManager: ObservableObject {
         UserDefaults.standard.bool(forKey: hasSeenWelcomeKey)
     }
 
-    /// Mark onboarding as completed
+    /// Check if user has completed pre-auth onboarding (before sign-up)
+    var hasCompletedPreAuthOnboarding: Bool {
+        UserDefaults.standard.bool(forKey: hasCompletedPreAuthKey)
+    }
+
+    /// Check if user has completed post-auth permissions (after sign-up)
+    var hasCompletedPermissions: Bool {
+        UserDefaults.standard.bool(forKey: hasCompletedPermissionsKey)
+    }
+
+    /// Mark pre-auth onboarding as completed
+    func completePreAuthOnboarding() {
+        UserDefaults.standard.set(true, forKey: hasCompletedPreAuthKey)
+    }
+
+    /// Mark post-auth permissions as completed
+    func completePermissions() {
+        UserDefaults.standard.set(true, forKey: hasCompletedPermissionsKey)
+    }
+
+    /// Mark onboarding as completed (called when everything is done)
     func completeOnboarding() {
         UserDefaults.standard.set(true, forKey: hasCompletedKey)
         justCompletedOnboarding = true
