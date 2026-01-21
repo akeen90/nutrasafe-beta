@@ -32,6 +32,9 @@ struct LogWeightView: View {
     // Weight state
     @State private var weightValue: Double = 70.0
     @State private var weightDecimal: Int = 0
+    @State private var isEditingWeight = false
+    @State private var weightTextInput: String = ""
+    @FocusState private var weightFieldFocused: Bool
 
     // Height state
     @State private var primaryHeight: String = ""
@@ -59,6 +62,8 @@ struct LogWeightView: View {
     // Measurements
     @State private var waistSize: String = ""
     @State private var dressSize: String = ""
+    @State private var showWaistSection = false
+    @State private var showDressSection = false
 
     // UI state
     @State private var isUploading = false
@@ -257,21 +262,58 @@ struct LogWeightView: View {
         VStack(spacing: DesignTokens.Spacing.md) {
             // Weight display card
             VStack(spacing: DesignTokens.Spacing.sm) {
-                // Large weight value
+                // Large weight value - tap to edit
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(displayWeight)
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [palette.accent, palette.primary],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                    if isEditingWeight {
+                        // Text input mode
+                        TextField("", text: $weightTextInput)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 64, weight: .bold, design: .rounded))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [palette.accent, palette.primary],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                        )
+                            .multilineTextAlignment(.center)
+                            .frame(minWidth: 120)
+                            .focused($weightFieldFocused)
+                            .onSubmit {
+                                commitWeightInput()
+                            }
+                            .onChange(of: weightFieldFocused) { _, focused in
+                                if !focused {
+                                    commitWeightInput()
+                                }
+                            }
+                    } else {
+                        // Display mode - tap to edit
+                        Text(displayWeight)
+                            .font(.system(size: 64, weight: .bold, design: .rounded))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [palette.accent, palette.primary],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .onTapGesture {
+                                startWeightEditing()
+                            }
+                    }
 
                     Text(selectedUnit.shortName)
                         .font(.system(size: 24, weight: .medium))
                         .foregroundColor(palette.textSecondary)
+                }
+
+                // Tap to edit hint
+                if !isEditingWeight {
+                    Text("Tap to type")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(palette.textTertiary)
+                        .padding(.top, 2)
                 }
 
                 // Unit selector
@@ -288,10 +330,48 @@ struct LogWeightView: View {
                         y: 8
                     )
             )
+            .onTapGesture {
+                // Dismiss keyboard if tapping outside text field
+                if isEditingWeight && !weightFieldFocused {
+                    commitWeightInput()
+                }
+            }
 
-            // Weight stepper controls
+            // Weight stepper controls (fine adjustment)
             weightStepperControls
         }
+    }
+
+    private func startWeightEditing() {
+        weightTextInput = displayWeight
+        isEditingWeight = true
+        // Slight delay to ensure the text field is visible
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            weightFieldFocused = true
+        }
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+    }
+
+    private func commitWeightInput() {
+        isEditingWeight = false
+        weightFieldFocused = false
+
+        // Parse the input
+        let sanitized = weightTextInput.replacingOccurrences(of: ",", with: ".")
+        if let value = Double(sanitized), value > 0 {
+            // Clamp to reasonable range
+            let clamped = max(20.0, min(300.0, value))
+            weightValue = floor(clamped)
+            weightDecimal = Int(round((clamped - weightValue) * 10))
+
+            // Handle decimal overflow
+            if weightDecimal >= 10 {
+                weightValue += 1
+                weightDecimal = 0
+            }
+        }
+        // If invalid input, just keep current value
     }
 
     private var unitSelectorPills: some View {
@@ -328,53 +408,61 @@ struct LogWeightView: View {
     }
 
     private var weightStepperControls: some View {
-        HStack(spacing: DesignTokens.Spacing.lg) {
-            // Decrease buttons
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                stepperButton(icon: "minus", large: true) {
-                    adjustWeight(by: -1.0)
-                }
-                stepperButton(icon: "minus", large: false) {
-                    adjustWeight(by: -0.1)
-                }
-            }
-
-            Spacer()
-
-            // Quick adjust label
-            Text("Adjust")
-                .font(.system(size: 13, weight: .medium))
+        VStack(spacing: DesignTokens.Spacing.xs) {
+            // Label row
+            Text("Fine Adjustment")
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(palette.textTertiary)
 
-            Spacer()
-
-            // Increase buttons
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                stepperButton(icon: "plus", large: false) {
-                    adjustWeight(by: 0.1)
+            // Stepper buttons row
+            HStack(spacing: DesignTokens.Spacing.md) {
+                // Decrease buttons
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    stepperButton(icon: "minus", amount: 1.0, isLarge: true) {
+                        adjustWeight(by: -1.0)
+                    }
+                    stepperButton(icon: "minus", amount: 0.1, isLarge: false) {
+                        adjustWeight(by: -0.1)
+                    }
                 }
-                stepperButton(icon: "plus", large: true) {
-                    adjustWeight(by: 1.0)
+
+                Spacer()
+
+                // Increase buttons
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    stepperButton(icon: "plus", amount: 0.1, isLarge: false) {
+                        adjustWeight(by: 0.1)
+                    }
+                    stepperButton(icon: "plus", amount: 1.0, isLarge: true) {
+                        adjustWeight(by: 1.0)
+                    }
                 }
             }
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.sm)
     }
 
-    private func stepperButton(icon: String, large: Bool, action: @escaping () -> Void) -> some View {
+    private func stepperButton(icon: String, amount: Double, isLarge: Bool, action: @escaping () -> Void) -> some View {
         Button(action: {
             action()
-            let generator = UIImpactFeedbackGenerator(style: large ? .medium : .light)
+            let generator = UIImpactFeedbackGenerator(style: isLarge ? .medium : .light)
             generator.impactOccurred()
         }) {
-            Image(systemName: icon)
-                .font(.system(size: large ? 18 : 14, weight: .semibold))
-                .foregroundColor(palette.accent)
-                .frame(width: large ? 52 : 40, height: large ? 52 : 40)
-                .background(
-                    Circle()
-                        .fill(palette.accent.opacity(large ? 0.15 : 0.08))
-                )
+            VStack(spacing: 2) {
+                Image(systemName: icon)
+                    .font(.system(size: isLarge ? 16 : 12, weight: .semibold))
+                    .foregroundColor(palette.accent)
+
+                Text(amount >= 1 ? "±\(Int(amount))" : "±0.1")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(palette.textTertiary)
+            }
+            .frame(width: isLarge ? 52 : 44, height: isLarge ? 52 : 44)
+            .background(
+                Circle()
+                    .fill(palette.accent.opacity(isLarge ? 0.12 : 0.06))
+            )
         }
         .buttonStyle(.plain)
     }
@@ -564,8 +652,12 @@ struct LogWeightView: View {
 
     private var progressPhotosSection: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            // Section header
-            HStack {
+            // Section header - outside the card for consistency with other sections
+            HStack(spacing: 6) {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(palette.accent.opacity(0.6))
+
                 Text("Progress Photos")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(palette.textTertiary)
@@ -573,38 +665,91 @@ struct LogWeightView: View {
                     .tracking(0.5)
 
                 Text("Optional")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(palette.textTertiary.opacity(0.6))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(palette.textTertiary.opacity(0.5))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
                     .background(
                         Capsule()
-                            .fill(palette.textTertiary.opacity(0.1))
+                            .fill(palette.textTertiary.opacity(0.08))
                     )
+
+                Spacer()
             }
 
-            // Photo tiles grid
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12)
-            ], spacing: 12) {
-                // Existing photos
-                ForEach(selectedPhotos) { photo in
-                    photoTile(photo: photo)
+            // Photo grid contained in card
+            VStack(spacing: DesignTokens.Spacing.sm) {
+                if !selectedPhotos.isEmpty {
+                    // Show existing photos in horizontal scroll
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(selectedPhotos) { photo in
+                                photoTile(photo: photo)
+                            }
+
+                            // Add more button if less than 3
+                            if selectedPhotos.count < 3 {
+                                addMorePhotoButton
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                } else {
+                    // Empty state with action buttons
+                    HStack(spacing: 12) {
+                        addPhotoTile(type: .camera)
+                        addPhotoTile(type: .library)
+                    }
                 }
 
-                // Add photo tiles (up to 3 total)
-                if selectedPhotos.count < 3 {
-                    addPhotoTile(type: .camera)
-                }
-                if selectedPhotos.count < 2 {
-                    addPhotoTile(type: .library)
-                }
+                // Helper text
                 if selectedPhotos.isEmpty {
-                    emptyPhotoTile
+                    Text("Track your progress visually over time")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(palette.textTertiary.opacity(0.6))
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
                 }
             }
+            .padding(DesignTokens.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(Color.nutraSafeCard)
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, y: 3)
+            )
+        }
+    }
+
+    private var addMorePhotoButton: some View {
+        Menu {
+            Button(action: { activePickerType = .camera }) {
+                Label("Take Photo", systemImage: "camera")
+            }
+            Button(action: { showingMultiImagePicker = true }) {
+                Label("Choose from Library", systemImage: "photo.on.rectangle")
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(palette.accent)
+
+                Text("Add")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(palette.textSecondary)
+            }
+            .frame(width: 90, height: 90)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    .fill(palette.accent.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .strokeBorder(
+                                palette.accent.opacity(0.2),
+                                style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])
+                            )
+                    )
+            )
         }
     }
 
@@ -613,7 +758,7 @@ struct LogWeightView: View {
             Image(uiImage: photo.image)
                 .resizable()
                 .scaledToFill()
-                .frame(height: 100)
+                .frame(width: 90, height: 90)
                 .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md))
                 .onTapGesture {
                     selectedPhotoForViewing = photo
@@ -628,13 +773,13 @@ struct LogWeightView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 20, height: 20)
                     .background(
                         Circle()
                             .fill(Color.black.opacity(0.6))
                     )
             }
-            .padding(6)
+            .padding(4)
         }
     }
 
@@ -648,46 +793,28 @@ struct LogWeightView: View {
         }) {
             VStack(spacing: 8) {
                 Image(systemName: type == .camera ? "camera" : "photo.on.rectangle")
-                    .font(.system(size: 22, weight: .medium))
+                    .font(.system(size: 24, weight: .medium))
                     .foregroundColor(palette.accent)
 
                 Text(type == .camera ? "Camera" : "Library")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundColor(palette.textSecondary)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 100)
+            .frame(height: 90)
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                    .fill(palette.accent.opacity(0.06))
+                    .fill(palette.accent.opacity(0.04))
                     .overlay(
                         RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
                             .strokeBorder(
-                                palette.accent.opacity(0.2),
+                                palette.accent.opacity(0.15),
                                 style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])
                             )
                     )
             )
         }
         .buttonStyle(.plain)
-    }
-
-    private var emptyPhotoTile: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(palette.textTertiary.opacity(0.5))
-
-            Text("Track visually")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(palette.textTertiary.opacity(0.6))
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 100)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                .fill(palette.textTertiary.opacity(0.04))
-        )
     }
 
     // MARK: - Optional Sections
@@ -729,7 +856,7 @@ struct LogWeightView: View {
                 optionalSection(
                     title: "Dress Size",
                     icon: "tshirt",
-                    isExpanded: .constant(!dressSize.isEmpty),
+                    isExpanded: $showDressSection,
                     hasValue: !dressSize.isEmpty
                 ) {
                     dressSizeInputContent
@@ -738,7 +865,7 @@ struct LogWeightView: View {
                 optionalSection(
                     title: "Waist Size",
                     icon: "ruler",
-                    isExpanded: .constant(!waistSize.isEmpty),
+                    isExpanded: $showWaistSection,
                     hasValue: !waistSize.isEmpty
                 ) {
                     waistSizeInputContent
@@ -755,6 +882,7 @@ struct LogWeightView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(spacing: 0) {
+            // Header button
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     isExpanded.wrappedValue.toggle()
@@ -785,20 +913,24 @@ struct LogWeightView: View {
                     Image(systemName: isExpanded.wrappedValue ? "chevron.up" : "chevron.down")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(palette.textTertiary)
+                        .rotationEffect(.degrees(isExpanded.wrappedValue ? 0 : 0))
                 }
                 .padding(DesignTokens.Spacing.md)
                 .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    RoundedRectangle(cornerRadius: isExpanded.wrappedValue ? DesignTokens.Radius.md : DesignTokens.Radius.md)
                         .fill(Color.nutraSafeCard)
                         .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
                 )
             }
             .buttonStyle(.plain)
 
+            // Expanded content - contained within the same visual block
             if isExpanded.wrappedValue {
-                content()
-                    .padding(.top, DesignTokens.Spacing.sm)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                VStack(spacing: 0) {
+                    content()
+                }
+                .padding(.top, DesignTokens.Spacing.sm)
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md))
             }
         }
     }
