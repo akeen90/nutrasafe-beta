@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Macro Tracker UK — Free Macro Counter App | Track Protein, Carbs, Fat | NutraSafe</title>
+    <meta name="description" content="Free macro tracker app for UK users. Track protein, carbs, and fat with 500,000+ UK foods. Set custom macro goals, scan barcodes, and hit your targets. Download free.">
+    <meta name="keywords" content="macro tracker, macro counter, macro app uk, track macros, protein tracker, carb counter, macro calculator, iifym, flexible dieting, macro tracking app">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/macro-tracker-uk.html">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/macro-tracker-uk.html">
+    <meta property="og:title" content="Macro Tracker UK — Free Macro Counter App">
+    <meta property="og:description" content="Track protein, carbs, and fat with 500,000+ UK foods. Free macro tracking app.">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "NutraSafe Macro Tracker",
+        "operatingSystem": "iOS",
+        "applicationCategory": "HealthApplication",
+        "description": "Free macro tracking app for UK users. Track protein, carbohydrates, and fat with a database of 500,000+ UK foods.",
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"},
+        "featureList": ["Macro tracking", "Protein counter", "Carb tracker", "Fat tracking", "UK food database", "Barcode scanner"]
+    }
+    </script>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #10b981;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --bg-dark: #0f172a;
+            --border: #e2e8f0;
+        }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.7; color: var(--text-dark); background: #ffffff; }
+
+        header { background: var(--bg-dark); padding: 1rem 0; position: sticky; top: 0; z-index: 100; }
+        nav { max-width: 1200px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; font-weight: 700; color: white; text-decoration: none; }
+        .logo-icon { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; }
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+        .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; }
+        .nav-cta { padding: 0.65rem 1.6rem; background: var(--primary); color: white !important; border-radius: 999px; font-weight: 700; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .hero { background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); color: white; padding: 80px 2rem 100px; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%); top: -300px; right: -200px; }
+        .hero-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; position: relative; z-index: 1; }
+        .hero-content h1 { font-size: 3rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; }
+        .gradient-text { background: linear-gradient(135deg, #818cf8 0%, #22d3ee 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-content p { font-size: 1.2rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
+        .hero-badges { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+        .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); border-radius: 100px; font-size: 0.9rem; color: #6ee7b7; }
+        .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border-radius: 14px; font-size: 1.1rem; font-weight: 600; text-decoration: none; box-shadow: 0 10px 40px rgba(99,102,241,0.4); }
+        .hero-visual { display: flex; justify-content: center; }
+        .phone-mockup { width: 300px; border-radius: 40px; box-shadow: 0 50px 100px rgba(0,0,0,0.4); }
+        @media (max-width: 968px) { .hero-container { grid-template-columns: 1fr; text-align: center; } .hero-content h1 { font-size: 2.5rem; } .hero-badges { justify-content: center; } .hero-visual { order: -1; margin-bottom: 2rem; } .phone-mockup { width: 260px; } }
+
+        .macro-section { padding: 80px 2rem; background: #f8fafc; }
+        .macro-container { max-width: 1000px; margin: 0 auto; }
+        .section-header { text-align: center; margin-bottom: 4rem; }
+        .section-label { display: inline-block; padding: 0.5rem 1rem; background: rgba(99,102,241,0.1); color: var(--primary); border-radius: 100px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem; text-transform: uppercase; }
+        .section-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
+        .section-subtitle { font-size: 1.2rem; color: var(--text-light); max-width: 600px; margin: 0 auto; }
+        .macro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+        @media (max-width: 768px) { .macro-grid { grid-template-columns: 1fr; } }
+        .macro-card { background: white; border: 2px solid var(--border); border-radius: 20px; padding: 2.5rem 2rem; text-align: center; transition: all 0.3s; }
+        .macro-card:hover { border-color: var(--primary-light); transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
+        .macro-icon { width: 70px; height: 70px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem; }
+        .macro-card.protein .macro-icon { background: linear-gradient(135deg, #fef2f2, #fee2e2); }
+        .macro-card.carbs .macro-icon { background: linear-gradient(135deg, #fefce8, #fef9c3); }
+        .macro-card.fat .macro-icon { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
+        .macro-card h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+        .macro-card p { color: var(--text-light); }
+
+        .features-section { padding: 80px 2rem; background: white; }
+        .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; max-width: 900px; margin: 0 auto; }
+        @media (max-width: 768px) { .features-grid { grid-template-columns: 1fr; } }
+        .feature-item { display: flex; gap: 1rem; align-items: flex-start; }
+        .feature-check { width: 28px; height: 28px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; font-size: 0.9rem; }
+        .feature-item h4 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+        .feature-item p { color: var(--text-light); font-size: 0.95rem; }
+
+        .cta-section { padding: 100px 2rem; background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); text-align: center; }
+        .cta-section h2 { font-size: 2.5rem; color: white; margin-bottom: 1rem; }
+        .cta-section p { font-size: 1.2rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .app-store-btn img { height: 60px; }
+
+        footer { background: var(--bg-dark); color: white; padding: 3rem 2rem 2rem; }
+        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3,1fr); gap: 2rem; }
+        .footer-section h4 { text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; }
+        .footer-section ul { list-style: none; }
+        .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.35rem 0; }
+        .footer-section a:hover { color: white; }
+        .footer-section p { color: rgba(255,255,255,0.6); }
+        .footer-bottom { text-align: center; color: rgba(255,255,255,0.5); padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 968px) { .footer-content { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 640px) { .footer-content { grid-template-columns: 1fr; text-align: center; } }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon"><img src="/app-icon.webp" alt="NutraSafe" width="44" height="44"></div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/calorie-counter-uk.html">Calorie Counter</a></li>
+                <li><a href="/macro-tracker-uk.html">Macro Tracker</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download Free</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <div class="hero-badges">
+                    <span class="badge">Free Macro Tracking</span>
+                    <span class="badge">500K+ UK Foods</span>
+                </div>
+                <h1>The <span class="gradient-text">Macro Tracker</span> Built for the UK</h1>
+                <p>Track protein, carbs, and fat with the UK's most comprehensive food database. Set custom macro goals and hit your targets every day.</p>
+                <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    Download Free
+                </a>
+            </div>
+            <div class="hero-visual">
+                <picture>
+                    <source srcset="/nutrition-dashboard.webp" type="image/webp">
+                    <img src="/nutrition-dashboard.png" alt="NutraSafe macro tracker showing daily protein, carbs and fat" class="phone-mockup" width="300" height="591" loading="lazy">
+                </picture>
+            </div>
+        </div>
+    </section>
+
+    <section class="macro-section">
+        <div class="macro-container">
+            <div class="section-header">
+                <div class="section-label">Track Every Macro</div>
+                <h2 class="section-title">Protein, Carbs & Fat — All Tracked</h2>
+                <p class="section-subtitle">Whether you're doing IIFYM, keto, high protein, or flexible dieting — NutraSafe tracks it all.</p>
+            </div>
+            <div class="macro-grid">
+                <div class="macro-card protein">
+                    <div class="macro-icon">🥩</div>
+                    <h3>Protein</h3>
+                    <p>Track protein for muscle building, weight loss, or hitting your daily target. See grams per meal and daily totals.</p>
+                </div>
+                <div class="macro-card carbs">
+                    <div class="macro-icon">🍞</div>
+                    <h3>Carbohydrates</h3>
+                    <p>Monitor carbs for low-carb, keto, or balanced diets. Track total carbs, fibre, and sugars separately.</p>
+                </div>
+                <div class="macro-card fat">
+                    <div class="macro-icon">🥑</div>
+                    <h3>Fat</h3>
+                    <p>Keep tabs on fat intake for keto, weight loss, or heart health. See saturated vs unsaturated breakdown.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-section">
+        <div class="section-header">
+            <div class="section-label">Features</div>
+            <h2 class="section-title">Everything You Need</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="feature-check">✓</div>
+                <div>
+                    <h4>Custom Macro Goals</h4>
+                    <p>Set your own targets for protein, carbs, and fat based on your diet.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-check">✓</div>
+                <div>
+                    <h4>UK Food Database</h4>
+                    <p>500,000+ UK foods from Tesco, Asda, Sainsbury's, Aldi, Lidl, and more.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-check">✓</div>
+                <div>
+                    <h4>Barcode Scanner</h4>
+                    <p>Scan any UK product and instantly see all macro information.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-check">✓</div>
+                <div>
+                    <h4>Meal Logging</h4>
+                    <p>Quick-add meals and track macros for breakfast, lunch, dinner, and snacks.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-check">✓</div>
+                <div>
+                    <h4>Progress Tracking</h4>
+                    <p>See daily and weekly summaries of your macro intake over time.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-check">✓</div>
+                <div>
+                    <h4>Micronutrients Too</h4>
+                    <p>Go beyond macros — track vitamins and minerals as well.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2>Start Tracking Macros Today</h2>
+        <p>Join thousands of UK users tracking their nutrition with NutraSafe. Free to download with 5 logs/day. Premium unlocks unlimited.</p>
+        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="app-store-btn">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" width="200" height="60">
+        </a>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>NutraSafe</h4>
+                <p>Nutrition tracking for UK users. Free tier with 5 logs/day.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Nutrition Tools</h4>
+                <ul>
+                    <li><a href="/calorie-counter-uk.html">Calorie Counter</a></li>
+                    <li><a href="/tdee-bmr-calculator.html">TDEE Calculator</a></li>
+                    <li><a href="/macro-tracker-uk.html">Macro Tracker</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Diet Guides</h4>
+                <ul>
+                    <li><a href="/high-protein-diet-uk.html">High Protein</a></li>
+                    <li><a href="/low-carb-diet-uk.html">Low Carb</a></li>
+                    <li><a href="/keto-diet-uk.html">Keto Diet</a></li>
+                    <li><a href="/paleo-diet-uk.html">Paleo Diet</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="/privacy-policy.html">Privacy</a></li>
+                    <li><a href="/terms-of-service.html">Terms</a></li>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/sitemap.html">Sitemap</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -736,207 +736,241 @@ struct FoodReactionSummaryCard: View {
         return nil
     }
 
+    // MARK: - Palette for Intent-Aware Colors
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    // MARK: - Natural Language Insight Generation
+
+    /// Generates the primary insight statement in natural language
+    private var primaryInsightText: String {
+        guard let symptom = mostCommonSymptom else {
+            return "We're tracking your reactions and looking for patterns."
+        }
+
+        var insight = "\(symptom.symptom) has appeared in most of your logged reactions"
+
+        // Add timing context inline
+        if let timing = peakTiming {
+            let timingPhrase: String
+            switch timing.lowercased() {
+            case "morning": timingPhrase = "often in the mornings"
+            case "afternoon": timingPhrase = "frequently in the afternoons"
+            case "evening": timingPhrase = "often in the evenings"
+            case "night": timingPhrase = "typically at night"
+            default: timingPhrase = "throughout the day"
+            }
+            insight += ", \(timingPhrase)"
+        }
+
+        // Add trigger context if available
+        if let allergens = topAllergenTriggers, let first = allergens.first, first.count >= 3 {
+            insight += ". Foods containing \(first.name.lowercased()) appear frequently before your symptoms"
+        }
+
+        return insight + "."
+    }
+
+    /// Secondary observation about recent activity
+    private var recentActivityObservation: String? {
+        if reactionsInLast30Days == 0 {
+            return "No reactions logged in the last 30 days"
+        } else if reactionsInLast30Days <= 2 {
+            return "Only \(reactionsInLast30Days) reaction\(reactionsInLast30Days == 1 ? "" : "s") in the last month"
+        }
+        return nil
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Smart Insights (show if 3+ reactions, otherwise show onboarding)
+            // Smart Insights (show if 3+ reactions, otherwise show building state)
             if reactionManager.reactions.count >= 3 {
-                // Apple Health-inspired 2x2 Grid
-                VStack(spacing: 10) {
-                    HStack(spacing: 10) {
-                        // Most frequent symptom - Pink theme
-                        if let symptom = mostCommonSymptom {
-                            appleStyleCell(
-                                icon: "heart.fill",
-                                label: "MOST FREQUENT SYMPTOM",
-                                value: symptom.symptom,
-                                subValue: "\(symptom.percentage)% of reactions",
-                                color: .pink
-                            )
-                        }
-
-                        // Peak timing - Orange theme
-                        if let timing = peakTiming {
-                            appleStyleCell(
-                                icon: "clock.fill",
-                                label: "PEAK TIME",
-                                value: timing,
-                                subValue: "Most reactions occur",
-                                color: .orange
-                            )
-                        }
-                    }
-
-                    HStack(spacing: 10) {
-                        // Last 30 days - Purple theme
-                        appleStyleCell(
-                            icon: "calendar",
-                            label: "LAST 30 DAYS",
-                            value: "\(reactionsInLast30Days)",
-                            subValue: reactionsInLast30Days == 1 ? "Reaction logged" : "Reactions logged",
-                            color: .purple
-                        )
-
-                        // Most frequent allergen - Red theme
-                        if let allergens = topAllergenTriggers {
-                            let allergenText = allergens.count > 1
-                                ? allergens.prefix(2).map { $0.name }.joined(separator: ", ")
-                                : allergens.first?.name ?? ""
-                            let count = allergens.first?.count ?? 0
-
-                            appleStyleCell(
-                                icon: "exclamationmark.triangle.fill",
-                                label: "MOST FREQUENT ALLERGEN",
-                                value: allergenText,
-                                subValue: "Appeared \(count) times",
-                                color: .red
-                            )
-                        }
-                    }
-                }
-                .padding(12)
-            } else {
-                // Onboarding state - more visually interesting
-                VStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [AppPalette.standard.accent.opacity(0.2), Color.purple.opacity(0.15)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 70, height: 70)
-
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 30, weight: .medium))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [AppPalette.standard.accent, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    }
-
-                    VStack(spacing: 6) {
-                        Text("Unlock Your Insights")
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-
-                        Text("Log \(3 - reactionManager.reactions.count) more \(3 - reactionManager.reactions.count == 1 ? "reaction" : "reactions") to discover patterns")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    // Progress dots
-                    HStack(spacing: 8) {
-                        ForEach(0..<3, id: \.self) { index in
+                // MARK: - Insight Hero Card (NutraSafe Design)
+                // Single dominant card with natural language insight
+                VStack(alignment: .leading, spacing: 16) {
+                    // Signal icon with ambient glow
+                    HStack {
+                        ZStack {
+                            // Ambient glow
                             Circle()
-                                .fill(index < reactionManager.reactions.count ? AppPalette.standard.accent : Color(.systemGray4))
-                                .frame(width: 10, height: 10)
+                                .fill(
+                                    RadialGradient(
+                                        colors: [palette.accent.opacity(0.15), Color.clear],
+                                        center: .center,
+                                        startRadius: 0,
+                                        endRadius: 32
+                                    )
+                                )
+                                .frame(width: 64, height: 64)
+
+                            // Signal icon container
+                            SignalIconContainer(color: palette.accent, size: 48)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.bottom, 4)
+
+                    // Primary insight statement
+                    Text(primaryInsightText)
+                        .font(.system(size: 20, weight: .medium, design: .serif))
+                        .foregroundColor(palette.textPrimary)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    // Secondary observation (if available)
+                    if let observation = recentActivityObservation {
+                        Text(observation)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(palette.textSecondary)
+                            .padding(.top, 2)
+                    }
+
+                    // Context chips
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            // Timing chip
+                            if let timing = peakTiming {
+                                insightContextChip(
+                                    label: "\(timing) pattern",
+                                    color: palette.accent
+                                )
+                            }
+
+                            // Trigger chip
+                            if let allergens = topAllergenTriggers, let first = allergens.first, first.count >= 2 {
+                                insightContextChip(
+                                    label: "\(first.name) signal",
+                                    color: .orange.opacity(0.9)
+                                )
+                            }
+
+                            // Frequency chip
+                            if reactionsInLast30Days > 0 {
+                                insightContextChip(
+                                    label: "\(reactionsInLast30Days) this month",
+                                    color: palette.textSecondary
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 1)
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(20)
+
+            } else {
+                // MARK: - Building State (NutraSafe Design)
+                // Gentle guidance with signal icon
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [palette.accent.opacity(0.08), Color.clear],
+                                        center: .center,
+                                        startRadius: 0,
+                                        endRadius: 28
+                                    )
+                                )
+                                .frame(width: 56, height: 56)
+
+                            SignalIconContainer(color: palette.accent.opacity(0.5), size: 40)
+                        }
+
+                        Spacer()
+
+                        // Progress indicator
+                        HStack(spacing: 4) {
+                            ForEach(0..<3, id: \.self) { index in
+                                Circle()
+                                    .fill(index < reactionManager.reactions.count ? palette.accent : palette.tertiary.opacity(0.3))
+                                    .frame(width: 8, height: 8)
+                            }
                         }
                     }
+
+                    let remaining = 3 - reactionManager.reactions.count
+                    Text(remaining == 1
+                        ? "One more reaction and we'll start spotting patterns for you."
+                        : "Log a couple more reactions and we'll begin identifying patterns.")
+                        .font(.system(size: 17, weight: .regular, design: .serif))
+                        .foregroundColor(palette.textSecondary)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.vertical, 24)
-                .padding(.horizontal, 16)
+                .padding(18)
             }
 
-            // Log Reaction Button
+            // MARK: - Log Reaction Button (Secondary Visual Weight)
             Button(action: { showingLogReaction = true }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16))
+                HStack(spacing: 10) {
+                    // Subtle plus indicator
+                    ZStack {
+                        Circle()
+                            .fill(palette.accent.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                            .frame(width: 28, height: 28)
+
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(palette.accent)
+                    }
+
                     Text("Log Reaction")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
                 }
-                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
+                .frame(height: 48)
                 .background(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.3, green: 0.5, blue: 1.0),
-                            Color(red: 0.5, green: 0.3, blue: 0.9)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                .stroke(palette.accent.opacity(0.25), lineWidth: 1)
+                        )
                 )
-                .cornerRadius(14)
             }
             .buttonStyle(SpringyButtonStyle())
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
         }
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.9))
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(colorScheme == .dark ? Color(.systemGray5) : Color.white.opacity(0.8), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.2), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
         )
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
         .fullScreenCover(isPresented: $showingLogReaction) {
             LogReactionSheet(selectedDayRange: .threeDays)
         }
     }
 
-    // MARK: - Apple Health-inspired Cell
-    private func appleStyleCell(icon: String, label: String, value: String, subValue: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Icon with colored background
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(color)
-                    .frame(width: 28, height: 28)
+    // MARK: - Insight Context Chip
+    private func insightContextChip(label: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            // Small signal dot
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
 
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-            .padding(.bottom, 8)
-
-            // Label
             Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.secondary)
-                .tracking(0.5)
-
-            Spacer(minLength: 4)
-
-            // Main value - large and prominent
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            // Sub value
-            Text(subValue)
-                .font(.system(size: 11))
+                .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundColor(color)
-                .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            color.opacity(colorScheme == .dark ? 0.2 : 0.08),
-                            color.opacity(colorScheme == .dark ? 0.1 : 0.03)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            Capsule()
+                .fill(color.opacity(colorScheme == .dark ? 0.15 : 0.08))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(color.opacity(0.2), lineWidth: 1)
+                    Capsule()
+                        .stroke(color.opacity(0.15), lineWidth: 1)
                 )
         )
     }

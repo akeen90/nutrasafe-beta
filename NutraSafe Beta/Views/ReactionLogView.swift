@@ -356,19 +356,19 @@ struct ReactionLogView: View {
     }
 
     // MARK: - Allergen Warning Banner (shown when allergens fail to load)
+    // Uses NutraSafe signal icon system - no literal warning icons
     private var allergenWarningBanner: some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 20))
-                .foregroundColor(.orange)
+            // Signal icon in orange tint - suggests attention without alarm
+            SignalIconContainer(color: .orange, size: 36)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Allergen data unavailable")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(palette.textPrimary)
                 Text("Your saved allergens couldn't be loaded. Tap to retry.")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(palette.textSecondary)
             }
 
             Spacer()
@@ -385,44 +385,54 @@ struct ReactionLogView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.orange)
-                    .cornerRadius(8)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange)
+                    )
             }
         }
-        .padding(12)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.orange.opacity(0.1))
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                        .stroke(Color.orange.opacity(0.25), lineWidth: 1)
                 )
         )
     }
 
-    // MARK: - Log Reaction Button (Palette-Aware, Onboarding Style)
+    // MARK: - Log Reaction Button (Secondary Visual Weight)
+    // Demoted to secondary styling - insight hero card is the primary visual element
     private var logReactionButton: some View {
         Button(action: { showingLogSheet = true }) {
-            HStack(spacing: 12) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.white)
+            HStack(spacing: 10) {
+                // Subtle plus indicator - not a heavy icon
+                ZStack {
+                    Circle()
+                        .fill(palette.accent.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                        .frame(width: 28, height: 28)
+
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(palette.accent)
+                }
 
                 Text("Log Reaction")
-                    .font(DesignTokens.Typography.button)
-                    .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(palette.textPrimary)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(height: 48)
             .background(
-                LinearGradient(
-                    colors: [palette.accent, palette.primary],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                            .stroke(palette.accent.opacity(0.25), lineWidth: 1)
+                    )
             )
-            .cornerRadius(DesignTokens.Radius.lg)
-            .shadow(color: palette.accent.opacity(0.3), radius: 15, y: 5)
+            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
         }
     }
 
@@ -661,139 +671,80 @@ struct ReactionLogView: View {
     // which are updated via updateCachedValues() when data changes, rather than on every view redraw.
     // This eliminates expensive O(n×m) recalculations during tab switching.
 
-    // MARK: - Reaction Insights Card
+    // MARK: - Reaction Insight Hero Card (Redesigned)
+    // Insight-first design: communicates patterns and meaning, not just statistics
+    // Matches Diary and onboarding visual language
     @ViewBuilder
     private var reactionInsightsCard: some View {
-        // Only show if we have enough data (3+ reactions)
+        // Show insight hero when we have enough data (3+ reactions)
         if manager.reactionLogs.count >= 3 {
-            VStack(alignment: .leading, spacing: 12) {
-                // Header
-                HStack {
-                    Image(systemName: "lightbulb.fill")
-                        .foregroundColor(.yellow)
-                    Text("Your Reaction Insights")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Spacer()
-                }
-
-                // Insights rows (using cached values for performance)
-                VStack(spacing: 10) {
-                    // Most common symptom
-                    if let insight = cachedMostCommonSymptom {
-                        insightRow(
-                            icon: "chart.bar.fill",
-                            iconColor: .blue,
-                            label: "Most common",
-                            value: "\(insight.symptom) (\(insight.percentage)%)"
-                        )
-                    }
-
-                    // Peak timing
-                    if let timing = cachedPeakTiming {
-                        insightRow(
-                            icon: "clock.fill",
-                            iconColor: .orange,
-                            label: "Peak timing",
-                            value: timing
-                        )
-                    }
-
-                    // Weekly trend
-                    if let trend = cachedWeeklyTrend {
-                        let trendColor: Color = trend.trend == "down" ? .green : (trend.trend == "up" ? .red : .secondary)
-                        let trendText = trend.trend == "down" ? "↓ from \(trend.lastWeek)" : (trend.trend == "up" ? "↑ from \(trend.lastWeek)" : "same as last week")
-
-                        insightRow(
-                            icon: "calendar",
-                            iconColor: .purple,
-                            label: "This week",
-                            value: "\(trend.thisWeek) \(trend.thisWeek == 1 ? "reaction" : "reactions")",
-                            badge: trendText,
-                            badgeColor: trendColor
-                        )
-                    }
-
-                    // Top trigger
-                    if let trigger = cachedTopTrigger {
-                        insightRow(
-                            icon: "target",
-                            iconColor: .red,
-                            label: "Watch for",
-                            value: trigger.name,
-                            badge: "\(trigger.percentage)% correlation",
-                            badgeColor: .secondary
-                        )
-                    }
-                }
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(colorScheme == .dark ? Color(.systemGray6) : Color.white)
-                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            ReactionInsightHeroCard(
+                mostCommonSymptom: cachedMostCommonSymptom,
+                peakTiming: cachedPeakTiming,
+                weeklyTrend: cachedWeeklyTrend,
+                topTrigger: cachedTopTrigger,
+                totalReactions: manager.reactionLogs.count
             )
             .padding(.bottom, 8)
+        } else if manager.reactionLogs.count > 0 {
+            // Building state: show gentle guidance
+            ReactionBuildingStateCard(reactionCount: manager.reactionLogs.count)
+                .padding(.bottom, 8)
         }
     }
 
-    private func insightRow(icon: String, iconColor: Color, label: String, value: String, badge: String? = nil, badgeColor: Color = .secondary) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(iconColor)
-                .frame(width: 20)
-
-            Text(label)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Text(value)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.primary)
-
-            if let badge = badge {
-                Text(badge)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(badgeColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(badgeColor.opacity(0.15))
-                    .cornerRadius(4)
-            }
-        }
-    }
-
-    // MARK: - Empty State (Onboarding Design Language)
+    // MARK: - Empty State (NutraSafe Design Language)
+    // Uses signal icon system - no literal iOS icons
     private func emptyStateView(icon: String, title: String, message: String) -> some View {
         VStack(spacing: AppSpacing.large) {
-            // Abstract icon - light weight, subtle
-            Image(systemName: icon)
-                .font(.system(size: 60, weight: .light))
-                .foregroundColor(Color.textTertiary.opacity(0.4))
-                .padding(.top, AppSpacing.large)
+            // NutraSafe signal icon - large, breathing, subdued
+            ZStack {
+                // Ambient glow
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [palette.accent.opacity(0.06), Color.clear],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 50
+                        )
+                    )
+                    .frame(width: 100, height: 100)
+
+                // Large signal icon
+                NutraSafeSignalIcon(color: palette.accent.opacity(0.35), size: 56)
+            }
+            .padding(.top, AppSpacing.large)
 
             VStack(spacing: AppSpacing.small) {
                 Text(title)
-                    .font(AppTypography.sectionTitle(20))
-                    .foregroundColor(Color.textSecondary)
+                    .font(.system(size: 20, weight: .medium, design: .serif))
+                    .foregroundColor(palette.textSecondary)
 
                 Text(message)
-                    .font(AppTypography.body)
-                    .foregroundColor(Color.textTertiary)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(palette.textTertiary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.xl)
                     .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(AppSpacing.lineSpacing)
+                    .lineSpacing(4)
             }
 
-            // Helpful tip using onboarding InfoCard pattern
-            NSInfoCard(
-                icon: "lightbulb.fill",
-                text: "Track reactions to help identify patterns and potential food sensitivities over time",
-                iconColor: .orange
+            // Helpful tip - softer styling
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(palette.accent.opacity(0.15))
+                    .frame(width: 6, height: 6)
+
+                Text("Track reactions to help identify patterns over time")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(palette.textSecondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    .fill(palette.accent.opacity(colorScheme == .dark ? 0.08 : 0.05))
             )
             .padding(.horizontal, AppSpacing.large)
         }
@@ -801,29 +752,29 @@ struct ReactionLogView: View {
         .padding(.vertical, AppSpacing.section)
     }
 
-    // MARK: - Common Foods View (Flagged Foods)
+    // MARK: - Common Foods View (Pattern Signals)
+    // Redesigned with NutraSafe signal iconography
     private var commonFoodsView: some View {
         // Using cached values for performance (no recalculation on tab switch)
         VStack(alignment: .leading, spacing: AppSpacing.medium) {
-            HStack(spacing: AppSpacing.small) {
-                Image(systemName: "flag.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.orange)
-                Text("Flagged Foods")
-                    .font(AppTypography.sectionTitle(18))
-                    .foregroundColor(Color.textPrimary)
-            }
+            HStack(spacing: 10) {
+                SignalIconContainer(color: .orange, size: 32)
 
-            Text("These specific foods appear frequently before your reactions. Track these items to identify patterns.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 4)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Foods worth noting")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
+                    Text("These appear frequently before your reactions")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(palette.textSecondary)
+                }
+            }
+            .padding(.bottom, 4)
 
             if cachedCommonFoods.isEmpty {
                 Text("Not enough observations yet to identify food patterns")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(palette.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
             } else {
@@ -837,69 +788,76 @@ struct ReactionLogView: View {
             }
         }
         .padding(16)
-        .background(Color(.systemGray6).opacity(0.5))
-        .cornerRadius(12)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12), lineWidth: 1)
+                )
+        )
     }
 
-    // MARK: - Common Ingredients View
+    // MARK: - Common Ingredients View (Pattern Signals)
+    // Redesigned with NutraSafe signal iconography
     private var commonIngredientsView: some View {
         // Using cached values for performance (no recalculation on tab switch)
         let matchedAllergens = cachedCommonIngredients.filter { isUserAllergenIngredient($0.name) }
 
         return VStack(alignment: .leading, spacing: 16) {
-            Text("Ingredient Patterns")
-                .font(.headline)
-                .foregroundColor(.primary)
+            HStack(spacing: 10) {
+                SignalIconContainer(color: palette.accent, size: 32)
 
-            Text("These ingredients appear frequently in foods consumed before your reactions. This information may help you spot potential connections to discuss with your healthcare provider.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 4)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ingredient patterns")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
+                    Text("Common ingredients before your symptoms")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(palette.textSecondary)
+                }
+            }
 
-            // User allergen warning banner
+            // User allergen notice - softer, observational tone
             if !matchedAllergens.isEmpty && !userAllergens.isEmpty {
                 HStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
+                    SignalIconContainer(color: .orange, size: 36)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(matchedAllergens.count) of your allergens detected")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\(matchedAllergens.count) saved allergen\(matchedAllergens.count == 1 ? "" : "s") detected")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(palette.textPrimary)
 
-                        Text("These match allergens you've saved in your profile")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.9))
+                        Text("These match ingredients you've flagged in your profile")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(palette.textSecondary)
                     }
 
                     Spacer()
                 }
                 .padding(14)
                 .background(
-                    LinearGradient(
-                        colors: [Color.red, Color.orange.opacity(0.9)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                        )
                 )
-                .cornerRadius(12)
-                .shadow(color: .red.opacity(0.3), radius: 6, x: 0, y: 3)
             }
 
             if cachedCommonIngredients.isEmpty {
                 Text("Not enough observations yet to identify ingredient patterns")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(palette.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 40)
             } else {
                 // Disclaimer about estimated ingredients (AI-Inferred Meal Analysis)
                 if cachedCommonIngredients.contains(where: { $0.isPrimarilyEstimated }) {
                     Text("Patterns may include both exact ingredients and estimated exposures from meals without ingredient labels.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(palette.textTertiary)
                         .padding(.bottom, 8)
                 }
 
@@ -914,6 +872,15 @@ struct ReactionLogView: View {
                 }
             }
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12), lineWidth: 1)
+                )
+        )
     }
 
     // NOTE: calculateCommonIngredients() and calculateCommonFoods() have been moved into
@@ -943,7 +910,8 @@ struct StatCard: View {
     }
 }
 
-// MARK: - Common Ingredient Row
+// MARK: - Common Ingredient Row (NutraSafe Design)
+// Uses signal-style indicators instead of literal warning icons
 struct CommonIngredientRow: View {
     @Environment(\.colorScheme) private var colorScheme
     let name: String
@@ -952,147 +920,129 @@ struct CommonIngredientRow: View {
     var isUserAllergen: Bool = false
     var isPrimarilyEstimated: Bool = false  // AI-Inferred Meal Analysis: true if most exposures are from estimated sources
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            // User allergen warning badge
-            if isUserAllergen {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(6)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.red, Color.orange],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(Circle())
-                    .shadow(color: .red.opacity(0.4), radius: 3, x: 0, y: 2)
-            } else {
-                Circle()
-                    .fill(frequencyColor)
-                    .frame(width: 10, height: 10)
-            }
+            // Signal-style indicator - color conveys significance
+            NutraSafeSignalIcon(color: isUserAllergen ? .orange : frequencyColor.opacity(0.8), size: 18)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(name)
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(isUserAllergen ? .red : .primary)
+                        .foregroundColor(isUserAllergen ? .orange : palette.textPrimary)
 
                     if isUserAllergen {
-                        Text("YOUR ALLERGEN")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.white)
+                        // Softer allergen badge - observational, not alarming
+                        Text("Saved allergen")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.orange)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.red)
-                            .cornerRadius(4)
+                            .background(
+                                Capsule()
+                                    .fill(Color.orange.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                            )
                     }
 
                     // AI-Inferred Meal Analysis: Show "Estimated" badge for ingredients primarily from inferred sources
                     if isPrimarilyEstimated {
                         Text("Estimated")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundColor(.white)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(palette.textSecondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.8))
-                            .cornerRadius(4)
+                            .background(
+                                Capsule()
+                                    .fill(palette.tertiary.opacity(0.2))
+                            )
                     }
                 }
 
-                Text("Appears in \(frequency) reaction\(frequency == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Text("In \(frequency) reaction\(frequency == 1 ? "" : "s")")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(palette.textSecondary)
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(Int(percentage))%")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(frequencyColor)
-
-                Text("frequency")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
+            // Percentage - softer presentation
+            Text("\(Int(percentage))%")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundColor(frequencyColor.opacity(0.9))
         }
         .padding(12)
         .background(
-            isUserAllergen
-                ? Color.red.opacity(0.1)
-                : (colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(isUserAllergen ? Color.orange.opacity(colorScheme == .dark ? 0.08 : 0.05) : palette.tertiary.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .stroke(isUserAllergen ? Color.orange.opacity(0.2) : Color.clear, lineWidth: 1)
+                )
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isUserAllergen ? Color.red.opacity(0.5) : Color.clear, lineWidth: 2)
-        )
-        .cornerRadius(10)
-        .shadow(color: isUserAllergen ? .red.opacity(0.2) : .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
 
     private var frequencyColor: Color {
         if percentage >= 80 {
-            return .red
-        } else if percentage >= 50 {
             return .orange
+        } else if percentage >= 50 {
+            return .orange.opacity(0.8)
         } else {
             return .yellow
         }
     }
 }
 
-// MARK: - Common Food Row (Flagged Foods)
+// MARK: - Common Food Row (NutraSafe Design)
+// Uses signal-style indicators instead of literal flag icons
 struct CommonFoodRow: View {
     @Environment(\.colorScheme) private var colorScheme
     let name: String
     let frequency: Int
     let percentage: Double
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "flag.fill")
-                .font(.system(size: 12))
-                .foregroundColor(frequencyColor)
-                .frame(width: 20)
+            // Signal dot - color indicates frequency
+            NutraSafeSignalIcon(color: frequencyColor, size: 16)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.primary)
+                    .foregroundColor(palette.textPrimary)
                     .lineLimit(2)
 
                 Text("Before \(frequency) reaction\(frequency == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(palette.textSecondary)
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(Int(percentage))%")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(frequencyColor)
-
-                Text("correlation")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
+            // Percentage - softer presentation
+            Text("\(Int(percentage))%")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundColor(frequencyColor.opacity(0.9))
         }
         .padding(12)
-        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-        .cornerRadius(10)
-        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(palette.tertiary.opacity(0.06))
+        )
     }
 
     private var frequencyColor: Color {
         if percentage >= 80 {
-            return .red
-        } else if percentage >= 50 {
             return .orange
+        } else if percentage >= 50 {
+            return .orange.opacity(0.8)
         } else {
             return .yellow
         }
@@ -4792,5 +4742,267 @@ struct ReactionBarcodeScannerSheet: View {
         }
 
         return variations
+    }
+}
+
+// MARK: - Reaction Insight Hero Card
+// Design philosophy: Insight-first, not data-first
+// Communicates patterns and meaning in natural language
+// Matches Diary and onboarding visual language
+
+struct ReactionInsightHeroCard: View {
+    let mostCommonSymptom: (symptom: String, percentage: Int)?
+    let peakTiming: String?
+    let weeklyTrend: (thisWeek: Int, lastWeek: Int, trend: String)?
+    let topTrigger: (name: String, percentage: Int)?
+    let totalReactions: Int
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isBreathing = false
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    // MARK: - Insight Text Generation
+
+    /// Generates the primary insight statement in natural language
+    private var primaryInsightText: String {
+        guard let symptom = mostCommonSymptom else {
+            return "We're tracking your reactions and looking for patterns."
+        }
+
+        var insight = "\(symptom.symptom) has appeared in most of your logged reactions"
+
+        // Add timing context inline
+        if let timing = peakTiming {
+            let timingPhrase: String
+            switch timing.lowercased() {
+            case "morning": timingPhrase = "often in the mornings"
+            case "afternoon": timingPhrase = "frequently in the afternoons"
+            case "evening": timingPhrase = "often in the evenings"
+            case "night": timingPhrase = "typically at night"
+            default: timingPhrase = "throughout the day"
+            }
+            insight += ", \(timingPhrase)"
+        }
+
+        // Add trigger context if available
+        if let trigger = topTrigger, trigger.percentage >= 30 {
+            insight += ". Foods containing \(trigger.name.lowercased()) appear frequently before your symptoms"
+        }
+
+        return insight + "."
+    }
+
+    /// Secondary observation about trends
+    private var trendObservation: String? {
+        guard let trend = weeklyTrend else { return nil }
+
+        if trend.trend == "down" && trend.lastWeek > 0 {
+            return "Fewer reactions this week compared to last"
+        } else if trend.trend == "up" && trend.thisWeek > trend.lastWeek {
+            return "More reactions this week — keep noting what you're eating"
+        }
+        return nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Signal icon with ambient glow
+            HStack {
+                ZStack {
+                    // Ambient glow
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [palette.accent.opacity(0.15), Color.clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 32
+                            )
+                        )
+                        .frame(width: 64, height: 64)
+                        .scaleEffect(isBreathing ? 1.08 : 1.0)
+
+                    // Signal icon container
+                    SignalIconContainer(color: palette.accent, size: 48)
+                }
+
+                Spacer()
+            }
+            .padding(.bottom, 4)
+
+            // Primary insight statement
+            Text(primaryInsightText)
+                .font(.system(size: 20, weight: .medium, design: .serif))
+                .foregroundColor(palette.textPrimary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Secondary observation (if available)
+            if let observation = trendObservation {
+                Text(observation)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(palette.textSecondary)
+                    .padding(.top, 2)
+            }
+
+            // Context chips
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // Timing chip
+                    if let timing = peakTiming {
+                        InsightContextChip(
+                            label: "\(timing) pattern",
+                            color: palette.accent
+                        )
+                    }
+
+                    // Trigger chip
+                    if let trigger = topTrigger, trigger.percentage >= 25 {
+                        InsightContextChip(
+                            label: "\(trigger.name) signal",
+                            color: .orange.opacity(0.9)
+                        )
+                    }
+
+                    // Frequency chip
+                    if let trend = weeklyTrend {
+                        let trendColor: Color = trend.trend == "down" ? .green : (trend.trend == "up" ? .orange : palette.textSecondary)
+                        InsightContextChip(
+                            label: "\(trend.thisWeek)× this week",
+                            color: trendColor
+                        )
+                    }
+                }
+                .padding(.horizontal, 1)
+            }
+            .padding(.top, 4)
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.2), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
+        )
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+                isBreathing = true
+            }
+        }
+    }
+}
+
+// MARK: - Insight Context Chip
+// Soft, secondary metadata chips for supporting context
+
+struct InsightContextChip: View {
+    let label: String
+    let color: Color
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 5) {
+            // Small signal dot instead of literal icon
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+
+            Text(label)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundColor(color)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(color.opacity(colorScheme == .dark ? 0.15 : 0.08))
+                .overlay(
+                    Capsule()
+                        .stroke(color.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Reaction Building State Card
+// Shown when user has 1-2 reactions, encouraging more logging
+
+struct ReactionBuildingStateCard: View {
+    let reactionCount: Int
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isBreathing = false
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    private var buildingMessage: String {
+        let remaining = 3 - reactionCount
+        if remaining == 1 {
+            return "One more reaction and we'll start spotting patterns for you."
+        }
+        return "Log a couple more reactions and we'll begin identifying patterns."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Signal icon with gentle breathing
+            HStack {
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [palette.accent.opacity(0.08), Color.clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 28
+                            )
+                        )
+                        .frame(width: 56, height: 56)
+                        .scaleEffect(isBreathing ? 1.06 : 1.0)
+
+                    SignalIconContainer(color: palette.accent.opacity(0.5), size: 40)
+                }
+
+                Spacer()
+
+                // Progress indicator
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { index in
+                        Circle()
+                            .fill(index < reactionCount ? palette.accent : palette.tertiary.opacity(0.3))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+            }
+
+            Text(buildingMessage)
+                .font(.system(size: 17, weight: .regular, design: .serif))
+                .foregroundColor(palette.textSecondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                        .stroke(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12), lineWidth: 1)
+                )
+        )
+        .onAppear {
+            withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
+                isBreathing = true
+            }
+        }
     }
 }

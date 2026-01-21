@@ -2,15 +2,22 @@ import SwiftUI
 import UIKit
 
 // MARK: - Nutrient Detail Modal
-// Note: Uses HealthClaim from FoodDetailViewFromSearch.swift
+// Redesigned as a micro health insight experience with calm intelligence
 
 @available(iOS 16.0, *)
 struct NutrientDetailModal: View {
     let row: CoverageRow
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var nutrientInfo: NutrientInfo?
     @State private var showingCitations = false
     @State private var showingHealthClaims = false
+    @State private var appearAnimation = false
+
+    // Design system palette
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
     // Get nutrient metadata for styling
     private var trackedNutrient: TrackedNutrient? {
@@ -18,7 +25,7 @@ struct NutrientDetailModal: View {
     }
 
     private var nutrientColor: Color {
-        trackedNutrient?.glowColor ?? .blue
+        trackedNutrient?.glowColor ?? Color(hex: "#3FD17C")
     }
 
     private var nutrientIcon: String {
@@ -33,39 +40,58 @@ struct NutrientDetailModal: View {
         row.segments.filter { ($0.foods?.count ?? 0) > 0 }.count
     }
 
+    private var coveragePercent: Int {
+        Int((Double(daysWithFood) / 7.0) * 100)
+    }
+
+    /// Observational coverage insight message
+    private var coverageInsight: String {
+        if coveragePercent >= 85 {
+            return "You've had \(row.name) nearly every day this week"
+        } else if coveragePercent >= 70 {
+            return "Good variety of \(row.name) sources this week"
+        } else if coveragePercent >= 40 {
+            return "Some \(row.name) intake this week"
+        } else if daysWithFood > 0 {
+            return "\(row.name) appeared on \(daysWithFood) day\(daysWithFood == 1 ? "" : "s") this week"
+        } else {
+            return "No \(row.name) sources logged this week"
+        }
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 0) {
-                    // Hero header with gradient
+                    // Hero header with layered translucent symbol
                     heroHeader
 
                     // Content sections
                     VStack(spacing: 20) {
-                        // Quick stats row
-                        quickStatsRow
+                        // Primary insight strip
+                        primaryInsightStrip
 
-                        // Week calendar view
-                        weekCalendarView
+                        // Refined weekly timeline
+                        weeklyTimeline
 
-                        // Good food sources (from database)
+                        // Good food sources (elegant list, not chips)
                         if nutrientInfo != nil {
                             goodFoodSourcesSection
                         }
 
-                        // Official health claims (collapsible)
+                        // Health benefits with matching iconography
                         if let claims = getOfficialHealthClaims(for: row.name), !claims.isEmpty {
-                            healthClaimsSection(claims: claims)
+                            healthBenefitsSection(claims: claims)
                         }
 
-                        // Contributing foods you ate
+                        // Your sources this week
                         if !allFoods.isEmpty {
-                            foodsSection
+                            yourSourcesSection
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 32)
+                    .padding(.top, 24)
+                    .padding(.bottom, 40)
                 }
             }
             .background(Color.adaptiveBackground)
@@ -73,11 +99,17 @@ struct NutrientDetailModal: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(nutrientColor)
                 }
             }
             .task {
                 await loadNutrientInfo()
+            }
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.6).delay(0.1)) {
+                    appearAnimation = true
+                }
             }
             .fullScreenCover(isPresented: $showingCitations) {
                 citationsSheet
@@ -85,235 +117,422 @@ struct NutrientDetailModal: View {
         }
     }
 
-    // MARK: - Hero Header
+    // MARK: - Hero Header (Layered Translucent Design)
 
     private var heroHeader: some View {
-        VStack(spacing: 16) {
-            // Icon with gradient background
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [nutrientColor.opacity(0.3), nutrientColor.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 80, height: 80)
-
-                Image(systemName: nutrientIcon)
-                    .font(.system(size: 36, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [nutrientColor, nutrientColor.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-
-            // Nutrient name
-            Text(row.name)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-
-            // Category badge
-            if let nutrient = trackedNutrient {
-                Text(nutrient.category == .vitamin ? "Vitamin" : nutrient.category == .mineral ? "Mineral" : "Nutrient")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(nutrientColor)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule()
-                            .fill(nutrientColor.opacity(0.12))
-                    )
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(
-            LinearGradient(
-                colors: [nutrientColor.opacity(0.08), Color.clear],
-                startPoint: .top,
-                endPoint: .bottom
+        ZStack {
+            // Soft radial backdrop glow
+            RadialGradient(
+                colors: [
+                    nutrientColor.opacity(0.15),
+                    nutrientColor.opacity(0.05),
+                    Color.clear
+                ],
+                center: .center,
+                startRadius: 20,
+                endRadius: 200
             )
-        )
+            .frame(height: 240)
+
+            VStack(spacing: 20) {
+                // Layered translucent vitamin symbol
+                ZStack {
+                    // Outer glow ring
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [nutrientColor.opacity(0.12), nutrientColor.opacity(0.02)],
+                                center: .center,
+                                startRadius: 40,
+                                endRadius: 70
+                            )
+                        )
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(appearAnimation ? 1.0 : 0.8)
+                        .opacity(appearAnimation ? 1.0 : 0)
+
+                    // Middle frosted layer
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 88, height: 88)
+                        .overlay(
+                            Circle()
+                                .stroke(nutrientColor.opacity(0.2), lineWidth: 1)
+                        )
+                        .scaleEffect(appearAnimation ? 1.0 : 0.9)
+                        .opacity(appearAnimation ? 1.0 : 0)
+
+                    // Inner gradient core
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    nutrientColor.opacity(colorScheme == .dark ? 0.35 : 0.25),
+                                    nutrientColor.opacity(colorScheme == .dark ? 0.15 : 0.10)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 68, height: 68)
+
+                    // Icon with gradient
+                    Image(systemName: nutrientIcon)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [nutrientColor, nutrientColor.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .scaleEffect(appearAnimation ? 1.0 : 0.7)
+                        .opacity(appearAnimation ? 1.0 : 0)
+                }
+
+                // Nutrient name with refined typography
+                VStack(spacing: 8) {
+                    Text(row.name)
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
+
+                    // Refined category badge with signal icon
+                    if let nutrient = trackedNutrient {
+                        HStack(spacing: 6) {
+                            NutraSafeSignalIcon(color: nutrientColor, size: 12)
+
+                            Text(nutrient.category == .vitamin ? "Vitamin" : nutrient.category == .mineral ? "Mineral" : "Nutrient")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(nutrientColor)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(nutrientColor.opacity(0.10))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(nutrientColor.opacity(0.15), lineWidth: 1)
+                                )
+                        )
+                    }
+                }
+                .opacity(appearAnimation ? 1.0 : 0)
+                .offset(y: appearAnimation ? 0 : 10)
+            }
+            .padding(.vertical, 28)
+        }
     }
 
-    // MARK: - Quick Stats Row
+    // MARK: - Primary Insight Strip
 
-    private var quickStatsRow: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header explaining the stats
-            Text("Sources of \(row.name) This Week")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.secondary)
-
+    private var primaryInsightStrip: some View {
+        VStack(spacing: 16) {
+            // Main insight message with signal icon
             HStack(spacing: 12) {
-                // Foods count stat
-                statCard(
+                NutraSafeSignalIcon(color: insightColor, size: 20)
+
+                Text(coverageInsight)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer()
+            }
+
+            // Elegant stat capsules row
+            HStack(spacing: 10) {
+                insightCapsule(
                     value: "\(totalFoods)",
-                    label: totalFoods == 1 ? "Food" : "Foods",
-                    icon: "fork.knife",
-                    color: totalFoods > 0 ? .green : .gray
+                    label: totalFoods == 1 ? "source" : "sources",
+                    icon: "fork.knife"
                 )
 
-                // Days count stat
-                statCard(
+                insightCapsule(
                     value: "\(daysWithFood)",
-                    label: daysWithFood == 1 ? "Day" : "Days",
-                    icon: "calendar",
-                    color: daysWithFood >= 5 ? .green : daysWithFood >= 3 ? .orange : .gray
+                    label: daysWithFood == 1 ? "day" : "days",
+                    icon: "calendar"
                 )
 
-                // Coverage stat
-                let coveragePercent = Int((Double(daysWithFood) / 7.0) * 100)
-                statCard(
+                insightCapsule(
                     value: "\(coveragePercent)%",
-                    label: "Coverage",
-                    icon: "chart.pie.fill",
-                    color: coveragePercent >= 70 ? .green : coveragePercent >= 40 ? .orange : .gray
+                    label: "coverage",
+                    icon: "chart.pie.fill"
                 )
             }
         }
-    }
-
-    private func statCard(value: String, label: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(color)
-
-            Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemBackground))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            insightColor.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                            insightColor.opacity(colorScheme == .dark ? 0.06 : 0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(insightColor.opacity(0.12), lineWidth: 1)
+                )
         )
     }
 
-    // MARK: - Week Calendar View
+    private var insightColor: Color {
+        if coveragePercent >= 70 {
+            return Color(hex: "#3FD17C") // Green
+        } else if coveragePercent >= 40 {
+            return .orange
+        } else if daysWithFood > 0 {
+            return palette.textTertiary
+        } else {
+            return palette.textTertiary.opacity(0.6)
+        }
+    }
 
-    private var weekCalendarView: some View {
+    private func insightCapsule(value: String, label: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(nutrientColor.opacity(0.8))
+
+            Text(value)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(palette.textPrimary)
+
+            Text(label)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(palette.textTertiary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+        )
+    }
+
+    // MARK: - Refined Weekly Timeline
+
+    private var weeklyTimeline: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(title: "This Week", icon: "calendar")
+            sectionHeader(title: "This Week", icon: "calendar", color: nutrientColor)
 
-            // Calendar grid
-            HStack(spacing: 8) {
+            // Elegant timeline grid
+            HStack(spacing: 6) {
                 ForEach(row.segments.reversed(), id: \.date) { segment in
                     let foodCount = segment.foods?.count ?? 0
                     let isToday = Calendar.current.isDateInToday(segment.date)
+                    let hasFood = foodCount > 0
 
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         // Day label
                         Text(shortDayLabel(segment.date))
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(isToday ? nutrientColor : .secondary)
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundColor(isToday ? nutrientColor : palette.textTertiary)
+                            .textCase(.uppercase)
 
-                        // Circle indicator
+                        // Circle indicator with gentle styling
                         ZStack {
-                            Circle()
-                                .fill(foodCount > 0 ? nutrientColor : Color(.systemGray5))
-                                .frame(width: 36, height: 36)
+                            // Today pulse ring
+                            if isToday {
+                                Circle()
+                                    .stroke(nutrientColor.opacity(0.3), lineWidth: 2)
+                                    .frame(width: 42, height: 42)
+                            }
 
-                            if foodCount > 0 {
+                            // Main circle
+                            Circle()
+                                .fill(
+                                    hasFood
+                                        ? LinearGradient(
+                                            colors: [nutrientColor, nutrientColor.opacity(0.8)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                        : LinearGradient(
+                                            colors: [
+                                                palette.tertiary.opacity(colorScheme == .dark ? 0.15 : 0.08),
+                                                palette.tertiary.opacity(colorScheme == .dark ? 0.10 : 0.05)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                )
+                                .frame(width: 34, height: 34)
+                                .overlay(
+                                    Circle()
+                                        .stroke(
+                                            hasFood
+                                                ? nutrientColor.opacity(0.3)
+                                                : palette.tertiary.opacity(0.1),
+                                            lineWidth: 1
+                                        )
+                                )
+
+                            // Content
+                            if hasFood {
                                 Text("\(foodCount)")
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(.white)
                             } else {
-                                Text("–")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                Circle()
+                                    .fill(palette.textTertiary.opacity(0.3))
+                                    .frame(width: 4, height: 4)
                             }
                         }
 
                         // Date number
                         Text(dayNumber(segment.date))
-                            .font(.system(size: 12, weight: isToday ? .bold : .regular))
-                            .foregroundColor(isToday ? .primary : .secondary)
+                            .font(.system(size: 11, weight: isToday ? .bold : .medium, design: .rounded))
+                            .foregroundColor(isToday ? palette.textPrimary : palette.textTertiary)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color.adaptiveCard)
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
             )
         }
     }
 
-    // MARK: - Food Sources Section
+    // MARK: - Good Food Sources Section (Elegant List)
 
     private var goodFoodSourcesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                sectionHeader(title: "Good Sources", icon: "leaf.fill")
+                sectionHeader(title: "Good Sources", icon: "leaf.fill", color: nutrientColor)
                 Spacer()
                 Button(action: { showingCitations = true }) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Sources")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(palette.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(palette.accent.opacity(0.1))
+                    )
                 }
             }
 
             if let info = nutrientInfo {
                 let sources = parseArrayContent(info.commonSources)
                 if !sources.isEmpty {
-                    FlowLayout(spacing: 8) {
-                        ForEach(sources, id: \.self) { source in
-                            HStack(spacing: 6) {
-                                Image(systemName: foodIcon(for: source))
-                                    .font(.system(size: 12))
+                    VStack(spacing: 0) {
+                        ForEach(Array(sources.enumerated()), id: \.offset) { index, source in
+                            HStack(spacing: 14) {
+                                // Elegant food icon container
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    nutrientColor.opacity(0.15),
+                                                    nutrientColor.opacity(0.08)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 36, height: 36)
+
+                                    Image(systemName: foodIcon(for: source))
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(nutrientColor)
+                                }
+
                                 Text(source)
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                    .foregroundColor(palette.textPrimary)
+
+                                Spacer()
+
+                                // Subtle indicator
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(nutrientColor.opacity(0.6))
                             }
-                            .foregroundColor(nutrientColor)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(nutrientColor.opacity(0.1))
-                            )
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 14)
+
+                            if index < sources.count - 1 {
+                                Divider()
+                                    .padding(.leading, 64)
+                            }
                         }
                     }
-                    .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
+                            .fill(Color.adaptiveCard)
+                            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
                     )
                 }
             }
         }
     }
 
-    // MARK: - Health Claims Section
+    // MARK: - Health Benefits Section (Refined Design)
 
-    private func healthClaimsSection(claims: [HealthClaim]) -> some View {
+    private func healthBenefitsSection(claims: [HealthClaim]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header button (always visible)
-            Button(action: { withAnimation(.easeInOut(duration: 0.25)) { showingHealthClaims.toggle() } }) {
-                HStack {
-                    sectionHeader(title: "Health Benefits", icon: "checkmark.seal.fill")
+            // Header button with elegant styling
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    showingHealthClaims.toggle()
+                }
+            }) {
+                HStack(spacing: 12) {
+                    // Benefit icon container
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hex: "#3FD17C").opacity(0.15),
+                                        Color(hex: "#3FD17C").opacity(0.08)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 36, height: 36)
+
+                        NutraSafeSignalIcon(color: Color(hex: "#3FD17C"), size: 16)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Health Benefits")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(palette.textPrimary)
+
+                        Text("\(claims.count) verified claim\(claims.count == 1 ? "" : "s")")
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundColor(palette.textTertiary)
+                    }
+
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.secondary)
-                        .rotationEffect(.degrees(showingHealthClaims ? 90 : 0))
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(palette.textTertiary)
+                        .rotationEffect(.degrees(showingHealthClaims ? -180 : 0))
                 }
                 .padding(16)
                 .background(
                     RoundedRectangle(cornerRadius: showingHealthClaims ? 0 : 16)
-                        .fill(Color(.secondarySystemBackground))
+                        .fill(Color.adaptiveCard)
                 )
                 .clipShape(
                     RoundedCorners(
@@ -323,45 +542,102 @@ struct NutrientDetailModal: View {
                         bottomRight: showingHealthClaims ? 0 : 16
                     )
                 )
+                .shadow(color: Color.black.opacity(showingHealthClaims ? 0 : 0.04), radius: 8, x: 0, y: 2)
             }
             .buttonStyle(PlainButtonStyle())
 
-            // Expandable content
+            // Expandable content with elegant claim cards
             if showingHealthClaims {
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(claims.enumerated()), id: \.offset) { _, claim in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.green)
-                                .padding(.top, 2)
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(claims.enumerated()), id: \.offset) { index, claim in
+                        HStack(alignment: .top, spacing: 14) {
+                            // Icon matching the benefit type
+                            ZStack {
+                                Circle()
+                                    .fill(benefitColor(for: claim.text).opacity(0.12))
+                                    .frame(width: 32, height: 32)
 
-                            VStack(alignment: .leading, spacing: 4) {
+                                Image(systemName: benefitIcon(for: claim.text))
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(benefitColor(for: claim.text))
+                            }
+
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text(claim.text)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.primary)
+                                    .font(.system(size: 14, design: .rounded))
+                                    .foregroundColor(palette.textPrimary)
                                     .fixedSize(horizontal: false, vertical: true)
 
-                                Text(claim.source)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(
-                                        Capsule()
-                                            .fill(AppPalette.standard.accent.opacity(0.1))
-                                    )
+                                // Source badge
+                                HStack(spacing: 4) {
+                                    Image(systemName: claim.source == "NHS" ? "heart.fill" : "checkmark.seal.fill")
+                                        .font(.system(size: 9, weight: .medium))
+                                    Text(claim.source)
+                                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundColor(claim.source == "NHS" ? .pink : palette.accent)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill((claim.source == "NHS" ? Color.pink : palette.accent).opacity(0.1))
+                                )
                             }
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
+
+                        if index < claims.count - 1 {
+                            Divider()
+                                .padding(.leading, 62)
                         }
                     }
                 }
-                .padding(16)
                 .background(
                     RoundedCorners(topLeft: 0, topRight: 0, bottomLeft: 16, bottomRight: 16)
-                        .fill(Color(.secondarySystemBackground))
+                        .fill(Color.adaptiveCard)
                 )
+                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
             }
         }
+    }
+
+    /// Map benefit text to appropriate icon
+    private func benefitIcon(for text: String) -> String {
+        let lower = text.lowercased()
+        if lower.contains("immune") { return "shield.fill" }
+        if lower.contains("bone") || lower.contains("teeth") { return "figure.stand" }
+        if lower.contains("energy") || lower.contains("metabolism") { return "bolt.fill" }
+        if lower.contains("blood") || lower.contains("red blood") { return "drop.fill" }
+        if lower.contains("skin") || lower.contains("collagen") { return "sparkles" }
+        if lower.contains("vision") || lower.contains("eye") { return "eye.fill" }
+        if lower.contains("muscle") { return "figure.strengthtraining.traditional" }
+        if lower.contains("nervous") || lower.contains("brain") { return "brain.head.profile" }
+        if lower.contains("heart") || lower.contains("blood pressure") { return "heart.fill" }
+        if lower.contains("tiredness") || lower.contains("fatigue") { return "battery.75percent" }
+        if lower.contains("iron absorption") { return "arrow.down.circle.fill" }
+        if lower.contains("thyroid") { return "waveform.path.ecg" }
+        if lower.contains("wound") || lower.contains("healing") { return "bandage.fill" }
+        if lower.contains("hair") || lower.contains("nails") { return "leaf.fill" }
+        if lower.contains("cell") || lower.contains("oxidative") { return "shield.lefthalf.filled" }
+        return "checkmark.circle.fill"
+    }
+
+    /// Map benefit text to appropriate color
+    private func benefitColor(for text: String) -> Color {
+        let lower = text.lowercased()
+        if lower.contains("immune") { return .blue }
+        if lower.contains("bone") || lower.contains("teeth") { return .purple }
+        if lower.contains("energy") || lower.contains("metabolism") { return .orange }
+        if lower.contains("blood") { return .red }
+        if lower.contains("skin") || lower.contains("collagen") { return .pink }
+        if lower.contains("vision") || lower.contains("eye") { return .cyan }
+        if lower.contains("muscle") { return .indigo }
+        if lower.contains("nervous") || lower.contains("brain") { return .purple }
+        if lower.contains("heart") { return .red }
+        if lower.contains("tiredness") || lower.contains("fatigue") { return .yellow }
+        if lower.contains("thyroid") { return .teal }
+        return Color(hex: "#3FD17C")
     }
 
     // Custom shape for rounded corners on specific sides
@@ -391,20 +667,29 @@ struct NutrientDetailModal: View {
         }
     }
 
-    // MARK: - Foods Section
+    // MARK: - Your Sources Section (Refined)
 
-    private var foodsSection: some View {
+    private var yourSourcesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(title: "Your Sources This Week", icon: "fork.knife")
+            sectionHeader(title: "Your Sources", icon: "fork.knife", color: nutrientColor)
 
             VStack(spacing: 0) {
                 ForEach(Array(foodsWithCounts.prefix(8).enumerated()), id: \.element.name) { index, foodItem in
-                    HStack(spacing: 12) {
-                        // Food icon
+                    HStack(spacing: 14) {
+                        // Elegant food icon container
                         ZStack {
                             Circle()
-                                .fill(nutrientColor.opacity(0.15))
-                                .frame(width: 32, height: 32)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            nutrientColor.opacity(0.15),
+                                            nutrientColor.opacity(0.08)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 36, height: 36)
 
                             Image(systemName: foodIcon(for: foodItem.name))
                                 .font(.system(size: 14, weight: .medium))
@@ -412,52 +697,58 @@ struct NutrientDetailModal: View {
                         }
 
                         Text(foodItem.name)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.primary)
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(palette.textPrimary)
                             .lineLimit(1)
 
                         Spacer()
 
-                        // Serving count badge
+                        // Serving count badge with refined styling
                         if foodItem.count > 1 {
                             Text("×\(foodItem.count)")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundColor(nutrientColor)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
                                 .background(
                                     Capsule()
                                         .fill(nutrientColor.opacity(0.12))
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(nutrientColor.opacity(0.15), lineWidth: 1)
+                                        )
                                 )
                         } else {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.green)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(nutrientColor.opacity(0.7))
                         }
                     }
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 12)
                     .padding(.horizontal, 14)
 
                     if index < min(foodsWithCounts.count - 1, 7) {
                         Divider()
-                            .padding(.leading, 56)
+                            .padding(.leading, 64)
                     }
                 }
 
                 if foodsWithCounts.count > 8 {
-                    HStack {
-                        Spacer()
-                        Text("+ \(foodsWithCounts.count - 8) more")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Spacer()
+                    HStack(spacing: 6) {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("\(foodsWithCounts.count - 8) more")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
                     }
-                    .padding(.vertical, 12)
+                    .foregroundColor(palette.textTertiary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
                 }
             }
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color.adaptiveCard)
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
             )
         }
     }
@@ -525,15 +816,22 @@ struct NutrientDetailModal: View {
 
     // MARK: - Helper Views
 
-    private func sectionHeader(title: String, icon: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(nutrientColor)
+    private func sectionHeader(title: String, icon: String, color: Color? = nil) -> some View {
+        HStack(spacing: 10) {
+            // Signal icon container
+            ZStack {
+                Circle()
+                    .fill((color ?? nutrientColor).opacity(0.12))
+                    .frame(width: 28, height: 28)
+
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(color ?? nutrientColor)
+            }
 
             Text(title)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(.primary)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundColor(palette.textPrimary)
         }
     }
 

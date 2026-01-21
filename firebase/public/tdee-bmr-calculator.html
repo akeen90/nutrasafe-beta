@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TDEE Calculator UK — Calculate Your Daily Calories | Free BMR Calculator</title>
+    <meta name="description" content="Free TDEE and BMR calculator for UK users. Calculate how many calories you need per day to lose weight, maintain, or gain muscle. Accurate calorie calculator based on your activity level.">
+    <meta name="keywords" content="tdee calculator, bmr calculator, calorie calculator, how many calories do i need, tdee calculator uk, bmr calculator uk, daily calorie calculator, weight loss calculator, calorie deficit calculator">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/tdee-bmr-calculator.html">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/tdee-bmr-calculator.html">
+    <meta property="og:title" content="TDEE Calculator UK — Calculate Your Daily Calories">
+    <meta property="og:description" content="Free TDEE and BMR calculator. Find out how many calories you need per day for weight loss or maintenance.">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "TDEE & BMR Calculator",
+        "description": "Free online calculator to determine your Total Daily Energy Expenditure (TDEE) and Basal Metabolic Rate (BMR) for weight loss, maintenance, or muscle gain.",
+        "url": "https://www.nutrasafe.co.uk/tdee-bmr-calculator.html",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "GBP"
+        }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What is TDEE?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "TDEE (Total Daily Energy Expenditure) is the total number of calories your body burns in a day, including your basal metabolic rate, physical activity, and the energy used to digest food. It's the key number for weight management — eat below your TDEE to lose weight, at your TDEE to maintain, or above to gain."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "What is BMR?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "BMR (Basal Metabolic Rate) is the number of calories your body burns at complete rest — just to keep you alive. This includes breathing, circulation, and cell production. BMR typically accounts for 60-75% of your total daily calorie burn. You should never eat below your BMR for extended periods."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How accurate is the TDEE calculator?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "This calculator uses the Mifflin-St Jeor equation, which research shows is the most accurate formula for estimating metabolic rate. However, all calculators provide estimates. Your actual TDEE can vary based on genetics, muscle mass, hormones, and other factors. Use the result as a starting point and adjust based on your real-world results over 2-3 weeks."
+                }
+            }
+        ]
+    }
+    </script>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #10b981;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --bg-dark: #0f172a;
+            --border: #e2e8f0;
+        }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.7; color: var(--text-dark); background: #f8fafc; }
+
+        /* Header */
+        header { background: var(--bg-dark); padding: 1rem 0; position: sticky; top: 0; z-index: 100; }
+        nav { max-width: 1200px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; font-weight: 700; color: white; text-decoration: none; }
+        .logo-icon { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; }
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+        .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; }
+        .nav-links a:hover { color: white; }
+        .nav-cta { padding: 0.65rem 1.6rem; background: var(--primary); color: white !important; border-radius: 999px; font-weight: 700; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        /* Hero */
+        .hero { background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); color: white; padding: 60px 2rem 80px; text-align: center; }
+        .hero h1 { font-size: 2.75rem; font-weight: 800; margin-bottom: 1rem; }
+        .hero p { font-size: 1.2rem; color: rgba(255,255,255,0.8); max-width: 600px; margin: 0 auto; }
+        @media (max-width: 768px) { .hero h1 { font-size: 2rem; } }
+
+        /* Calculator */
+        .calculator-section { padding: 60px 2rem; margin-top: -40px; position: relative; z-index: 10; }
+        .calculator-container { max-width: 900px; margin: 0 auto; }
+        .calculator-card { background: white; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); padding: 3rem; }
+        .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 768px) { .calc-grid { grid-template-columns: 1fr; } .calculator-card { padding: 2rem; } }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-dark); }
+        .form-group input, .form-group select { width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--border); border-radius: 12px; font-size: 1rem; font-family: inherit; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+        .radio-group { display: flex; gap: 1rem; }
+        .radio-option { flex: 1; }
+        .radio-option input { display: none; }
+        .radio-option label { display: block; padding: 1rem; border: 2px solid var(--border); border-radius: 12px; text-align: center; cursor: pointer; font-weight: 500; transition: all 0.3s; }
+        .radio-option input:checked + label { border-color: var(--primary); background: rgba(99,102,241,0.05); color: var(--primary); }
+
+        .calc-button { width: 100%; padding: 1rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-top: 1rem; }
+        .calc-button:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(99,102,241,0.4); }
+
+        /* Results */
+        .results-section { display: none; margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border); }
+        .results-section.show { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .results-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        @media (max-width: 600px) { .results-grid { grid-template-columns: 1fr; } }
+
+        .result-card { background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 16px; padding: 1.5rem; text-align: center; }
+        .result-card.primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
+        .result-card h3 { font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; opacity: 0.8; }
+        .result-card .value { font-size: 2.5rem; font-weight: 800; }
+        .result-card .unit { font-size: 1rem; opacity: 0.7; }
+        .result-card.primary h3, .result-card.primary .unit { color: rgba(255,255,255,0.9); }
+
+        .goals-section { margin-top: 2rem; }
+        .goals-section h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; }
+        .goal-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f8fafc; border-radius: 12px; margin-bottom: 0.75rem; }
+        .goal-row.highlight { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.05)); border: 1px solid rgba(16,185,129,0.2); }
+        .goal-label { font-weight: 500; }
+        .goal-value { font-weight: 700; color: var(--primary); }
+        .goal-row.highlight .goal-value { color: var(--accent); }
+
+        /* Info sections */
+        .info-section { padding: 80px 2rem; background: white; }
+        .info-container { max-width: 900px; margin: 0 auto; }
+        .info-section h2 { font-size: 2rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--text-dark); }
+        .info-section p { color: var(--text-light); margin-bottom: 1.5rem; font-size: 1.05rem; line-height: 1.8; }
+        .info-section h3 { font-size: 1.35rem; font-weight: 700; margin: 2rem 0 1rem; color: var(--text-dark); }
+        .info-section ul { margin: 1rem 0 1.5rem 1.5rem; color: var(--text-light); }
+        .info-section li { margin-bottom: 0.75rem; line-height: 1.7; }
+
+        .formula-box { background: linear-gradient(135deg, #f0f4ff, #faf5ff); border: 1px solid #e0e7ff; border-radius: 16px; padding: 2rem; margin: 2rem 0; }
+        .formula-box h4 { font-size: 1.1rem; margin-bottom: 1rem; color: var(--primary-dark); }
+        .formula-box code { display: block; background: white; padding: 1rem; border-radius: 8px; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.95rem; color: var(--text-dark); margin-bottom: 0.5rem; }
+
+        /* FAQ */
+        .faq-section { padding: 80px 2rem; background: #f8fafc; }
+        .faq-container { max-width: 800px; margin: 0 auto; }
+        .faq-section h2 { text-align: center; font-size: 2rem; margin-bottom: 2rem; }
+        .faq-item { background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1rem; overflow: hidden; }
+        .faq-question { padding: 1.25rem 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+        .faq-arrow { width: 32px; height: 32px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .faq-arrow svg { width: 16px; height: 16px; stroke: var(--text-light); transition: transform 0.3s; }
+        .faq-item.active .faq-arrow { background: var(--primary); }
+        .faq-item.active .faq-arrow svg { stroke: white; transform: rotate(180deg); }
+        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .faq-item.active .faq-answer { max-height: 500px; }
+        .faq-answer p { padding: 0 1.5rem 1.5rem; color: var(--text-light); line-height: 1.8; }
+
+        /* CTA */
+        .cta-section { padding: 80px 2rem; background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); text-align: center; }
+        .cta-section h2 { font-size: 2.25rem; color: white; margin-bottom: 1rem; }
+        .cta-section p { font-size: 1.15rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .cta-button { display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2rem; background: var(--primary); color: white; text-decoration: none; border-radius: 12px; font-weight: 600; transition: all 0.3s; }
+        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(99,102,241,0.4); }
+
+        /* Footer */
+        footer { background: var(--bg-dark); color: white; padding: 3rem 2rem 2rem; }
+        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3,1fr); gap: 2rem; }
+        .footer-section h4 { text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; }
+        .footer-section ul { list-style: none; }
+        .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.35rem 0; }
+        .footer-section a:hover { color: white; }
+        .footer-section p { color: rgba(255,255,255,0.6); }
+        .footer-bottom { text-align: center; color: rgba(255,255,255,0.5); padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 968px) { .footer-content { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 640px) { .footer-content { grid-template-columns: 1fr; text-align: center; } }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <picture>
+                        <source srcset="/app-icon.webp" type="image/webp">
+                        <img src="/app-icon.png" alt="NutraSafe" width="44" height="44">
+                    </picture>
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/calorie-counter-uk.html">Calorie Counter</a></li>
+                <li><a href="/macro-tracker-uk.html">Macro Tracker</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download Free</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h1>TDEE & BMR Calculator</h1>
+        <p>Calculate exactly how many calories you need per day for weight loss, maintenance, or muscle gain. Free and accurate.</p>
+    </section>
+
+    <section class="calculator-section">
+        <div class="calculator-container">
+            <div class="calculator-card">
+                <div class="calc-grid">
+                    <div>
+                        <div class="form-group">
+                            <label>Sex</label>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                    <input type="radio" name="sex" id="male" value="male" checked>
+                                    <label for="male">Male</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" name="sex" id="female" value="female">
+                                    <label for="female">Female</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="age">Age</label>
+                            <input type="number" id="age" placeholder="e.g. 30" min="15" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Height</label>
+                            <div class="form-row">
+                                <input type="number" id="feet" placeholder="Feet" min="3" max="8">
+                                <input type="number" id="inches" placeholder="Inches" min="0" max="11">
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label for="weight">Weight (stone)</label>
+                            <div class="form-row">
+                                <input type="number" id="stone" placeholder="Stone" min="5" max="50">
+                                <input type="number" id="pounds" placeholder="Pounds" min="0" max="13">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="activity">Activity Level</label>
+                            <select id="activity">
+                                <option value="1.2">Sedentary (office job, little exercise)</option>
+                                <option value="1.375">Light (exercise 1-3 days/week)</option>
+                                <option value="1.55" selected>Moderate (exercise 3-5 days/week)</option>
+                                <option value="1.725">Very Active (exercise 6-7 days/week)</option>
+                                <option value="1.9">Extremely Active (athlete/physical job)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="goal">Goal</label>
+                            <select id="goal">
+                                <option value="lose">Lose Weight</option>
+                                <option value="maintain" selected>Maintain Weight</option>
+                                <option value="gain">Gain Muscle</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button class="calc-button" onclick="calculateTDEE()">Calculate My Calories</button>
+
+                <div class="results-section" id="results">
+                    <div class="results-grid">
+                        <div class="result-card primary">
+                            <h3>Your TDEE</h3>
+                            <div class="value" id="tdee-result">—</div>
+                            <div class="unit">calories/day</div>
+                        </div>
+                        <div class="result-card">
+                            <h3>Your BMR</h3>
+                            <div class="value" id="bmr-result">—</div>
+                            <div class="unit">calories/day</div>
+                        </div>
+                    </div>
+                    <div class="goals-section">
+                        <h3>Calorie Targets for Your Goal</h3>
+                        <div class="goal-row" id="goal-aggressive">
+                            <span class="goal-label">Aggressive weight loss (-750 cal)</span>
+                            <span class="goal-value" id="aggressive-value">—</span>
+                        </div>
+                        <div class="goal-row highlight" id="goal-moderate">
+                            <span class="goal-label">Moderate weight loss (-500 cal) — Recommended</span>
+                            <span class="goal-value" id="moderate-value">—</span>
+                        </div>
+                        <div class="goal-row" id="goal-mild">
+                            <span class="goal-label">Mild weight loss (-250 cal)</span>
+                            <span class="goal-value" id="mild-value">—</span>
+                        </div>
+                        <div class="goal-row">
+                            <span class="goal-label">Maintenance</span>
+                            <span class="goal-value" id="maintain-value">—</span>
+                        </div>
+                        <div class="goal-row" id="goal-surplus">
+                            <span class="goal-label">Muscle gain (+300 cal)</span>
+                            <span class="goal-value" id="surplus-value">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="info-section">
+        <div class="info-container">
+            <h2>Understanding TDEE and BMR</h2>
+            <p>To manage your weight effectively, you need to understand how many calories your body actually needs. Two key numbers help with this: TDEE and BMR.</p>
+
+            <h3>What is TDEE?</h3>
+            <p><strong>TDEE (Total Daily Energy Expenditure)</strong> is the total number of calories your body burns in a day. It includes everything: your resting metabolism, physical activity, digestion, and even fidgeting. This is the magic number for weight management:</p>
+            <ul>
+                <li><strong>Eat below your TDEE</strong> = weight loss (calorie deficit)</li>
+                <li><strong>Eat at your TDEE</strong> = weight maintenance</li>
+                <li><strong>Eat above your TDEE</strong> = weight gain (muscle or fat)</li>
+            </ul>
+
+            <h3>What is BMR?</h3>
+            <p><strong>BMR (Basal Metabolic Rate)</strong> is the number of calories your body burns at complete rest — just to keep you alive. This includes breathing, blood circulation, cell production, and brain function. BMR typically accounts for 60-75% of your total daily calorie burn.</p>
+            <p><strong>Important:</strong> You should never eat below your BMR for extended periods. Doing so can lead to nutrient deficiencies, muscle loss, metabolic slowdown, and other health issues.</p>
+
+            <div class="formula-box">
+                <h4>The Mifflin-St Jeor Equation (Most Accurate)</h4>
+                <code>Men: BMR = (10 × weight in kg) + (6.25 × height in cm) - (5 × age) + 5</code>
+                <code>Women: BMR = (10 × weight in kg) + (6.25 × height in cm) - (5 × age) - 161</code>
+                <p style="margin-top: 1rem; color: var(--text-light); font-size: 0.95rem;">TDEE = BMR × Activity Multiplier (1.2 to 1.9)</p>
+            </div>
+
+            <h3>How Much of a Deficit for Weight Loss?</h3>
+            <p>A calorie deficit of <strong>500 calories per day</strong> typically results in losing about 0.5kg (1lb) per week — this is considered a healthy, sustainable rate. Going too aggressive (over 750 calorie deficit) can lead to muscle loss, fatigue, and is harder to maintain long-term.</p>
+            <p>For best results, combine a moderate calorie deficit with adequate protein intake (1.6-2.2g per kg of body weight) and resistance training to preserve muscle mass while losing fat.</p>
+
+            <h3>Activity Level Guide</h3>
+            <ul>
+                <li><strong>Sedentary (1.2):</strong> Office job, little to no exercise</li>
+                <li><strong>Lightly Active (1.375):</strong> Light exercise 1-3 days per week</li>
+                <li><strong>Moderately Active (1.55):</strong> Moderate exercise 3-5 days per week</li>
+                <li><strong>Very Active (1.725):</strong> Hard exercise 6-7 days per week</li>
+                <li><strong>Extremely Active (1.9):</strong> Very hard exercise, physical job, or training twice daily</li>
+            </ul>
+            <p>Most people overestimate their activity level. If in doubt, choose one level lower than you think and adjust based on real-world results.</p>
+        </div>
+    </section>
+
+    <section class="faq-section">
+        <div class="faq-container">
+            <h2>TDEE Calculator FAQ</h2>
+            <div class="faq-item">
+                <div class="faq-question">
+                    How accurate is this TDEE calculator?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="faq-answer">
+                    <p>This calculator uses the Mifflin-St Jeor equation, which research shows is the most accurate formula for estimating metabolic rate for most people. However, all calculators provide estimates — your actual TDEE can vary based on genetics, muscle mass, hormones, and metabolic adaptations. Use the result as a starting point and adjust based on your real-world results over 2-3 weeks.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    Why isn't my weight changing if I'm eating at a deficit?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="faq-answer">
+                    <p>Several factors could be at play: 1) You may be underestimating how much you're eating — try weighing food for more accuracy. 2) Water retention can mask fat loss for days or weeks. 3) Your TDEE may be lower than calculated — try reducing by another 100-200 calories. 4) Weekend eating may be undoing weekday progress. Give it 3-4 weeks of consistent tracking before adjusting.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    Should I eat back exercise calories?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="faq-answer">
+                    <p>Exercise calorie estimates from fitness trackers are often 30-50% too high. If you're trying to lose weight, it's generally better to not eat back exercise calories, or at most eat back half. The activity multiplier in this calculator already accounts for regular exercise, so additional "eating back" can slow progress.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    Is it safe to eat below my BMR?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="faq-answer">
+                    <p>Eating below your BMR for extended periods is not recommended. It can lead to nutrient deficiencies, muscle loss, hormonal disruption, and metabolic slowdown. Very low-calorie diets (under 1,200 for women, 1,500 for men) should only be followed under medical supervision. A moderate deficit from your TDEE is more sustainable and effective long-term.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2>Track Your Calories Easily</h2>
+        <p>Now you know your calorie target, use NutraSafe to track your daily intake. Free calorie counter with 500,000+ UK foods and barcode scanning.</p>
+        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Download NutraSafe Free
+        </a>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>NutraSafe</h4>
+                <p>Nutrition tracking for UK users. Free tier with 5 logs/day.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Nutrition Tools</h4>
+                <ul>
+                    <li><a href="/calorie-counter-uk.html">Calorie Counter</a></li>
+                    <li><a href="/tdee-bmr-calculator.html">TDEE Calculator</a></li>
+                    <li><a href="/macro-tracker-uk.html">Macro Tracker</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Diet Guides</h4>
+                <ul>
+                    <li><a href="/high-protein-diet-uk.html">High Protein</a></li>
+                    <li><a href="/low-carb-diet-uk.html">Low Carb</a></li>
+                    <li><a href="/keto-diet-uk.html">Keto Diet</a></li>
+                    <li><a href="/paleo-diet-uk.html">Paleo Diet</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="/privacy-policy.html">Privacy</a></li>
+                    <li><a href="/terms-of-service.html">Terms</a></li>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/sitemap.html">Sitemap</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        function calculateTDEE() {
+            const sex = document.querySelector('input[name="sex"]:checked').value;
+            const age = parseInt(document.getElementById('age').value);
+            const feet = parseInt(document.getElementById('feet').value) || 0;
+            const inches = parseInt(document.getElementById('inches').value) || 0;
+            const stone = parseInt(document.getElementById('stone').value) || 0;
+            const pounds = parseInt(document.getElementById('pounds').value) || 0;
+            const activity = parseFloat(document.getElementById('activity').value);
+
+            // Validate inputs
+            if (!age || age < 15 || age > 100) { alert('Please enter a valid age (15-100)'); return; }
+            if (feet < 3 || feet > 8) { alert('Please enter a valid height'); return; }
+            if (stone < 5 || stone > 50) { alert('Please enter a valid weight'); return; }
+
+            // Convert to metric
+            const heightCm = (feet * 30.48) + (inches * 2.54);
+            const weightKg = (stone * 6.35029) + (pounds * 0.453592);
+
+            // Mifflin-St Jeor equation
+            let bmr;
+            if (sex === 'male') {
+                bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
+            } else {
+                bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
+            }
+
+            const tdee = bmr * activity;
+
+            // Display results
+            document.getElementById('bmr-result').textContent = Math.round(bmr).toLocaleString();
+            document.getElementById('tdee-result').textContent = Math.round(tdee).toLocaleString();
+            document.getElementById('aggressive-value').textContent = Math.round(tdee - 750).toLocaleString() + ' cal';
+            document.getElementById('moderate-value').textContent = Math.round(tdee - 500).toLocaleString() + ' cal';
+            document.getElementById('mild-value').textContent = Math.round(tdee - 250).toLocaleString() + ' cal';
+            document.getElementById('maintain-value').textContent = Math.round(tdee).toLocaleString() + ' cal';
+            document.getElementById('surplus-value').textContent = Math.round(tdee + 300).toLocaleString() + ' cal';
+
+            document.getElementById('results').classList.add('show');
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // FAQ accordion
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const faqItem = question.parentElement;
+                const isActive = faqItem.classList.contains('active');
+                document.querySelectorAll('.faq-item').forEach(item => item.classList.remove('active'));
+                if (!isActive) faqItem.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

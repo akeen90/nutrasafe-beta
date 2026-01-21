@@ -34,9 +34,23 @@ struct AdditiveTrackerSection: View {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
     }
 
+    /// Dynamic header title based on selected time period
+    private var headerTitle: String {
+        switch viewModel.selectedPeriod {
+        case .day:
+            return "Additives today"
+        case .week:
+            return "Additives this week"
+        case .month:
+            return "Additives this month"
+        case .ninetyDays:
+            return "Additives over 90 days"
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header - observational tone
+            // Header - observational tone with dynamic title
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isExpanded.toggle()
@@ -46,9 +60,10 @@ struct AdditiveTrackerSection: View {
                     // Signal icon instead of flask
                     SignalIconContainer(color: palette.accent, size: 32)
 
-                    Text("Additives this week")
+                    Text(headerTitle)
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundColor(palette.textPrimary)
+                        .animation(.none, value: viewModel.selectedPeriod)
 
                     Spacer()
 
