@@ -2266,7 +2266,7 @@ struct DietManagementTabContent: View {
             .environmentObject(firebaseManager)
         }
         .fullScreenCover(isPresented: $showingDietManagement) {
-            MacroManagementView(
+            DietManagementRedesigned(
                 macroGoals: $macroGoals,
                 dietType: $selectedDietType,
                 customCarbLimit: $customCarbLimit,
