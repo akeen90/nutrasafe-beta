@@ -2,65 +2,43 @@ import SwiftUI
 import HealthKit
 
 struct AppleHealthSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
     @State private var isConnected = false
     @State private var isRequestingPermission = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Apple Health Logo & Header
-                VStack(spacing: 16) {
-                    // Apple Health Logo
-                    Image(systemName: "heart.circle.fill")
-                        .font(.system(size: 80))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.red, Color.pink],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .symbolRenderingMode(.palette)
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Apple Health Logo & Header
+                    VStack(spacing: 16) {
+                        // Apple Health styled icon
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 24)
+                                .fill(Color(.secondarySystemBackground))
+                                .frame(width: 100, height: 100)
+                                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 12, y: 4)
 
-                    Text("Apple Health")
-                        .font(.system(size: 28, weight: .bold))
-
-                    Text("Connect to sync your exercise and move calories with NutraSafe")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-                .padding(.top, 32)
-
-                // Connection Status Card
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Image(systemName: isConnected ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 20))
-                            .foregroundColor(isConnected ? .green : .secondary)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(isConnected ? "Connected" : "Not Connected")
-                                .font(.system(size: 18, weight: .semibold))
-
-                            Text(isConnected ? "Syncing exercise calories" : "Tap below to connect")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 48))
+                                .foregroundColor(Color(red: 1.0, green: 0.23, blue: 0.19))
                         }
 
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .cornerRadius(12)
-                }
-                .padding(.horizontal)
+                        Text("Apple Health")
+                            .font(.system(size: 28, weight: .bold))
 
-                // Connect Button
-                if !isConnected {
+                        Text("By linking NutraSafe to Apple Health, you can allow NutraSafe to read your activity, steps, and body measurements, and update your calories.")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+                    .padding(.top, 32)
+
+                    // Connect Button
                     Button(action: {
                         Task {
                             isRequestingPermission = true
@@ -68,93 +46,137 @@ struct AppleHealthSettingsView: View {
                             isRequestingPermission = false
                         }
                     }) {
-                        HStack {
+                        HStack(spacing: 10) {
                             if isRequestingPermission {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     .scaleEffect(0.9)
+                            } else {
+                                Image(systemName: "plus.app.fill")
+                                    .font(.system(size: 18))
                             }
                             Text(isRequestingPermission ? "Connecting..." : "Connect to Apple Health")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: 17, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(AppPalette.standard.accent)
                         .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .cornerRadius(14)
                     }
                     .disabled(isRequestingPermission)
-                    .padding(.horizontal)
-                } else {
-                    // Manage in Health App Button
-                    Button(action: {
-                        openHealthApp()
-                    }) {
-                        HStack {
-                            Image(systemName: "heart.text.square")
-                            Text("Manage in Apple Health")
-                                .font(.system(size: 16, weight: .medium))
+                    .padding(.horizontal, 24)
+
+                    // What We Read Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("What We Read")
+                            .font(.system(size: 20, weight: .bold))
+                            .padding(.horizontal, 24)
+
+                        VStack(spacing: 0) {
+                            HealthDataRowStyled(
+                                icon: "flame.fill",
+                                iconColor: Color(red: 1.0, green: 0.23, blue: 0.19),
+                                title: "Active Energy",
+                                description: "Calories burned from physical activity"
+                            )
+
+                            Divider()
+                                .padding(.leading, 56)
+
+                            HealthDataRowStyled(
+                                icon: "figure.walk",
+                                iconColor: .orange,
+                                title: "Steps",
+                                description: "Daily step count from your activity"
+                            )
+
+                            Divider()
+                                .padding(.leading, 56)
+
+                            HealthDataRowStyled(
+                                icon: "scalemass.fill",
+                                iconColor: Color(red: 1.0, green: 0.23, blue: 0.19),
+                                title: "Body Weight",
+                                description: "Your current weight measurements"
+                            )
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .foregroundColor(AppPalette.standard.accent)
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                }
-
-                // What We Access Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("What We Access")
-                        .font(.system(size: 20, weight: .semibold))
-                        .padding(.horizontal)
-
-                    VStack(spacing: 0) {
-                        HealthDataRow(
-                            icon: "figure.run",
-                            title: "Exercise Minutes",
-                            description: "Active energy burned during workouts"
+                        .background(Color.nutraSafeCard)
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04), lineWidth: 1)
                         )
-
-                        Divider()
-                            .padding(.leading, 52)
-
-                        HealthDataRow(
-                            icon: "flame.fill",
-                            title: "Active Energy",
-                            description: "Calories burned from physical activity"
-                        )
+                        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 10, y: 4)
+                        .padding(.horizontal, 24)
                     }
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
+
+                    // What We Update Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("What We Update")
+                            .font(.system(size: 20, weight: .bold))
+                            .padding(.horizontal, 24)
+
+                        VStack(spacing: 0) {
+                            HealthDataRowStyled(
+                                icon: "fork.knife",
+                                iconColor: Color(red: 1.0, green: 0.23, blue: 0.19),
+                                title: "Calories Consumed",
+                                description: "Nutrition data from meals you log"
+                            )
+
+                            Divider()
+                                .padding(.leading, 56)
+
+                            HealthDataRowStyled(
+                                icon: "scalemass.fill",
+                                iconColor: Color(red: 1.0, green: 0.23, blue: 0.19),
+                                title: "Body Weight",
+                                description: "Weight measurements you track"
+                            )
+                        }
+                        .background(Color.nutraSafeCard)
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 10, y: 4)
+                        .padding(.horizontal, 24)
+                    }
+
+                    // Privacy Info
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your Privacy")
+                            .font(.system(size: 20, weight: .bold))
+                            .padding(.horizontal, 24)
+
+                        Text("NutraSafe respects your privacy. You control exactly what data is shared. We never share your health information with third parties.")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 24)
+                    }
+                    .padding(.top, 8)
+
+                    Spacer().frame(height: 40)
                 }
-                .padding(.top, 8)
-
-                // Privacy Info
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your Privacy")
-                        .font(.system(size: 20, weight: .semibold))
-                        .padding(.horizontal)
-
-                    Text("NutraSafe only reads exercise data to enhance your fasting rings. We never write data to Apple Health or share your health information with third parties.")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal)
+            }
+            .scrollContentBackground(.hidden)
+            .background(AppAnimatedBackground().ignoresSafeArea())
+            .navigationTitle("Apple Health")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
                 }
-                .padding(.top, 8)
-
-                Spacer()
+            }
+            .onAppear {
+                checkConnectionStatus()
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(AppAnimatedBackground().ignoresSafeArea())
-        .navigationTitle("Apple Health")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            checkConnectionStatus()
-        }
+        .navigationViewStyle(.stack)
     }
 
     private func requestHealthKitPermission() async {
@@ -179,42 +201,41 @@ struct AppleHealthSettingsView: View {
     }
 }
 
-// MARK: - Health Data Row
+// MARK: - Styled Health Data Row
 
-struct HealthDataRow: View {
+private struct HealthDataRowStyled: View {
     let icon: String
+    let iconColor: Color
     let title: String
     let description: String
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.red)
-                .frame(width: 24)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(iconColor)
+                .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 16))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.primary)
 
                 Text(description)
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundColor(.secondary)
             }
 
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
     }
 }
 
 struct AppleHealthSettingsView_Previews: PreviewProvider {
     static var previews: some View {
-        NavigationView {
-            AppleHealthSettingsView()
-                .environmentObject(HealthKitManager.shared)
-        }
+        AppleHealthSettingsView()
+            .environmentObject(HealthKitManager.shared)
     }
 }

@@ -5395,138 +5395,148 @@ struct EmailMarketingConsentView: View {
     @State private var errorMessage = ""
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 32) {
-                Spacer().frame(height: 20)
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 32) {
+                    Spacer().frame(height: 20)
 
-                // Email icon
-                ZStack {
-                    Circle()
-                        .fill(AppPalette.standard.accent.opacity(0.15))
-                        .frame(width: 100, height: 100)
+                    // Email icon
+                    ZStack {
+                        Circle()
+                            .fill(AppPalette.standard.accent.opacity(0.15))
+                            .frame(width: 100, height: 100)
 
-                    Image(systemName: "envelope.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(AppPalette.standard.accent)
-                }
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(AppPalette.standard.accent)
+                    }
 
-                VStack(spacing: 16) {
-                    Text("Email Preferences")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
+                    VStack(spacing: 16) {
+                        Text("Email Preferences")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.primary)
 
-                    Text("Manage your email communication settings")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
+                        Text("Manage your email communication settings")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
 
-                if isLoading {
-                    ProgressView()
-                        .padding()
-                } else {
-                    VStack(alignment: .leading, spacing: 24) {
-                        // What you'll receive
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("What you'll receive:")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-
-                            BulletPoint(text: "New feature announcements")
-                            BulletPoint(text: "Nutrition tips and health insights")
-                            BulletPoint(text: "Exclusive offers and early access")
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-
-                        // Privacy info
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Image(systemName: "lock.shield.fill")
-                                    .foregroundColor(.green)
-                                Text("Your Privacy")
+                    if isLoading {
+                        ProgressView()
+                            .padding()
+                    } else {
+                        VStack(alignment: .leading, spacing: 24) {
+                            // What you'll receive
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("What you'll receive:")
                                     .font(.system(size: 16, weight: .semibold))
-                            }
-
-                            Text("We respect your privacy and will never share your email with third parties. You can unsubscribe at any time from Settings or from any email we send.")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20)
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(12)
-
-                        // Consent toggle
-                        Toggle(isOn: $hasConsented) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Send me emails")
-                                    .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.primary)
 
-                                Text(hasConsented ? "You'll receive updates, tips and offers" : "You'll only receive essential account emails")
+                                BulletPoint(text: "New feature announcements")
+                                BulletPoint(text: "Nutrition tips and health insights")
+                                BulletPoint(text: "Exclusive offers and early access")
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(20)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+
+                            // Privacy info
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Image(systemName: "lock.shield.fill")
+                                        .foregroundColor(.green)
+                                    Text("Your Privacy")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+
+                                Text("We respect your privacy and will never share your email with third parties. You can unsubscribe at any time from Settings or from any email we send.")
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
                             }
-                        }
-                        .tint(AppPalette.standard.accent)
-                        .padding(20)
-                        .background(Color.adaptiveCard)
-                        .cornerRadius(12)
-                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(20)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(12)
 
-                        // Save button
-                        Button(action: saveConsent) {
-                            if isSaving {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 50)
-                            } else {
-                                Text("Save Preferences")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 50)
+                            // Consent toggle
+                            Toggle(isOn: $hasConsented) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Send me emails")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
+
+                                    Text(hasConsented ? "You'll receive updates, tips and offers" : "You'll only receive essential account emails")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
                             }
-                        }
-                        .background(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(12)
-                        .disabled(isSaving)
-                    }
-                    .padding(.horizontal, 24)
-                }
+                            .tint(AppPalette.standard.accent)
+                            .padding(20)
+                            .background(Color.adaptiveCard)
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
 
-                Spacer()
+                            // Save button
+                            Button(action: saveConsent) {
+                                if isSaving {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 50)
+                                } else {
+                                    Text("Save Preferences")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 50)
+                                }
+                            }
+                            .background(
+                                LinearGradient(
+                                    colors: [.blue, .purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(12)
+                            .disabled(isSaving)
+                        }
+                        .padding(.horizontal, 24)
+                    }
+
+                    Spacer()
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(AppAnimatedBackground().ignoresSafeArea())
+            .navigationTitle("Email Preferences")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .alert("Success", isPresented: $showingSuccess) {
+                Button("OK") {
+                    dismiss()
+                }
+            } message: {
+                Text("Your email preferences have been saved")
+            }
+            .alert("Error", isPresented: $showingError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
+            .task {
+                await loadConsent()
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(AppAnimatedBackground().ignoresSafeArea())
-        .navigationTitle("Email Preferences")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert("Success", isPresented: $showingSuccess) {
-            Button("OK") {
-                dismiss()
-            }
-        } message: {
-            Text("Your email preferences have been saved")
-        }
-        .alert("Error", isPresented: $showingError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(errorMessage)
-        }
-        .task {
-            await loadConsent()
-        }
+        .navigationViewStyle(.stack)
     }
 
     private func loadConsent() async {
