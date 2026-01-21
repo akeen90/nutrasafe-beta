@@ -1878,6 +1878,8 @@ struct AppPreferencesSection: View {
     @State private var showingUnitsSelector = false
     @State private var showingDataPrivacy = false
     @State private var showingNotificationSettings = false
+    @State private var showingAppleHealth = false
+    @State private var showingEmailPreferences = false
 
     var body: some View {
         SettingsSection(title: "App Preferences") {
@@ -1900,13 +1902,7 @@ struct AppPreferencesSection: View {
                     icon: "heart.fill",
                     title: "Apple Health",
                     iconColor: Color(red: 1.0, green: 0.23, blue: 0.19),
-                    action: { }
-                )
-                .background(
-                    NavigationLink(destination: AppleHealthSettingsView()) {
-                        EmptyView()
-                    }
-                    .opacity(0)
+                    action: { showingAppleHealth = true }
                 )
 
                 Divider()
@@ -1952,13 +1948,7 @@ struct AppPreferencesSection: View {
                     icon: "envelope.fill",
                     title: "Email Preferences",
                     iconColor: AppPalette.standard.accent,
-                    action: { }
-                )
-                .background(
-                    NavigationLink(destination: EmailMarketingConsentView()) {
-                        EmptyView()
-                    }
-                    .opacity(0)
+                    action: { showingEmailPreferences = true }
                 )
 
                 Divider()
@@ -1994,6 +1984,12 @@ struct AppPreferencesSection: View {
         }
         .fullScreenCover(isPresented: $showingDataPrivacy) {
             DataPrivacyView()
+        }
+        .fullScreenCover(isPresented: $showingAppleHealth) {
+            AppleHealthSettingsView()
+        }
+        .fullScreenCover(isPresented: $showingEmailPreferences) {
+            EmailMarketingConsentView()
         }
     }
 }

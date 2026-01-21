@@ -44,6 +44,9 @@ export { inferMealIngredients } from './infer-meal-ingredients';
 // Algolia integration (auto-sync on document write + manual sync functions)
 export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, syncTescoProductToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
 
+// Algolia reverse sync (Algolia -> Firebase)
+export { checkAlgoliaFirebaseSync, syncAlgoliaToFirebase, getAlgoliaIndexStats } from './algolia-reverse-sync';
+
 // Algolia synonyms and query rules
 export { syncSynonymsToAlgolia, getSynonymStats, clearSynonymsFromAlgolia } from './food-synonyms';
 export { configureQueryRules, getQueryRulesStats, clearQueryRules } from './algolia-query-rules';

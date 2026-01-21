@@ -2,7 +2,7 @@
 //  PaywallView.swift
 //  NutraSafe Beta
 //
-//  Modern paywall design with clean aesthetic
+//  Modern paywall design matching app's brand philosophy
 //
 
 import SwiftUI
@@ -28,8 +28,8 @@ struct PaywallView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Background
-                Color.adaptiveBackground
+                // Animated background matching brand style
+                AppAnimatedBackground()
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
@@ -38,196 +38,196 @@ struct PaywallView: View {
                         Spacer()
                         Button(action: { dismiss() }) {
                             Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(Color(.systemGray5)))
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 28) {
-                        // Header
-                        VStack(spacing: 16) {
-                            // App icon or Pro badge
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [AppPalette.standard.accent, Color.purple],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 80, height: 80)
-
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 36))
-                                    .foregroundColor(.white)
-                            }
-
-                            VStack(spacing: 8) {
-                                Text("Unlock NutraSafe Pro")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-
-                                Text("Get the most out of your nutrition journey")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                        }
-                        .padding(.top, 8)
-
-                        // Benefits list
-                        VStack(spacing: 16) {
-                            BenefitRow(
-                                icon: "camera.viewfinder",
-                                iconColor: .teal,
-                                title: "AI Meal Scanner",
-                                description: "Snap a photo and auto-log all food items"
-                            )
-
-                            BenefitRow(
-                                icon: "fork.knife.circle.fill",
-                                iconColor: AppPalette.standard.accent,
-                                title: "Unlimited Diary Entries",
-                                description: "Log as much food as you like, every day"
-                            )
-
-                            BenefitRow(
-                                icon: "waveform.path.ecg",
-                                iconColor: .pink,
-                                title: "Pattern Analysis",
-                                description: "Spot which ingredients trigger reactions"
-                            )
-
-                            BenefitRow(
-                                icon: "calendar.badge.clock",
-                                iconColor: .orange,
-                                title: "Use By Tracker",
-                                description: "Track opened food and cut waste"
-                            )
-
-                            BenefitRow(
-                                icon: "timer",
-                                iconColor: .green,
-                                title: "Intermittent Fasting",
-                                description: "Plans, timers, streaks and insights"
-                            )
-
-                            BenefitRow(
-                                icon: "chart.line.uptrend.xyaxis",
-                                iconColor: .purple,
-                                title: "Full Weight History",
-                                description: "See your complete progress over time"
-                            )
-                        }
-                        .padding(.horizontal, 4)
-
-                        // Pricing card
-                        VStack(spacing: 16) {
-                            // Price display
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text(priceText)
-                                    .font(.system(size: 42, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-
-                                Text("/ month")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-
-                        // CTA Button
-                        Button(action: {
-                            Task {
-                                try? await subscriptionManager.purchase()
-                                if subscriptionManager.isSubscribed {
-                                    dismiss()
-                                }
-                            }
-                        }) {
-                            HStack(spacing: 8) {
-                                if subscriptionManager.isPurchasing || !subscriptionManager.isProductLoaded {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text("Continue")
-                                        .font(.system(size: 18, weight: .semibold))
-                                }
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(
-                                LinearGradient(
-                                    colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    Circle()
+                                        .fill(Color.nutraSafeCard)
+                                        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 8, y: 2)
                                 )
-                            )
-                            .cornerRadius(16)
                         }
-                        .disabled(!subscriptionManager.isProductLoaded || subscriptionManager.isPurchasing)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
 
-                        // Error message
-                        if let error = subscriptionManager.purchaseError {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 32) {
+                            // Header with App Icon
+                            VStack(spacing: 20) {
+                                // Real app icon from assets
+                                Image("AppIconImage")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                                    .shadow(color: Color.black.opacity(0.15), radius: 20, y: 10)
 
-                        // Secondary actions
-                        HStack(spacing: 20) {
-                            Button("Restore") {
+                                VStack(spacing: 8) {
+                                    Text("Unlock NutraSafe Pro")
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundColor(.primary)
+
+                                    Text("Your complete food safety companion")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                }
+                            }
+                            .padding(.top, 16)
+
+                            // Benefits list with brand styling
+                            VStack(spacing: 12) {
+                                ProBenefitRow(
+                                    icon: "camera.viewfinder",
+                                    iconColor: .teal,
+                                    title: "AI Meal Scanner",
+                                    description: "Snap a photo and auto-log all food items"
+                                )
+
+                                ProBenefitRow(
+                                    icon: "fork.knife.circle.fill",
+                                    iconColor: AppPalette.standard.accent,
+                                    title: "Unlimited Diary Entries",
+                                    description: "Log as much food as you like, every day"
+                                )
+
+                                ProBenefitRow(
+                                    icon: "waveform.path.ecg",
+                                    iconColor: .pink,
+                                    title: "Pattern Analysis",
+                                    description: "Spot which ingredients trigger reactions"
+                                )
+
+                                ProBenefitRow(
+                                    icon: "calendar.badge.clock",
+                                    iconColor: .orange,
+                                    title: "Use By Tracker",
+                                    description: "Track opened food and cut waste"
+                                )
+
+                                ProBenefitRow(
+                                    icon: "timer",
+                                    iconColor: .green,
+                                    title: "Intermittent Fasting",
+                                    description: "Plans, timers, streaks and insights"
+                                )
+
+                                ProBenefitRow(
+                                    icon: "chart.line.uptrend.xyaxis",
+                                    iconColor: .purple,
+                                    title: "Full Weight History",
+                                    description: "See your complete progress over time"
+                                )
+                            }
+                            .padding(.horizontal, 4)
+
+                            // Pricing card
+                            VStack(spacing: 8) {
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(priceText)
+                                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                                        .foregroundColor(.primary)
+
+                                    Text("/ month")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Text("Cancel anytime")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+
+                            // CTA Button
+                            Button(action: {
                                 Task {
-                                    try? await subscriptionManager.restore()
+                                    try? await subscriptionManager.purchase()
                                     if subscriptionManager.isSubscribed {
                                         dismiss()
                                     }
                                 }
+                            }) {
+                                HStack(spacing: 8) {
+                                    if subscriptionManager.isPurchasing || !subscriptionManager.isProductLoaded {
+                                        ProgressView()
+                                            .tint(.white)
+                                    } else {
+                                        Text("Continue")
+                                            .font(.system(size: 18, weight: .semibold))
+                                    }
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(
+                                    LinearGradient(
+                                        colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.85)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(16)
+                                .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 15, y: 8)
                             }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .disabled(!subscriptionManager.isProductLoaded || subscriptionManager.isPurchasing)
 
-                            Text("•")
+                            // Error message
+                            if let error = subscriptionManager.purchaseError {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+                            }
+
+                            // Secondary actions
+                            HStack(spacing: 20) {
+                                Button("Restore") {
+                                    Task {
+                                        try? await subscriptionManager.restore()
+                                        if subscriptionManager.isSubscribed {
+                                            dismiss()
+                                        }
+                                    }
+                                }
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.secondary)
 
-                            Button("Terms") {
-                                if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
-                                    UIApplication.shared.open(url)
-                                }
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                                Text("•")
+                                    .foregroundColor(.secondary.opacity(0.5))
 
-                            Text("•")
+                                Button("Terms") {
+                                    if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
+                                        UIApplication.shared.open(url)
+                                    }
+                                }
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.secondary)
 
-                            Button("Privacy") {
-                                if let url = URL(string: "https://nutrasafe-705c7.web.app/privacy") {
-                                    UIApplication.shared.open(url)
+                                Text("•")
+                                    .foregroundColor(.secondary.opacity(0.5))
+
+                                Button("Privacy") {
+                                    if let url = URL(string: "https://nutrasafe-705c7.web.app/privacy") {
+                                        UIApplication.shared.open(url)
+                                    }
                                 }
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
                             }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+
+                            // Fine print
+                            Text("Auto-renews at \(priceText)/month. Cancel anytime in Settings.")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                                .padding(.bottom, 24)
                         }
-
-                        // Fine print
-                        Text("Auto-renews at \(priceText)/month. Cancel anytime in Settings.")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                            .padding(.bottom, 20)
+                        .padding(.horizontal, 24)
                     }
-                    .padding(.horizontal, 24)
-                }
                 }
             }
             .task { try? await subscriptionManager.load() }
@@ -238,23 +238,31 @@ struct PaywallView: View {
     }
 }
 
-// MARK: - Benefit Row
+// MARK: - Pro Benefit Row
 
-private struct BenefitRow: View {
+private struct ProBenefitRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let icon: String
     let iconColor: Color
     let title: String
     let description: String
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
+            // Icon with gradient background matching brand style
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(iconColor.opacity(0.12))
-                    .frame(width: 48, height: 48)
+                    .fill(
+                        LinearGradient(
+                            colors: [iconColor.opacity(colorScheme == .dark ? 0.25 : 0.15), iconColor.opacity(colorScheme == .dark ? 0.15 : 0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 44, height: 44)
 
                 Image(systemName: icon)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(iconColor)
             }
 
@@ -270,6 +278,16 @@ private struct BenefitRow: View {
 
             Spacer()
         }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.nutraSafeCard)
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.25 : 0.05), radius: 8, y: 3)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.03), lineWidth: 1)
+        )
     }
 }
 
