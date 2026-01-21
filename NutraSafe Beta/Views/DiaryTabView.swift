@@ -1688,11 +1688,11 @@ struct CategoricalNutrientTrackingView: View {
             .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05), lineWidth: 1)
             )
             .padding(.horizontal, 16)
         }
@@ -1972,7 +1972,7 @@ struct CategoricalNutrientTrackingView: View {
                     .padding(.vertical, 4)
                     .background(
                         Capsule()
-                            .fill(Color(.secondarySystemBackground))
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                     )
             }
             .padding(.horizontal, 20)
@@ -2063,11 +2063,11 @@ struct CategoricalNutrientTrackingView: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05), lineWidth: 1)
             )
         }
         .buttonStyle(ScaleButtonStyle())
