@@ -97,32 +97,30 @@ struct AddActionMenu: View {
             // Handle indicator
             handleIndicator
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: DesignTokens.Spacing.lg) {
-                    // Section label
-                    sectionHeader(title: "Quick Actions", icon: "bolt.fill")
-                        .opacity(primaryActionsVisible ? 1 : 0)
-                        .offset(y: primaryActionsVisible ? 0 : 20)
+            // No ScrollView - all content fits without scrolling
+            VStack(spacing: 12) {
+                // Section label
+                sectionHeader(title: "Quick Actions", icon: "bolt.fill")
+                    .opacity(primaryActionsVisible ? 1 : 0)
+                    .offset(y: primaryActionsVisible ? 0 : 15)
 
-                    // Primary action tiles - 2x2 grid
-                    primaryActionsGrid
+                // Primary action tiles - 2x2 grid
+                primaryActionsGrid
 
-                    // Subtle divider
-                    dividerLine
+                // Subtle divider
+                dividerLine
 
-                    // Section label for trackers
-                    sectionHeader(title: "Quick Trackers", icon: "chart.line.uptrend.xyaxis")
-                        .opacity(quickActionsVisible ? 1 : 0)
-                        .offset(y: quickActionsVisible ? 0 : 20)
+                // Section label for trackers
+                sectionHeader(title: "Quick Trackers", icon: "chart.line.uptrend.xyaxis")
+                    .opacity(quickActionsVisible ? 1 : 0)
+                    .offset(y: quickActionsVisible ? 0 : 15)
 
-                    // Secondary quick trackers
-                    quickTrackersSection
-                }
-                .padding(.horizontal, DesignTokens.Spacing.screenEdge)
-                .padding(.top, DesignTokens.Spacing.sm)
-                .padding(.bottom, geometry.safeAreaInsets.bottom + DesignTokens.Spacing.lg)
+                // Secondary quick trackers
+                quickTrackersSection
             }
-            .frame(maxHeight: geometry.size.height * 0.55)
+            .padding(.horizontal, DesignTokens.Spacing.screenEdge)
+            .padding(.top, 4)
+            .padding(.bottom, geometry.safeAreaInsets.bottom + 12)
         }
         .background(
             panelBackground
@@ -135,17 +133,19 @@ struct AddActionMenu: View {
 
     private var panelBackground: some View {
         ZStack {
-            // Base frosted glass
+            // Solid opaque background - NO transparency
             RoundedRectangle(cornerRadius: 28)
-                .fill(.ultraThinMaterial)
+                .fill(colorScheme == .dark
+                    ? Color(red: 0.12, green: 0.12, blue: 0.14)
+                    : Color(red: 0.98, green: 0.98, blue: 0.99))
 
-            // Subtle gradient tint
+            // Subtle gradient tint for warmth
             RoundedRectangle(cornerRadius: 28)
                 .fill(
                     LinearGradient(
                         colors: [
-                            palette.primary.opacity(0.04),
-                            palette.accent.opacity(0.02),
+                            palette.accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
+                            palette.primary.opacity(colorScheme == .dark ? 0.04 : 0.02),
                             Color.clear
                         ],
                         startPoint: .topLeading,
@@ -153,13 +153,13 @@ struct AddActionMenu: View {
                     )
                 )
 
-            // Top edge highlight
+            // Top edge highlight for elevation
             RoundedRectangle(cornerRadius: 28)
                 .stroke(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.15 : 0.6),
-                            Color.white.opacity(colorScheme == .dark ? 0.05 : 0.2)
+                            Color.white.opacity(colorScheme == .dark ? 0.12 : 0.8),
+                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.3)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -167,7 +167,7 @@ struct AddActionMenu: View {
                     lineWidth: 1
                 )
         }
-        .shadow(color: Color.black.opacity(0.15), radius: 30, x: 0, y: -10)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.5 : 0.2), radius: 30, x: 0, y: -10)
         .ignoresSafeArea(edges: .bottom)
     }
 
@@ -175,28 +175,30 @@ struct AddActionMenu: View {
 
     private var handleIndicator: some View {
         Capsule()
-            .fill(palette.textTertiary.opacity(0.4))
-            .frame(width: 36, height: 5)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
+            .fill(colorScheme == .dark
+                ? Color.white.opacity(0.25)
+                : Color.black.opacity(0.15))
+            .frame(width: 40, height: 5)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
     }
 
     // MARK: - Section Header
 
     private func sectionHeader(title: String, icon: String) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundColor(palette.accent)
 
             Text(title.uppercased())
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundColor(palette.textTertiary)
-                .tracking(1.2)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundColor(palette.textSecondary)
+                .tracking(1.5)
 
             Spacer()
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 6)
     }
 
     // MARK: - Divider
@@ -207,8 +209,8 @@ struct AddActionMenu: View {
                 LinearGradient(
                     colors: [
                         Color.clear,
-                        palette.textTertiary.opacity(0.15),
-                        palette.textTertiary.opacity(0.15),
+                        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08),
+                        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08),
                         Color.clear
                     ],
                     startPoint: .leading,
@@ -216,15 +218,15 @@ struct AddActionMenu: View {
                 )
             )
             .frame(height: 1)
-            .padding(.vertical, DesignTokens.Spacing.sm)
+            .padding(.vertical, 8)
     }
 
     // MARK: - Primary Actions Grid (2x2)
 
     private var primaryActionsGrid: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             // Top row
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 CommandTile(
                     icon: "magnifyingglass",
                     iconGradient: [Color(red: 0.2, green: 0.6, blue: 0.9), Color(red: 0.3, green: 0.5, blue: 0.95)],
@@ -253,7 +255,7 @@ struct AddActionMenu: View {
             }
 
             // Bottom row
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 CommandTile(
                     icon: "refrigerator.fill",
                     iconGradient: [Color(red: 0.95, green: 0.65, blue: 0.3), Color(red: 0.95, green: 0.5, blue: 0.25)],
@@ -290,7 +292,7 @@ struct AddActionMenu: View {
             // Water control - inline stepper style
             waterTrackerRow
                 .opacity(quickActionsVisible ? 1 : 0)
-                .offset(y: quickActionsVisible ? 0 : 15)
+                .offset(y: quickActionsVisible ? 0 : 12)
                 .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.25), value: quickActionsVisible)
 
             trackerDivider
@@ -321,10 +323,22 @@ struct AddActionMenu: View {
                 dismissAndExecute(onSelectReaction)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.03) : Color.black.opacity(0.02))
+                .fill(colorScheme == .dark
+                    ? Color(red: 0.15, green: 0.15, blue: 0.17)
+                    : Color(red: 0.96, green: 0.96, blue: 0.97))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .stroke(
+                    colorScheme == .dark
+                        ? Color.white.opacity(0.06)
+                        : Color.black.opacity(0.04),
+                    lineWidth: 1
+                )
         )
         .onAppear {
             loadWaterCount()
@@ -336,71 +350,76 @@ struct AddActionMenu: View {
 
     private var trackerDivider: some View {
         Rectangle()
-            .fill(palette.textTertiary.opacity(0.1))
+            .fill(colorScheme == .dark
+                ? Color.white.opacity(0.08)
+                : Color.black.opacity(0.06))
             .frame(height: 1)
-            .padding(.leading, 56)
+            .padding(.leading, 60)
     }
 
     // MARK: - Water Tracker Row
 
     private var waterTrackerRow: some View {
         HStack(spacing: 12) {
-            // Icon with gradient background
+            // Icon with gradient background - compact
             ZStack {
+                // Subtle glow
+                Circle()
+                    .fill(Color.cyan.opacity(0.12))
+                    .frame(width: 38, height: 38)
+                    .blur(radius: 2)
+
+                // Background circle
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.cyan.opacity(0.2), Color.cyan.opacity(0.1)],
+                            colors: [Color.cyan, Color(red: 0.2, green: 0.7, blue: 0.9)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 40, height: 40)
+                    .frame(width: 34, height: 34)
+                    .shadow(color: Color.cyan.opacity(0.3), radius: 4, y: 2)
 
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.cyan, Color(red: 0.2, green: 0.7, blue: 0.9)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                // Custom water drop icon
+                WaterDropIcon(size: 18, gradient: [Color.cyan])
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Water")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(palette.textPrimary)
 
                 Text("\(waterCount) of \(dailyWaterGoal) glasses")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundColor(waterCount >= dailyWaterGoal ? Color.green : palette.textSecondary)
             }
 
             Spacer()
 
-            // Soft stepper control
-            HStack(spacing: 0) {
+            // Compact stepper control
+            HStack(spacing: 3) {
                 // Minus button
                 Button(action: removeWater) {
                     ZStack {
                         Circle()
-                            .fill(waterCount > 0 ? palette.accent.opacity(0.1) : palette.textTertiary.opacity(0.05))
-                            .frame(width: 36, height: 36)
+                            .fill(colorScheme == .dark
+                                ? Color.white.opacity(waterCount > 0 ? 0.1 : 0.04)
+                                : Color.black.opacity(waterCount > 0 ? 0.06 : 0.02))
+                            .frame(width: 32, height: 32)
 
                         Image(systemName: "minus")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(waterCount > 0 ? palette.accent : palette.textTertiary.opacity(0.4))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(waterCount > 0 ? palette.textPrimary : palette.textTertiary.opacity(0.4))
                     }
                 }
                 .disabled(waterCount <= 0)
 
                 // Count display
                 Text("\(waterCount)")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundColor(waterCount >= dailyWaterGoal ? .green : palette.textPrimary)
-                    .frame(width: 36)
+                    .frame(width: 32)
 
                 // Plus button
                 Button(action: addWater) {
@@ -408,22 +427,23 @@ struct AddActionMenu: View {
                         Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [Color.cyan.opacity(0.15), Color.cyan.opacity(0.1)],
+                                    colors: [Color.cyan, Color(red: 0.2, green: 0.7, blue: 0.9)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 36, height: 36)
+                            .frame(width: 32, height: 32)
+                            .shadow(color: Color.cyan.opacity(0.25), radius: 3, y: 2)
 
                         Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.cyan)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
                     }
                 }
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Animation Functions
@@ -531,13 +551,13 @@ struct CommandTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 10) {
-                // Icon container with gradient
+            VStack(spacing: 8) {
+                // Icon container with gradient - compact
                 ZStack {
-                    // Outer glow
+                    // Subtle outer glow
                     Circle()
                         .fill(iconGradient.first!.opacity(0.15))
-                        .frame(width: 52, height: 52)
+                        .frame(width: 48, height: 48)
                         .blur(radius: 4)
 
                     // Icon background
@@ -549,34 +569,32 @@ struct CommandTile: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 48, height: 48)
+                        .frame(width: 44, height: 44)
                         .shadow(color: iconGradient.first!.opacity(0.4), radius: 8, y: 4)
 
-                    // Icon
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
+                    // Custom bespoke icon based on type
+                    customIcon
                 }
 
-                // Text stack
+                // Text stack - tighter
                 VStack(spacing: 2) {
                     Text(title)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
 
                     Text(subtitle)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(palette.textTertiary)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(palette.textSecondary)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 110)
+            .frame(height: 98)
             .background(
                 tileBackground
             )
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .opacity(isVisible ? 1 : 0)
-            .offset(y: isVisible ? 0 : 20)
+            .offset(y: isVisible ? 0 : 15)
             .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(delay), value: isVisible)
         }
         .buttonStyle(PlainButtonStyle())
@@ -595,36 +613,60 @@ struct CommandTile: View {
         )
     }
 
+    // MARK: - Custom Icon Selection
+
+    @ViewBuilder
+    private var customIcon: some View {
+        let iconSize: CGFloat = 24
+        switch icon {
+        case "magnifyingglass":
+            LogFoodIcon(size: iconSize, gradient: iconGradient)
+        case "barcode.viewfinder":
+            BarcodeScanIcon(size: iconSize, gradient: iconGradient)
+        case "refrigerator.fill":
+            UseByCalendarIcon(size: iconSize, gradient: iconGradient)
+        case "camera.viewfinder":
+            MealScanIcon(size: iconSize, gradient: iconGradient)
+        default:
+            // Fallback to SF Symbol with enhanced styling
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
+        }
+    }
+
     private var tileBackground: some View {
         ZStack {
-            // Base glass
+            // Tinted glass card - not pure white, subtle brand tint
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.7))
+                .fill(colorScheme == .dark
+                    ? Color(red: 0.16, green: 0.16, blue: 0.18)
+                    : Color(red: 0.97, green: 0.97, blue: 0.98))
 
-            // Subtle gradient overlay
+            // Stronger accent gradient overlay for tinted glass effect
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
                 .fill(
                     LinearGradient(
                         colors: [
-                            iconGradient.first!.opacity(0.05),
-                            Color.clear
+                            iconGradient.first!.opacity(colorScheme == .dark ? 0.15 : 0.08),
+                            iconGradient.first!.opacity(colorScheme == .dark ? 0.06 : 0.03)
                         ],
-                        startPoint: .top,
-                        endPoint: .bottom
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 )
 
-            // Border
+            // Border for definition and separation
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
                 .stroke(
                     colorScheme == .dark
-                        ? Color.white.opacity(0.08)
-                        : Color.black.opacity(0.04),
+                        ? Color.white.opacity(0.1)
+                        : iconGradient.first!.opacity(0.15),
                     lineWidth: 1
                 )
         }
         .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.06),
+            color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.08),
             radius: 10,
             y: 4
         )
@@ -652,54 +694,57 @@ struct QuickTrackerRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                // Icon with soft gradient background
+                // Icon with gradient background - compact
                 ZStack {
+                    // Subtle glow
+                    Circle()
+                        .fill(iconColor.opacity(0.12))
+                        .frame(width: 38, height: 38)
+                        .blur(radius: 2)
+
+                    // Background circle
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: [iconColor.opacity(0.2), iconColor.opacity(0.1)],
+                                colors: [iconColor, iconColor.opacity(0.75)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 40, height: 40)
+                        .frame(width: 34, height: 34)
+                        .shadow(color: iconColor.opacity(0.3), radius: 4, y: 2)
 
-                    Image(systemName: icon)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [iconColor, iconColor.opacity(0.8)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                    // Custom icon
+                    customIcon
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
 
                     Text(subtitle)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(palette.textSecondary)
                 }
 
                 Spacer()
 
-                // Subtle chevron
+                // Chevron with better visibility
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(palette.textTertiary.opacity(0.5))
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isPressed ? palette.textTertiary.opacity(0.08) : Color.clear)
+                    .fill(isPressed
+                        ? (colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
+                        : Color.clear)
             )
             .opacity(isVisible ? 1 : 0)
-            .offset(y: isVisible ? 0 : 15)
+            .offset(y: isVisible ? 0 : 12)
             .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(delay), value: isVisible)
         }
         .buttonStyle(PlainButtonStyle())
@@ -716,6 +761,24 @@ struct QuickTrackerRow: View {
                     }
                 }
         )
+    }
+
+    // MARK: - Custom Icon Selection
+
+    @ViewBuilder
+    private var customIcon: some View {
+        let iconSize: CGFloat = 18
+        switch icon {
+        case "scalemass.fill":
+            BodyWeightIcon(size: iconSize, gradient: [iconColor, iconColor.opacity(0.8)])
+        case "heart.text.square.fill":
+            ReactionIcon(size: iconSize, gradient: [iconColor, iconColor.opacity(0.8)])
+        default:
+            // Fallback to SF Symbol
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white)
+        }
     }
 }
 
@@ -822,6 +885,435 @@ struct SquareButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .opacity(configuration.isPressed ? 0.85 : 1.0)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Custom NutraSafe Icons
+
+/// Search/Log Food icon - Magnifying glass with leaf accent
+struct LogFoodIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Magnifying glass body
+            Circle()
+                .stroke(
+                    LinearGradient(colors: [Color.white, Color.white.opacity(0.9)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: size * 0.12
+                )
+                .frame(width: size * 0.55, height: size * 0.55)
+                .offset(x: -size * 0.08, y: -size * 0.08)
+
+            // Handle
+            Capsule()
+                .fill(
+                    LinearGradient(colors: [Color.white, Color.white.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                )
+                .frame(width: size * 0.12, height: size * 0.32)
+                .rotationEffect(.degrees(45))
+                .offset(x: size * 0.2, y: size * 0.2)
+
+            // Inner accent - small leaf/food hint
+            Circle()
+                .fill(Color.white.opacity(0.4))
+                .frame(width: size * 0.15, height: size * 0.15)
+                .offset(x: -size * 0.15, y: -size * 0.15)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Barcode scanner icon - Stylized viewfinder with scan lines
+struct BarcodeScanIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Viewfinder corners
+            ForEach(0..<4, id: \.self) { index in
+                ViewfinderCornerShape()
+                    .stroke(Color.white, style: StrokeStyle(lineWidth: size * 0.08, lineCap: .round))
+                    .frame(width: size * 0.35, height: size * 0.35)
+                    .rotationEffect(.degrees(Double(index) * 90))
+                    .offset(
+                        x: (index == 0 || index == 3) ? -size * 0.18 : size * 0.18,
+                        y: (index == 0 || index == 1) ? -size * 0.18 : size * 0.18
+                    )
+            }
+
+            // Scan lines
+            VStack(spacing: size * 0.08) {
+                ForEach(0..<3, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: size * 0.02)
+                        .fill(Color.white.opacity(0.9 - Double(i) * 0.15))
+                        .frame(width: size * 0.35 - CGFloat(i) * size * 0.08, height: size * 0.06)
+                }
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Viewfinder corner shape for barcode icon
+struct ViewfinderCornerShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: rect.height * 0.4))
+        path.addLine(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: rect.width * 0.4, y: 0))
+        return path
+    }
+}
+
+/// Use By/Expiry icon - Calendar with date marker for tracking expiry
+struct UseByCalendarIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Calendar body
+            RoundedRectangle(cornerRadius: size * 0.12)
+                .fill(Color.white)
+                .frame(width: size * 0.7, height: size * 0.65)
+                .offset(y: size * 0.05)
+
+            // Calendar top bar (binding rings area)
+            RoundedRectangle(cornerRadius: size * 0.08)
+                .fill(Color.white.opacity(0.85))
+                .frame(width: size * 0.7, height: size * 0.18)
+                .offset(y: -size * 0.22)
+
+            // Binding rings
+            HStack(spacing: size * 0.2) {
+                ForEach(0..<2, id: \.self) { _ in
+                    Capsule()
+                        .fill(Color.white.opacity(0.5))
+                        .frame(width: size * 0.06, height: size * 0.12)
+                }
+            }
+            .offset(y: -size * 0.28)
+
+            // Date grid dots
+            VStack(spacing: size * 0.08) {
+                ForEach(0..<2, id: \.self) { row in
+                    HStack(spacing: size * 0.1) {
+                        ForEach(0..<3, id: \.self) { col in
+                            Circle()
+                                .fill(Color.white.opacity(row == 1 && col == 1 ? 0.9 : 0.4))
+                                .frame(width: size * 0.1, height: size * 0.1)
+                        }
+                    }
+                }
+            }
+            .offset(y: size * 0.12)
+
+            // Exclamation mark for urgency
+            Circle()
+                .fill(Color.white)
+                .frame(width: size * 0.22, height: size * 0.22)
+                .offset(x: size * 0.28, y: -size * 0.28)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Meal Scan/AI icon - Camera viewfinder with AI sparkles
+struct MealScanIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Viewfinder frame
+            RoundedRectangle(cornerRadius: size * 0.15)
+                .stroke(Color.white, lineWidth: size * 0.06)
+                .frame(width: size * 0.65, height: size * 0.65)
+
+            // Corner brackets for viewfinder look
+            ForEach(0..<4, id: \.self) { corner in
+                ViewfinderBracket()
+                    .stroke(Color.white, style: StrokeStyle(lineWidth: size * 0.07, lineCap: .round))
+                    .frame(width: size * 0.2, height: size * 0.2)
+                    .rotationEffect(.degrees(Double(corner) * 90))
+                    .offset(
+                        x: (corner == 0 || corner == 3) ? -size * 0.22 : size * 0.22,
+                        y: (corner == 0 || corner == 1) ? -size * 0.22 : size * 0.22
+                    )
+            }
+
+            // Center target/focus point
+            Circle()
+                .fill(Color.white.opacity(0.6))
+                .frame(width: size * 0.12, height: size * 0.12)
+
+            // AI sparkles around the viewfinder
+            ForEach(0..<3, id: \.self) { i in
+                SparkleShape()
+                    .fill(Color.white)
+                    .frame(width: size * 0.14, height: size * 0.14)
+                    .offset(
+                        x: size * 0.38 * cos(Double(i) * 2.1 + 0.5),
+                        y: size * 0.38 * sin(Double(i) * 2.1 + 0.5)
+                    )
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Viewfinder bracket corner shape
+struct ViewfinderBracket: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: rect.height * 0.5))
+        path.addLine(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: rect.width * 0.5, y: 0))
+        return path
+    }
+}
+
+/// AI Sparkle shape - 4-pointed star
+struct SparkleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let points: [(CGFloat, CGFloat)] = [
+            (0.5, 0), (0.65, 0.35), (1, 0.5), (0.65, 0.65),
+            (0.5, 1), (0.35, 0.65), (0, 0.5), (0.35, 0.35)
+        ]
+
+        path.move(to: CGPoint(x: rect.width * points[0].0, y: rect.height * points[0].1))
+        for point in points.dropFirst() {
+            path.addLine(to: CGPoint(x: rect.width * point.0, y: rect.height * point.1))
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Water drop icon - Stylized droplet with ripple
+struct WaterDropIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Main drop
+            WaterDropShape()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white, Color.white.opacity(0.85)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: size * 0.55, height: size * 0.7)
+
+            // Inner highlight
+            WaterDropShape()
+                .fill(Color.white.opacity(0.4))
+                .frame(width: size * 0.2, height: size * 0.28)
+                .offset(x: -size * 0.08, y: -size * 0.1)
+
+            // Small ripple at bottom
+            Ellipse()
+                .stroke(Color.white.opacity(0.5), lineWidth: size * 0.02)
+                .frame(width: size * 0.35, height: size * 0.1)
+                .offset(y: size * 0.35)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Water drop shape
+struct WaterDropShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+
+        path.move(to: CGPoint(x: width * 0.5, y: 0))
+        path.addCurve(
+            to: CGPoint(x: width, y: height * 0.6),
+            control1: CGPoint(x: width * 0.5, y: height * 0.1),
+            control2: CGPoint(x: width, y: height * 0.35)
+        )
+        path.addCurve(
+            to: CGPoint(x: width * 0.5, y: height),
+            control1: CGPoint(x: width, y: height * 0.85),
+            control2: CGPoint(x: width * 0.75, y: height)
+        )
+        path.addCurve(
+            to: CGPoint(x: 0, y: height * 0.6),
+            control1: CGPoint(x: width * 0.25, y: height),
+            control2: CGPoint(x: 0, y: height * 0.85)
+        )
+        path.addCurve(
+            to: CGPoint(x: width * 0.5, y: 0),
+            control1: CGPoint(x: 0, y: height * 0.35),
+            control2: CGPoint(x: width * 0.5, y: height * 0.1)
+        )
+
+        return path
+    }
+}
+
+/// Weight/Scale icon - Modern digital scale design
+struct WeightScaleIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Scale platform
+            UnevenRoundedRectangle(
+                topLeadingRadius: size * 0.2,
+                bottomLeadingRadius: size * 0.08,
+                bottomTrailingRadius: size * 0.08,
+                topTrailingRadius: size * 0.2
+            )
+            .fill(Color.white)
+            .frame(width: size * 0.75, height: size * 0.55)
+            .offset(y: size * 0.1)
+
+            // Display
+            RoundedRectangle(cornerRadius: size * 0.06)
+                .fill(Color.white.opacity(0.4))
+                .frame(width: size * 0.4, height: size * 0.15)
+                .offset(y: -size * 0.05)
+
+            // Display numbers hint
+            HStack(spacing: size * 0.03) {
+                ForEach(0..<3, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: size * 0.01)
+                        .fill(Color.white.opacity(0.7))
+                        .frame(width: size * 0.08, height: size * 0.08)
+                }
+            }
+            .offset(y: -size * 0.05)
+
+            // Platform surface line
+            Rectangle()
+                .fill(Color.white.opacity(0.3))
+                .frame(width: size * 0.55, height: size * 0.02)
+                .offset(y: size * 0.25)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Body Weight icon - Person silhouette on scale for weigh-in
+struct BodyWeightIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Scale base
+            RoundedRectangle(cornerRadius: size * 0.1)
+                .fill(Color.white)
+                .frame(width: size * 0.8, height: size * 0.25)
+                .offset(y: size * 0.3)
+
+            // Scale display line
+            RoundedRectangle(cornerRadius: size * 0.02)
+                .fill(Color.white.opacity(0.5))
+                .frame(width: size * 0.4, height: size * 0.06)
+                .offset(y: size * 0.3)
+
+            // Person silhouette - head
+            Circle()
+                .fill(Color.white)
+                .frame(width: size * 0.22, height: size * 0.22)
+                .offset(y: -size * 0.28)
+
+            // Person silhouette - body
+            Capsule()
+                .fill(Color.white)
+                .frame(width: size * 0.28, height: size * 0.35)
+                .offset(y: size * 0.02)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Reaction/Health icon - Heart with pulse indicator
+struct ReactionIcon: View {
+    var size: CGFloat
+    var gradient: [Color]
+
+    var body: some View {
+        ZStack {
+            // Heart shape
+            HeartShape()
+                .fill(Color.white)
+                .frame(width: size * 0.65, height: size * 0.58)
+                .offset(y: size * 0.03)
+
+            // Pulse line across heart
+            PulseLine()
+                .stroke(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: size * 0.04, lineCap: .round, lineJoin: .round))
+                .frame(width: size * 0.5, height: size * 0.2)
+                .offset(y: size * 0.02)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Heart shape
+struct HeartShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+
+        path.move(to: CGPoint(x: width * 0.5, y: height))
+        path.addCurve(
+            to: CGPoint(x: 0, y: height * 0.35),
+            control1: CGPoint(x: width * 0.15, y: height * 0.75),
+            control2: CGPoint(x: 0, y: height * 0.55)
+        )
+        path.addCurve(
+            to: CGPoint(x: width * 0.5, y: height * 0.15),
+            control1: CGPoint(x: 0, y: height * 0.1),
+            control2: CGPoint(x: width * 0.35, y: 0)
+        )
+        path.addCurve(
+            to: CGPoint(x: width, y: height * 0.35),
+            control1: CGPoint(x: width * 0.65, y: 0),
+            control2: CGPoint(x: width, y: height * 0.1)
+        )
+        path.addCurve(
+            to: CGPoint(x: width * 0.5, y: height),
+            control1: CGPoint(x: width, y: height * 0.55),
+            control2: CGPoint(x: width * 0.85, y: height * 0.75)
+        )
+
+        return path
+    }
+}
+
+/// Pulse line shape
+struct PulseLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        let midY = height * 0.5
+
+        path.move(to: CGPoint(x: 0, y: midY))
+        path.addLine(to: CGPoint(x: width * 0.25, y: midY))
+        path.addLine(to: CGPoint(x: width * 0.35, y: 0))
+        path.addLine(to: CGPoint(x: width * 0.45, y: height))
+        path.addLine(to: CGPoint(x: width * 0.55, y: midY * 0.5))
+        path.addLine(to: CGPoint(x: width * 0.65, y: midY))
+        path.addLine(to: CGPoint(x: width, y: midY))
+
+        return path
     }
 }
 

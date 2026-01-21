@@ -692,6 +692,380 @@ struct UKFoodDefaults {
             neutralPatterns: ["earl grey", "green tea"],
             demotePatterns: ["herbal tea", "fruit tea", "chai", "iced tea", "bubble tea", "matcha"]
         ),
+
+        // MARK: - Fruits (Base/Raw Foods)
+        "banana": GenericFoodDefault(
+            defaultProduct: "Banana",
+            preferencePatterns: ["banana raw", "banana fresh", "banana medium", "banana large", "banana small", "banana ripe"],
+            neutralPatterns: ["banana", "bananas"],
+            demotePatterns: ["banana bread", "banana chip", "banana chips", "banana cake", "banana muffin", "banana smoothie", "banana milkshake", "banana ice cream", "banana pudding", "banana split", "banana bar", "banana bars", "banana flavour", "banana flavor", "dried banana", "banana loaf", "banana pancake", "freeze dried", "getbuzzing", "creative nature", "oatsnack", "bon appetit", "h&b", "shallot", "shrimps", "& shrimps", "protein", "whey", "daifuku", "core power", "power"]
+        ),
+        "apple": GenericFoodDefault(
+            defaultProduct: "Apple",
+            preferencePatterns: ["apple raw", "apple fresh", "apple medium", "apple large", "gala apple", "braeburn apple", "granny smith", "pink lady", "royal gala", "cox apple", "fuji apple"],
+            neutralPatterns: ["apple", "apples"],
+            demotePatterns: ["apple pie", "apple crumble", "apple juice", "apple sauce", "apple cider", "apple turnover", "apple strudel", "toffee apple", "apple cake", "dried apple", "apple flavour", "apple flavor", "apple chips"]
+        ),
+        "orange": GenericFoodDefault(
+            defaultProduct: "Orange",
+            preferencePatterns: ["orange raw", "orange fresh", "orange medium", "orange large", "navel orange", "blood orange", "satsuma", "clementine", "tangerine", "mandarin"],
+            neutralPatterns: ["orange", "oranges"],
+            demotePatterns: ["orange juice", "orange squash", "orange marmalade", "orange cake", "orange chocolate", "orange flavour", "orange flavor", "terry's chocolate orange", "jaffa"]
+        ),
+        "grape": GenericFoodDefault(
+            defaultProduct: "Grapes",
+            preferencePatterns: ["grape raw", "grapes raw", "grape fresh", "grapes fresh", "red grapes", "green grapes", "black grapes", "seedless grapes"],
+            neutralPatterns: ["grape", "grapes"],
+            demotePatterns: ["grape juice", "grape flavour", "grape flavor", "raisin", "sultana", "wine", "grape jelly"]
+        ),
+        "grapes": GenericFoodDefault(
+            defaultProduct: "Grapes",
+            preferencePatterns: ["grapes raw", "grapes fresh", "red grapes", "green grapes", "black grapes", "seedless grapes"],
+            neutralPatterns: ["grapes"],
+            demotePatterns: ["grape juice", "grape flavour", "raisin", "sultana", "wine"]
+        ),
+        "strawberry": GenericFoodDefault(
+            defaultProduct: "Strawberries",
+            preferencePatterns: ["strawberry raw", "strawberries raw", "strawberry fresh", "strawberries fresh"],
+            neutralPatterns: ["strawberry", "strawberries"],
+            demotePatterns: ["strawberry jam", "strawberry yoghurt", "strawberry ice cream", "strawberry cake", "strawberry milkshake", "strawberry flavour", "strawberry flavor", "dried strawberry", "freeze dried"]
+        ),
+        "strawberries": GenericFoodDefault(
+            defaultProduct: "Strawberries",
+            preferencePatterns: ["strawberries raw", "strawberries fresh"],
+            neutralPatterns: ["strawberries"],
+            demotePatterns: ["strawberry jam", "strawberry yoghurt", "strawberry ice cream", "strawberry cake", "dried strawberry", "freeze dried"]
+        ),
+        "blueberry": GenericFoodDefault(
+            defaultProduct: "Blueberries",
+            preferencePatterns: ["blueberry raw", "blueberries raw", "blueberry fresh", "blueberries fresh"],
+            neutralPatterns: ["blueberry", "blueberries"],
+            demotePatterns: ["blueberry muffin", "blueberry pancake", "blueberry jam", "blueberry pie", "dried blueberry", "blueberry flavour"]
+        ),
+        "blueberries": GenericFoodDefault(
+            defaultProduct: "Blueberries",
+            preferencePatterns: ["blueberries raw", "blueberries fresh"],
+            neutralPatterns: ["blueberries"],
+            demotePatterns: ["blueberry muffin", "blueberry pancake", "dried blueberry"]
+        ),
+        "raspberry": GenericFoodDefault(
+            defaultProduct: "Raspberries",
+            preferencePatterns: ["raspberry raw", "raspberries raw", "raspberry fresh", "raspberries fresh"],
+            neutralPatterns: ["raspberry", "raspberries"],
+            demotePatterns: ["raspberry jam", "raspberry ripple", "raspberry flavour", "dried raspberry"]
+        ),
+        "raspberries": GenericFoodDefault(
+            defaultProduct: "Raspberries",
+            preferencePatterns: ["raspberries raw", "raspberries fresh"],
+            neutralPatterns: ["raspberries"],
+            demotePatterns: ["raspberry jam", "raspberry ripple", "dried raspberry"]
+        ),
+        "mango": GenericFoodDefault(
+            defaultProduct: "Mango",
+            preferencePatterns: ["mango raw", "mango fresh", "mango ripe"],
+            neutralPatterns: ["mango", "mangoes"],
+            demotePatterns: ["mango juice", "mango chutney", "dried mango", "mango lassi", "mango sorbet", "mango flavour"]
+        ),
+        "pear": GenericFoodDefault(
+            defaultProduct: "Pear",
+            preferencePatterns: ["pear raw", "pear fresh", "conference pear", "williams pear", "comice pear"],
+            neutralPatterns: ["pear", "pears"],
+            demotePatterns: ["pear cider", "pear drops", "tinned pear", "canned pear", "pear in syrup"]
+        ),
+        "peach": GenericFoodDefault(
+            defaultProduct: "Peach",
+            preferencePatterns: ["peach raw", "peach fresh", "peach ripe"],
+            neutralPatterns: ["peach", "peaches"],
+            demotePatterns: ["peach melba", "tinned peach", "canned peach", "peach in syrup", "peach flavour", "peach schnapps"]
+        ),
+        "plum": GenericFoodDefault(
+            defaultProduct: "Plum",
+            preferencePatterns: ["plum raw", "plum fresh", "plum ripe", "victoria plum"],
+            neutralPatterns: ["plum", "plums"],
+            demotePatterns: ["plum jam", "plum pudding", "dried plum", "prune", "plum sauce"]
+        ),
+        "melon": GenericFoodDefault(
+            defaultProduct: "Melon",
+            preferencePatterns: ["melon raw", "melon fresh", "honeydew melon", "cantaloupe", "galia melon", "watermelon"],
+            neutralPatterns: ["melon"],
+            demotePatterns: ["melon flavour", "melon juice"]
+        ),
+        "watermelon": GenericFoodDefault(
+            defaultProduct: "Watermelon",
+            preferencePatterns: ["watermelon raw", "watermelon fresh"],
+            neutralPatterns: ["watermelon"],
+            demotePatterns: ["watermelon flavour", "watermelon juice", "watermelon candy"]
+        ),
+        "pineapple": GenericFoodDefault(
+            defaultProduct: "Pineapple",
+            preferencePatterns: ["pineapple raw", "pineapple fresh"],
+            neutralPatterns: ["pineapple"],
+            demotePatterns: ["tinned pineapple", "canned pineapple", "pineapple juice", "pineapple rings", "dried pineapple", "pina colada"]
+        ),
+        "kiwi": GenericFoodDefault(
+            defaultProduct: "Kiwi Fruit",
+            preferencePatterns: ["kiwi raw", "kiwi fresh", "kiwi fruit", "kiwifruit"],
+            neutralPatterns: ["kiwi"],
+            demotePatterns: ["kiwi juice", "dried kiwi"]
+        ),
+        "lemon": GenericFoodDefault(
+            defaultProduct: "Lemon",
+            preferencePatterns: ["lemon raw", "lemon fresh", "lemon whole"],
+            neutralPatterns: ["lemon"],
+            demotePatterns: ["lemon juice", "lemon curd", "lemon cake", "lemon drizzle", "lemon meringue", "lemon squash", "lemonade"]
+        ),
+        "lime": GenericFoodDefault(
+            defaultProduct: "Lime",
+            preferencePatterns: ["lime raw", "lime fresh", "lime whole"],
+            neutralPatterns: ["lime"],
+            demotePatterns: ["lime juice", "lime cordial", "lime flavour"]
+        ),
+        "cherry": GenericFoodDefault(
+            defaultProduct: "Cherries",
+            preferencePatterns: ["cherry raw", "cherries raw", "cherry fresh", "cherries fresh"],
+            neutralPatterns: ["cherry", "cherries"],
+            demotePatterns: ["cherry pie", "cherry jam", "glacé cherry", "maraschino", "cherry flavour", "cherry coke", "dried cherry"]
+        ),
+        "cherries": GenericFoodDefault(
+            defaultProduct: "Cherries",
+            preferencePatterns: ["cherries raw", "cherries fresh"],
+            neutralPatterns: ["cherries"],
+            demotePatterns: ["cherry pie", "glacé cherry", "dried cherry"]
+        ),
+        "avocado": GenericFoodDefault(
+            defaultProduct: "Avocado",
+            preferencePatterns: ["avocado raw", "avocado fresh", "avocado ripe", "hass avocado"],
+            neutralPatterns: ["avocado"],
+            demotePatterns: ["avocado toast", "guacamole", "avocado oil", "avocado dip"]
+        ),
+
+        // MARK: - Vegetables (Base/Raw Foods)
+        "tomato": GenericFoodDefault(
+            defaultProduct: "Tomato",
+            preferencePatterns: ["tomato raw", "tomato fresh", "tomato medium", "vine tomato", "cherry tomato", "plum tomato", "beef tomato"],
+            neutralPatterns: ["tomato", "tomatoes"],
+            demotePatterns: ["tomato sauce", "tomato ketchup", "tomato soup", "tinned tomato", "canned tomato", "chopped tomato", "tomato puree", "tomato paste", "sun dried", "sundried"]
+        ),
+        "potato": GenericFoodDefault(
+            defaultProduct: "Potato",
+            preferencePatterns: ["potato raw", "potato fresh", "potato medium", "potato large", "baking potato", "new potato", "maris piper", "king edward"],
+            neutralPatterns: ["potato", "potatoes"],
+            demotePatterns: ["potato chips", "potato crisps", "chips", "french fries", "mashed potato", "roast potato", "jacket potato", "potato salad", "potato waffle", "hash brown", "wedges"]
+        ),
+        "potatoes": GenericFoodDefault(
+            defaultProduct: "Potatoes",
+            preferencePatterns: ["potatoes raw", "potatoes fresh", "new potatoes", "baby potatoes"],
+            neutralPatterns: ["potatoes"],
+            demotePatterns: ["chips", "crisps", "mashed", "roast potatoes", "potato salad"]
+        ),
+        "onion": GenericFoodDefault(
+            defaultProduct: "Onion",
+            preferencePatterns: ["onion raw", "onion fresh", "onion medium", "brown onion", "white onion", "red onion", "spring onion"],
+            neutralPatterns: ["onion", "onions"],
+            demotePatterns: ["onion rings", "fried onion", "crispy onion", "onion bhaji", "pickled onion", "onion gravy", "french onion"]
+        ),
+        "carrot": GenericFoodDefault(
+            defaultProduct: "Carrot",
+            preferencePatterns: ["carrot raw", "carrot fresh", "carrot medium", "baby carrot", "carrot stick"],
+            neutralPatterns: ["carrot", "carrots"],
+            demotePatterns: ["carrot cake", "carrot juice", "carrot and coriander", "glazed carrot"]
+        ),
+        "broccoli": GenericFoodDefault(
+            defaultProduct: "Broccoli",
+            preferencePatterns: ["broccoli raw", "broccoli fresh", "broccoli floret"],
+            neutralPatterns: ["broccoli"],
+            demotePatterns: ["broccoli cheese", "broccoli soup", "tenderstem"]
+        ),
+        "spinach": GenericFoodDefault(
+            defaultProduct: "Spinach",
+            preferencePatterns: ["spinach raw", "spinach fresh", "baby spinach", "spinach leaves"],
+            neutralPatterns: ["spinach"],
+            demotePatterns: ["creamed spinach", "spinach and ricotta", "spinach pasta", "frozen spinach"]
+        ),
+        "lettuce": GenericFoodDefault(
+            defaultProduct: "Lettuce",
+            preferencePatterns: ["lettuce raw", "lettuce fresh", "iceberg lettuce", "romaine lettuce", "cos lettuce", "little gem"],
+            neutralPatterns: ["lettuce"],
+            demotePatterns: ["lettuce wrap"]
+        ),
+        "cucumber": GenericFoodDefault(
+            defaultProduct: "Cucumber",
+            preferencePatterns: ["cucumber raw", "cucumber fresh", "cucumber whole"],
+            neutralPatterns: ["cucumber"],
+            demotePatterns: ["pickled cucumber", "cucumber sandwich", "tzatziki"]
+        ),
+        "pepper": GenericFoodDefault(
+            defaultProduct: "Bell Pepper",
+            preferencePatterns: ["pepper raw", "bell pepper", "red pepper", "green pepper", "yellow pepper", "sweet pepper"],
+            neutralPatterns: ["pepper", "peppers"],
+            demotePatterns: ["black pepper", "pepper sauce", "stuffed pepper", "roasted pepper", "jalapeño", "chilli"]
+        ),
+        "mushroom": GenericFoodDefault(
+            defaultProduct: "Mushrooms",
+            preferencePatterns: ["mushroom raw", "mushrooms raw", "mushroom fresh", "button mushroom", "chestnut mushroom", "portobello"],
+            neutralPatterns: ["mushroom", "mushrooms"],
+            demotePatterns: ["mushroom soup", "garlic mushroom", "stuffed mushroom", "mushroom sauce", "dried mushroom"]
+        ),
+        "mushrooms": GenericFoodDefault(
+            defaultProduct: "Mushrooms",
+            preferencePatterns: ["mushrooms raw", "mushrooms fresh", "button mushrooms", "chestnut mushrooms"],
+            neutralPatterns: ["mushrooms"],
+            demotePatterns: ["mushroom soup", "garlic mushrooms", "stuffed mushrooms"]
+        ),
+        "sweetcorn": GenericFoodDefault(
+            defaultProduct: "Sweetcorn",
+            preferencePatterns: ["sweetcorn raw", "sweetcorn fresh", "corn on the cob"],
+            neutralPatterns: ["sweetcorn", "corn"],
+            demotePatterns: ["tinned sweetcorn", "canned sweetcorn", "baby corn", "popcorn", "cornflakes"]
+        ),
+        "corn": GenericFoodDefault(
+            defaultProduct: "Sweetcorn",
+            preferencePatterns: ["corn raw", "corn fresh", "corn on the cob", "sweetcorn"],
+            neutralPatterns: ["corn"],
+            demotePatterns: ["corn chips", "corn flakes", "popcorn", "cornmeal", "corn syrup", "baby corn"]
+        ),
+        "courgette": GenericFoodDefault(
+            defaultProduct: "Courgette",
+            preferencePatterns: ["courgette raw", "courgette fresh", "zucchini"],
+            neutralPatterns: ["courgette", "courgettes"],
+            demotePatterns: ["courgette pasta", "courgette fries", "spiralized"]
+        ),
+        "aubergine": GenericFoodDefault(
+            defaultProduct: "Aubergine",
+            preferencePatterns: ["aubergine raw", "aubergine fresh", "eggplant"],
+            neutralPatterns: ["aubergine"],
+            demotePatterns: ["aubergine parmigiana", "baba ganoush", "moussaka"]
+        ),
+        "cabbage": GenericFoodDefault(
+            defaultProduct: "Cabbage",
+            preferencePatterns: ["cabbage raw", "cabbage fresh", "white cabbage", "red cabbage", "savoy cabbage"],
+            neutralPatterns: ["cabbage"],
+            demotePatterns: ["coleslaw", "sauerkraut", "bubble and squeak"]
+        ),
+        "cauliflower": GenericFoodDefault(
+            defaultProduct: "Cauliflower",
+            preferencePatterns: ["cauliflower raw", "cauliflower fresh", "cauliflower floret"],
+            neutralPatterns: ["cauliflower"],
+            demotePatterns: ["cauliflower cheese", "cauliflower rice", "cauliflower pizza"]
+        ),
+        "celery": GenericFoodDefault(
+            defaultProduct: "Celery",
+            preferencePatterns: ["celery raw", "celery fresh", "celery stick", "celery stalk"],
+            neutralPatterns: ["celery"],
+            demotePatterns: ["celery soup", "celery salt"]
+        ),
+        "asparagus": GenericFoodDefault(
+            defaultProduct: "Asparagus",
+            preferencePatterns: ["asparagus raw", "asparagus fresh", "asparagus spear"],
+            neutralPatterns: ["asparagus"],
+            demotePatterns: ["asparagus soup", "tinned asparagus"]
+        ),
+        "beetroot": GenericFoodDefault(
+            defaultProduct: "Beetroot",
+            preferencePatterns: ["beetroot raw", "beetroot fresh"],
+            neutralPatterns: ["beetroot"],
+            demotePatterns: ["pickled beetroot", "beetroot juice", "beetroot hummus"]
+        ),
+        "leek": GenericFoodDefault(
+            defaultProduct: "Leek",
+            preferencePatterns: ["leek raw", "leek fresh"],
+            neutralPatterns: ["leek", "leeks"],
+            demotePatterns: ["leek and potato soup", "leek pie"]
+        ),
+        "parsnip": GenericFoodDefault(
+            defaultProduct: "Parsnip",
+            preferencePatterns: ["parsnip raw", "parsnip fresh"],
+            neutralPatterns: ["parsnip", "parsnips"],
+            demotePatterns: ["roast parsnip", "parsnip soup", "parsnip chips"]
+        ),
+        "swede": GenericFoodDefault(
+            defaultProduct: "Swede",
+            preferencePatterns: ["swede raw", "swede fresh", "rutabaga"],
+            neutralPatterns: ["swede"],
+            demotePatterns: ["mashed swede"]
+        ),
+        "turnip": GenericFoodDefault(
+            defaultProduct: "Turnip",
+            preferencePatterns: ["turnip raw", "turnip fresh"],
+            neutralPatterns: ["turnip", "turnips"],
+            demotePatterns: ["mashed turnip", "turnip soup"]
+        ),
+
+        // MARK: - Proteins (Base/Raw Foods)
+        "beef": GenericFoodDefault(
+            defaultProduct: "Beef",
+            preferencePatterns: ["beef raw", "beef fresh", "beef mince", "minced beef", "beef steak", "stewing beef"],
+            neutralPatterns: ["beef"],
+            demotePatterns: ["beef burger", "roast beef", "corned beef", "beef pie", "beef stew", "beef curry", "beef jerky"]
+        ),
+        "pork": GenericFoodDefault(
+            defaultProduct: "Pork",
+            preferencePatterns: ["pork raw", "pork fresh", "pork chop", "pork loin", "pork mince"],
+            neutralPatterns: ["pork"],
+            demotePatterns: ["pork pie", "pulled pork", "pork belly", "pork scratchings", "gammon", "bacon", "ham", "sausage"]
+        ),
+        "lamb": GenericFoodDefault(
+            defaultProduct: "Lamb",
+            preferencePatterns: ["lamb raw", "lamb fresh", "lamb chop", "lamb leg", "lamb mince", "minced lamb"],
+            neutralPatterns: ["lamb"],
+            demotePatterns: ["lamb curry", "lamb kebab", "roast lamb", "lamb shank", "lamb stew"]
+        ),
+        "fish": GenericFoodDefault(
+            defaultProduct: "Fish",
+            preferencePatterns: ["fish raw", "fish fresh", "white fish", "cod", "haddock", "salmon", "sea bass"],
+            neutralPatterns: ["fish"],
+            demotePatterns: ["fish fingers", "fish and chips", "fish pie", "fish cake", "battered fish", "breaded fish", "smoked fish", "fish paste"]
+        ),
+        "salmon": GenericFoodDefault(
+            defaultProduct: "Salmon",
+            preferencePatterns: ["salmon raw", "salmon fresh", "salmon fillet"],
+            neutralPatterns: ["salmon"],
+            demotePatterns: ["smoked salmon", "salmon teriyaki", "salmon en croute", "tinned salmon", "salmon sushi"]
+        ),
+        "tuna": GenericFoodDefault(
+            defaultProduct: "Tuna",
+            preferencePatterns: ["tuna raw", "tuna fresh", "tuna steak"],
+            neutralPatterns: ["tuna"],
+            demotePatterns: ["tinned tuna", "canned tuna", "tuna mayo", "tuna sandwich", "tuna pasta", "tuna melt"]
+        ),
+        "prawns": GenericFoodDefault(
+            defaultProduct: "Prawns",
+            preferencePatterns: ["prawns raw", "prawns fresh", "king prawns", "tiger prawns"],
+            neutralPatterns: ["prawns", "shrimp"],
+            demotePatterns: ["prawn cocktail", "prawn crackers", "prawn toast", "tempura prawns"]
+        ),
+        "turkey": GenericFoodDefault(
+            defaultProduct: "Turkey",
+            preferencePatterns: ["turkey raw", "turkey fresh", "turkey breast", "turkey mince"],
+            neutralPatterns: ["turkey"],
+            demotePatterns: ["turkey sandwich", "roast turkey", "turkey dinosaurs", "turkey twizzlers", "turkey bacon"]
+        ),
+
+        // MARK: - Nuts & Seeds (Base/Raw Foods)
+        "almonds": GenericFoodDefault(
+            defaultProduct: "Almonds",
+            preferencePatterns: ["almonds raw", "almonds whole", "almonds natural", "almond whole"],
+            neutralPatterns: ["almonds", "almond"],
+            demotePatterns: ["almond milk", "almond butter", "roasted almonds", "salted almonds", "chocolate almonds", "almond flour"]
+        ),
+        "walnuts": GenericFoodDefault(
+            defaultProduct: "Walnuts",
+            preferencePatterns: ["walnuts raw", "walnuts whole", "walnut halves"],
+            neutralPatterns: ["walnuts", "walnut"],
+            demotePatterns: ["walnut cake", "candied walnuts", "pickled walnuts"]
+        ),
+        "cashews": GenericFoodDefault(
+            defaultProduct: "Cashews",
+            preferencePatterns: ["cashews raw", "cashews whole", "cashew nuts"],
+            neutralPatterns: ["cashews", "cashew"],
+            demotePatterns: ["cashew butter", "roasted cashews", "salted cashews", "honey cashews"]
+        ),
+        "peanuts": GenericFoodDefault(
+            defaultProduct: "Peanuts",
+            preferencePatterns: ["peanuts raw", "peanuts whole", "monkey nuts"],
+            neutralPatterns: ["peanuts", "peanut"],
+            demotePatterns: ["peanut butter", "roasted peanuts", "salted peanuts", "honey roasted", "dry roasted"]
+        ),
     ]
 
     /// Returns score modifier for generic food defaults

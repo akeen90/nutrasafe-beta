@@ -1596,20 +1596,20 @@ struct WeightTrackingView: View {
                 .environmentObject(firebaseManager)
         }
         .fullScreenCover(item: $editingEntry) { entry in
-            EditWeightView(
-                entry: entry,
+            LogWeightView(
                 currentWeight: $currentWeight,
                 weightHistory: $weightHistory,
                 userHeight: $userHeight,
                 goalWeight: $goalWeight,
-                onSave: { loadWeightHistory() },
                 onInstantDismiss: {
                     var transaction = Transaction()
                     transaction.disablesAnimations = true
                     withTransaction(transaction) {
                         editingEntry = nil
                     }
-                }
+                },
+                existingEntry: entry,
+                onSave: { loadWeightHistory() }
             )
             .environmentObject(firebaseManager)
         }
@@ -3685,7 +3685,10 @@ struct AddWeightView: View {
     }
 }
 
-// MARK: - Edit Weight View
+// MARK: - Edit Weight View (DEPRECATED)
+// NOTE: This view is deprecated. Use LogWeightView with existingEntry parameter instead.
+// This view uses legacy Form-based UI that doesn't match the redesigned LogWeightView.
+// Kept for reference during transition period - safe to remove once verified.
 struct EditWeightView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme

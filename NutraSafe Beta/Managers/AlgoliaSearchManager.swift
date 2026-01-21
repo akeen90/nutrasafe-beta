@@ -445,6 +445,28 @@ final class AlgoliaSearchManager {
         ]
     }
 
+    /// Returns indices with adjusted priorities for generic food searches
+    /// When searching for generic foods (banana, apple, etc.), boost generic_database to top priority
+    private func indicesForIntent(_ intent: SearchIntent) -> [(String, Int)] {
+        switch intent {
+        case .genericFood(_):
+            // For generic food searches, prioritize generic_database alongside verified_foods
+            return [
+                ("generic_database", 0),     // BOOSTED: Generic foods get top priority for generic searches
+                ("verified_foods", 0),       // TIER 0: Admin-verified foods
+                ("uk_foods_cleaned", 1),     // UK Foods often has raw ingredients
+                ("foods", 2),                // Original foods database
+                ("ai_enhanced", 3),          // AI-enhanced foods
+                ("ai_manually_added", 3),    // AI manually added foods
+                ("tesco_products", 4),       // Tesco UK - demoted for generic searches (mostly branded)
+                ("fast_foods_database", 5),  // Fast Food restaurants
+                ("user_added", 6),           // User's custom foods
+            ]
+        default:
+            return indices
+        }
+    }
+
     // Cache for search results
     private let searchCache = NSCache<NSString, SearchCacheEntry>()
     private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
@@ -561,15 +583,17 @@ final class AlgoliaSearchManager {
 
         // === STAGES 1-3: PARALLEL SEARCH ===
         // Search all query variants in parallel
+        // Use intent-based indices for generic food searches
         var allResults: [FoodSearchResult] = []
         var seenIds = Set<String>()
         let allSearchQueries = Array(querySet)
+        let searchIndices = indicesForIntent(normalized.intent)
 
         await withTaskGroup(of: [FoodSearchResult].self) { group in
             for searchQuery in allSearchQueries {
                 group.addTask {
                     do {
-                        return try await self.searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage * 2)
+                        return try await self.searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage * 2, usingIndices: searchIndices)
                     } catch {
                         return []
                     }
@@ -592,7 +616,7 @@ final class AlgoliaSearchManager {
                 for fuzzyQuery in fuzzyVariants.prefix(5) {  // Limit fuzzy searches
                     group.addTask {
                         do {
-                            return try await self.searchMultipleIndices(query: fuzzyQuery, hitsPerPage: 10)
+                            return try await self.searchMultipleIndices(query: fuzzyQuery, hitsPerPage: 10, usingIndices: searchIndices)
                         } catch {
                             return []
                         }
@@ -646,15 +670,86 @@ final class AlgoliaSearchManager {
             var score = 0
             var tier = 4  // Default tier (lowest)
 
+            // === TIER 0: BASE/RAW FOOD EXACT MATCHES (15000+ points) ===
+            // This handles single-word queries like "banana", "apple", "rice"
+            // where the user wants the raw/base food, not branded products
+
+            if queryWords.count == 1 {
+                // Check if this is a base/raw food exact match
+                // Patterns that indicate base foods: just the food name, or food name + raw/fresh qualifiers
+                let baseNamePatterns = [
+                    queryLower,                           // "banana"
+                    "\(queryLower) raw",                  // "banana raw"
+                    "\(queryLower), raw",                 // "banana, raw"
+                    "\(queryLower) (raw)",                // "banana (raw)"
+                    "raw \(queryLower)",                  // "raw banana"
+                    "\(queryLower) fresh",                // "banana fresh"
+                    "fresh \(queryLower)",                // "fresh banana"
+                    "\(queryLower)s",                     // "bananas" (plural)
+                    "\(queryLower)s raw",                 // "bananas raw"
+                    "\(queryLower)s, raw",                // "bananas, raw"
+                    "\(queryLower), fresh",               // "banana, fresh"
+                    "\(queryLower) whole",                // "banana whole"
+                    "whole \(queryLower)",                // "whole banana"
+                ]
+
+                // Size qualifiers that indicate base foods (e.g., "Banana (Small)", "Apple Large")
+                let sizeQualifiers = ["small", "medium", "large", "extra large", "xl", "mini",
+                                     "(small)", "(medium)", "(large)", "(extra large)"]
+                let hasSizeQualifier = sizeQualifiers.contains { nameLower.contains($0) }
+
+                let isBaseFoodMatch = baseNamePatterns.contains { pattern in
+                    nameLower == pattern || nameLower.hasPrefix(pattern + " ") && nameWords.count <= 3
+                }
+
+                // Check for size-qualified base foods like "Banana (Small)", "Banana Medium"
+                let isSizeQualifiedBaseFood = hasSizeQualifier &&
+                    (nameLower.hasPrefix(queryLower) || nameLower.hasPrefix("\(queryLower)s")) &&
+                    nameWords.count <= 3 &&
+                    !nameLower.contains("&") &&
+                    !nameLower.contains(" and ") &&
+                    !nameLower.contains(" with ") &&
+                    brandLower.isEmpty
+
+                // Composite/recipe food indicators - these are NOT base foods
+                let compositeIndicators = ["&", " and ", " with ", " in ", "shallot", "shrimps", "chicken",
+                                          "pork", "beef", "lamb", "fish", "prawn", "shrimp", "sauce",
+                                          "curry", "stew", "soup", "salad", "sandwich", "wrap", "pie",
+                                          "cake", "bread", "muffin", "pudding", "smoothie", "shake",
+                                          "protein", "whey", "bar", "bars", "chip", "chips", "crisp",
+                                          "daifuku", "ice cream", "yoghurt", "yogurt", "jam", "jelly",
+                                          "juice", "drink", "flavour", "flavor", "dried", "freeze"]
+                let isCompositeFood = compositeIndicators.contains { nameLower.contains($0) }
+
+                // Also check if name is just the food with size/variety (e.g., "Banana Medium", "Apple Gala")
+                let isSimpleVariety = nameWords.count <= 3 &&
+                    nameWords.contains(queryLower) &&
+                    !isCompositeFood &&
+                    brandLower.isEmpty  // No brand = likely generic/base food
+
+                if isBaseFoodMatch && !isCompositeFood {
+                    score += 15000  // Highest priority for exact base food matches
+                    tier = 0
+                } else if isSizeQualifiedBaseFood {
+                    score += 14000  // Very high priority for size-qualified base foods
+                    tier = 0
+                } else if isSimpleVariety && !isCompositeFood {
+                    score += 12000  // High priority for simple variety names
+                    tier = 0
+                } else if isCompositeFood {
+                    score -= 5000   // Heavy penalty for composite/recipe foods
+                }
+            }
+
             // === TIER 1: EXACT & CANONICAL MATCHES (10000+ points) ===
 
-            // Exact name match
-            if nameLower == queryLower {
+            // Exact name match (only if not already tier 0)
+            if tier > 0 && nameLower == queryLower {
                 score += 10000
                 tier = 1
             }
             // Name starts with query AND query is a complete word
-            else if nameLower.hasPrefix(queryLower) && nameWords.contains(queryLower) {
+            else if tier > 0 && nameLower.hasPrefix(queryLower) && nameWords.contains(queryLower) {
                 score += 9500
                 tier = 1
                 // Extra bonus for short product names (canonical products tend to be short)
@@ -663,7 +758,7 @@ final class AlgoliaSearchManager {
                 }
             }
             // Brand + product exact match (e.g., "mars bar" matches "Mars Bar")
-            else if let brand = result.brand?.lowercased(),
+            else if tier > 0, let brand = result.brand?.lowercased(),
                     queryWords.contains(brand) || brand.hasPrefix(queryLower.split(separator: " ").first ?? "") {
                 let productWords = queryWords.filter { $0 != brand }
                 let allProductWordsMatch = productWords.allSatisfy { word in
@@ -849,11 +944,43 @@ final class AlgoliaSearchManager {
                     score += 500
                 }
 
-            case .genericFood(_):
-                // Generic food - already handled by UK defaults above
-                // Additional boost for simple names
-                if nameWords.count <= 3 {
-                    score += 800
+            case .genericFood(let foodName):
+                // Generic food search (e.g., "banana", "apple", "rice")
+                // This is where we STRONGLY prioritize base/raw foods over branded products
+
+                // Check if UKFoodDefaults has demote patterns for this food
+                // Apply additional penalty for branded/processed items
+                let defaultBonus = UKFoodDefaults.defaultScore(productName: result.name, forQuery: foodName)
+                if defaultBonus < 0 {
+                    // Strengthen the demote penalty for branded products
+                    score += defaultBonus * 2  // Double the demotion effect
+                } else if defaultBonus > 0 {
+                    score += defaultBonus
+                }
+
+                // Additional penalty for items with brands when searching generic foods
+                // (e.g., "Getbuzzing Banana Bars" should be heavily demoted for "banana" search)
+                if !brandLower.isEmpty {
+                    score -= 3000  // Branded items get demoted for generic food searches
+                }
+
+                // Boost for simple names (2-3 words max)
+                if nameWords.count <= 3 && brandLower.isEmpty {
+                    score += 2000  // Strong boost for simple unbranded names
+                } else if nameWords.count <= 3 {
+                    score += 500   // Small boost even with brand
+                }
+
+                // Heavy penalty for common processed food indicators
+                let processedIndicators = ["bar", "bars", "bread", "chip", "chips", "cake", "muffin",
+                                          "smoothie", "milkshake", "ice cream", "pudding", "split",
+                                          "flavour", "flavor", "dried", "loaf", "pancake", "pie",
+                                          "crumble", "turnover", "strudel", "sauce", "juice"]
+                for indicator in processedIndicators {
+                    if nameLower.contains(indicator) {
+                        score -= 4000  // Heavy penalty for processed foods
+                        break  // Only apply once
+                    }
                 }
 
             default:
@@ -875,13 +1002,18 @@ final class AlgoliaSearchManager {
     }
 
     /// Search multiple indices in parallel using TaskGroup
-    private func searchMultipleIndices(query: String, hitsPerPage: Int) async throws -> [FoodSearchResult] {
+    /// - Parameters:
+    ///   - query: Search query string
+    ///   - hitsPerPage: Number of results per page
+    ///   - usingIndices: Optional custom indices list (for intent-based priority adjustments)
+    private func searchMultipleIndices(query: String, hitsPerPage: Int, usingIndices: [(String, Int)]? = nil) async throws -> [FoodSearchResult] {
         var allResults: [(result: FoodSearchResult, sourcePriority: Int)] = []
         var seenIds = Set<String>()
+        let indicesToSearch = usingIndices ?? indices
 
         // Search all indices in parallel
         await withTaskGroup(of: (Int, [FoodSearchResult]).self) { group in
-            for (indexName, priority) in indices {
+            for (indexName, priority) in indicesToSearch {
                 group.addTask {
                     do {
                         let hits = try await self.searchIndex(

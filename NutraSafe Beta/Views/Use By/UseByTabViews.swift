@@ -997,39 +997,55 @@ struct UseByExpiryView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        // Empty state without full-frame expansion so it works in ScrollView
-        VStack(spacing: 16) {
-            Image("useby-fridge")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 460)
-                .padding(.top, 8)
+        // Compact empty state with text overlaid near the fridge
+        ZStack {
+            // Fridge image - sized to fit with text
+            VStack(spacing: 0) {
+                Image("useby-fridge")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 420)
+                    .padding(.top, -20)
 
-            VStack(spacing: 14) {
-                Text("Your Fridge Awaits")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                Text("Never wonder \"is this still good?\" again")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-
-                // Subtle hint text
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 13))
-                    Text("Search above to add your first item")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .foregroundColor(.blue.opacity(0.8))
-                .padding(.top, 8)
+                Spacer().frame(height: 0)
             }
-            .padding(.bottom, 16)
+
+            // Text overlay positioned at bottom of fridge area
+            VStack {
+                Spacer()
+
+                VStack(spacing: 10) {
+                    Text("Your Fresh Start")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text("Track what's fresh, waste less, save more")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    // Subtle hint text with pill background
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("Search to add items")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color.blue.opacity(0.1))
+                    )
+                    .padding(.top, 4)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
+        .frame(height: 480)
     }
 
     var body: some View {
@@ -1980,37 +1996,56 @@ struct UseByEmptyStateView: View {
     var onAddFirstItem: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image("useby-fridge")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 460)
-                .accessibilityHidden(true)
+        // Compact empty state with text overlaid near the fridge
+        ZStack {
+            // Fridge image - sized to fit with text
+            VStack(spacing: 0) {
+                Image("useby-fridge")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 420)
+                    .padding(.top, -20)
+                    .accessibilityHidden(true)
 
-            VStack(spacing: 14) {
-                Text("Your Fridge Awaits")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+                Spacer().frame(height: 0)
+            }
 
-                Text("Never wonder \"is this still good?\" again")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+            // Text overlay positioned at bottom of fridge area
+            VStack {
+                Spacer()
 
-                // Subtle hint text
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 13))
-                    Text("Search above to add your first item")
-                        .font(.system(size: 13, weight: .medium))
+                VStack(spacing: 10) {
+                    Text("Your Fresh Start")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text("Track what's fresh, waste less, save more")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    // Subtle hint text with pill background
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("Search to add items")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color.blue.opacity(0.1))
+                    )
+                    .padding(.top, 4)
                 }
-                .foregroundColor(.blue.opacity(0.8))
-                .padding(.top, 8)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(24)
+        .frame(height: 480)
     }
 }
 

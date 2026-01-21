@@ -23,6 +23,7 @@ struct LogWeightView: View {
     @Binding var goalWeight: Double
     var onInstantDismiss: (() -> Void)? = nil
     var existingEntry: WeightEntry? = nil
+    var onSave: (() -> Void)? = nil
 
     // User preferences
     @AppStorage("weightUnit") private var selectedUnit: WeightUnit = .kg
@@ -1126,14 +1127,44 @@ struct LogWeightView: View {
     // MARK: - Helper Methods
 
     private func setupInitialValues() {
-        // Set initial weight
-        if currentWeight > 0 {
-            let converted = selectedUnit.fromKg(currentWeight)
+        // If editing an existing entry, load its values
+        if let entry = existingEntry {
+            // Load weight from existing entry
+            let converted = selectedUnit.fromKg(entry.weight)
             weightValue = floor(converted.primary)
             weightDecimal = Int(round((converted.primary - weightValue) * 10))
+
+            // Load date
+            entryDate = entry.date
+
+            // Load note
+            if let entryNote = entry.note {
+                note = entryNote
+                showNoteField = true
+            }
+
+            // Load measurements
+            if let waist = entry.waistSize {
+                waistSize = String(format: "%.1f", waist)
+                showWaistSection = true
+            }
+            if let dress = entry.dressSize {
+                dressSize = dress
+                showDressSection = true
+            }
+
+            // Load photos if available
+            loadExistingPhotos(from: entry)
+        } else {
+            // Creating new entry - use current weight
+            if currentWeight > 0 {
+                let converted = selectedUnit.fromKg(currentWeight)
+                weightValue = floor(converted.primary)
+                weightDecimal = Int(round((converted.primary - weightValue) * 10))
+            }
         }
 
-        // Set initial height
+        // Set initial height (always from user profile)
         if userHeight > 0 {
             let converted = selectedHeightUnit.fromCm(userHeight)
             primaryHeight = String(format: converted.secondary != nil ? "%.0f" : "%.1f", converted.primary)
@@ -1142,9 +1173,43 @@ struct LogWeightView: View {
             }
         }
 
-        // Set initial goal
+        // Set initial goal (always from user profile)
         if goalWeight > 0 {
             goalWeightText = goalWeightDisplayValue(goalWeight)
+        }
+    }
+
+    private func loadExistingPhotos(from entry: WeightEntry) {
+        // Load photos from URLs if available
+        guard let photoURLs = entry.photoURLs, !photoURLs.isEmpty else {
+            // Try single photoURL for backwards compatibility
+            if let singleURL = entry.photoURL {
+                loadPhotoFromURL(singleURL)
+            }
+            return
+        }
+
+        for urlString in photoURLs {
+            loadPhotoFromURL(urlString)
+        }
+    }
+
+    private func loadPhotoFromURL(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let image = UIImage(data: data) {
+                    await MainActor.run {
+                        if selectedPhotos.count < 3 {
+                            selectedPhotos.append(IdentifiableImage(image: image, url: urlString))
+                        }
+                    }
+                }
+            } catch {
+                print("Failed to load photo from URL: \(error)")
+            }
         }
     }
 
@@ -1187,17 +1252,31 @@ struct LogWeightView: View {
 
         Task {
             do {
-                let entryId = UUID()
-                let images = selectedPhotos.map { $0.image }
+                // Use existing entry ID when editing, otherwise create new
+                let entryId = existingEntry?.id ?? UUID()
 
-                // Save images locally first
+                // Determine which images are new (need uploading) vs existing (already have URLs)
                 var photoURLs: [String] = []
-                if !images.isEmpty {
-                    try? ImageCacheManager.shared.saveWeightImages(images, for: entryId.uuidString)
+                var newImages: [UIImage] = []
+
+                for photo in selectedPhotos {
+                    if let existingURL = photo.url {
+                        // Keep existing URL
+                        photoURLs.append(existingURL)
+                    } else {
+                        // New image that needs uploading
+                        newImages.append(photo.image)
+                    }
+                }
+
+                // Upload new images if any
+                if !newImages.isEmpty {
+                    try? ImageCacheManager.shared.saveWeightImages(newImages, for: entryId.uuidString)
 
                     // Upload to Firebase
                     do {
-                        photoURLs = try await firebaseManager.uploadWeightPhotos(images)
+                        let uploadedURLs = try await firebaseManager.uploadWeightPhotos(newImages)
+                        photoURLs.append(contentsOf: uploadedURLs)
                     } catch {
                         print("Image upload failed: \(error)")
                     }
@@ -1207,8 +1286,8 @@ struct LogWeightView: View {
                 let waist = waistSize.isEmpty ? nil : Double(waistSize)
                 let dress = dressSize.isEmpty ? nil : dressSize
 
-                // Create weight entry with all fields
-                let newEntry = WeightEntry(
+                // Create/update weight entry with all fields
+                let updatedEntry = WeightEntry(
                     id: entryId,
                     weight: weightInKg,
                     date: entryDate,
@@ -1220,8 +1299,8 @@ struct LogWeightView: View {
                     dressSize: dress
                 )
 
-                // Save to Firebase
-                try await firebaseManager.saveWeightEntry(newEntry)
+                // Save to Firebase (handles both create and update)
+                try await firebaseManager.saveWeightEntry(updatedEntry)
 
                 // Save height changes if user modified it
                 if let heightCm = heightInCm, heightCm != userHeight {
@@ -1261,6 +1340,9 @@ struct LogWeightView: View {
                     // Haptic feedback
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
+
+                    // Call onSave callback to refresh history
+                    onSave?()
 
                     // Dismiss
                     dismissView()
