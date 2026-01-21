@@ -4,7 +4,10 @@
 //
 //  Premium onboarding flow with emotional journey and extended setup
 //  Flow: Breath → Mirror → Processing → Synthesis → Promise →
-//        PersonalDetails → Sensitivities → Camera → Health → Notifications → Honesty → Completion
+//        Goals → GoalsProcessing → Activity → ActivityProcessing →
+//        Habits → Experience → ProfileBuilding →
+//        PersonalDetails → Sensitivities → Camera → Health → Notifications →
+//        ProUpgrade → Honesty → Completion
 //
 
 import SwiftUI
@@ -17,12 +20,13 @@ struct PremiumOnboardingView: View {
     @StateObject private var state = PremiumOnboardingState()
     @State private var currentScreen = 0
     @State private var transitionOpacity: Double = 1
+    @State private var showingPaywall = false
     @EnvironmentObject var healthKitManager: HealthKitManager
 
     let onComplete: (Bool) -> Void
 
-    // Total screens (0-11)
-    private let totalScreens = 12
+    // Total screens (0-19)
+    private let totalScreens = 20
 
     var body: some View {
         ZStack {
@@ -39,30 +43,57 @@ struct PremiumOnboardingView: View {
                 case 2:
                     ProcessingScreen(state: state, onComplete: { advanceScreen() })
                 case 3:
-                    // Skip old DepthScreen, go straight to Synthesis
                     SynthesisScreen(state: state, onComplete: { advanceScreen() })
                 case 4:
                     PromiseScreen(state: state, onContinue: { advanceScreen() })
                 case 5:
+                    // Goals - What brings you to NutraSafe?
+                    GoalsScreen(state: state, onContinue: { advanceScreen() })
+                case 6:
+                    // Goals Processing - "Mapping your goals..."
+                    GoalsProcessingScreen(state: state, onComplete: { advanceScreen() })
+                case 7:
+                    // Activity Level
+                    ActivityLevelScreen(state: state, onContinue: { advanceScreen() })
+                case 8:
+                    // Activity Processing - "Calculating your needs..."
+                    ActivityProcessingScreen(state: state, onComplete: { advanceScreen() })
+                case 9:
+                    // Eating Habits
+                    EatingHabitsScreen(state: state, onContinue: { advanceScreen() })
+                case 10:
+                    // Diet Experience
+                    DietExperienceScreen(state: state, onContinue: { advanceScreen() })
+                case 11:
+                    // Profile Building - "Building your profile..."
+                    ProfileBuildingScreen(state: state, onComplete: { advanceScreen() })
+                case 12:
                     // Personal Details (DOB, height, weight, gender)
                     PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
-                case 6:
+                case 13:
                     // Sensitivities (UK/EU Allergens + Preferences)
                     SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
-                case 7:
-                    // Camera Permission (with real trigger)
+                case 14:
+                    // Camera Permission
                     CameraPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 8:
+                case 15:
                     // Apple Health Permission
                     HealthPermissionScreen(state: state, onContinue: { advanceScreen() })
                         .environmentObject(healthKitManager)
-                case 9:
+                case 16:
                     // Notifications Permission
                     NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 10:
+                case 17:
+                    // Pro Upgrade CTA
+                    ProUpgradeScreen(
+                        state: state,
+                        onUpgrade: { showingPaywall = true },
+                        onContinueFree: { advanceScreen() }
+                    )
+                case 18:
                     // Honesty/Disclaimer screen
                     HonestyScreen(state: state, onContinue: { advanceScreen() })
-                case 11:
+                case 19:
                     // Completion screen
                     OnboardingCompletionScreen(state: state, onComplete: {
                         state.saveToManager()
@@ -75,6 +106,13 @@ struct PremiumOnboardingView: View {
                 }
             }
             .opacity(transitionOpacity)
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .onDisappear {
+                    // Continue to next screen after paywall closes
+                    advanceScreen()
+                }
         }
         .onAppear {
             AnalyticsManager.shared.trackOnboardingStep(step: currentScreen, stepName: screenName(currentScreen))
@@ -106,13 +144,21 @@ struct PremiumOnboardingView: View {
         case 2: return "Processing"
         case 3: return "Synthesis"
         case 4: return "Promise"
-        case 5: return "PersonalDetails"
-        case 6: return "Sensitivities"
-        case 7: return "CameraPermission"
-        case 8: return "HealthPermission"
-        case 9: return "NotificationPermission"
-        case 10: return "Honesty"
-        case 11: return "Completion"
+        case 5: return "Goals"
+        case 6: return "GoalsProcessing"
+        case 7: return "ActivityLevel"
+        case 8: return "ActivityProcessing"
+        case 9: return "EatingHabits"
+        case 10: return "DietExperience"
+        case 11: return "ProfileBuilding"
+        case 12: return "PersonalDetails"
+        case 13: return "Sensitivities"
+        case 14: return "CameraPermission"
+        case 15: return "HealthPermission"
+        case 16: return "NotificationPermission"
+        case 17: return "ProUpgrade"
+        case 18: return "Honesty"
+        case 19: return "Completion"
         default: return "Unknown"
         }
     }

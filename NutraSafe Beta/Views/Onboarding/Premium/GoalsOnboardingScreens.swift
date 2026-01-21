@@ -1,0 +1,803 @@
+//
+//  GoalsOnboardingScreens.swift
+//  NutraSafe Beta
+//
+//  Goals, activity, and lifestyle questionnaire screens for premium onboarding
+//  Follows NutraSafe's brand design language with serif headlines and organic feel
+//
+
+import SwiftUI
+
+// MARK: - Goals Screen (What brings you here?)
+
+struct GoalsScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("What brings you")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("to NutraSafe?")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+            }
+            .multilineTextAlignment(.center)
+
+            Text("Select all that apply.")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 12)
+
+            Spacer().frame(height: 32)
+
+            // Goals grid
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    ForEach(OnboardingGoal.allCases) { goal in
+                        GoalCard(
+                            goal: goal,
+                            isSelected: state.selectedGoals.contains(goal),
+                            palette: state.palette,
+                            onToggle: {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    if state.selectedGoals.contains(goal) {
+                                        state.selectedGoals.remove(goal)
+                                    } else {
+                                        state.selectedGoals.insert(goal)
+                                    }
+                                }
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+
+            Spacer()
+
+            // Continue button
+            PremiumButton(
+                text: "Continue",
+                palette: state.palette,
+                action: onContinue,
+                isEnabled: !state.selectedGoals.isEmpty
+            )
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+}
+
+// MARK: - Activity Level Screen
+
+struct ActivityLevelScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("How active")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("are you?")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+            }
+            .multilineTextAlignment(.center)
+
+            Text("This helps us personalise your experience.")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 12)
+
+            Spacer().frame(height: 32)
+
+            // Activity options
+            VStack(spacing: 12) {
+                ForEach(ActivityLevelOption.allCases) { level in
+                    ActivityCard(
+                        level: level,
+                        isSelected: state.activityLevel == level,
+                        palette: state.palette,
+                        onSelect: {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                state.activityLevel = level
+                            }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Continue button
+            PremiumButton(
+                text: "Continue",
+                palette: state.palette,
+                action: onContinue
+            )
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+}
+
+// MARK: - Eating Habits Screen
+
+struct EatingHabitsScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Your eating")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("habits")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+            }
+            .multilineTextAlignment(.center)
+
+            Text("Select what describes you best.")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 12)
+
+            Spacer().frame(height: 32)
+
+            // Habits flow layout
+            ScrollView(showsIndicators: false) {
+                OnboardingFlowLayout(spacing: 10) {
+                    ForEach(EatingHabitOption.allCases) { habit in
+                        HabitTag(
+                            habit: habit,
+                            isSelected: state.eatingHabits.contains(habit),
+                            palette: state.palette,
+                            onToggle: {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    if state.eatingHabits.contains(habit) {
+                                        state.eatingHabits.remove(habit)
+                                    } else {
+                                        state.eatingHabits.insert(habit)
+                                    }
+                                }
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+            .frame(maxHeight: 320)
+
+            Spacer()
+
+            // Continue button (skip allowed)
+            VStack(spacing: 16) {
+                PremiumButton(
+                    text: "Continue",
+                    palette: state.palette,
+                    action: onContinue
+                )
+
+                Button(action: onContinue) {
+                    Text("Skip for now")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(white: 0.5))
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+    }
+}
+
+// MARK: - Diet Experience Screen
+
+struct DietExperienceScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onContinue: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 60)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Have you tracked")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("food before?")
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+            }
+            .multilineTextAlignment(.center)
+
+            Text("This helps us tailor your experience.")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 12)
+
+            Spacer().frame(height: 40)
+
+            // Experience options
+            VStack(spacing: 12) {
+                ForEach(DietExperienceOption.allCases) { experience in
+                    PremiumExperienceCard(
+                        experience: experience,
+                        isSelected: state.dietExperience == experience,
+                        palette: state.palette,
+                        onSelect: {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                state.dietExperience = experience
+                            }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            // Auto-advance after selection
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                onContinue()
+                            }
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Calculating Screens (micro-processing moments after key choices)
+
+struct GoalsProcessingScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onComplete: () -> Void
+
+    @State private var showMessage = false
+    @State private var pulseScale: CGFloat = 1.0
+
+    var body: some View {
+        VStack {
+            Spacer()
+
+            // Animated pulse
+            ZStack {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .stroke(state.palette.primary.opacity(0.3 - Double(i) * 0.1), lineWidth: 2)
+                        .frame(width: 100 + CGFloat(i * 40), height: 100 + CGFloat(i * 40))
+                        .scaleEffect(pulseScale)
+                        .opacity(showMessage ? 1 : 0)
+                }
+
+                Image(systemName: "target")
+                    .font(.system(size: 44))
+                    .foregroundColor(state.palette.primary)
+                    .scaleEffect(pulseScale)
+            }
+
+            Spacer().frame(height: 40)
+
+            Text("Mapping your goals...")
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(state.palette.primary)
+                .opacity(showMessage ? 1 : 0)
+
+            Text(goalsMessage)
+                .font(.system(size: 15))
+                .foregroundColor(Color(white: 0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+                .padding(.top, 12)
+                .opacity(showMessage ? 1 : 0)
+
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                showMessage = true
+            }
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                pulseScale = 1.1
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                onComplete()
+            }
+        }
+    }
+
+    private var goalsMessage: String {
+        if state.selectedGoals.contains(.loseWeight) {
+            return "We'll help you track progress towards your ideal weight."
+        } else if state.selectedGoals.contains(.buildMuscle) {
+            return "Protein and macro insights coming your way."
+        } else if state.selectedGoals.contains(.foodSafety) || state.selectedGoals.contains(.manageAllergies) {
+            return "Your safety is our priority."
+        } else {
+            return "Personalising your nutrition journey."
+        }
+    }
+}
+
+struct ActivityProcessingScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onComplete: () -> Void
+
+    @State private var showMessage = false
+    @State private var progress: CGFloat = 0
+
+    var body: some View {
+        VStack {
+            Spacer()
+
+            // Activity indicator
+            ZStack {
+                Circle()
+                    .stroke(state.palette.primary.opacity(0.2), lineWidth: 6)
+                    .frame(width: 120, height: 120)
+
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(state.palette.primary, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .frame(width: 120, height: 120)
+                    .rotationEffect(.degrees(-90))
+
+                Image(systemName: state.activityLevel.icon)
+                    .font(.system(size: 36))
+                    .foregroundColor(state.palette.primary)
+            }
+
+            Spacer().frame(height: 40)
+
+            Text("Calculating your needs...")
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(state.palette.primary)
+                .opacity(showMessage ? 1 : 0)
+
+            Text("Based on \(state.activityLevel.rawValue.lowercased()) lifestyle")
+                .font(.system(size: 15))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.top, 8)
+                .opacity(showMessage ? 1 : 0)
+
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) {
+                showMessage = true
+            }
+            withAnimation(.easeInOut(duration: 2.0)) {
+                progress = 1.0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                onComplete()
+            }
+        }
+    }
+}
+
+struct ProfileBuildingScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onComplete: () -> Void
+
+    @State private var showElements = false
+    @State private var currentPhrase = 0
+
+    private let phrases = [
+        "Understanding your lifestyle...",
+        "Building your profile...",
+        "Almost there..."
+    ]
+
+    var body: some View {
+        VStack {
+            Spacer()
+
+            // Assembling animation
+            ZStack {
+                ForEach(0..<4, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(state.palette.primary.opacity(0.2 + Double(i) * 0.2))
+                        .frame(width: 60, height: 60)
+                        .offset(
+                            x: showElements ? 0 : CGFloat([-30, 30, -30, 30][i]),
+                            y: showElements ? 0 : CGFloat([-30, -30, 30, 30][i])
+                        )
+                        .rotationEffect(.degrees(showElements ? 0 : Double(i * 90)))
+                }
+
+                Image(systemName: "person.crop.circle.badge.checkmark")
+                    .font(.system(size: 32))
+                    .foregroundColor(.white)
+                    .opacity(showElements ? 1 : 0)
+            }
+            .frame(width: 120, height: 120)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(state.palette.primary)
+                    .opacity(showElements ? 1 : 0)
+            )
+
+            Spacer().frame(height: 40)
+
+            Text(phrases[currentPhrase])
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(state.palette.primary)
+                .animation(.easeInOut, value: currentPhrase)
+
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
+                showElements = true
+            }
+
+            // Cycle through phrases
+            for i in 1..<phrases.count {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.9) {
+                    withAnimation {
+                        currentPhrase = i
+                    }
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+                onComplete()
+            }
+        }
+    }
+}
+
+// MARK: - Card Components
+
+struct GoalCard: View {
+    let goal: OnboardingGoal
+    let isSelected: Bool
+    let palette: OnboardingPalette
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 16) {
+                // Icon
+                Image(systemName: goal.icon)
+                    .font(.system(size: 22))
+                    .foregroundColor(isSelected ? .white : palette.primary)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(isSelected ? palette.primary : palette.primary.opacity(0.1))
+                    )
+
+                // Text
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(goal.rawValue)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : Color(white: 0.2))
+
+                    Text(goal.description)
+                        .font(.system(size: 13))
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : Color(white: 0.5))
+                }
+
+                Spacer()
+
+                // Checkmark
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.white)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? palette.primary : Color.white.opacity(0.8))
+                    .shadow(color: isSelected ? palette.primary.opacity(0.3) : Color.black.opacity(0.05), radius: isSelected ? 12 : 4, y: isSelected ? 4 : 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ActivityCard: View {
+    let level: ActivityLevelOption
+    let isSelected: Bool
+    let palette: OnboardingPalette
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 14) {
+                // Icon
+                Image(systemName: level.icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(isSelected ? .white : palette.primary)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle()
+                            .fill(isSelected ? palette.primary : palette.primary.opacity(0.1))
+                    )
+
+                // Text
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(level.rawValue)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : Color(white: 0.2))
+
+                    Text(level.description)
+                        .font(.system(size: 12))
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : Color(white: 0.5))
+                }
+
+                Spacer()
+
+                // Selection indicator
+                Circle()
+                    .fill(isSelected ? Color.white : Color.clear)
+                    .frame(width: 8, height: 8)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isSelected ? palette.primary : Color.white.opacity(0.8))
+                    .shadow(color: isSelected ? palette.primary.opacity(0.3) : Color.black.opacity(0.05), radius: isSelected ? 10 : 4, y: isSelected ? 3 : 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct HabitTag: View {
+    let habit: EatingHabitOption
+    let isSelected: Bool
+    let palette: OnboardingPalette
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 8) {
+                Image(systemName: habit.icon)
+                    .font(.system(size: 14))
+
+                Text(habit.rawValue)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+            }
+            .foregroundColor(isSelected ? .white : Color(white: 0.4))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(isSelected ? palette.primary : Color.white.opacity(0.8))
+                    .shadow(color: isSelected ? palette.primary.opacity(0.3) : Color.black.opacity(0.05), radius: isSelected ? 6 : 3, y: 2)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct PremiumExperienceCard: View {
+    let experience: DietExperienceOption
+    let isSelected: Bool
+    let palette: OnboardingPalette
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 16) {
+                // Icon
+                Image(systemName: experience.icon)
+                    .font(.system(size: 24))
+                    .foregroundColor(isSelected ? .white : palette.primary)
+                    .frame(width: 48, height: 48)
+                    .background(
+                        Circle()
+                            .fill(isSelected ? palette.primary : palette.primary.opacity(0.1))
+                    )
+
+                // Text
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(experience.rawValue)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : Color(white: 0.2))
+
+                    Text(experience.description)
+                        .font(.system(size: 13))
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : Color(white: 0.5))
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(isSelected ? palette.primary : Color.white.opacity(0.8))
+                    .shadow(color: isSelected ? palette.primary.opacity(0.3) : Color.black.opacity(0.05), radius: isSelected ? 12 : 5, y: isSelected ? 4 : 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Pro CTA Screen
+
+struct ProUpgradeScreen: View {
+    @ObservedObject var state: PremiumOnboardingState
+    let onUpgrade: () -> Void
+    let onContinueFree: () -> Void
+
+    @State private var showContent = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Pro badge with glow
+            ZStack {
+                // Glow effect
+                Circle()
+                    .fill(Color(red: 0.95, green: 0.65, blue: 0.30).opacity(0.3))
+                    .frame(width: 100, height: 100)
+                    .blur(radius: 30)
+
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 50))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(red: 1.0, green: 0.85, blue: 0.40), Color(red: 0.95, green: 0.60, blue: 0.25)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+            .opacity(showContent ? 1 : 0)
+            .scaleEffect(showContent ? 1 : 0.8)
+
+            Spacer().frame(height: 32)
+
+            // Headline
+            VStack(spacing: 8) {
+                Text("Pro users achieve")
+                    .font(.system(size: 26, weight: .bold, design: .serif))
+                    .foregroundColor(Color(white: 0.2))
+
+                Text("goals 2.3x faster")
+                    .font(.system(size: 26, weight: .bold, design: .serif))
+                    .foregroundColor(state.palette.primary)
+            }
+            .multilineTextAlignment(.center)
+            .opacity(showContent ? 1 : 0)
+
+            Spacer().frame(height: 12)
+
+            Text("Unlock everything NutraSafe has to offer")
+                .font(.system(size: 15))
+                .foregroundColor(Color(white: 0.5))
+                .opacity(showContent ? 1 : 0)
+
+            Spacer().frame(height: 36)
+
+            // Three key features only
+            VStack(spacing: 16) {
+                CompactProFeature(icon: "infinity", text: "Unlimited tracking")
+                CompactProFeature(icon: "camera.viewfinder", text: "AI meal scanner")
+                CompactProFeature(icon: "timer", text: "Fasting tracker")
+            }
+            .opacity(showContent ? 1 : 0)
+
+            Spacer()
+
+            // Buttons
+            VStack(spacing: 16) {
+                // Pro button
+                Button(action: onUpgrade) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "crown.fill")
+                            .font(.system(size: 16))
+
+                        Text("Start 7-Day Free Trial")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 0.95, green: 0.70, blue: 0.30), Color(red: 0.95, green: 0.55, blue: 0.25)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: Color(red: 0.95, green: 0.60, blue: 0.25).opacity(0.4), radius: 12, y: 4)
+                }
+
+                // Free continue
+                Button(action: onContinueFree) {
+                    Text("Maybe later")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(white: 0.5))
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 50)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                showContent = true
+            }
+        }
+    }
+}
+
+struct CompactProFeature: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(Color(red: 0.95, green: 0.60, blue: 0.30))
+                .frame(width: 32)
+
+            Text(text)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(Color(white: 0.25))
+
+            Spacer()
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(Color(red: 0.95, green: 0.60, blue: 0.30).opacity(0.8))
+        }
+        .padding(.horizontal, 40)
+    }
+}
+
+// MARK: - Preview
+
+#Preview {
+    GoalsScreen(state: PremiumOnboardingState()) { }
+}

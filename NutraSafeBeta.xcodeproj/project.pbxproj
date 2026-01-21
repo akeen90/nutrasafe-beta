@@ -20,6 +20,7 @@
 		28291D8E59C24DBEEC0CB4B3 /* SearchNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EF393E4B5FC384966969A5 /* SearchNormalization.swift */; };
 		2DA31381E3C0ED7887D04FBF /* PremiumOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */; };
 		EXT0NBOARD001BUILD /* ExtendedOnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */; };
+		GOALSONBOARD001BUILD /* GoalsOnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */; };
 		3AB0945DA7E34CDA8CF326D8 /* DiaryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2F7F8ABA91448198A8CB77 /* DiaryComponents.swift */; };
 		3B8228DB0918054597694FC4 /* MicronutrientDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151F33BF94E6DC1B4BA66ED0 /* MicronutrientDashboard.swift */; };
 		41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */ = {isa = PBXBuildFile; fileRef = E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */; };
@@ -137,6 +138,7 @@
 		MYMEALSVIEW001BUILD /* MyMealsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MYMEALSVIEW001FILE /* MyMealsView.swift */; };
 		ONBMGR0001BUILD /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBMGR0001FILE /* OnboardingManager.swift */; };
 		ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBSCREEN0001FILE /* OnboardingScreens.swift */; };
+		ONBGOALSSETUP001BUILD /* OnboardingGoalsSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBGOALSSETUP001FILE /* OnboardingGoalsSetup.swift */; };
 		ONBVIEW0001BUILD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBVIEW0001FILE /* OnboardingView.swift */; };
 		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
 		PREMWRAP001BUILD /* PremiumFeatureWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = PREMWRAP001FILE /* PremiumFeatureWrapper.swift */; };
@@ -229,6 +231,7 @@
 		B2E3B509554C438DB764FD12 /* SecureStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/SecureStorage.swift"; sourceTree = SOURCE_ROOT; };
 		B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PremiumOnboardingView.swift; sourceTree = "<group>"; };
 		EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtendedOnboardingScreens.swift; sourceTree = "<group>"; };
+		GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalsOnboardingScreens.swift; sourceTree = "<group>"; };
 		B45D6F2FD4A7496BA9C12D66 /* NutritionScoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/NutritionScoreViews.swift"; sourceTree = "<group>"; };
 		B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientScoringModels.swift; sourceTree = "<group>"; };
 		B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AddFoodManualViews.swift; sourceTree = "<group>"; };
@@ -274,6 +277,7 @@
 		MYMEALSVIEW001FILE /* MyMealsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyMealsView.swift; sourceTree = "<group>"; };
 		ONBMGR0001FILE /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/OnboardingManager.swift; sourceTree = "<group>"; };
 		ONBSCREEN0001FILE /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
+		ONBGOALSSETUP001FILE /* OnboardingGoalsSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingGoalsSetup.swift; sourceTree = "<group>"; };
 		ONBVIEW0001FILE /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		PAYWALL0001FILE /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		PREMWRAP001FILE /* PremiumFeatureWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/PremiumFeatureWrapper.swift"; sourceTree = SOURCE_ROOT; };
@@ -343,6 +347,7 @@
 			isa = PBXGroup;
 			children = (
 				EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */,
+				GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */,
 				AEB26CC91C3113543F557B3F /* OnboardingTheme.swift */,
 				8777C7021556545BB35DF7D8 /* OrganicShapes.swift */,
 				B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */,
@@ -573,6 +578,7 @@
 			isa = PBXGroup;
 			children = (
 				ONBVIEW0001FILE /* OnboardingView.swift */,
+				ONBGOALSSETUP001FILE /* OnboardingGoalsSetup.swift */,
 				ONBSCREEN0001FILE /* OnboardingScreens.swift */,
 				WELCOMESCREEN001FILE /* WelcomeScreenView.swift */,
 			);
@@ -784,6 +790,7 @@
 				F30EE587A7676BDEA5D95EC6 /* FastingInsightsView.swift in Sources */,
 				ONBMGR0001BUILD /* OnboardingManager.swift in Sources */,
 				ONBVIEW0001BUILD /* OnboardingView.swift in Sources */,
+				ONBGOALSSETUP001BUILD /* OnboardingGoalsSetup.swift in Sources */,
 				ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */,
 				WELCOMESCREEN001BUILD /* WelcomeScreenView.swift in Sources */,
 				6522431C8ACB43E0B081B459 /* NutritionValidator.swift in Sources */,
@@ -811,6 +818,7 @@
 				17BDBE5F1F972B8D2A455AC1 /* OrganicShapes.swift in Sources */,
 				2DA31381E3C0ED7887D04FBF /* PremiumOnboardingView.swift in Sources */,
 				EXT0NBOARD001BUILD /* ExtendedOnboardingScreens.swift in Sources */,
+				GOALSONBOARD001BUILD /* GoalsOnboardingScreens.swift in Sources */,
 				5C276317BD666021E0680AC7 /* AppDesignSystem.swift in Sources */,
 				6E87137381554C34FDC70BAE /* NutraSafeComponents.swift in Sources */,
 				25DFD742946D899129F72798 /* DiaryMetricCards.swift in Sources */,

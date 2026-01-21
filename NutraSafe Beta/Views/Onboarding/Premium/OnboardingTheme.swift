@@ -173,6 +173,138 @@ enum FoodSensitivity: String, CaseIterable, Identifiable {
     var isNone: Bool { self == .nothingSpecific }
 }
 
+// MARK: - Goals & Lifestyle Enums
+
+enum OnboardingGoal: String, CaseIterable, Identifiable {
+    case loseWeight = "Lose weight"
+    case buildMuscle = "Build muscle"
+    case eatHealthier = "Eat healthier"
+    case trackNutrition = "Track nutrition"
+    case foodSafety = "Food safety"
+    case manageAllergies = "Manage allergies"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .loseWeight: return "flame"
+        case .buildMuscle: return "dumbbell"
+        case .eatHealthier: return "leaf"
+        case .trackNutrition: return "chart.bar"
+        case .foodSafety: return "shield.checkered"
+        case .manageAllergies: return "exclamationmark.triangle"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .loseWeight: return "Reach your target weight"
+        case .buildMuscle: return "Gain strength and mass"
+        case .eatHealthier: return "Make better food choices"
+        case .trackNutrition: return "Understand what you eat"
+        case .foodSafety: return "Know what's in your food"
+        case .manageAllergies: return "Avoid reactions"
+        }
+    }
+}
+
+enum ActivityLevelOption: String, CaseIterable, Identifiable {
+    case sedentary = "Sedentary"
+    case lightlyActive = "Lightly active"
+    case moderatelyActive = "Moderately active"
+    case veryActive = "Very active"
+    case extraActive = "Extra active"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .sedentary: return "figure.stand"
+        case .lightlyActive: return "figure.walk"
+        case .moderatelyActive: return "figure.run"
+        case .veryActive: return "figure.highintensity.intervaltraining"
+        case .extraActive: return "figure.strengthtraining.traditional"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .sedentary: return "Little or no exercise"
+        case .lightlyActive: return "Light exercise 1-3 days/week"
+        case .moderatelyActive: return "Moderate exercise 3-5 days/week"
+        case .veryActive: return "Hard exercise 6-7 days/week"
+        case .extraActive: return "Very hard exercise or physical job"
+        }
+    }
+
+    var multiplier: Double {
+        switch self {
+        case .sedentary: return 1.2
+        case .lightlyActive: return 1.375
+        case .moderatelyActive: return 1.55
+        case .veryActive: return 1.725
+        case .extraActive: return 1.9
+        }
+    }
+}
+
+enum EatingHabitOption: String, CaseIterable, Identifiable {
+    case homeCooking = "Home cooking"
+    case mealPrep = "Meal prep"
+    case eatOut = "Eat out often"
+    case fastFood = "Fast food"
+    case snacker = "Frequent snacker"
+    case lateDinner = "Late dinners"
+    case skipBreakfast = "Skip breakfast"
+    case bigLunches = "Big lunches"
+    case healthyTrying = "Trying to be healthier"
+    case busySchedule = "Busy schedule"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .homeCooking: return "frying.pan"
+        case .mealPrep: return "takeoutbag.and.cup.and.straw"
+        case .eatOut: return "fork.knife"
+        case .fastFood: return "bag"
+        case .snacker: return "carrot"
+        case .lateDinner: return "moon"
+        case .skipBreakfast: return "sunrise"
+        case .bigLunches: return "sun.max"
+        case .healthyTrying: return "heart"
+        case .busySchedule: return "clock"
+        }
+    }
+}
+
+enum DietExperienceOption: String, CaseIterable, Identifiable {
+    case never = "No, this is new"
+    case tried = "I've tried before"
+    case onAndOff = "On and off"
+    case regularly = "I track regularly"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .never: return "sparkles"
+        case .tried: return "arrow.counterclockwise"
+        case .onAndOff: return "arrow.triangle.2.circlepath"
+        case .regularly: return "checkmark.circle"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .never: return "Fresh start, let's go!"
+        case .tried: return "Ready for something better"
+        case .onAndOff: return "Looking for consistency"
+        case .regularly: return "Levelling up"
+        }
+    }
+}
+
 // MARK: - Onboarding State
 
 class PremiumOnboardingState: ObservableObject {
@@ -180,6 +312,12 @@ class PremiumOnboardingState: ObservableObject {
     @Published var selectedSensitivities: Set<FoodSensitivity> = []
     @Published var hasAcceptedDisclaimer: Bool = false
     @Published var emailConsent: Bool = false
+
+    // Goals and lifestyle
+    @Published var selectedGoals: Set<OnboardingGoal> = []
+    @Published var activityLevel: ActivityLevelOption = .moderatelyActive
+    @Published var eatingHabits: Set<EatingHabitOption> = []
+    @Published var dietExperience: DietExperienceOption = .tried
 
     var palette: OnboardingPalette {
         OnboardingPalette.forIntent(selectedIntent)
@@ -194,6 +332,10 @@ class PremiumOnboardingState: ObservableObject {
         return hasSensitivities ? intent.personalizedMessageWithSensitivities : intent.personalizedMessage
     }
 
+    var hasWeightGoal: Bool {
+        selectedGoals.contains(.loseWeight) || selectedGoals.contains(.buildMuscle)
+    }
+
     // Save to OnboardingManager for persistence
     func saveToManager() {
         if let intent = selectedIntent {
@@ -201,6 +343,14 @@ class PremiumOnboardingState: ObservableObject {
         }
         let sensitivitiesArray = selectedSensitivities.map { $0.rawValue }
         UserDefaults.standard.set(sensitivitiesArray, forKey: "userSensitivities")
+
+        // Save goals and lifestyle
+        let goalsArray = selectedGoals.map { $0.rawValue }
+        UserDefaults.standard.set(goalsArray, forKey: "userGoals")
+        UserDefaults.standard.set(activityLevel.rawValue, forKey: "userActivityLevel")
+        let habitsArray = eatingHabits.map { $0.rawValue }
+        UserDefaults.standard.set(habitsArray, forKey: "userEatingHabits")
+        UserDefaults.standard.set(dietExperience.rawValue, forKey: "userDietExperience")
     }
 
     // Load from UserDefaults
@@ -211,6 +361,20 @@ class PremiumOnboardingState: ObservableObject {
         }
         if let sensitivitiesArray = UserDefaults.standard.stringArray(forKey: "userSensitivities") {
             selectedSensitivities = Set(sensitivitiesArray.compactMap { FoodSensitivity(rawValue: $0) })
+        }
+        if let goalsArray = UserDefaults.standard.stringArray(forKey: "userGoals") {
+            selectedGoals = Set(goalsArray.compactMap { OnboardingGoal(rawValue: $0) })
+        }
+        if let activityRaw = UserDefaults.standard.string(forKey: "userActivityLevel"),
+           let activity = ActivityLevelOption(rawValue: activityRaw) {
+            activityLevel = activity
+        }
+        if let habitsArray = UserDefaults.standard.stringArray(forKey: "userEatingHabits") {
+            eatingHabits = Set(habitsArray.compactMap { EatingHabitOption(rawValue: $0) })
+        }
+        if let experienceRaw = UserDefaults.standard.string(forKey: "userDietExperience"),
+           let experience = DietExperienceOption(rawValue: experienceRaw) {
+            dietExperience = experience
         }
     }
 }
