@@ -674,6 +674,9 @@ struct AppAnimatedBackground: View {
 
     var body: some View {
         ZStack {
+            // CRITICAL: Solid opaque base layer to prevent any transparency bleed-through
+            palette.background
+
             // Base gradient (onboarding-derived)
             LinearGradient(
                 colors: [

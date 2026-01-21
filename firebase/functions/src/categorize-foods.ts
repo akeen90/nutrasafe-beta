@@ -248,10 +248,10 @@ export const categorizeFoodsFromDatabase = functions
           const data = doc.data();
           return {
             id: doc.id,
-            foodName: data.foodName || data.name || '',
+            foodName: data.foodName || data.name || data.title || data.productName || '',
             brandName: data.brandName || data.brand || '',
-            ingredients: data.ingredients || data.extractedIngredients || '',
-            servingDescription: data.servingDescription || data.servingSize || ''
+            ingredients: data.ingredients || data.extractedIngredients || data.ingredientsList || '',
+            servingDescription: data.servingDescription || data.servingSize || data.servingInfo || ''
           };
         });
 
@@ -512,7 +512,7 @@ export const getFoodsForCategorization = functions.https.onRequest((req, res) =>
         const data = doc.data();
         return {
           id: doc.id,
-          foodName: data.foodName || data.name || 'Unknown',
+          foodName: data.foodName || data.name || data.title || data.productName || 'Unknown',
           brandName: data.brandName || data.brand || '',
           currentCategory: data.foodCategory || null,
           currentCategoryName: data.foodCategoryName || null
