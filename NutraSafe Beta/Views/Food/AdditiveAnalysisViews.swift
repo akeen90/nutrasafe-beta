@@ -2170,6 +2170,7 @@ struct EnhancedAdditiveCard: View {
     let detailedAdditive: DetailedAdditive
     let riskLevel: AdditiveRiskLevel
     @State private var isExpanded = false
+    @State private var showingSources = false
     @Environment(\.colorScheme) var colorScheme
 
     private var palette: AppPalette {
@@ -2325,16 +2326,21 @@ struct EnhancedAdditiveCard: View {
                         .padding(.horizontal, 12)
                     }
 
-                    // Sources link if available
+                    // Sources link if available - now tappable
                     if !additive.sources.isEmpty {
-                        HStack(spacing: 4) {
-                            Image(systemName: "doc.text")
-                                .font(.system(size: 10))
-                            Text("\(additive.sources.count) source\(additive.sources.count == 1 ? "" : "s")")
-                                .font(.system(size: 11))
+                        Button(action: { showingSources = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.text")
+                                    .font(.system(size: 10))
+                                Text("\(additive.sources.count) source\(additive.sources.count == 1 ? "" : "s")")
+                                    .font(.system(size: 11))
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 8, weight: .semibold))
+                            }
+                            .foregroundColor(palette.accent)
+                            .padding(.horizontal, 12)
                         }
-                        .foregroundColor(palette.textTertiary)
-                        .padding(.horizontal, 12)
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(.bottom, 12)
@@ -2345,6 +2351,96 @@ struct EnhancedAdditiveCard: View {
                 .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
         )
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .sheet(isPresented: $showingSources) {
+            AdditiveSourcesSheet(additiveName: detailedAdditive.name, sources: additive.sources)
+        }
+    }
+}
+
+// MARK: - Additive Sources Sheet
+struct AdditiveSourcesSheet: View {
+    let additiveName: String
+    let sources: [AdditiveSource]
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.openURL) var openURL
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Sources for information about \(additiveName)")
+                        .font(.system(size: 14))
+                        .foregroundColor(palette.textSecondary)
+                        .padding(.horizontal)
+
+                    ForEach(Array(sources.enumerated()), id: \.offset) { index, source in
+                        Button(action: {
+                            if let url = URL(string: source.url) {
+                                openURL(url)
+                            }
+                        }) {
+                            HStack(alignment: .top, spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(palette.accent.opacity(0.1))
+                                        .frame(width: 32, height: 32)
+                                    Text("\(index + 1)")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(palette.accent)
+                                }
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(source.title)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(palette.textPrimary)
+                                        .multilineTextAlignment(.leading)
+
+                                    if let covers = source.covers, !covers.isEmpty {
+                                        Text(covers)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(palette.textSecondary)
+                                    }
+
+                                    Text(source.url)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(palette.accent)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(palette.textTertiary)
+                            }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal)
+                    }
+                }
+                .padding(.vertical)
+            }
+            .background(colorScheme == .dark ? Color.midnightBackground : palette.background)
+            .navigationTitle("Sources")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(palette.accent)
+                }
+            }
+        }
     }
 }
 

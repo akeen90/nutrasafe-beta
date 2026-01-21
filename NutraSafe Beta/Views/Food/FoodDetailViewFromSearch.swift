@@ -5876,10 +5876,10 @@ extension FoodDetailViewFromSearch {
 
     // MARK: - Redesigned Header Section
     private var redesignedHeaderSection: some View {
-        VStack(spacing: 6) {
-            // Product name - more compact
+        VStack(spacing: 4) {
+            // Product name - prominent
             Text(displayFood.name)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(palette.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -5890,6 +5890,17 @@ extension FoodDetailViewFromSearch {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(palette.textSecondary)
             }
+
+            // Inline calorie display - compact and prominent
+            HStack(spacing: 4) {
+                Text(String(format: "%.0f", adjustedCalories))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.accent)
+                Text("kcal")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(palette.textSecondary)
+            }
+            .padding(.top, 2)
 
             // Allergen warning - calm, not aggressive
             if !detectedUserAllergens.isEmpty {
