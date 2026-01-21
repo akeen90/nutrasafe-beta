@@ -403,12 +403,22 @@ struct FoodSearchResultRowEnhanced: View {
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 8, y: 3)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
+        .onChange(of: showingFoodDetail) { oldValue, newValue in
+            print("[FoodSearchResultRowEnhanced] showingFoodDetail changed: \(oldValue) -> \(newValue)")
+        }
         .fullScreenCover(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
+                print("[FoodSearchResultRowEnhanced] FoodDetail onComplete called with tab: \(tab)")
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
             .interactiveDismissDisabled(false)
+            .onAppear {
+                print("[FoodDetailViewFromSearch] onAppear - fullScreenCover presented")
+            }
+            .onDisappear {
+                print("[FoodDetailViewFromSearch] onDisappear - fullScreenCover dismissed")
+            }
         }
         .overlay(
             Group {
@@ -810,12 +820,14 @@ struct AddFoodSearchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppAnimatedBackground())
         .onAppear {
+            print("[AddFoodSearchView] onAppear called")
             setupKeyboardObservers()
             checkForEditingMode()
             loadRecentFoods()
             loadFavorites()
         }
         .onDisappear {
+            print("[AddFoodSearchView] onDisappear called")
             removeKeyboardObservers()
         }
         .onReceive(NotificationCenter.default.publisher(for: .favoritesDidChange)) { _ in

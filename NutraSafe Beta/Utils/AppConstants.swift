@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - App Design Constants
 // Unified design system extending onboarding patterns across the app
@@ -73,11 +74,25 @@ enum AppTypography {
     static let label: Font = .system(size: 13, weight: .medium)
 }
 
-// MARK: - Onboarding-Style Text Colors
+// MARK: - Adaptive Text Colors (Light/Dark Mode)
 extension Color {
-    static let textPrimary = Color(white: 0.2)
-    static let textSecondary = Color(white: 0.4)
-    static let textTertiary = Color(white: 0.5)
+    static let textPrimary = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark
+            ? UIColor(white: 0.95, alpha: 1.0)
+            : UIColor(white: 0.2, alpha: 1.0)
+    })
+
+    static let textSecondary = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark
+            ? UIColor(white: 0.75, alpha: 1.0)
+            : UIColor(white: 0.4, alpha: 1.0)
+    })
+
+    static let textTertiary = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark
+            ? UIColor(white: 0.6, alpha: 1.0)
+            : UIColor(white: 0.5, alpha: 1.0)
+    })
 }
 
 // MARK: - App Animation

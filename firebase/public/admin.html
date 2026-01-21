@@ -5575,10 +5575,10 @@
                     <div class="control-group">
                         <label>Collection:</label>
                         <select id="cat-collection-select" onchange="app.onCollectionChange()">
-                            <option value="foods" selected>All Foods (26k)</option>
+                            <option value="uk_foods_cleaned" selected>UK Foods Cleaned (55k)</option>
+                            <option value="foods">All Foods (26k)</option>
+                            <option value="tescoProducts">Tesco Products (9k)</option>
                             <option value="verifiedFoods">Verified Foods</option>
-                            <option value="tesco_products">Tesco Products</option>
-                            <option value="uk_foods_cleaned">UK Foods Cleaned</option>
                             <option value="generic_database">Generic Database</option>
                         </select>
                     </div>
@@ -13911,7 +13911,7 @@
 
                                 // Small delay to prevent rate limiting
                                 if (hasMore) {
-                                    await new Promise(r => setTimeout(r, 1000));
+                                    await new Promise(r => setTimeout(r, 100)); // 100ms delay between batches
                                 }
                             } else {
                                 hasMore = false;

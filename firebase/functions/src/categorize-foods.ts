@@ -89,8 +89,9 @@ Confidence levels:
 async function callGeminiForCategorization(foods: FoodToCategorize[], apiKey: string): Promise<any[]> {
   const prompt = buildCategorizationPrompt(foods);
 
+  // Using gemini-1.5-flash-8b - cheapest model ($0.0375/1M input tokens)
   const response = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`,
     {
       contents: [{
         parts: [{ text: prompt }]
@@ -270,7 +271,7 @@ export const categorizeFoodsFromDatabase = functions
 
           // Small delay between batches to avoid rate limiting
           if (i + batchSize < foods.length) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 50)); // 50ms delay between Gemini calls
           }
         }
 
