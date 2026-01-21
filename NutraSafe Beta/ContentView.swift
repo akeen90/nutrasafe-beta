@@ -702,7 +702,7 @@ struct ContentView: View {
             LogReactionSheet(selectedDayRange: .threeDays)
         }
         .fullScreenCover(isPresented: $showingWeightAdd) {
-            AddWeightView(
+            LogWeightView(
                 currentWeight: $currentWeight,
                 weightHistory: $weightHistory,
                 userHeight: $userHeight,
@@ -1576,7 +1576,7 @@ struct WeightTrackingView: View {
             }
             .background(AppAnimatedBackground())
         .fullScreenCover(isPresented: $showingAddWeight) {
-            AddWeightView(
+            LogWeightView(
                 currentWeight: $currentWeight,
                 weightHistory: $weightHistory,
                 userHeight: $userHeight,
