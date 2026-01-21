@@ -1002,7 +1002,7 @@ struct UseByExpiryView: View {
             Image("useby-fridge")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(height: 380)
+                .frame(height: 460)
                 .padding(.top, 8)
 
             VStack(spacing: 14) {
@@ -1984,7 +1984,7 @@ struct UseByEmptyStateView: View {
             Image("useby-fridge")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(height: 380)
+                .frame(height: 460)
                 .accessibilityHidden(true)
 
             VStack(spacing: 14) {
