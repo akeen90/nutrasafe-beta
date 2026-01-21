@@ -1437,13 +1437,22 @@ struct FoodDetailViewFromSearch: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                LazyVStack(spacing: 24) {
-                    foodHeaderView
+            ZStack {
+                // REDESIGN: Soft gradient background matching onboarding - NOT pure white
+                foodDetailBackground
+                    .ignoresSafeArea()
 
-                    // Serving and Meal Controls Section
-                    servingControlsSection
-                        .onAppear {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 20) {
+                        // REDESIGN: Floating header with soft integration
+                        redesignedHeaderSection
+
+                        // REDESIGN: Primary action buttons - prominent and inviting
+                        redesignedActionButtons
+
+                        // REDESIGN: Serving selection - human and interactive
+                        redesignedServingSection
+                            .onAppear {
                             // Determine the appropriate unit based on food category
                             let appropriateUnit = food.isLiquidCategory ? "ml" : "g"
 
@@ -1526,57 +1535,71 @@ struct FoodDetailViewFromSearch: View {
                             }
                         }
                     
-                    // Nutrition information first
-                    nutritionFactsSection
-                    
-                    // Food Scores Section (moved from header)
-                    foodScoresSection
-                    
-                    // Combined Watch Sections with Tabs
-                    watchTabsSection
-                    
-                    // Ingredients section immediately after nutrition 
-                    ingredientsSection
+                        // REDESIGN: Glanceable nutrition card
+                        redesignedNutritionCard
 
-                    // Show "in review" section if pending, otherwise always show notify button
-                    let ingredientsStatus = cachedIngredientsStatus ?? .none
-                    if ingredientsStatus == .pending {
-                        ingredientInReviewSection
-                    } else {
-                        // Always show notify team option for users to report issues
-                        ingredientVerificationSection
+                        // REDESIGN: Calm insight scores (not warnings)
+                        redesignedScoresSection
+
+                        // REDESIGN: Pill-style insight tabs
+                        redesignedWatchTabs
+
+                        // REDESIGN: Clean, readable ingredients
+                        redesignedIngredientsSection
+
+                        // REDESIGN: Supportive verification section
+                        let ingredientsStatus = cachedIngredientsStatus ?? .none
+                        if ingredientsStatus == .pending {
+                            ingredientInReviewSection
+                        } else {
+                            redesignedVerificationSection
+                        }
+
+                        Spacer().frame(height: 20)
                     }
-                    
-                    
+                    .padding(.horizontal, DesignTokens.Spacing.screenEdge)
                 }
-                .padding(.horizontal, 16)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively) // Dismiss keyboard on scroll instead of tap gesture
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        // Fast dismiss - no animation delay
-                        dismiss()
+                    // REDESIGN: Floating close button
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(palette.textSecondary)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                            )
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    // REDESIGN: Floating favorite button
                     Button(action: toggleFavorite) {
                         if isTogglingFavorite {
                             ProgressView()
-                                .scaleEffect(0.8)
+                                .scaleEffect(0.7)
+                                .frame(width: 32, height: 32)
                         } else {
                             Image(systemName: isFavorite ? "heart.fill" : "heart")
-                                .foregroundColor(isFavorite ? .red : .gray)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(isFavorite ? SemanticColors.caution : palette.textSecondary)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                )
                         }
                     }
                     .disabled(isTogglingFavorite)
                 }
             }
         }
-        .background(colorScheme == .dark ? Color.midnightBackground : Color.adaptiveCard)
         .presentationDragIndicator(.visible)
-        .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color.adaptiveCard)
+        .presentationBackground(colorScheme == .dark ? Color.midnightBackground : palette.background)
         .onAppear {
             // Only initialize once per view instance, even if .onAppear is called multiple times
             guard !hasInitialized else { return }
@@ -4885,42 +4908,48 @@ private var nutritionFactsSection: some View {
 
 struct AllergenWarningCard: View {
     let allergenName: String
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Warning icon
+            // Softer icon - informational, not alarming
             ZStack {
                 Circle()
-                    .fill(SemanticColors.caution.opacity(0.15))
-                    .frame(width: 44, height: 44)
+                    .fill(SemanticColors.neutral.opacity(0.1))
+                    .frame(width: 40, height: 40)
 
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(SemanticColors.caution)
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(SemanticColors.neutral)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(allergenName)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.primary)
 
-                Text("Detected in ingredients")
-                    .font(.system(size: 12, weight: .medium))
+                Text("Found in this product")
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
 
             Spacer()
+
+            // Subtle chevron for detail access
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary.opacity(0.5))
         }
-        .padding(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.adaptiveCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(SemanticColors.caution.opacity(0.2), lineWidth: 1.5)
-                )
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
         )
-        .shadow(color: SemanticColors.caution.opacity(0.08), radius: 8, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 }
 
@@ -4954,45 +4983,54 @@ struct AllergenInfoRow: View {
 struct NutrientCard: View {
     let nutrientName: String
     let micronutrients: MicronutrientProfile
-    @State private var isExpanded = false
+    @State private var showDetail = false
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isExpanded.toggle()
+        Button(action: { showDetail = true }) {
+            HStack(alignment: .center, spacing: 12) {
+                // Nutrient icon with soft background
+                ZStack {
+                    Circle()
+                        .fill(getNutrientColor().opacity(0.1))
+                        .frame(width: 40, height: 40)
+
+                    Image(systemName: getNutrientIcon())
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(getNutrientColor())
                 }
-            }) {
-                HStack(alignment: .center, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(nutrientName)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
 
-                        Text(getNutrientCategory())
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(nutrientName)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.primary)
 
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
+                    Text(getNutrientCategory())
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
-                .padding(12)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.5))
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
         }
+        .buttonStyle(PlainButtonStyle())
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.adaptiveCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(getNutrientColor().opacity(0.2), lineWidth: 1.5)
-                )
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
         )
-        .shadow(color: getNutrientColor().opacity(0.08), radius: 8, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+        .sheet(isPresented: $showDetail) {
+            NutrientDetailSheet(nutrientName: nutrientName, category: getNutrientCategory(), function: getNutrientFunction(), benefits: getNutrientBenefits(), color: getNutrientColor(), icon: getNutrientIcon())
+        }
     }
 
     private func getNutrientIcon() -> String {
@@ -5144,6 +5182,101 @@ struct NutrientCard: View {
             return "Supports liver detoxification processes"
         } else {
             return "Contributes to overall health and wellbeing"
+        }
+    }
+}
+
+// MARK: - Nutrient Detail Sheet
+struct NutrientDetailSheet: View {
+    let nutrientName: String
+    let category: String
+    let function: String
+    let benefits: String
+    let color: Color
+    let icon: String
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header with icon
+                    HStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(color.opacity(0.15))
+                                .frame(width: 60, height: 60)
+
+                            Image(systemName: icon)
+                                .font(.system(size: 26, weight: .medium))
+                                .foregroundColor(color)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(nutrientName)
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.primary)
+
+                            Text(category)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.top, 8)
+
+                    // Function section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("What it does")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        Text(function)
+                            .font(.system(size: 15))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemGray6))
+                    )
+
+                    // Benefits section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Benefits")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        Text(benefits)
+                            .font(.system(size: 15))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemGray6))
+                    )
+
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 40)
+            }
+            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.secondary.opacity(0.6))
+                    }
+                }
+            }
         }
     }
 }
@@ -5712,6 +5845,946 @@ struct NutrientInfoCard: View {
         }
 
         return nil
+    }
+}
+
+// MARK: - ═══════════════════════════════════════════════════════════════════════
+// MARK: - REDESIGNED COMPONENTS (Onboarding Design Language)
+// MARK: - ═══════════════════════════════════════════════════════════════════════
+
+extension FoodDetailViewFromSearch {
+    // MARK: - Soft Gradient Background
+    var foodDetailBackground: some View {
+        ZStack {
+            // Base: soft tinted background (NOT pure white)
+            if colorScheme == .dark {
+                Color.midnightBackground
+            } else {
+                // Soft teal/mint wash matching onboarding
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.94, green: 0.98, blue: 0.98),  // Soft mint
+                        Color(red: 0.96, green: 0.97, blue: 0.95),  // Warm off-white
+                        palette.background
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+
+            // Subtle radial accent in corner
+            RadialGradient(
+                colors: [
+                    palette.accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 350
+            )
+        }
+    }
+
+    // MARK: - Redesigned Header Section
+    private var redesignedHeaderSection: some View {
+        VStack(spacing: 12) {
+            // Product name - editorial style
+            Text(displayFood.name)
+                .font(DesignTokens.Typography.headline(28))
+                .foregroundColor(palette.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+
+            // Brand - subtle secondary
+            if let brand = displayFood.brand, !brand.isEmpty {
+                Text(brand)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(palette.textSecondary)
+            }
+
+            // Allergen warning - calm, not aggressive
+            if !detectedUserAllergens.isEmpty {
+                redesignedAllergenBanner
+            }
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+    }
+
+    // MARK: - Redesigned Allergen Banner (Calm, Not Alarming)
+    private var redesignedAllergenBanner: some View {
+        VStack(spacing: 8) {
+            // Allergen pills - softer styling
+            HStack(spacing: 8) {
+                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
+                    HStack(spacing: 4) {
+                        Text(allergen.icon)
+                            .font(.system(size: 11))
+                        Text(allergen.displayName)
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(SemanticColors.caution.opacity(0.12))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(SemanticColors.caution.opacity(0.3), lineWidth: 1)
+                    )
+                    .foregroundColor(SemanticColors.caution)
+                }
+            }
+
+            // Disclaimer - subtle
+            Text("Always check the label for allergens")
+                .font(.system(size: 10))
+                .foregroundColor(palette.textTertiary)
+        }
+        .padding(.top, 4)
+    }
+
+    // MARK: - Redesigned Action Buttons (Onboarding CTA Style)
+    private var redesignedActionButtons: some View {
+        VStack(spacing: 12) {
+            // Primary: Add to Diary
+            Button(action: addToFoodLog) {
+                HStack(spacing: 10) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(diaryEntryId != nil ? "Update Diary Entry" : "Add to Diary")
+                        .font(DesignTokens.Typography.button)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: DesignTokens.Size.buttonHeight)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.accent, palette.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .shadow(color: palette.accent.opacity(0.3), radius: 12, y: 4)
+                )
+            }
+
+            // Secondary: Log & Start Fast
+            if !isCurrentlyFasting && diaryEntryId == nil {
+                Button(action: addToFoodLogAndStartFast) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 15, weight: .medium))
+                        Text("Log Last Meal & Start Fast")
+                            .font(.system(size: 15, weight: .medium))
+                    }
+                    .foregroundColor(palette.accent)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .fill(palette.accent.opacity(0.08))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .stroke(palette.accent.opacity(0.2), lineWidth: 1)
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Redesigned Serving Section (Human & Interactive)
+    private var redesignedServingSection: some View {
+        VStack(spacing: 16) {
+            // Section header
+            HStack {
+                Text("How much?")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+                Spacer()
+            }
+
+            // Meal selector - pill style
+            redesignedMealSelector
+
+            // Portion cards - interactive, not spreadsheet
+            redesignedPortionCards
+        }
+        .padding(DesignTokens.Spacing.cardInternal)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                .shadow(
+                    color: DesignTokens.Shadow.subtle.color,
+                    radius: DesignTokens.Shadow.subtle.radius,
+                    y: DesignTokens.Shadow.subtle.y
+                )
+        )
+    }
+
+    // MARK: - Redesigned Meal Selector (Pill Style)
+    private var redesignedMealSelector: some View {
+        HStack(spacing: 8) {
+            ForEach(["Breakfast", "Lunch", "Dinner", "Snack"], id: \.self) { meal in
+                let isSelected = selectedMeal.lowercased() == meal.lowercased()
+                Button(action: { selectedMeal = meal }) {
+                    Text(meal)
+                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+                        .foregroundColor(isSelected ? .white : palette.textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(isSelected ? palette.accent : palette.tertiary.opacity(0.15))
+                        )
+                }
+            }
+        }
+    }
+
+    // MARK: - Redesigned Portion Cards
+    private var redesignedPortionCards: some View {
+        VStack(spacing: 10) {
+            if isPerUnit {
+                // Per-unit foods: single intuitive card
+                redesignedPerUnitCard
+            } else {
+                // Per-100g foods: portion options as cards
+                let effectiveQuery = food.name
+                if food.hasAnyPortionOptions(forQuery: effectiveQuery) {
+                    let portions = food.portionsForQuery(effectiveQuery)
+                    ForEach(portions) { portion in
+                        redesignedPortionCard(portion: portion)
+                    }
+                }
+                // Custom grams option
+                redesignedCustomGramsCard
+            }
+
+            // Quantity stepper - always visible
+            redesignedQuantityStepper
+        }
+    }
+
+    // MARK: - Redesigned Per-Unit Card
+    private var redesignedPerUnitCard: some View {
+        let isSelected = selectedPortionName != "__custom__"
+        return Button(action: { selectedPortionName = servingUnit }) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
+                }
+
+                // Description
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(servingUnit.capitalized)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+                    Text("\(Int(food.calories)) kcal")
+                        .font(.system(size: 13))
+                        .foregroundColor(palette.textSecondary)
+                }
+
+                Spacer()
+
+                // Selection indicator
+                ZStack {
+                    Circle()
+                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 2)
+                        .frame(width: 24, height: 24)
+                    if isSelected {
+                        Circle()
+                            .fill(palette.accent)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // MARK: - Redesigned Portion Card
+    private func redesignedPortionCard(portion: PortionOption) -> some View {
+        let isSelected = selectedPortionName == portion.name
+        let multiplier = portion.serving_g / 100.0
+        let portionCalories = food.calories * multiplier
+
+        return Button(action: {
+            selectedPortionName = portion.name
+            servingAmount = String(format: "%.0f", portion.serving_g)
+            servingUnit = food.isLiquidCategory ? "ml" : "g"
+        }) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: portionIcon(for: portion.name))
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
+                }
+
+                // Description
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(portion.name)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+                    Text("\(Int(portion.serving_g))\(food.isLiquidCategory ? "ml" : "g") • \(Int(portionCalories)) kcal")
+                        .font(.system(size: 13))
+                        .foregroundColor(palette.textSecondary)
+                }
+
+                Spacer()
+
+                // Selection indicator
+                ZStack {
+                    Circle()
+                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 2)
+                        .frame(width: 24, height: 24)
+                    if isSelected {
+                        Circle()
+                            .fill(palette.accent)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // MARK: - Portion Icon Helper
+    private func portionIcon(for name: String) -> String {
+        let lower = name.lowercased()
+        if lower.contains("small") { return "s.circle" }
+        if lower.contains("medium") { return "m.circle" }
+        if lower.contains("large") { return "l.circle" }
+        if lower.contains("cup") { return "cup.and.saucer" }
+        if lower.contains("slice") { return "square.split.1x2" }
+        if lower.contains("piece") { return "square.on.square" }
+        return "fork.knife"
+    }
+
+    // MARK: - Redesigned Custom Grams Card
+    private var redesignedCustomGramsCard: some View {
+        let isSelected = selectedPortionName == "__custom__"
+        return Button(action: { selectedPortionName = "__custom__" }) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "pencil.and.ruler")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
+                }
+
+                // Input field
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Custom amount")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+
+                    if isSelected {
+                        HStack(spacing: 8) {
+                            TextField("100", text: $gramsAmount)
+                                .keyboardType(.numberPad)
+                                .font(.system(size: 15, weight: .medium))
+                                .frame(width: 60)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(palette.tertiary.opacity(0.1))
+                                )
+                            Text(food.isLiquidCategory ? "ml" : "g")
+                                .font(.system(size: 14))
+                                .foregroundColor(palette.textSecondary)
+                        }
+                    } else {
+                        Text("Enter specific amount")
+                            .font(.system(size: 13))
+                            .foregroundColor(palette.textSecondary)
+                    }
+                }
+
+                Spacer()
+
+                // Selection indicator
+                ZStack {
+                    Circle()
+                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 2)
+                        .frame(width: 24, height: 24)
+                    if isSelected {
+                        Circle()
+                            .fill(palette.accent)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // MARK: - Redesigned Quantity Stepper
+    private var redesignedQuantityStepper: some View {
+        HStack(spacing: 16) {
+            Text("Quantity")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(palette.textSecondary)
+
+            Spacer()
+
+            HStack(spacing: 0) {
+                // Minus button
+                Button(action: {
+                    if quantityMultiplier > 0.5 {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            quantityMultiplier = quantityMultiplier == 1 ? 0.5 : quantityMultiplier - 1
+                        }
+                    }
+                }) {
+                    Image(systemName: "minus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(quantityMultiplier > 0.5 ? palette.accent : palette.textTertiary)
+                        .frame(width: 36, height: 36)
+                }
+                .disabled(quantityMultiplier <= 0.5)
+
+                // Current value
+                Text(formatQuantityMultiplier(quantityMultiplier))
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+                    .frame(width: 44)
+
+                // Plus button
+                Button(action: {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        quantityMultiplier = quantityMultiplier < 1 ? 1 : quantityMultiplier + 1
+                    }
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(palette.accent)
+                        .frame(width: 36, height: 36)
+                }
+            }
+            .padding(.horizontal, 4)
+            .background(
+                Capsule()
+                    .fill(palette.tertiary.opacity(0.1))
+            )
+        }
+        .padding(.top, 8)
+    }
+
+    // MARK: - Redesigned Nutrition Card (Glanceable)
+    private var redesignedNutritionCard: some View {
+        VStack(spacing: 20) {
+            // Hero: Calories
+            VStack(spacing: 6) {
+                HStack(alignment: .bottom, spacing: 6) {
+                    Text(String(format: "%.0f", adjustedCalories))
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
+                    Text("kcal")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(palette.textSecondary)
+                        .padding(.bottom, 8)
+                }
+                Text("per serving")
+                    .font(.system(size: 13))
+                    .foregroundColor(palette.textTertiary)
+            }
+
+            // Macro summary - clean cards
+            HStack(spacing: 12) {
+                redesignedMacroCard(label: "Protein", value: adjustedProtein, color: SemanticColors.nutrient)
+                redesignedMacroCard(label: "Carbs", value: adjustedCarbs, color: palette.accent)
+                redesignedMacroCard(label: "Fat", value: adjustedFat, color: SemanticColors.neutral)
+            }
+
+            // Detailed nutrition - collapsible
+            DisclosureGroup {
+                VStack(spacing: 8) {
+                    redesignedNutritionRow("Saturated Fat", value: adjustedSatFat)
+                    redesignedNutritionRow("Fibre", value: adjustedFiber)
+                    redesignedNutritionRow("Sugar", value: adjustedSugar)
+                    redesignedNutritionRow("Salt", value: adjustedSalt)
+                }
+                .padding(.top, 12)
+            } label: {
+                Text("More nutrition details")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(palette.textSecondary)
+            }
+            .tint(palette.accent)
+        }
+        .padding(DesignTokens.Spacing.cardInternal)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                .shadow(
+                    color: DesignTokens.Shadow.subtle.color,
+                    radius: DesignTokens.Shadow.subtle.radius,
+                    y: DesignTokens.Shadow.subtle.y
+                )
+        )
+    }
+
+    // MARK: - Macro Card Helper
+    private func redesignedMacroCard(label: String, value: Double, color: Color) -> some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .bottom, spacing: 2) {
+                Text(String(format: "%.0f", value))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+                Text("g")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(palette.textSecondary)
+                    .padding(.bottom, 3)
+            }
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(palette.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(color.opacity(0.08))
+        )
+    }
+
+    // MARK: - Nutrition Row Helper
+    private func redesignedNutritionRow(_ label: String, value: Double) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundColor(palette.textSecondary)
+            Spacer()
+            Text(String(format: "%.1fg", value))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(palette.textPrimary)
+        }
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - Redesigned Scores Section (Calm Insights)
+    private var redesignedScoresSection: some View {
+        let hasIngredients: Bool = {
+            guard let ingredients = cachedIngredients else { return false }
+            let clean = ingredients.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            return !clean.isEmpty
+        }()
+        let isPerUnitMode = displayFood.isPerUnit == true
+        let isFastFood = isFastFoodBrand
+        let gradeToShow = (hasIngredients && !isPerUnitMode && !isFastFood) ? nutraSafeGrade : nil
+
+        return VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                // Processing score card
+                if let ns = gradeToShow {
+                    Button(action: { showingNutraSafeInfo = true }) {
+                        redesignedScoreCard(
+                            title: "Processing",
+                            grade: ns.grade,
+                            label: ns.label,
+                            color: scoreColor(for: ns.grade)
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                // Sugar score card
+                if sugarScore.grade != .unknown {
+                    Button(action: { showingSugarInfo = true }) {
+                        redesignedScoreCard(
+                            title: "Sugar",
+                            grade: sugarScore.grade.rawValue,
+                            label: sugarLabel(for: sugarScore.grade),
+                            color: sugarScore.color
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+
+            // Info tip
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "lightbulb")
+                    .font(.system(size: 14))
+                    .foregroundColor(palette.accent)
+                Text("A = closest to natural, F = heavily processed. Tap cards to learn more.")
+                    .font(.system(size: 13))
+                    .foregroundColor(palette.textSecondary)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    .fill(palette.accent.opacity(0.05))
+            )
+        }
+    }
+
+    // MARK: - Score Card Helper
+    private func redesignedScoreCard(title: String, grade: String, label: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundColor(palette.textTertiary)
+                .tracking(0.5)
+
+            Text(grade)
+                .font(.system(size: 32, weight: .black, design: .rounded))
+                .foregroundColor(color)
+
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(palette.textSecondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .fill(color.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .stroke(color.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Score Color Helper
+    private func scoreColor(for grade: String) -> Color {
+        switch grade.uppercased() {
+        case "A+", "A": return SemanticColors.positive
+        case "B": return SemanticColors.nutrient
+        case "C", "D": return SemanticColors.neutral
+        case "F": return SemanticColors.caution
+        default: return palette.textTertiary
+        }
+    }
+
+    // MARK: - Sugar Label Helper
+    private func sugarLabel(for grade: SugarGrade) -> String {
+        switch grade {
+        case .excellent, .veryGood: return "Low Sugar"
+        case .good: return "Moderate"
+        case .moderate: return "High Sugar"
+        case .high, .veryHigh: return "Very High"
+        case .unknown: return "Unknown"
+        }
+    }
+
+    // MARK: - Redesigned Watch Tabs (Pill Style)
+    private var redesignedWatchTabs: some View {
+        VStack(spacing: 0) {
+            // Tab pills
+            HStack(spacing: 8) {
+                ForEach(WatchTab.allCases, id: \.self) { tab in
+                    let isSelected = selectedWatchTab == tab
+                    Button(action: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedWatchTab = tab
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(tab.shortName)
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(isSelected ? .white : palette.textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(isSelected ? tab.color : palette.tertiary.opacity(0.1))
+                        )
+                    }
+                }
+            }
+            .padding(.vertical, 14)
+
+            // Tab content
+            Group {
+                switch selectedWatchTab {
+                case .additives:
+                    additivesContent
+                case .allergies:
+                    allergensContent
+                case .vitamins:
+                    redesignedVitaminsContent
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                .shadow(
+                    color: DesignTokens.Shadow.subtle.color,
+                    radius: DesignTokens.Shadow.subtle.radius,
+                    y: DesignTokens.Shadow.subtle.y
+                )
+        )
+    }
+
+    // MARK: - Redesigned Vitamins Content
+    private var redesignedVitaminsContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if subscriptionManager.hasAccess {
+                if !cachedDetectedNutrients.isEmpty {
+                    ForEach(Array(cachedDetectedNutrients.prefix(8)), id: \.self) { nutrientName in
+                        HStack {
+                            Text(nutrientName)
+                                .font(.system(size: 14))
+                                .foregroundColor(palette.textPrimary)
+                            Spacer()
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(SemanticColors.nutrient)
+                        }
+                        .padding(.vertical, 6)
+                    }
+
+                    Button(action: { showingVitaminCitations = true }) {
+                        HStack {
+                            Image(systemName: "book.closed")
+                                .font(.system(size: 12))
+                            Text("View sources")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(palette.accent)
+                    }
+                    .padding(.top, 8)
+                } else {
+                    noIngredientDataView
+                }
+            } else {
+                vitaminsLockedView
+            }
+        }
+    }
+
+    // MARK: - Vitamins Locked View
+    var vitaminsLockedView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 28))
+                .foregroundColor(palette.textTertiary)
+            Text("Unlock vitamin details")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(palette.textSecondary)
+            Text("Subscribe to view detailed vitamin and mineral information")
+                .font(.system(size: 13))
+                .foregroundColor(palette.textTertiary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 24)
+    }
+
+    // MARK: - Redesigned Ingredients Section
+    var redesignedIngredientsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                if cachedIngredientsStatus == .verified {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(SemanticColors.positive)
+                }
+                Text("Ingredients")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+                Spacer()
+            }
+
+            // Ingredients content
+            if let ingredients = cachedIngredients, !ingredients.isEmpty {
+                FlowingIngredientsView(
+                    ingredients: ingredients.map { ingredient in
+                        let formatted = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let lowercased = formatted.lowercased()
+                        let isConcerning = ["e1", "e2", "e3", "e4", "e5", "e6", "modified", "hydrogenated"].contains { lowercased.contains($0) }
+                        let isAllergen = userAllergens.contains { allergen in
+                            allergen.keywords.contains { lowercased.contains($0.lowercased()) }
+                        }
+                        return (formatted, isConcerning, isAllergen)
+                    },
+                    colorScheme: colorScheme,
+                    userAllergens: userAllergens
+                )
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 28))
+                        .foregroundColor(palette.textTertiary)
+                    Text("No ingredients available")
+                        .font(.system(size: 14))
+                        .foregroundColor(palette.textSecondary)
+
+                    // AI estimate button
+                    Button(action: estimateIngredientsWithAI) {
+                        HStack(spacing: 6) {
+                            if isEstimatingIngredients {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
+                            Text(isEstimatingIngredients ? "Estimating..." : "Estimate with AI")
+                        }
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [palette.accent, palette.primary],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        )
+                    }
+                    .disabled(isEstimatingIngredients)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            }
+        }
+        .padding(DesignTokens.Spacing.cardInternal)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                .shadow(
+                    color: DesignTokens.Shadow.subtle.color,
+                    radius: DesignTokens.Shadow.subtle.radius,
+                    y: DesignTokens.Shadow.subtle.y
+                )
+        )
+    }
+
+    // MARK: - Redesigned Verification Section (Supportive Tone)
+    private var redesignedVerificationSection: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "hand.raised.circle")
+                    .font(.system(size: 28))
+                    .foregroundColor(palette.accent)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Something not right?")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+                    Text("Help us improve by reporting incorrect information")
+                        .font(.system(size: 13))
+                        .foregroundColor(palette.textSecondary)
+                }
+
+                Spacer()
+            }
+
+            Button(action: notifyTeamAboutIncompleteFood) {
+                HStack(spacing: 6) {
+                    if isNotifyingTeam {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "flag")
+                    }
+                    Text(isNotifyingTeam ? "Sending..." : "Report Issue")
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(palette.accent)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .fill(palette.accent.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .stroke(palette.accent.opacity(0.2), lineWidth: 1)
+                )
+            }
+            .disabled(isNotifyingTeam)
+        }
+        .padding(DesignTokens.Spacing.cardInternal)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                .shadow(
+                    color: DesignTokens.Shadow.subtle.color,
+                    radius: DesignTokens.Shadow.subtle.radius,
+                    y: DesignTokens.Shadow.subtle.y
+                )
+        )
+    }
+}
+
+// MARK: - WatchTab Extension for Short Names
+extension FoodDetailViewFromSearch.WatchTab {
+    var shortName: String {
+        switch self {
+        case .additives: return "Additives"
+        case .allergies: return "Allergies"
+        case .vitamins: return "Vitamins"
+        }
     }
 }
 

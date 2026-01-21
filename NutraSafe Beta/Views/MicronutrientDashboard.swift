@@ -115,7 +115,7 @@ struct MicronutrientDashboard: View {
         .task {
             // ONE-TIME MIGRATION: Clear cached micronutrient scores to apply strict validation rules
             // This removes incorrect historical data (e.g., Revels showing vitamin C)
-            let migrationKey = "strictMicronutrientMigrationV1Completed"
+            let migrationKey = "strictMicronutrientMigrationV2Completed"
             if !UserDefaults.standard.bool(forKey: migrationKey) {
                 await trackingManager.clearCachedScores()
                 UserDefaults.standard.set(true, forKey: migrationKey)

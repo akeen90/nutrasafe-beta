@@ -1777,173 +1777,175 @@ struct AdditiveSection {
     var header: String
     var content: String
 }
-// MARK: - Ultra-Processed Ingredient Card Component
+// MARK: - Ultra-Processed Ingredient Card Component (Redesigned - Sheet Modal)
 
 struct UltraProcessedIngredientCard: View {
     let ingredient: UltraProcessedIngredientDisplay
     @Environment(\.colorScheme) var colorScheme
-    @State private var isExpanded: Bool
+    @State private var showingDetail = false
 
     init(ingredient: UltraProcessedIngredientDisplay, initialExpanded: Bool = false) {
         self.ingredient = ingredient
-        _isExpanded = State(initialValue: initialExpanded)
+    }
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Ingredient header
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack(alignment: .top, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(ingredient.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
+        Button(action: { showingDetail = true }) {
+            HStack(alignment: .center, spacing: 10) {
+                // Soft indicator line (purple for ultra-processed)
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.purple.opacity(0.6))
+                    .frame(width: 3, height: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ingredient.name)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(palette.textPrimary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        // Display only actual E-numbers in purple capsule
+                        let actualENumbers = ingredient.eNumbers.filter { eNumber in
+                            let pattern = "^E[0-9]+(([a-z]+)|([\\(][ivxIVX]+[\\)]))?$"
+                            return eNumber.range(of: pattern, options: .regularExpression) != nil
+                        }
+                        if let firstENumber = actualENumbers.first {
+                            Text(firstENumber.uppercased())
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.purple)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.purple.opacity(0.12))
+                                )
+                        }
 
                         Text(ingredient.category.capitalized)
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(palette.textTertiary)
                     }
+                }
 
-                    Spacer()
+                Spacer()
 
-                    HStack(spacing: 6) {
-                        // Display only actual E-numbers in purple boxes (E followed by digits)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(palette.textTertiary)
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
+        )
+        .sheet(isPresented: $showingDetail) {
+            UltraProcessedDetailSheet(ingredient: ingredient)
+        }
+    }
+}
+
+// MARK: - Ultra-Processed Detail Sheet
+
+struct UltraProcessedDetailSheet: View {
+    let ingredient: UltraProcessedIngredientDisplay
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        // E-numbers in capsules
                         let actualENumbers = ingredient.eNumbers.filter { eNumber in
-                            // Strict check: E followed by digits, optionally with subcategory letters or roman numerals
                             let pattern = "^E[0-9]+(([a-z]+)|([\\(][ivxIVX]+[\\)]))?$"
                             return eNumber.range(of: pattern, options: .regularExpression) != nil
                         }
                         if !actualENumbers.isEmpty {
-                            ForEach(actualENumbers, id: \.self) { eNumber in
-                                Text(eNumber)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 3)
-                                    .background(Color.purple)
-                                    .cornerRadius(4)
+                            HStack(spacing: 6) {
+                                ForEach(actualENumbers, id: \.self) { eNumber in
+                                    Text(eNumber.uppercased())
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.purple)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.purple.opacity(0.12))
+                                        )
+                                }
                             }
                         }
 
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.purple)
-                    }
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
+                        Text(ingredient.name)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(palette.textPrimary)
 
-            // Expanded content
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
+                        HStack(spacing: 8) {
+                            Text(ingredient.category.capitalized)
+                                .font(.system(size: 14))
+                                .foregroundColor(palette.textSecondary)
+
+                            Text("•")
+                                .foregroundColor(palette.textTertiary)
+
+                            Text("NOVA \(ingredient.novaGroup)")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.purple)
+                        }
+                    }
 
                     // What it is
                     if let whatItIs = ingredient.whatItIs {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "magnifyingglass.circle")
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .font(.system(size: 12))
-                                Text("What it is")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.primary)
-                            }
-
+                        infoSection(title: "What it is", icon: "info.circle.fill", color: palette.accent) {
                             Text(whatItIs)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .lineLimit(nil)
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.textPrimary)
                         }
                     }
 
                     // Why it's used
                     if let whyItsUsed = ingredient.whyItsUsed {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "cube.box")
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .font(.system(size: 12))
-                                Text("Why it's used")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.primary)
-                            }
-
+                        infoSection(title: "Why it's used", icon: "cube.box.fill", color: .purple) {
                             Text(whyItsUsed)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .lineLimit(nil)
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.textPrimary)
                         }
                     }
 
                     // Where it comes from
                     if let whereItComesFrom = ingredient.whereItComesFrom {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "leaf")
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .font(.system(size: 12))
-                                Text("Where it comes from")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.primary)
-                            }
-
+                        infoSection(title: "Origin", icon: "leaf.fill", color: SemanticColors.nutrient) {
                             Text(whereItComesFrom)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .lineLimit(nil)
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.textPrimary)
                         }
                     }
 
-                    // Concerns section
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(AppPalette.standard.accent)
-                                .font(.system(size: 12))
-                            Text("Why it matters")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.primary)
-                        }
-
+                    // Why it matters
+                    infoSection(title: "Why it matters", icon: "lightbulb.fill", color: SemanticColors.neutral) {
                         Text(ingredient.concerns)
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .lineLimit(nil)
+                            .font(.system(size: 15))
+                            .foregroundColor(palette.textPrimary)
                     }
 
-                    // NOVA classification
-                    HStack(spacing: 6) {
-                        Image(systemName: "chart.bar.fill")
-                            .foregroundColor(AppPalette.standard.accent)
-                            .font(.system(size: 12))
-                        Text("NOVA Group \(ingredient.novaGroup)")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        Text(novaGroupLabel(ingredient.novaGroup))
-                            .font(.system(size: 10))
-                            .foregroundColor(AppPalette.standard.accent)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AppPalette.standard.accent.opacity(0.15))
-                            .cornerRadius(4)
-                    }
-
-                    // Sources section
+                    // Scientific sources
                     if !ingredient.sources.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "doc.text.magnifyingglass")
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .font(.system(size: 12))
-                                Text("Scientific Sources (\(ingredient.sources.count))")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.primary)
-                            }
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Scientific Sources")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(palette.textSecondary)
 
                             ForEach(ingredient.sources, id: \.url) { source in
                                 Button(action: {
@@ -1951,453 +1953,395 @@ struct UltraProcessedIngredientCard: View {
                                         UIApplication.shared.open(url)
                                     }
                                 }) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(source.title)
-                                            .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(AppPalette.standard.accent)
-                                            .lineLimit(2)
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(source.title)
+                                                .font(.system(size: 13, weight: .medium))
+                                                .foregroundColor(palette.accent)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.leading)
 
-                                        Text(source.covers)
-                                            .font(.system(size: 9))
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(2)
+                                            Text(source.covers)
+                                                .font(.system(size: 11))
+                                                .foregroundColor(palette.textTertiary)
+                                                .lineLimit(1)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(palette.textTertiary)
                                     }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(8)
-                                    .background(Color(.systemGray6))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemGray6))
                                     )
-                                    .cornerRadius(6)
                                 }
                             }
                         }
-                        .padding(.top, 4)
                     }
                 }
-                .padding(.top, 8)
+                .padding(20)
+            }
+            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.secondary.opacity(0.6))
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(12)
-        .background(colorScheme == .dark ? Color.midnightCard.opacity(0.8) : Color.purple.opacity(0.08))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
-        )
-        .cornerRadius(8)
     }
 
-    private func novaGroupLabel(_ group: Int) -> String {
-        switch group {
-        case 1: return "Unprocessed"
-        case 2: return "Minimally Processed"
-        case 3: return "Processed"
-        case 4: return "Ultra-Processed"
-        default: return "Unknown"
+    @ViewBuilder
+    private func infoSection<Content: View>(title: String, icon: String, color: Color, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundColor(color)
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(palette.textSecondary)
+            }
+
+            content()
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemGray6))
+        )
     }
 }
 
-// MARK: - Additive Score Header (Traffic Light Style)
+// MARK: - Additive Score Header (Redesigned - Calm & Premium)
 
-/// Yuka-style score header showing overall additive risk assessment
+/// Clean, calm additive summary matching onboarding design
 struct AdditiveScoreHeader: View {
     let summary: AdditiveScoreSummary
     @Environment(\.colorScheme) var colorScheme
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
-            // Main score display
-            HStack(spacing: 16) {
-                // Circular score indicator
-                ZStack {
-                    // Background circle
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 6)
-                        .frame(width: 70, height: 70)
-
-                    // Progress arc
-                    Circle()
-                        .trim(from: 0, to: CGFloat(summary.score) / 100)
-                        .stroke(
-                            summary.gradeColor,
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
-                        )
-                        .frame(width: 70, height: 70)
-                        .rotationEffect(.degrees(-90))
-
-                    // Score text
-                    VStack(spacing: 0) {
-                        Text("\(summary.score)")
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(summary.gradeColor)
-                        Text("/100")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // Grade label and description
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Image(systemName: summary.overallRisk.icon)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(summary.overallRisk.color)
-
-                        Text(summary.gradeLabel)
+        VStack(alignment: .leading, spacing: 12) {
+            // Simple summary row
+            HStack(spacing: 12) {
+                // Soft colored indicator
+                Circle()
+                    .fill(summary.gradeColor.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Text(gradeInitial)
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(summary.gradeColor)
-                    }
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(summary.gradeLabel)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
 
                     Text(scoreDescription)
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    // Additive count breakdown
-                    if summary.totalAdditives > 0 {
-                        HStack(spacing: 8) {
-                            Text("\(summary.totalAdditives) additive\(summary.totalAdditives == 1 ? "" : "s")")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.secondary)
-
-                            // Warning badges
-                            if summary.hasChildWarnings {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "figure.child")
-                                        .font(.system(size: 9))
-                                    Text("Child concern")
-                                        .font(.system(size: 9, weight: .medium))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.orange)
-                                .cornerRadius(4)
-                            }
-
-                            if summary.hasSulphiteWarnings {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "allergens")
-                                        .font(.system(size: 9))
-                                    Text("Sulphites")
-                                        .font(.system(size: 9, weight: .medium))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.purple)
-                                .cornerRadius(4)
-                            }
-                        }
-                        .padding(.top, 2)
-                    }
+                        .foregroundColor(palette.textSecondary)
                 }
 
                 Spacer()
+
+                // Count badge
+                if summary.totalAdditives > 0 {
+                    Text("\(summary.totalAdditives)")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(palette.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(palette.tertiary.opacity(0.12))
+                        )
+                }
             }
 
-            // Traffic light breakdown bar
+            // Simple breakdown pills (if any additives)
             if summary.totalAdditives > 0 {
-                trafficLightBar
+                HStack(spacing: 8) {
+                    ForEach(AdditiveRiskLevel.allCases, id: \.self) { level in
+                        if let count = summary.riskBreakdown[level], count > 0 {
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(level.color)
+                                    .frame(width: 6, height: 6)
+                                Text("\(count) \(level.label.lowercased())")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(palette.textSecondary)
+                            }
+                        }
+                    }
+                }
             }
         }
-        .padding(14)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(summary.gradeColor.opacity(0.06))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(summary.gradeColor.opacity(0.3), lineWidth: 1.5)
-        )
+    }
+
+    private var gradeInitial: String {
+        if summary.totalAdditives == 0 { return "✓" }
+        switch summary.score {
+        case 80...100: return "A"
+        case 60..<80: return "B"
+        case 40..<60: return "C"
+        default: return "D"
+        }
     }
 
     private var scoreDescription: String {
         switch summary.score {
         case 90...100:
-            return summary.totalAdditives == 0 ? "No additives detected" : "Only safe, natural additives"
+            return summary.totalAdditives == 0 ? "No additives detected" : "Mostly natural additives"
         case 70..<90:
-            return "Mostly safe additives with minor considerations"
+            return "A few common additives"
         case 50..<70:
-            return "Some additives to use in moderation"
+            return "Some additives present"
         case 30..<50:
-            return "Contains additives worth limiting"
+            return "Several additives"
         default:
-            return "Contains additives best avoided"
-        }
-    }
-
-    private var trafficLightBar: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Risk level legend
-            HStack(spacing: 12) {
-                ForEach(AdditiveRiskLevel.allCases.reversed(), id: \.self) { level in
-                    if let count = summary.riskBreakdown[level], count > 0 {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(level.color)
-                                .frame(width: 8, height: 8)
-                            Text("\(count) \(level.label)")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                Spacer()
-            }
-
-            // Progress bar showing distribution
-            GeometryReader { geometry in
-                HStack(spacing: 2) {
-                    ForEach(AdditiveRiskLevel.allCases.reversed(), id: \.self) { level in
-                        if let count = summary.riskBreakdown[level], count > 0 {
-                            let width = (CGFloat(count) / CGFloat(max(1, summary.totalAdditives))) * geometry.size.width
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(level.color)
-                                .frame(width: max(4, width - 2))
-                        }
-                    }
-                }
-            }
-            .frame(height: 8)
+            return "Contains many additives"
         }
     }
 }
 
-// MARK: - Additive Risk Section
+// MARK: - Additive Risk Section (Redesigned - No Dropdown)
 
-/// Groups additives by risk level with a colored header
+/// Clean additive grouping without dropdown - always visible
 struct AdditiveRiskSection: View {
     let riskLevel: AdditiveRiskLevel
     let additives: [AdditiveInfo]
     let convertToDetailedAdditive: (AdditiveInfo) -> DetailedAdditive
-    @State private var isExpanded = true
     @Environment(\.colorScheme) var colorScheme
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Section header
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack(spacing: 8) {
-                    // Risk indicator dot
-                    Circle()
-                        .fill(riskLevel.color)
-                        .frame(width: 10, height: 10)
-
-                    // Risk label
-                    Text(riskLevel.label)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(riskLevel.color)
-
-                    // Count
-                    Text("(\(additives.count))")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    // Short description
-                    Text(riskLevel.shortDescription)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-
-                    // Expand/collapse chevron
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(riskLevel.color.opacity(0.1))
-                )
+        VStack(alignment: .leading, spacing: 10) {
+            // Simple section label
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(riskLevel.color)
+                    .frame(width: 8, height: 8)
+                Text("\(riskLevel.label) (\(additives.count))")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(palette.textSecondary)
+                Spacer()
             }
-            .buttonStyle(PlainButtonStyle())
 
-            // Additive cards
-            if isExpanded {
-                VStack(spacing: 8) {
-                    ForEach(additives, id: \.id) { additive in
-                        EnhancedAdditiveCard(
-                            additive: additive,
-                            detailedAdditive: convertToDetailedAdditive(additive),
-                            riskLevel: AdditiveOverrides.getRiskLevel(for: additive)
-                        )
-                    }
+            // Additive cards - always visible, no dropdown
+            VStack(spacing: 6) {
+                ForEach(additives, id: \.id) { additive in
+                    EnhancedAdditiveCard(
+                        additive: additive,
+                        detailedAdditive: convertToDetailedAdditive(additive),
+                        riskLevel: AdditiveOverrides.getRiskLevel(for: additive)
+                    )
                 }
             }
         }
     }
 }
 
-// MARK: - Enhanced Additive Card with Risk Indicator
+// MARK: - Enhanced Additive Card (Redesigned - Simple & Clean)
 
-/// A single additive card with enhanced descriptions and risk indicator
+/// Clean additive card - simple row design matching onboarding aesthetic
 struct EnhancedAdditiveCard: View {
     let additive: AdditiveInfo
     let detailedAdditive: DetailedAdditive
     let riskLevel: AdditiveRiskLevel
-    @State private var isExpanded = false
-    @State private var showingSources = false
+    @State private var showingDetail = false
     @Environment(\.colorScheme) var colorScheme
 
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header row
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack(alignment: .center, spacing: 10) {
-                    // Risk indicator line
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(riskLevel.color)
-                        .frame(width: 4, height: 36)
+        Button(action: { showingDetail = true }) {
+            HStack(alignment: .center, spacing: 10) {
+                // Soft risk indicator line
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(riskLevel.color)
+                    .frame(width: 3, height: 32)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text(detailedAdditive.name)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(detailedAdditive.name)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(palette.textPrimary)
+                        .lineLimit(1)
 
-                            if additive.hasChildWarning {
-                                Image(systemName: "figure.child")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.orange)
-                            }
+                    HStack(spacing: 6) {
+                        if let code = detailedAdditive.code, !code.isEmpty {
+                            Text(code.uppercased())
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(riskLevel.color)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(riskLevel.color.opacity(0.12))
+                                )
                         }
 
-                        // E-number and category
-                        HStack(spacing: 6) {
-                            if let code = detailedAdditive.code, !code.isEmpty {
-                                Text(code)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 2)
-                                    .background(riskLevel.color)
-                                    .cornerRadius(4)
-                            }
-
-                            Text(additive.group.displayName)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
+                        Text(additive.group.displayName)
+                            .font(.system(size: 11))
+                            .foregroundColor(palette.textTertiary)
                     }
-
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
                 }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 12)
-            }
-            .buttonStyle(PlainButtonStyle())
 
-            // Expanded details
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-                        .padding(.horizontal, 12)
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(palette.textTertiary)
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
+        )
+        .sheet(isPresented: $showingDetail) {
+            AdditiveDetailSheet(
+                additive: additive,
+                detailedAdditive: detailedAdditive,
+                riskLevel: riskLevel
+            )
+        }
+    }
+}
+
+// MARK: - Additive Detail Sheet (Modal)
+
+struct AdditiveDetailSheet: View {
+    let additive: AdditiveInfo
+    let detailedAdditive: DetailedAdditive
+    let riskLevel: AdditiveRiskLevel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let code = detailedAdditive.code, !code.isEmpty {
+                            Text(code.uppercased())
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(riskLevel.color)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(riskLevel.color.opacity(0.12))
+                                )
+                        }
+
+                        Text(detailedAdditive.name)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(palette.textPrimary)
+
+                        Text(additive.group.displayName)
+                            .font(.system(size: 14))
+                            .foregroundColor(palette.textSecondary)
+                    }
 
                     // What it is
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("What it is", systemImage: "info.circle.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(AppPalette.standard.accent)
-
+                    infoSection(title: "What it is", icon: "info.circle.fill", color: palette.accent) {
                         Text(detailedAdditive.whatItIs)
-                            .font(.system(size: 13))
-                            .foregroundColor(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .font(.system(size: 15))
+                            .foregroundColor(palette.textPrimary)
                     }
-                    .padding(.horizontal, 12)
 
-                    // Where it comes from
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Origin", systemImage: "leaf.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.green)
-
+                    // Origin
+                    infoSection(title: "Origin", icon: "leaf.fill", color: SemanticColors.nutrient) {
                         Text(detailedAdditive.originSummary)
-                            .font(.system(size: 13))
-                            .foregroundColor(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .font(.system(size: 15))
+                            .foregroundColor(palette.textPrimary)
                     }
-                    .padding(.horizontal, 12)
 
-                    // Risk assessment
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Safety Assessment", systemImage: riskLevel.icon)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(riskLevel.color)
-
+                    // Safety
+                    infoSection(title: "Safety", icon: "shield.fill", color: riskLevel.color) {
                         Text(detailedAdditive.riskSummary)
-                            .font(.system(size: 13))
-                            .foregroundColor(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .font(.system(size: 15))
+                            .foregroundColor(palette.textPrimary)
                     }
-                    .padding(.horizontal, 12)
 
-                    // Child warning callout
+                    // Child warning if applicable
                     if additive.hasChildWarning {
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(.orange)
-
-                            Text("May affect activity and attention in children. Products in the UK/EU must carry a warning label.")
-                                .font(.system(size: 12))
-                                .foregroundColor(.orange)
-                                .fixedSize(horizontal: false, vertical: true)
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(SemanticColors.neutral)
+                            Text("May affect activity and attention in some children. Products in the UK/EU carry a warning label.")
+                                .font(.system(size: 13))
+                                .foregroundColor(palette.textSecondary)
                         }
-                        .padding(10)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(8)
-                        .padding(.horizontal, 12)
-                    }
-
-                    // Sources button
-                    if !additive.sources.isEmpty {
-                        Button(action: { showingSources = true }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "doc.text.magnifyingglass")
-                                    .font(.system(size: 10))
-                                Text("View \(additive.sources.count) source\(additive.sources.count == 1 ? "" : "s")")
-                                    .font(.system(size: 11, weight: .medium))
-                            }
-                            .foregroundColor(AppPalette.standard.accent)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 4)
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(SemanticColors.neutral.opacity(0.08))
+                        )
                     }
                 }
-                .padding(.bottom, 10)
+                .padding(20)
+            }
+            .background(colorScheme == .dark ? Color.midnightBackground : palette.background)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(palette.accent)
+                }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.6) : Color(.systemGray6))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(riskLevel.color.opacity(0.2), lineWidth: 1)
-        )
-        .fullScreenCover(isPresented: $showingSources) {
-            SourcesAndCitationsView()
+    }
+
+    @ViewBuilder
+    private func infoSection(title: String, icon: String, color: Color, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundColor(color)
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(palette.textSecondary)
+            }
+            content()
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+        )
     }
 }

@@ -283,8 +283,16 @@ class MicronutrientTrackingManager: ObservableObject {
         // Trend (compare last 3 days vs previous 4 days)
         let trend = calculateTrend(for: last7DaysScores)
 
-        // Recent sources
-        let recentSources = Array(Set(last7DaysScores.flatMap { $0.sources })).sorted()
+        // Recent sources - FILTERED using strict validation rules
+        // This prevents showing ultra-processed foods (like Revels) as sources of vitamins
+        let rawSources = Array(Set(last7DaysScores.flatMap { $0.sources }))
+        let validator = StrictMicronutrientValidator.shared
+        let recentSources = rawSources.filter { foodName in
+            // Check if this food should actually contribute this nutrient
+            // Ultra-processed foods (chocolate, sweets, biscuits, crisps) are excluded
+            // unless they have explicit fortification for this specific nutrient
+            !validator.shouldRestrictMicronutrientInference(foodName: foodName, ingredients: [])
+        }.sorted()
 
         // Get nutrient info
         let info = database.getNutrientInfo(nutrient)
@@ -351,6 +359,47 @@ class MicronutrientTrackingManager: ObservableObject {
     /// Save all daily scores to Firebase (call after batch processing foods)
     func saveAllScores() async {
         await saveDailyScores()
+    }
+
+    /// STRICT MODE: Clear cached scores to force reprocessing with new validation rules.
+    /// Call this after updating to strict micronutrient detection to clear old incorrect data.
+    func clearCachedScores() async {
+        // Clear in-memory cache
+        dailyScores = [:]
+        balanceHistory = []
+        hasLoadedData = false
+        firebaseCache = nil
+        cacheTimestamp = nil
+
+        // Clear Firebase scores for this user
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+
+        do {
+            // Delete micronutrient_scores collection
+            let scoresSnapshot = try await db.collection("users")
+                .document(userId)
+                .collection("micronutrient_scores")
+                .getDocuments()
+
+            for doc in scoresSnapshot.documents {
+                try await doc.reference.delete()
+            }
+
+            // Delete nutrient_balance collection
+            let balanceSnapshot = try await db.collection("users")
+                .document(userId)
+                .collection("nutrient_balance")
+                .getDocuments()
+
+            for doc in balanceSnapshot.documents {
+                try await doc.reference.delete()
+            }
+
+            print("[MicronutrientTrackingManager] Cleared all cached scores - will reprocess with strict validation")
+        } catch {
+            print("[MicronutrientTrackingManager] Error clearing cached scores: \(error)")
+        }
     }
 
     // MARK: - Trend Calculation

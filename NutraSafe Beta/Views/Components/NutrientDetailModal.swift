@@ -841,18 +841,24 @@ struct NutrientDetailModal: View {
         foodsWithCounts.map { $0.name }
     }
 
-    /// Foods with their serving counts, sorted by count (highest first)
+    /// Foods with their serving counts, sorted by count (highest first), then alphabetically
+    /// STRICT MODE: Filters out ultra-processed foods that shouldn't be vitamin sources
     private var foodsWithCounts: [(name: String, count: Int)] {
+        let validator = StrictMicronutrientValidator.shared
         var counts: [String: Int] = [:]
         for segment in row.segments {
             if let segmentFoods = segment.foods {
                 for food in segmentFoods {
-                    counts[food, default: 0] += 1
+                    // Filter out ultra-processed foods - they shouldn't be listed as vitamin sources
+                    if !validator.shouldRestrictMicronutrientInference(foodName: food, ingredients: []) {
+                        counts[food, default: 0] += 1
+                    }
                 }
             }
         }
+        // Stable sort: by count descending, then alphabetically to prevent jumping
         return counts.map { (name: $0.key, count: $0.value) }
-            .sorted { $0.count > $1.count }
+            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.name < $1.name }
     }
 
     private func shortDayLabel(_ date: Date) -> String {

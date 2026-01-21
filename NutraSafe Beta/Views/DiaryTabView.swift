@@ -2714,11 +2714,25 @@ final class CategoricalNutrientViewModel: ObservableObject {
         var best: SourceLevel = .none
         // Convert nutrient ID to MicronutrientProfile key format
         let profileKey = nutrientIdToProfileKey(nutrientId)
-
-        // Debug logging for Vitamin C only
-        let isVitC = nutrientId.lowercased().contains("vitamin_c") || nutrientId.lowercased().contains("vitaminc")
+        let validator = StrictMicronutrientValidator.shared
 
         for entry in entries {
+            // STRICT MODE: Skip ultra-processed foods entirely - they should not contribute vitamins
+            // unless they have explicit fortification (which is detected by NutrientDetector)
+            let isRestricted = validator.shouldRestrictMicronutrientInference(
+                foodName: entry.foodName,
+                ingredients: entry.ingredients ?? []
+            )
+
+            if isRestricted {
+                // For restricted foods, ONLY check explicit fortification via NutrientDetector
+                let food = DiaryFoodItem.fromFoodEntry(entry)
+                if NutrientDetector.detectNutrients(in: food).contains(nutrientId) {
+                    best = max(best, .trace)
+                }
+                continue
+            }
+
             // IMPORTANT: Recalculate micronutrient profile with improved estimation
             // This ensures old entries get the new, more accurate multipliers
             let freshProfile = recalculateMicronutrientProfile(for: entry, existingCache: existingCache, newCache: &newCache)
@@ -2727,17 +2741,11 @@ final class CategoricalNutrientViewModel: ObservableObject {
             if let amt = freshProfile.vitamins[profileKey] ?? freshProfile.minerals[profileKey] {
                 let level = classify(amount: amt, key: profileKey, profile: freshProfile)
                 best = max(best, level)
-
-                if isVitC {
-                                    }
             } else {
                 // Fallback: use keyword detection
                 let food = DiaryFoodItem.fromFoodEntry(entry)
                 let present = NutrientDetector.detectNutrients(in: food).contains(nutrientId)
                 best = max(best, present ? .trace : .none)
-
-                if isVitC {
-                                    }
             }
         }
 
@@ -2748,8 +2756,25 @@ final class CategoricalNutrientViewModel: ObservableObject {
         var names: [String] = []
         // Convert nutrient ID to MicronutrientProfile key format
         let profileKey = nutrientIdToProfileKey(nutrientId)
+        let validator = StrictMicronutrientValidator.shared
 
         for entry in entries {
+            // STRICT MODE: Skip ultra-processed foods entirely - they should not contribute vitamins
+            // unless they have explicit fortification (which is detected by NutrientDetector)
+            let isRestricted = validator.shouldRestrictMicronutrientInference(
+                foodName: entry.foodName,
+                ingredients: entry.ingredients ?? []
+            )
+
+            if isRestricted {
+                // For restricted foods, ONLY check explicit fortification via NutrientDetector
+                let food = DiaryFoodItem.fromFoodEntry(entry)
+                if NutrientDetector.detectNutrients(in: food).contains(nutrientId) {
+                    names.append(entry.foodName)
+                }
+                continue
+            }
+
             // IMPORTANT: Recalculate micronutrient profile with improved estimation
             let freshProfile = recalculateMicronutrientProfile(for: entry, existingCache: existingCache, newCache: &newCache)
 

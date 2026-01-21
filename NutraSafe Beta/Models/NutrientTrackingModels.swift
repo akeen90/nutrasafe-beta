@@ -371,11 +371,26 @@ struct NutrientDetector {
     /// - Parameters:
     ///   - food: The food item to analyze
     ///   - strictThresholds: If true, requires 10% DV (for diary tracking). If false, shows any non-zero amounts (for display).
+    ///
+    /// UPDATED 2025-01-20: Now uses STRICT validation rules to prevent false positives.
+    /// - Ultra-processed foods (chocolate, sweets, biscuits, crisps) NO LONGER infer nutrients from keywords
+    /// - Ascorbic acid alone does NOT count as vitamin C (must explicitly say "vitamin C")
+    /// - Only CONFIRMED sources are detected for restricted food categories
     static func detectNutrients(in food: DiaryFoodItem, strictThresholds: Bool = true) -> [String] {
         var detectedNutrients: Set<String> = []
+        let ingredients = food.ingredients ?? []
 
-        // Use actual micronutrient data if available
-        if let profile = food.micronutrientProfile {
+        // STRICT VALIDATION: Check if this food category should be restricted
+        // Restricted categories: chocolate, confectionery, biscuits, crisps, sweets, sauces
+        let isRestrictedCategory = StrictMicronutrientValidator.shared.shouldRestrictMicronutrientInference(
+            foodName: food.name,
+            ingredients: ingredients
+        )
+
+        // 1. Use actual micronutrient data from nutrition table
+        // STRICT MODE: For restricted categories (ultra-processed), ONLY trust explicit fortification
+        // The micronutrient profile for these foods is often incorrectly estimated
+        if let profile = food.micronutrientProfile, !isRestrictedCategory {
             // Check vitamins
             for (vitaminKey, amount) in profile.vitamins {
                 if amount > 0 {
@@ -403,22 +418,31 @@ struct NutrientDetector {
             }
         }
 
-        // Use pattern-based parser for fortified nutrients from ingredients
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
+        // 2. Use pattern-based parser for EXPLICIT fortified nutrients from ingredients
+        // This detects "vitamin C", "iron", "calcium carbonate", etc. - explicit declarations only
+        if !ingredients.isEmpty {
             let fortifiedNutrients = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
             for detected in fortifiedNutrients {
                 detectedNutrients.insert(detected.nutrient)
             }
         }
 
-        // Keyword-based detection from ingredients
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
+        // 3. Keyword-based detection from ingredients
+        // STRICT MODE: SKIP this for ultra-processed foods to prevent false positives
+        // (e.g., detecting vitamin C in Revels just because "orange" flavouring exists)
+        if !isRestrictedCategory && !ingredients.isEmpty {
             let lowerIngredients = ingredients.map { $0.lowercased() }
-            let topIngredients = Array(lowerIngredients.prefix(5)) // focus on primary ingredients to reduce false positives
+            let topIngredients = Array(lowerIngredients.prefix(3)) // TIGHTENED: Only first 3 ingredients
 
             for (nutrientId, keywords) in nutrientFoodSources {
                 var matched = false
                 for ingredient in topIngredients {
+                    // Skip flavouring/aroma ingredients
+                    if ingredient.contains("flavour") || ingredient.contains("flavor") ||
+                       ingredient.contains("aroma") || ingredient.contains("extract") {
+                        continue
+                    }
+
                     for keyword in keywords {
                         if containsWholeWord(in: ingredient, keyword: keyword) {
                             matched = true
@@ -433,13 +457,23 @@ struct NutrientDetector {
             }
         }
 
-        // ALSO check food name for whole food matches (e.g., "Apple" as food name)
-        let lowerName = food.name.lowercased()
-        for (nutrientId, keywords) in nutrientFoodSources {
-            for keyword in keywords {
-                if containsWholeWord(in: lowerName, keyword: keyword) {
-                    detectedNutrients.insert(nutrientId)
-                    break
+        // 4. Check food name for whole food matches (e.g., "Apple" as food name)
+        // STRICT MODE: SKIP this for ultra-processed foods
+        if !isRestrictedCategory {
+            let lowerName = food.name.lowercased()
+
+            // Skip if name contains ultra-processed indicators
+            let isUltraProcessedName = ["chocolate", "sweet", "candy", "biscuit", "cookie",
+                                        "crisp", "chip", "cake", "pastry", "ice cream"].contains { lowerName.contains($0) }
+
+            if !isUltraProcessedName {
+                for (nutrientId, keywords) in nutrientFoodSources {
+                    for keyword in keywords {
+                        if containsWholeWord(in: lowerName, keyword: keyword) {
+                            detectedNutrients.insert(nutrientId)
+                            break
+                        }
+                    }
                 }
             }
         }

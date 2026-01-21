@@ -239,6 +239,28 @@
         <priority>0.9</priority>
     </url>
 
+    <!-- Diet Comparison Pages -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/keto-vs-low-carb.html</loc>
+        <lastmod>2025-01-21</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/calorie-counting-vs-macro-tracking.html</loc>
+        <lastmod>2025-01-21</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/best-diet-for-weight-loss-uk.html</loc>
+        <lastmod>2025-01-21</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
     <!-- HTML Sitemap -->
     <url>
         <loc>https://www.nutrasafe.co.uk/sitemap.html</loc>

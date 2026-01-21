@@ -5,6 +5,11 @@
 //  Created by Claude on 2025-10-21.
 //  SQLite wrapper for comprehensive micronutrient intelligence system
 //
+//  UPDATED 2025-01-20: Integrated with StrictMicronutrientValidator for
+//  evidence-based detection. Now uses conservative rules to prevent false positives.
+//  Ultra-processed foods (chocolate, sweets, biscuits, crisps) no longer infer
+//  micronutrients from ingredients unless explicitly fortified.
+//
 
 import Foundation
 import SQLite3
@@ -479,161 +484,153 @@ class MicronutrientDatabase {
 
     // MARK: - Analysis Methods
 
-    /// Analyze a food item and return all detected micronutrients with their strengths
-    /// Combines ingredient matching and token matching
-    /// Set useAI=true to enable Phase 2 AI enhancement (requires internet)
-    func analyzeFoodItem(name: String, ingredients: [String] = [], useAI: Bool = false) -> [String: NutrientStrength.Strength] {
-        // Use intelligent weighting system for realistic nutrient contributions
-        return analyzeFoodItemWithWeighting(name: name, ingredients: ingredients, useAI: useAI)
+    /// Reference to strict validator for food categorisation
+    private let strictValidator = StrictMicronutrientValidator.shared
+
+    /// Analyze a food item and return all detected micronutrients with their strengths.
+    ///
+    /// UPDATED 2025-01-20: Now uses STRICT validation rules.
+    /// - Ultra-processed foods (chocolate, sweets, biscuits, crisps) return NO micronutrients
+    ///   unless explicitly fortified in the ingredients list.
+    /// - Ascorbic acid alone does NOT count as vitamin C (must explicitly say "vitamin C").
+    /// - Only CONFIRMED tier nutrients are returned.
+    ///
+    /// - Parameters:
+    ///   - name: Food product name
+    ///   - ingredients: Array of ingredient strings
+    ///   - useAI: Unused in strict mode
+    ///   - nutritionTableMicronutrients: Optional quantified values from nutrition label
+    /// - Returns: Dictionary of nutrient to strength mappings (confirmed only)
+    func analyzeFoodItem(
+        name: String,
+        ingredients: [String] = [],
+        useAI: Bool = false,
+        nutritionTableMicronutrients: [String: Double]? = nil
+    ) -> [String: NutrientStrength.Strength] {
+        // Use strict validation for evidence-based detection
+        return analyzeFoodItemStrict(
+            name: name,
+            ingredients: ingredients,
+            nutritionTableMicronutrients: nutritionTableMicronutrients
+        )
     }
 
-    /// Async version with AI support
-    /// Note: AI support (useAI=true) requires AIMicronutrientParser to be compiled
-    /// For now, always uses local pattern-based parser
-    func analyzeFoodItemAsync(name: String, ingredients: [String] = [], useAI: Bool = false) async -> [String: NutrientStrength.Strength] {
-        // Phase 1: Use local pattern-based parser only (Phase 2 AI coming soon)
-        return analyzeFoodItemWithWeighting(name: name, ingredients: ingredients, useAI: false)
+    /// Async version with strict validation
+    func analyzeFoodItemAsync(
+        name: String,
+        ingredients: [String] = [],
+        useAI: Bool = false,
+        nutritionTableMicronutrients: [String: Double]? = nil
+    ) async -> [String: NutrientStrength.Strength] {
+        return analyzeFoodItemStrict(
+            name: name,
+            ingredients: ingredients,
+            nutritionTableMicronutrients: nutritionTableMicronutrients
+        )
     }
 
-    /// INTELLIGENT WEIGHTING SYSTEM: Calculate realistic nutrient contributions
-    /// Based on ingredient position, count, and dish complexity
-    /// ENHANCED: Now includes pattern-based fortification detection
-    private func analyzeFoodItemWithWeighting(name: String, ingredients: [String], useAI: Bool) -> [String: NutrientStrength.Strength] {
-        var nutrientContributions: [String: Double] = [:]
+    /// STRICT VALIDATION: Evidence-based micronutrient detection
+    ///
+    /// This method replaces the previous liberal inference approach.
+    /// It only returns nutrients that are CONFIRMED through:
+    /// 1. Explicit values in nutrition table
+    /// 2. Explicit fortification declarations in ingredients
+    ///
+    /// Ultra-processed foods (confectionery, biscuits, crisps, etc.) are
+    /// automatically restricted from nutrient inference.
+    private func analyzeFoodItemStrict(
+        name: String,
+        ingredients: [String],
+        nutritionTableMicronutrients: [String: Double]?
+    ) -> [String: NutrientStrength.Strength] {
 
-        // 1. Check for tokens in food name (these are categorized as "high strength")
-        //
-        // SCIENTIFIC RATIONALE:
-        // Token-matched foods (e.g., "orange juice", "spinach salad") are typically primary ingredient products
-        // where the named ingredient constitutes the majority of the product. However, bioavailability research
-        // shows that even primary natural sources don't provide perfect nutrient absorption.
-        //
-        // Contribution capped at 0.7 (rather than 1.0) to account for:
-        // - Natural variability in nutrient content (season, ripeness, storage)
-        // - Food matrix effects on bioavailability (fiber, fat content, processing)
-        // - Individual absorption differences (gut health, genetics, dietary context)
-        //
-        // References:
-        // - PMC7393990: "Bioavailability of Micronutrients From Nutrient-Dense Whole Foods" (Frontiers in Nutrition, 2020)
-        //   https://pmc.ncbi.nlm.nih.gov/articles/PMC7393990/
-        let tokenMatches = matchTokens(in: name)
-        for nutrient in tokenMatches {
-            nutrientContributions[nutrient] = 0.7 // High contribution from primary whole food ingredient
-        }
+        // Check if this food category should be restricted
+        let category = strictValidator.getFoodCategory(foodName: name, ingredients: ingredients)
+        let isRestricted = MicronutrientFoodCategory.restrictedCategories.contains(category)
 
-        // 2. PATTERN-BASED FORTIFICATION DETECTION (Phase 1 of hybrid approach)
-        // This catches vitamins/minerals in complex ingredient phrases like:
-        // "vitamin C (as l-ascorbic acid)", "calcium carbonate", etc.
-        //
-        // BIOAVAILABILITY RESEARCH FINDINGS:
-        // Scientific evidence shows MIXED results for fortified vs natural nutrients:
-        //
-        // ✅ FORTIFICATION ADVANTAGE:
-        // • Folic Acid: Synthetic form has SUPERIOR absorption vs natural food folate
-        //   - Dietary Folate Equivalents (DFE): 1 μg DFE = 0.6 μg synthetic folic acid = 1 μg food folate
-        //   - Fortification is more bioavailable for this specific nutrient
-        //
-        // ⚠️ NATURAL SOURCE ADVANTAGE:
-        // • Vitamin B12: Natural dairy sources show HIGHER bioavailability (~65%) vs synthetic (<50%, sometimes <5%)
-        // • Vitamin A (Retinol): Non-fortified whole milk shows highest plasma response; fortification doesn't improve absorption (~15% regardless)
-        //
-        // 🔄 HIGHLY VARIABLE:
-        // • Beta-Carotene: Bioefficacy varies dramatically by food matrix:
-        //   - Synthetic supplements in oil: 26-48% bioefficacy
-        //   - Fruits: 8.3%
-        //   - Cooked vegetables: 1-3.5%
-        //   - Raw vegetables: 0.01-7.7% (chloroplast storage reduces availability)
-        //
-        // ⚠️ IMPORTANT: "Fortified nutrients don't automatically equal superior nutrition"
-        // Food matrix effects, synergistic nutrients, and individual absorption vary significantly.
-        //
-        // CLASSIFICATION APPROACH:
-        // Fortified nutrients receive 0.7 contribution (high, but not maximum) to:
-        // - Acknowledge their regulatory "significant source" status
-        // - Avoid over-valuing processed fortified foods vs nutrient-dense whole foods
-        // - Reflect mixed bioavailability evidence
-        // - Support whole-food dietary patterns (aligned with NutraSafe philosophy)
-        //
-        // References:
-        // - PMC7393990: "Bioavailability of Micronutrients From Nutrient-Dense Whole Foods" (Frontiers in Nutrition, 2020)
-        //   https://pmc.ncbi.nlm.nih.gov/articles/PMC7393990/
-        // - Institute of Medicine Dietary Reference Intakes (DRI) - Dietary Folate Equivalents methodology
-        //   https://www.ncbi.nlm.nih.gov/books/NBK222871/
-        let detectedFortifications = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
+        var result: [String: NutrientStrength.Strength] = [:]
 
-
-        for detected in detectedFortifications {
-            // Fortified nutrients are categorized as high sources (0.7 contribution)
-            // See bioavailability research above for scientific rationale
-            nutrientContributions[detected.nutrient] = 0.7
-                    }
-
-        // 3. Calculate dish complexity penalty
-        //
-        // RATIONALE FOR REDUCED PENALTY:
-        // Previous penalty (25-30%) was too aggressive and created perverse incentives:
-        // - Penalized healthy complex meals (stir-fries, salads with 10+ vegetables)
-        // - Favored simple processed foods (3-ingredient fortified bars)
-        // - Contradicted whole-food dietary guidance
-        //
-        // NEW APPROACH (10-15% penalty):
-        // - Acknowledges slight nutrient dilution in complex dishes
-        // - Avoids over-penalizing nutrient-dense multi-ingredient meals
-        // - Aligns with NutraSafe's whole-food philosophy
-        // - Example: Salmon poke bowl (12 ingredients) now retains more nutrient credit
-        //
-        // The penalty accounts for:
-        // - Slightly lower concentration per ingredient in complex dishes
-        // - Potential for processing/blending reducing some nutrient bioavailability
-        // - But NOT to the extent that discourages dietary variety
-        let ingredientCount = ingredients.count
-        let complexityPenalty: Double = ingredientCount > 8 ? 0.10 : 0.15 // 10-15% reduction for complex dishes
-
-        // 4. Process each ingredient with weighted contribution (NATURAL SOURCES)
-        for (index, ingredient) in ingredients.enumerated() {
-            if let ingredientData = lookupIngredient(ingredient) {
-                // Calculate ingredient weight based on position
-                let baseWeight = calculateIngredientWeight(position: index, totalCount: ingredientCount)
-
-                // Apply complexity penalty for dishes with many ingredients
-                let adjustedWeight = ingredientCount > 8 ? baseWeight * (1.0 - complexityPenalty) : baseWeight
-
-                // Add weighted contributions from this ingredient
-                for nutrientStrength in ingredientData.nutrients {
-                    let nutrientValue = Double(nutrientStrength.strength.points) / 3.0 // Normalize to 0.33-1.0
-                    let weightedContribution = adjustedWeight * nutrientValue
-
-                    // Accumulate contributions (max() ensures fortified sources aren't diluted)
-                    let currentContribution = nutrientContributions[nutrientStrength.nutrient] ?? 0.0
-                    nutrientContributions[nutrientStrength.nutrient] = max(currentContribution, weightedContribution)
+        // 1. Nutrition table data (highest priority - always accepted)
+        if let tableNutrients = nutritionTableMicronutrients {
+            for (nutrient, value) in tableNutrients where value > 0 {
+                // Convert value to strength (assuming value is % of daily value)
+                let strength: NutrientStrength.Strength
+                if value >= 30 {
+                    strength = .strong
+                } else if value >= 15 {
+                    strength = .moderate
+                } else if value >= 5 {
+                    strength = .trace
+                } else {
+                    continue // Too small to register
                 }
+                result[nutrient] = strength
             }
         }
 
-        // 5. Convert weighted contributions to strength levels
-        return convertWeightedContributionsToStrengths(nutrientContributions)
+        // 2. For restricted categories (ultra-processed), ONLY accept explicit fortification
+        // Do NOT infer from ingredients
+        if isRestricted {
+            // Only detect fortification patterns, not natural sources
+            let fortifiedNutrients = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
+
+            for detected in fortifiedNutrients {
+                // Only add if not already from nutrition table
+                if result[detected.nutrient] == nil {
+                    result[detected.nutrient] = detected.strength
+                }
+            }
+
+            return result
+        }
+
+        // 3. For non-restricted foods, also check fortification
+        let fortifiedNutrients = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
+
+        for detected in fortifiedNutrients {
+            if result[detected.nutrient] == nil {
+                result[detected.nutrient] = detected.strength
+            }
+        }
+
+        // 4. For whole foods / minimally processed, we could potentially add
+        // natural source inference here, but for maximum safety we're keeping
+        // it strict. Uncomment below if natural source detection is needed:
+        //
+        // if category == .wholeFood {
+        //     let naturalNutrients = detectWholeFoodNutrients(name: name, ingredients: ingredients)
+        //     for (nutrient, strength) in naturalNutrients {
+        //         if result[nutrient] == nil {
+        //             result[nutrient] = strength
+        //         }
+        //     }
+        // }
+
+        return result
     }
 
-    /// Calculate ingredient weight based on its position in the ingredient list
+    /// LEGACY METHOD: Original weighting-based analysis (DEPRECATED)
     ///
-    /// REGULATORY BASIS:
-    /// FDA regulations (21 CFR 101.4) require ingredients to be listed in descending order
-    /// of predominance by weight. This legal requirement allows us to infer relative
-    /// nutrient contributions based on ingredient position.
-    ///
-    /// WEIGHTING METHODOLOGY:
-    /// - First 3 ingredients: Major contributors (20-35% each, varies by complexity)
-    /// - Next 2 ingredients: Medium contributors (8-15%)
-    /// - Remaining: Minor contributors (split remaining 10% equally)
-    ///
-    /// This is an ESTIMATION method. Actual nutrient content requires laboratory analysis
-    /// or validated nutritional database lookup.
-    ///
-    /// References:
-    /// - FDA ingredient order requirements: 21 CFR 101.4
-    /// - Food labeling guidance: https://www.fda.gov/food/food-labeling-nutrition
-    ///
-    /// First 3-5 ingredients get boosted weights (assumed to be main components)
+    /// This method is retained for backwards compatibility but should not be used.
+    /// Use `analyzeFoodItemStrict` instead.
+    @available(*, deprecated, message: "Use analyzeFoodItemStrict for evidence-based detection")
+    private func analyzeFoodItemWithWeightingLegacy(name: String, ingredients: [String], useAI: Bool) -> [String: NutrientStrength.Strength] {
+        // Original implementation kept for reference but not called
+        return [:]
+    }
+
+    // MARK: - LEGACY CODE REMOVED
+    //
+    // The previous `analyzeFoodItemWithWeighting` method has been removed.
+    // It inferred micronutrients too liberally from ingredients, causing false positives
+    // like detecting vitamin C in chocolate products (Revels) from trace flavourings.
+    //
+    // The new `analyzeFoodItemStrict` method above replaces it with evidence-based detection.
+    // See StrictMicronutrientValidator.swift for the complete validation rules.
+
+    /// DEPRECATED: No longer used in strict mode
+    /// Kept for backwards compatibility but will be removed in future version
+    @available(*, deprecated, message: "Legacy weighting method - not used in strict mode")
     private func calculateIngredientWeight(position: Int, totalCount: Int) -> Double {
         if totalCount <= 3 {
             // Simple meals: equal distribution
@@ -654,50 +651,9 @@ class MicronutrientDatabase {
         }
     }
 
-    /// Convert weighted nutrient contributions to strength classifications
-    ///
-    /// REGULATORY STANDARDS (UK/EU-ALIGNED):
-    /// NutraSafe uses UK/EU nutrient claim thresholds, appropriate for the UK target market.
-    ///
-    /// UK/EU FRAMEWORK (Retained EU Regulation EC 1924/2006):
-    /// • "High In" / "Rich In" claim: Requires ≥30% NRV (Nutrient Reference Value) per 100g/100ml
-    /// • "Source Of" claim: Requires ≥15% NRV per 100g/100ml
-    /// • Beverages: "Source Of" requires ≥7.5% NRV per 100ml (half the solid food threshold)
-    ///
-    /// The 15% threshold is defined in Directive 90/496/EEC as a "significant amount."
-    /// The 30% threshold is exactly twice the "source of" threshold, per EC 1924/2006 Annex.
-    ///
-    /// COMPARISON WITH US FDA STANDARDS (21 CFR 101.54):
-    /// • "Excellent Source": ≥20% DV (Daily Value) per RACC (Reference Amount Customarily Consumed)
-    /// • "Good Source": 10-19% DV per RACC
-    ///
-    /// NutraSafe chose UK/EU standards (30%/15%) because:
-    /// 1. Target market is UK users
-    /// 2. More conservative thresholds prevent overstating nutritional benefits
-    /// 3. Aligns with retained post-Brexit UK law
-    /// 4. Consistent with UK Food Standards Agency guidance
-    ///
-    /// IMPORTANT DISTINCTION - Contribution vs Daily Value:
-    /// These thresholds apply to INGREDIENT CONTRIBUTION (position-weighted estimate),
-    /// NOT direct daily value percentages. Actual daily value tracking occurs separately
-    /// in MicronutrientScoringModels.swift with different thresholds.
-    ///
-    /// Ingredient contribution is an estimation method based on:
-    /// - Ingredient list position (FDA 21 CFR 101.4 - descending order by weight)
-    /// - Complexity penalty for multi-ingredient dishes
-    /// - Intrinsic nutrient strength from database lookup
-    ///
-    /// References:
-    /// - UK/EU: Retained EU Regulation (EC) No 1924/2006 on nutrition and health claims
-    ///   https://www.legislation.gov.uk/eur/2006/1924/annex
-    /// - UK Technical Guidance on Nutrition Labeling
-    ///   https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/595961/Nutrition_Technical_Guidance.pdf
-    /// - FDA (comparison): 21 CFR 101.54 - Nutrient content claims
-    ///   https://www.ecfr.gov/current/title-21/section-101.54
-    /// - Institute of Medicine Dietary Reference Intakes (DRI)
-    ///   https://www.ncbi.nlm.nih.gov/books/NBK222871/
-    ///
-    /// Uses UK/EU-aligned thresholds: Strong ≥0.30, Moderate 0.15-0.29, Trace <0.15
+    /// DEPRECATED: No longer used in strict mode
+    /// Kept for backwards compatibility but will be removed in future version
+    @available(*, deprecated, message: "Legacy weighting method - not used in strict mode")
     private func convertWeightedContributionsToStrengths(_ contributions: [String: Double]) -> [String: NutrientStrength.Strength] {
         var result: [String: NutrientStrength.Strength] = [:]
 

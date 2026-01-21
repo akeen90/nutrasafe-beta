@@ -620,10 +620,10 @@ struct CommandTile: View {
         case "barcode.viewfinder":
             BarcodeScanIcon(size: iconSize, gradient: iconGradient)
         case "calendar.badge.clock":
-            Image("CalendarIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: iconSize, height: iconSize)
+            // Clean calendar with exclamation for expiry tracking
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
         case "sparkles.rectangle.stack":
             PremiumAIIcon(size: iconSize)
         default:
@@ -768,10 +768,10 @@ struct QuickTrackerRow: View {
         let iconSize: CGFloat = 18
         switch icon {
         case "figure.stand.scale":
-            Image("ScaleIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: iconSize, height: iconSize)
+            // Clean scale icon for weight tracking
+            Image(systemName: "scalemass.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white)
         case "heart.text.square.fill":
             ReactionIcon(size: iconSize, gradient: [iconColor, iconColor.opacity(0.8)])
         default:
