@@ -639,7 +639,7 @@ struct TypewriterText: View {
     var body: some View {
         Text(displayedText)
             .font(.system(size: 17, weight: .regular))
-            .foregroundColor(palette.tertiary)
+            .foregroundColor(Color(white: 0.4)) // Use consistent readable gray
             .lineSpacing(6)
             .multilineTextAlignment(.center)
             .onAppear {

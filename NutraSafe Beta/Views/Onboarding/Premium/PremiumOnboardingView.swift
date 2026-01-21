@@ -3,7 +3,7 @@
 //  NutraSafe Beta
 //
 //  Premium onboarding flow with emotional journey and extended setup
-//  Flow: Breath → Mirror → Processing → Depth → Synthesis → Promise →
+//  Flow: Breath → Mirror → Processing → Synthesis → Promise →
 //        PersonalDetails → Sensitivities → Camera → Health → Notifications → Honesty → Completion
 //
 
@@ -21,8 +21,8 @@ struct PremiumOnboardingView: View {
 
     let onComplete: (Bool) -> Void
 
-    // Total screens (0-12)
-    private let totalScreens = 13
+    // Total screens (0-11)
+    private let totalScreens = 12
 
     var body: some View {
         ZStack {
@@ -39,32 +39,31 @@ struct PremiumOnboardingView: View {
                 case 2:
                     ProcessingScreen(state: state, onComplete: { advanceScreen() })
                 case 3:
-                    DepthScreen(state: state, onContinue: { advanceScreen() })
-                case 4:
+                    // Skip old DepthScreen, go straight to Synthesis
                     SynthesisScreen(state: state, onComplete: { advanceScreen() })
-                case 5:
+                case 4:
                     PromiseScreen(state: state, onContinue: { advanceScreen() })
-                case 6:
-                    // NEW: Personal Details
+                case 5:
+                    // Personal Details (DOB, height, weight, gender)
                     PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
-                case 7:
-                    // NEW: Sensitivities (Allergens + Preferences)
+                case 6:
+                    // Sensitivities (UK/EU Allergens + Preferences)
                     SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
-                case 8:
-                    // NEW: Camera Permission (with real trigger)
+                case 7:
+                    // Camera Permission (with real trigger)
                     CameraPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 9:
-                    // NEW: Apple Health Permission
+                case 8:
+                    // Apple Health Permission
                     HealthPermissionScreen(state: state, onContinue: { advanceScreen() })
                         .environmentObject(healthKitManager)
-                case 10:
-                    // NEW: Notifications Permission
+                case 9:
+                    // Notifications Permission
                     NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
-                case 11:
+                case 10:
                     // Honesty/Disclaimer screen
                     HonestyScreen(state: state, onContinue: { advanceScreen() })
-                case 12:
-                    // NEW: Completion screen
+                case 11:
+                    // Completion screen
                     OnboardingCompletionScreen(state: state, onComplete: {
                         state.saveToManager()
                         OnboardingManager.shared.acceptDisclaimer()
@@ -105,16 +104,15 @@ struct PremiumOnboardingView: View {
         case 0: return "Breath"
         case 1: return "Mirror"
         case 2: return "Processing"
-        case 3: return "Depth"
-        case 4: return "Synthesis"
-        case 5: return "Promise"
-        case 6: return "PersonalDetails"
-        case 7: return "Sensitivities"
-        case 8: return "CameraPermission"
-        case 9: return "HealthPermission"
-        case 10: return "NotificationPermission"
-        case 11: return "Honesty"
-        case 12: return "Completion"
+        case 3: return "Synthesis"
+        case 4: return "Promise"
+        case 5: return "PersonalDetails"
+        case 6: return "Sensitivities"
+        case 7: return "CameraPermission"
+        case 8: return "HealthPermission"
+        case 9: return "NotificationPermission"
+        case 10: return "Honesty"
+        case 11: return "Completion"
         default: return "Unknown"
         }
     }
