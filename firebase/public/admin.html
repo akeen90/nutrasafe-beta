@@ -4394,6 +4394,401 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+
+        /* AI Categories View Styles */
+        .categories-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .categories-header {
+            margin-bottom: 24px;
+        }
+
+        .categories-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .categories-header p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .categories-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .categories-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .cat-stat-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .cat-stat-card.success {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-color: #a7f3d0;
+        }
+
+        .cat-stat-card.warning {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-color: #fde68a;
+        }
+
+        .cat-stat-card.info {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-color: #bfdbfe;
+        }
+
+        .cat-stat-card .stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .cat-stat-card .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .cat-stat-card .stat-label {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .categories-controls {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: #f8fafc;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .categories-controls .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .categories-controls .control-group label {
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .categories-controls .control-group select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 14px;
+            min-width: 180px;
+            background: white;
+        }
+
+        .categories-controls .control-group.checkbox label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .categories-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .categories-actions .btn-large {
+            padding: 14px 28px;
+            font-size: 16px;
+        }
+
+        .categories-progress {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid #3b82f6;
+        }
+
+        .categories-progress .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        /* Preview Section Styles */
+        .categories-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .preview-header h3 {
+            margin: 0;
+            color: #111827;
+        }
+
+        .preview-count {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .preview-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .preview-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            gap: 12px;
+        }
+
+        .preview-item:last-child {
+            border-bottom: none;
+        }
+
+        .preview-item:nth-child(even) {
+            background: #f9fafb;
+        }
+
+        .preview-item .food-name {
+            flex: 1;
+            font-weight: 500;
+            color: #111827;
+            font-size: 14px;
+        }
+
+        .preview-item .brand-name {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .preview-item .serving-info {
+            color: #9ca3af;
+            font-size: 12px;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .categories-results {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .categories-results h3 {
+            margin-bottom: 16px;
+            color: #111827;
+        }
+
+        .results-summary {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #166534;
+        }
+
+        .results-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            gap: 12px;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-item .food-name {
+            flex: 1;
+            font-weight: 500;
+            color: #111827;
+        }
+
+        .result-item .category-badge {
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .result-item .serving-info {
+            color: #6b7280;
+            font-size: 13px;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        .result-item .confidence-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .result-item .confidence-badge.high {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .result-item .confidence-badge.medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .result-item .confidence-badge.low {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .categories-distribution {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .categories-distribution h3 {
+            margin-bottom: 16px;
+            color: #111827;
+        }
+
+        .distribution-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .distribution-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .distribution-item .category-name {
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .distribution-item .category-count {
+            background: #3b82f6;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .categories-reference {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .categories-reference h3 {
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .categories-reference > p {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .category-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .category-chip {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .category-chip:hover {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+        }
+
+        .category-chip.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #9ca3af;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -4432,6 +4827,7 @@
                     <button class="nav-tab" data-view="database-check">Database Check</button>
                     <button class="nav-tab" data-view="email-marketing">Email Marketing</button>
                     <button class="nav-tab" data-view="tesco-builder">Database Builder</button>
+                    <button class="nav-tab" data-view="ai-categories">AI Categories</button>
                 </nav>
                 <div class="user-info">
                     <span id="user-email" class="user-email"></span>
@@ -5138,6 +5534,127 @@
                 <div class="tesco-errors" id="tesco-errors-section" style="display: none;">
                     <h4>⚠️ Errors</h4>
                     <div id="tesco-error-log" class="error-log"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Categories View -->
+        <div id="ai-categories-view" class="view">
+            <div class="categories-container">
+                <div class="categories-header">
+                    <h2>🤖 AI Food Categorization</h2>
+                    <p>Use AI to automatically categorize foods for intelligent serving size suggestions</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="categories-stats">
+                    <div class="cat-stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="cat-stat-total">-</div>
+                        <div class="stat-label">Total Foods</div>
+                    </div>
+                    <div class="cat-stat-card success">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-value" id="cat-stat-categorized">-</div>
+                        <div class="stat-label">Categorized</div>
+                    </div>
+                    <div class="cat-stat-card warning">
+                        <div class="stat-icon">❓</div>
+                        <div class="stat-value" id="cat-stat-uncategorized">-</div>
+                        <div class="stat-label">Uncategorized</div>
+                    </div>
+                    <div class="cat-stat-card info">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-value" id="cat-stat-percent">-</div>
+                        <div class="stat-label">% Complete</div>
+                    </div>
+                </div>
+
+                <!-- Collection Selector -->
+                <div class="categories-controls">
+                    <div class="control-group">
+                        <label>Collection:</label>
+                        <select id="cat-collection-select" onchange="app.onCollectionChange()">
+                            <option value="foods" selected>All Foods (26k)</option>
+                            <option value="verifiedFoods">Verified Foods</option>
+                            <option value="tesco_products">Tesco Products</option>
+                            <option value="uk_foods_cleaned">UK Foods Cleaned</option>
+                            <option value="generic_database">Generic Database</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Batch Size:</label>
+                        <select id="cat-batch-size">
+                            <option value="all" selected>All (Full Scan)</option>
+                            <option value="10">10 foods</option>
+                            <option value="25">25 foods</option>
+                            <option value="50">50 foods</option>
+                            <option value="100">100 foods</option>
+                            <option value="500">500 foods</option>
+                        </select>
+                    </div>
+                </div>
+                <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">
+                    ⚠️ Categorization will <strong>overwrite</strong> any existing categories
+                </p>
+
+                <!-- Action Buttons -->
+                <div class="categories-actions">
+                    <button class="btn btn-secondary" id="cat-pull-btn" onclick="app.pullUncategorizedFoods()">
+                        📥 Pull Data
+                    </button>
+                    <button class="btn btn-primary btn-large" id="cat-start-btn" onclick="app.startCategorization()" disabled>
+                        🤖 Start AI Categorization
+                    </button>
+                    <button class="btn btn-secondary" onclick="app.refreshCategoryStats()">
+                        🔄 Refresh Stats
+                    </button>
+                </div>
+
+                <!-- Data Preview Section -->
+                <div class="categories-preview" id="cat-preview-section" style="display: none;">
+                    <div class="preview-header">
+                        <h3>📋 Foods to Categorize</h3>
+                        <span id="cat-preview-count" class="preview-count">0 foods loaded</span>
+                    </div>
+                    <div class="preview-list" id="cat-preview-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="categories-progress" id="cat-progress-section" style="display: none;">
+                    <div class="progress-header">
+                        <span id="cat-status-badge" class="status-badge status-idle">Processing</span>
+                        <span id="cat-progress-text">Processing 0 / 0 foods...</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="cat-progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="categories-results" id="cat-results-section" style="display: none;">
+                    <h3>Categorization Results</h3>
+                    <div class="results-summary" id="cat-results-summary"></div>
+                    <div class="results-list" id="cat-results-list"></div>
+                </div>
+
+                <!-- Category Distribution -->
+                <div class="categories-distribution">
+                    <h3>Category Distribution (Sample)</h3>
+                    <div class="distribution-grid" id="cat-distribution-grid">
+                        <p class="empty-state">No categorization data yet. Run a categorization batch to see distribution.</p>
+                    </div>
+                </div>
+
+                <!-- Available Categories Reference -->
+                <div class="categories-reference">
+                    <h3>📋 Available Categories</h3>
+                    <p>Click to filter results by category</p>
+                    <div class="category-chips" id="category-chips-container">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -5948,6 +6465,9 @@
                 } else if (view === 'tesco-builder') {
                     // Load Tesco build progress
                     this.refreshTescoProgress();
+                } else if (view === 'ai-categories') {
+                    // Initialize AI Categories view
+                    this.initCategoriesView();
                 }
             },
 
@@ -13124,6 +13644,404 @@
                     // Refresh UI
                     this.refreshTescoProgress();
                 }
+            },
+
+            // =============================================
+            // AI FOOD CATEGORIZATION FUNCTIONS
+            // =============================================
+
+            // Available categories (loaded from API)
+            availableCategories: [],
+
+            // Load categories from API
+            async loadCategories() {
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/getCategories`);
+                    const data = await response.json();
+                    if (data.success) {
+                        this.availableCategories = data.categories;
+                        this.renderCategoryChips();
+                    }
+                } catch (error) {
+                    console.error('Failed to load categories:', error);
+                }
+            },
+
+            // Render category chips in the reference section
+            renderCategoryChips() {
+                const container = document.getElementById('category-chips-container');
+                if (!container || !this.availableCategories.length) return;
+
+                container.innerHTML = this.availableCategories.map(cat => `
+                    <div class="category-chip" data-category="${cat.id}" title="${cat.description} - Default: ${cat.defaultServingSize}${cat.servingUnit}">
+                        ${cat.name}
+                    </div>
+                `).join('');
+            },
+
+            // Store pulled foods for categorization
+            pulledFoods: [],
+
+            // Pull foods from database for preview
+            async pullUncategorizedFoods() {
+                const collection = document.getElementById('cat-collection-select').value;
+                const batchSizeValue = document.getElementById('cat-batch-size').value;
+                const previewLimit = 50; // Show first 50 for preview
+
+                const pullBtn = document.getElementById('cat-pull-btn');
+                const startBtn = document.getElementById('cat-start-btn');
+                const previewSection = document.getElementById('cat-preview-section');
+                const previewList = document.getElementById('cat-preview-list');
+                const previewCount = document.getElementById('cat-preview-count');
+
+                pullBtn.disabled = true;
+                pullBtn.textContent = '⏳ Loading...';
+
+                try {
+                    // Fetch actual foods for preview
+                    const response = await fetch(`${CONFIG.API_BASE}/getFoodsForCategorization?collection=${collection}&limit=${previewLimit}`);
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to get foods');
+                    }
+
+                    const totalFoods = data.total;
+
+                    if (totalFoods === 0) {
+                        previewSection.style.display = 'block';
+                        previewList.innerHTML = '<div class="preview-item"><span class="food-name">⚠️ No foods found in this collection</span></div>';
+                        previewCount.textContent = '0 foods';
+                        startBtn.disabled = true;
+                        this.showToast('No foods in this collection', 'warning');
+                        return;
+                    }
+
+                    // Store info for categorization
+                    this.pulledFoods = {
+                        collection: collection,
+                        count: totalFoods,
+                        batchSize: batchSizeValue
+                    };
+
+                    // Show preview section
+                    previewSection.style.display = 'block';
+                    previewCount.textContent = `${totalFoods.toLocaleString()} total foods`;
+
+                    // Build preview list with actual food items
+                    let html = `
+                        <div class="preview-item" style="background: #dbeafe; padding: 12px 16px; border-left: 3px solid #3b82f6;">
+                            <span style="font-size: 13px; color: #1e40af;">
+                                📊 <strong>${totalFoods.toLocaleString()}</strong> foods in <strong>${collection}</strong> |
+                                Mode: <strong>${batchSizeValue === 'all' ? 'Full Scan' : batchSizeValue + ' per batch'}</strong>
+                            </span>
+                        </div>
+                    `;
+
+                    // Show actual food items
+                    data.foods.forEach((food, index) => {
+                        const categoryBadge = food.currentCategory
+                            ? `<span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 10px; font-size: 11px;">${food.currentCategoryName || food.currentCategory}</span>`
+                            : `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-size: 11px;">No category</span>`;
+
+                        html += `
+                            <div class="preview-item">
+                                <span style="color: #9ca3af; font-size: 12px; min-width: 30px;">${index + 1}.</span>
+                                <span class="food-name">${this.escapeHtml(food.foodName)}</span>
+                                ${food.brandName ? `<span class="brand-name">${this.escapeHtml(food.brandName)}</span>` : ''}
+                                ${categoryBadge}
+                            </div>
+                        `;
+                    });
+
+                    if (totalFoods > previewLimit) {
+                        html += `
+                            <div class="preview-item" style="background: #f3f4f6; justify-content: center;">
+                                <span style="color: #6b7280; font-size: 13px;">... and ${(totalFoods - previewLimit).toLocaleString()} more foods</span>
+                            </div>
+                        `;
+                    }
+
+                    previewList.innerHTML = html;
+
+                    // Enable start button
+                    startBtn.disabled = false;
+                    this.showToast(`Loaded ${totalFoods.toLocaleString()} foods ready to categorize`, 'success');
+
+                } catch (error) {
+                    console.error('Failed to pull foods:', error);
+                    this.showToast('Failed to pull data: ' + error.message, 'error');
+                    previewSection.style.display = 'none';
+                    startBtn.disabled = true;
+                } finally {
+                    pullBtn.disabled = false;
+                    pullBtn.textContent = '📥 Pull Data';
+                }
+            },
+
+            // Refresh category statistics
+            async refreshCategoryStats() {
+                const collection = document.getElementById('cat-collection-select').value;
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/getCategorizeStats?collection=${collection}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const stats = data.stats;
+                        document.getElementById('cat-stat-total').textContent = stats.total.toLocaleString();
+                        document.getElementById('cat-stat-categorized').textContent = stats.categorized.toLocaleString();
+                        document.getElementById('cat-stat-uncategorized').textContent = stats.uncategorized.toLocaleString();
+                        document.getElementById('cat-stat-percent').textContent = stats.percentCategorized + '%';
+
+                        // Update distribution grid
+                        this.renderDistribution(stats.categorySample);
+                    }
+                } catch (error) {
+                    console.error('Failed to load stats:', error);
+                    this.showToast('Failed to load statistics: ' + error.message, 'error');
+                }
+            },
+
+            // Render category distribution
+            renderDistribution(categorySample) {
+                const container = document.getElementById('cat-distribution-grid');
+                if (!container) return;
+
+                if (!categorySample || Object.keys(categorySample).length === 0) {
+                    container.innerHTML = '<p class="empty-state">No categorization data yet. Run a categorization batch to see distribution.</p>';
+                    return;
+                }
+
+                // Sort by count descending
+                const sorted = Object.entries(categorySample)
+                    .sort((a, b) => b[1] - a[1]);
+
+                container.innerHTML = sorted.map(([categoryId, count]) => {
+                    const category = this.availableCategories.find(c => c.id === categoryId);
+                    const name = category ? category.name : categoryId;
+                    return `
+                        <div class="distribution-item">
+                            <span class="category-name">${name}</span>
+                            <span class="category-count">${count}</span>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            // Start AI categorization (save results)
+            async startCategorization() {
+                await this.runCategorization(true);
+            },
+
+            // Preview categorization (don't save)
+            async previewCategorization() {
+                await this.runCategorization(false);
+            },
+
+            // Run categorization
+            async runCategorization(saveResults = true) {
+                const collection = document.getElementById('cat-collection-select').value;
+                const batchSizeValue = document.getElementById('cat-batch-size').value;
+                const isFullScan = batchSizeValue === 'all';
+                const batchSize = isFullScan ? 50 : parseInt(batchSizeValue); // Process 50 at a time for full scan
+                const totalFoods = this.pulledFoods?.count || 0;
+
+                const progressSection = document.getElementById('cat-progress-section');
+                const resultsSection = document.getElementById('cat-results-section');
+                const startBtn = document.getElementById('cat-start-btn');
+
+                // Show progress
+                progressSection.style.display = 'block';
+                resultsSection.style.display = 'none';
+                startBtn.disabled = true;
+                startBtn.textContent = isFullScan ? 'Full Scan Running...' : 'Processing...';
+
+                const statusBadge = document.getElementById('cat-status-badge');
+                const progressText = document.getElementById('cat-progress-text');
+                const progressBar = document.getElementById('cat-progress-bar');
+
+                statusBadge.textContent = 'Processing';
+                statusBadge.className = 'status-badge status-running';
+                progressBar.style.width = '0%';
+
+                let allResults = [];
+                let totalProcessed = 0;
+                let offset = 0;
+                let hasMore = true;
+
+                try {
+                    if (isFullScan) {
+                        // Full database scan - process ALL foods with offset tracking
+                        progressText.textContent = `Starting full scan of ${collection} (${totalFoods.toLocaleString()} foods)...`;
+
+                        while (hasMore) {
+                            progressText.textContent = `Processing batch at offset ${offset}... (${totalProcessed} done)`;
+
+                            const response = await fetch(`${CONFIG.API_BASE}/categorizeFoodsFromDatabase`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    collection,
+                                    limit: batchSize,
+                                    offset: offset,
+                                    saveResults,
+                                    onlyUncategorized: false // Process ALL foods, overwrite existing
+                                })
+                            });
+
+                            const data = await response.json();
+
+                            if (!data.success) {
+                                throw new Error(data.error || 'Batch failed');
+                            }
+
+                            if (data.results && data.results.length > 0) {
+                                allResults = allResults.concat(data.results);
+                                totalProcessed += data.processed;
+                                offset += data.processed;
+
+                                // Update progress based on total foods
+                                const percent = totalFoods > 0 ? Math.round((totalProcessed / totalFoods) * 100) : 100;
+                                progressBar.style.width = Math.min(percent, 100) + '%';
+                                progressText.textContent = `Processed ${totalProcessed.toLocaleString()} / ${totalFoods.toLocaleString()} foods (${percent}%)`;
+
+                                // Check if more to process
+                                hasMore = data.processed >= batchSize && totalProcessed < totalFoods;
+
+                                // Small delay to prevent rate limiting
+                                if (hasMore) {
+                                    await new Promise(r => setTimeout(r, 1000));
+                                }
+                            } else {
+                                hasMore = false;
+                            }
+                        }
+
+                        progressBar.style.width = '100%';
+                        statusBadge.textContent = 'Complete';
+                        statusBadge.className = 'status-badge status-idle';
+                        progressText.textContent = `Full scan complete: ${totalProcessed.toLocaleString()} foods categorized`;
+
+                        // Show results (limit display to last 100)
+                        this.renderResults({
+                            processed: totalProcessed,
+                            results: allResults.slice(-100),
+                            totalRemaining: 0
+                        }, saveResults, allResults.length > 100 ? `Showing last 100 of ${allResults.length} results` : null);
+                        resultsSection.style.display = 'block';
+
+                        await this.refreshCategoryStats();
+                        this.showToast(`Full scan complete: ${totalProcessed.toLocaleString()} foods categorized${saveResults ? ' and saved' : ''}`, 'success');
+
+                    } else {
+                        // Single batch processing
+                        progressText.textContent = `Categorizing ${batchSize} foods from ${collection}...`;
+
+                        let progress = 0;
+                        const progressInterval = setInterval(() => {
+                            if (progress < 90) {
+                                progress += 5;
+                                progressBar.style.width = progress + '%';
+                            }
+                        }, 500);
+
+                        const response = await fetch(`${CONFIG.API_BASE}/categorizeFoodsFromDatabase`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                collection,
+                                limit: batchSize,
+                                offset: 0,
+                                saveResults,
+                                onlyUncategorized: false // Process all, overwrite existing
+                            })
+                        });
+
+                        clearInterval(progressInterval);
+                        progressBar.style.width = '100%';
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            statusBadge.textContent = 'Complete';
+                            statusBadge.className = 'status-badge status-idle';
+                            progressText.textContent = `Processed ${data.processed} foods`;
+
+                            this.renderResults(data, saveResults);
+                            resultsSection.style.display = 'block';
+
+                            await this.refreshCategoryStats();
+                            this.showToast(`Successfully categorized ${data.processed} foods${saveResults ? ' and saved to database' : ' (preview only)'}`, 'success');
+                        } else {
+                            throw new Error(data.error || 'Categorization failed');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Categorization error:', error);
+                    statusBadge.textContent = 'Error';
+                    statusBadge.className = 'status-badge status-error';
+                    progressText.textContent = `Error after ${totalProcessed} foods: ${error.message}`;
+                    this.showToast('Categorization failed: ' + error.message, 'error');
+
+                    // Still show partial results if we have any
+                    if (allResults.length > 0) {
+                        this.renderResults({
+                            processed: totalProcessed,
+                            results: allResults.slice(-100),
+                            totalRemaining: 'unknown'
+                        }, saveResults, `Partial results (${totalProcessed} processed before error)`);
+                        resultsSection.style.display = 'block';
+                    }
+                } finally {
+                    startBtn.disabled = false;
+                    startBtn.textContent = '🤖 Start AI Categorization';
+                }
+            },
+
+            // Render categorization results
+            renderResults(data, saved) {
+                const summaryEl = document.getElementById('cat-results-summary');
+                const listEl = document.getElementById('cat-results-list');
+
+                summaryEl.innerHTML = `
+                    <strong>${data.processed} foods categorized</strong>
+                    ${saved ? ' and saved to database' : ' (preview only - not saved)'}
+                    ${data.totalRemaining !== 'N/A' ? ` | ${data.totalRemaining} uncategorized remaining` : ''}
+                `;
+
+                if (!data.results || data.results.length === 0) {
+                    listEl.innerHTML = '<p class="empty-state">No results to display</p>';
+                    return;
+                }
+
+                listEl.innerHTML = data.results.map(result => `
+                    <div class="result-item">
+                        <span class="food-name">${this.escapeHtml(result.foodName)}</span>
+                        <span class="category-badge">${result.categoryName}</span>
+                        <span class="serving-info">${result.suggestedServingSize}${result.servingUnit}</span>
+                        <span class="confidence-badge ${result.confidence}">${result.confidence}</span>
+                    </div>
+                `).join('');
+            },
+
+            // Initialize categories view
+            // Handle collection dropdown change
+            async onCollectionChange() {
+                // Hide preview and disable start button when collection changes
+                document.getElementById('cat-preview-section').style.display = 'none';
+                document.getElementById('cat-start-btn').disabled = true;
+                this.pulledFoods = [];
+
+                // Refresh stats for new collection
+                await this.refreshCategoryStats();
+            },
+
+            async initCategoriesView() {
+                if (!this.availableCategories.length) {
+                    await this.loadCategories();
+                }
+                await this.refreshCategoryStats();
             }
         };
 

@@ -39,6 +39,38 @@ private enum ServingSizePatterns {
     static let allPatterns: [NSRegularExpression] = [gramPattern, parenthesesGramPattern]
 }
 
+// MARK: - Search UI Helper Components
+
+/// Section header for search results - matches diary styling
+private struct SearchSectionHeader: View {
+    let icon: String
+    let title: String
+    let iconColor: Color
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.12))
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(iconColor)
+            }
+
+            Text(title)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.primary)
+
+            Spacer()
+        }
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.top, DesignTokens.Spacing.md)
+        .padding(.bottom, 8)
+    }
+}
+
 // MARK: - Food Search Result Components
 
 /// Simplified food search result row for basic display
@@ -127,7 +159,8 @@ struct FoodSearchResultRowEnhanced: View {
         if food.isPerUnit == true {
             return "1 serving"
         } else if let servingG = food.servingSizeG, servingG > 0 {
-            return "\(Int(servingG))g"
+            // Use ml for drinks instead of g
+            return food.formattedServingSize(servingG)
         } else if let desc = food.servingDescription, !desc.isEmpty {
             return desc
         } else {
@@ -160,98 +193,214 @@ struct FoodSearchResultRowEnhanced: View {
         }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    // Food category icon based on name
+    private var foodIcon: (name: String, color: Color) {
+        let lowercaseName = food.name.lowercased()
+
+        // Protein/meat - check first as these are common searches
+        if lowercaseName.contains("chicken") || lowercaseName.contains("beef") || lowercaseName.contains("steak") ||
+           lowercaseName.contains("meat") || lowercaseName.contains("pork") || lowercaseName.contains("bacon") ||
+           lowercaseName.contains("fish") || lowercaseName.contains("salmon") || lowercaseName.contains("tuna") ||
+           lowercaseName.contains("turkey") || lowercaseName.contains("lamb") || lowercaseName.contains("sausage") ||
+           lowercaseName.contains("ham") || lowercaseName.contains("prawn") || lowercaseName.contains("shrimp") ||
+           lowercaseName.contains("cod") || lowercaseName.contains("haddock") || lowercaseName.contains("mince") ||
+           lowercaseName.contains("burger") || lowercaseName.contains("fillet") || lowercaseName.contains("roast") ||
+           lowercaseName.contains("ostrich") || lowercaseName.contains("venison") || lowercaseName.contains("duck") {
+            return ("flame.fill", Color(red: 0.9, green: 0.5, blue: 0.4))
+        }
+        // Fruits
+        else if lowercaseName.contains("apple") || lowercaseName.contains("fruit") || lowercaseName.contains("banana") ||
+                lowercaseName.contains("orange") || lowercaseName.contains("berry") || lowercaseName.contains("grape") ||
+                lowercaseName.contains("mango") || lowercaseName.contains("melon") || lowercaseName.contains("peach") ||
+                lowercaseName.contains("pear") || lowercaseName.contains("plum") || lowercaseName.contains("kiwi") {
+            return ("leaf.fill", Color(red: 0.4, green: 0.75, blue: 0.4))
+        }
+        // Grains/carbs
+        else if lowercaseName.contains("bread") || lowercaseName.contains("rice") || lowercaseName.contains("pasta") ||
+                lowercaseName.contains("cereal") || lowercaseName.contains("oat") || lowercaseName.contains("noodle") ||
+                lowercaseName.contains("wrap") || lowercaseName.contains("tortilla") || lowercaseName.contains("bagel") ||
+                lowercaseName.contains("croissant") || lowercaseName.contains("muffin") || lowercaseName.contains("roll") {
+            return ("leaf.circle.fill", Color(red: 0.85, green: 0.7, blue: 0.4))
+        }
+        // Dairy
+        else if lowercaseName.contains("milk") || lowercaseName.contains("cheese") || lowercaseName.contains("yogurt") ||
+                lowercaseName.contains("yoghurt") || lowercaseName.contains("dairy") || lowercaseName.contains("cream") ||
+                lowercaseName.contains("butter") {
+            return ("drop.fill", Color(red: 0.6, green: 0.75, blue: 0.9))
+        }
+        // Eggs
+        else if lowercaseName.contains("egg") {
+            return ("oval.fill", Color(red: 0.95, green: 0.85, blue: 0.5))
+        }
+        // Vegetables
+        else if lowercaseName.contains("vegetable") || lowercaseName.contains("carrot") || lowercaseName.contains("broccoli") ||
+                lowercaseName.contains("salad") || lowercaseName.contains("spinach") || lowercaseName.contains("lettuce") ||
+                lowercaseName.contains("tomato") || lowercaseName.contains("pepper") || lowercaseName.contains("onion") ||
+                lowercaseName.contains("potato") || lowercaseName.contains("beans") || lowercaseName.contains("peas") ||
+                lowercaseName.contains("corn") || lowercaseName.contains("cabbage") || lowercaseName.contains("celery") {
+            return ("carrot.fill", Color(red: 0.4, green: 0.7, blue: 0.5))
+        }
+        // Beverages - check last to avoid false positives
+        else if lowercaseName.contains("coffee") || lowercaseName.contains("tea ") || lowercaseName.hasSuffix("tea") ||
+                lowercaseName.contains("drink") || lowercaseName.contains("juice") || lowercaseName.contains("smoothie") ||
+                lowercaseName.contains("soda") || lowercaseName.contains("water") || lowercaseName.contains("latte") ||
+                lowercaseName.contains("cappuccino") {
+            return ("cup.and.saucer.fill", Color(red: 0.6, green: 0.5, blue: 0.4))
+        }
+        // Snacks/sweets
+        else if lowercaseName.contains("chocolate") || lowercaseName.contains("candy") || lowercaseName.contains("sweet") ||
+                lowercaseName.contains("cookie") || lowercaseName.contains("biscuit") || lowercaseName.contains("cake") ||
+                lowercaseName.contains("ice cream") || lowercaseName.contains("crisp") || lowercaseName.contains("chip") {
+            return ("star.fill", Color(red: 0.95, green: 0.6, blue: 0.7))
+        }
+        // Default - generic food icon
+        else {
+            return ("fork.knife", AppPalette.standard.accent)
+        }
+    }
+
     var body: some View {
-        HStack(spacing: 0) {
-            // Main tappable area - opens food detail
-            Button(action: {
-                // Dismiss keyboard BEFORE showing sheet to prevent refocus when sheet dismisses
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder),
-                    to: nil, from: nil, for: nil
-                )
-                showingFoodDetail = true
-            }) {
-                HStack(spacing: 12) {
-                    // Product name and brand
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(food.name)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundColor(.primary)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
+        Button(action: {
+            // Dismiss keyboard BEFORE showing sheet to prevent refocus when sheet dismisses
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder),
+                to: nil, from: nil, for: nil
+            )
+            showingFoodDetail = true
+        }) {
+            HStack(spacing: 14) {
+                // Food category icon in soft container
+                ZStack {
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                        .frame(width: 48, height: 48)
 
-                        if let brand = food.brand {
+                    Image(systemName: foodIcon.name)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(foodIcon.color)
+                }
+
+                // Product name and serving info
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(food.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+
+                    HStack(spacing: 6) {
+                        if let brand = food.brand, !brand.isEmpty {
                             Text(brand)
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
                         }
 
-                        if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
-                            Text(servingDesc)
-                                .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundColor(.secondary.opacity(0.8))
+                        if food.brand != nil && !standardServingDesc.isEmpty {
+                            Text("•")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary.opacity(0.5))
                         }
+
+                        Text(standardServingDesc)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                // Calories display
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(standardServingCalories)")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.primary)
+                    Text("kcal")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Quick add button with meal menu
+                Menu {
+                    Button {
+                        quickAddFood(to: "breakfast")
+                    } label: {
+                        Label("Breakfast", systemImage: "sunrise.fill")
                     }
 
-                    Spacer()
+                    Button {
+                        quickAddFood(to: "lunch")
+                    } label: {
+                        Label("Lunch", systemImage: "sun.max.fill")
+                    }
+
+                    Button {
+                        quickAddFood(to: "dinner")
+                    } label: {
+                        Label("Dinner", systemImage: "moon.fill")
+                    }
+
+                    Button {
+                        quickAddFood(to: "snacks")
+                    } label: {
+                        Label("Snacks", systemImage: "leaf.fill")
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [AppPalette.standard.accent.opacity(0.2), AppPalette.standard.primary.opacity(0.15)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 38, height: 38)
+
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(AppPalette.standard.accent)
+                    }
                 }
-                .padding(.vertical, 14)
-                .padding(.leading, 16)
-                .padding(.trailing, 8)
-                .contentShape(Rectangle())
+
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.4))
             }
-            .buttonStyle(PlainButtonStyle())
-
-            // Quick add button with meal menu
-            Menu {
-                Button {
-                    quickAddFood(to: "breakfast")
-                } label: {
-                    Label("Breakfast", systemImage: "sunrise.fill")
-                }
-
-                Button {
-                    quickAddFood(to: "lunch")
-                } label: {
-                    Label("Lunch", systemImage: "sun.max.fill")
-                }
-
-                Button {
-                    quickAddFood(to: "dinner")
-                } label: {
-                    Label("Dinner", systemImage: "moon.fill")
-                }
-
-                Button {
-                    quickAddFood(to: "snacks")
-                } label: {
-                    Label("Snacks", systemImage: "leaf.fill")
-                }
-            } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(.green)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .padding(.trailing, 8)
-
-            // Chevron
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(Color(.systemGray3))
-                .padding(.trailing, 16)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 14)
         }
+        .buttonStyle(PlainButtonStyle())
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.adaptiveCard)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .fill(
+                    LinearGradient(
+                        colors: colorScheme == .dark
+                            ? [Color.midnightCard, Color.midnightCard.opacity(0.9)]
+                            : [Color.white, Color.white.opacity(0.95)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Color(.systemGray5), lineWidth: 1)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .stroke(
+                    LinearGradient(
+                        colors: colorScheme == .dark
+                            ? [Color.white.opacity(0.1), Color.white.opacity(0.05)]
+                            : [Color.black.opacity(0.06), Color.black.opacity(0.02)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
         )
-        .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 8, y: 3)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .fullScreenCover(isPresented: Binding(
@@ -435,158 +584,161 @@ struct AddFoodSearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search Bar with Barcode Button - fixed at top
+            // Search Bar with Barcode Button - redesigned with glassmorphic styling
             VStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    // Barcode scan button to LEFT of search bar
+                HStack(spacing: 10) {
+                    // Barcode scan button to LEFT of search bar - gradient style
                     if let barcodeAction = onSwitchToBarcode {
                         Button(action: barcodeAction) {
                             Image(systemName: "barcode.viewfinder")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(AppPalette.standard.accent)
-                                .cornerRadius(10)
+                                .frame(width: 48, height: 48)
+                                .background(
+                                    LinearGradient(
+                                        colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .cornerRadius(DesignTokens.Radius.md)
+                                .shadow(color: AppPalette.standard.accent.opacity(0.25), radius: 6, y: 2)
                         }
                     }
 
-                    // Search field
-                    HStack {
+                    // Search field - glassmorphic style matching onboarding
+                    HStack(spacing: 12) {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(AppPalette.standard.accent)
 
                         TextField("Search foods...", text: $searchText)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .autocorrectionDisabled(true)
-                        .textInputAutocapitalization(.never)
-                        .onChange(of: searchText) { _, newValue in
-                            // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
-                            searchDebouncer.debounce {
-                                performLiveSearch(query: newValue)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 16))
+                            .autocorrectionDisabled(true)
+                            .textInputAutocapitalization(.never)
+                            .onChange(of: searchText) { _, newValue in
+                                // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
+                                searchDebouncer.debounce {
+                                    performLiveSearch(query: newValue)
+                                }
                             }
-                        }
-                        .onSubmit {
-                            performSearch()
-                        }
+                            .onSubmit {
+                                performSearch()
+                            }
 
                         if !searchText.isEmpty {
                             // Clear button with proper tap target
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.secondary)
-                                .frame(width: 44, height: 44) // Minimum tap target size per Apple HIG
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    // Dismiss keyboard first
-                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                    // Cancel any pending search and reset all state immediately
-                                    searchTask?.cancel()
-                                    searchTask = nil
-                                    searchText = ""
-                                    searchResults = []
-                                    isSearching = false
-                                }
+                            Button(action: {
+                                // Dismiss keyboard first
+                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                // Cancel any pending search and reset all state immediately
+                                searchTask?.cancel()
+                                searchTask = nil
+                                searchText = ""
+                                searchResults = []
+                                isSearching = false
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                         }
                     }
-                    .frame(height: 44) // Fixed height to prevent resize when typing
+                    .frame(height: 48)
                     .padding(.horizontal, 16)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    )
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.top, 12)
             }
-            .background(Color.adaptiveBackground)
             .zIndex(1) // Keep search bar on top
 
-            // Results
+            // Results - redesigned with NutraSafe visual language
             if isSearching {
                 VStack {
                     Spacer()
-                    ProgressView("Searching...")
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(AppPalette.standard.accent)
+                        Text("Searching...")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
                     Spacer()
                 }
                 .frame(maxHeight: .infinity)
             } else if searchResults.isEmpty && !searchText.isEmpty {
+                // No results empty state - redesigned with card panel
                 VStack {
                     Spacer()
 
                     VStack(spacing: 24) {
-                        // Icon and message
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 60))
-                            .foregroundColor(.secondary.opacity(0.4))
+                        // Icon with soft container
+                        ZStack {
+                            Circle()
+                                .fill(AppPalette.standard.accent.opacity(0.1))
+                                .frame(width: 88, height: 88)
+
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 36, weight: .medium))
+                                .foregroundColor(AppPalette.standard.accent.opacity(0.6))
+                        }
 
                         VStack(spacing: 8) {
                             Text("No foods found")
-                                .font(.system(size: 20, weight: .medium))
+                                .font(.system(size: 22, weight: .bold))
                                 .foregroundColor(.primary)
 
-                            Text("matching '\(searchText)'")
+                            Text("We couldn't find '\(searchText)'")
                                 .font(.system(size: 16))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
                         }
 
-                        // Helpful tips
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "lightbulb.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.orange)
-                                    .frame(width: 20)
+                        // Helpful tips with delayed reveal
+                        NutraSafeTipCard(tips: [
+                            (icon: "sparkles", text: "Try a simpler search term", tint: SemanticColors.neutral),
+                            (icon: "barcode.viewfinder", text: "Got a barcode? Scan it for instant results", tint: AppPalette.standard.accent),
+                            (icon: "square.and.pencil", text: "Can't find it? You can add it yourself", tint: AppPalette.standard.primary)
+                        ])
+                        .padding(.horizontal, 24)
 
-                                Text("Try a different search term")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "barcode.viewfinder")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .frame(width: 20)
-
-                                Text("Scan a barcode for instant results")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .frame(width: 20)
-
-                                Text("Use manual entry for better accuracy")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding(16)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .padding(.horizontal, 32)
-
-                        // Manual Entry CTA
+                        // Manual Entry CTA - primary button style
                         if onSwitchToManual != nil {
                             Button(action: {
                                 onSwitchToManual?()
                             }) {
-                                HStack(spacing: 8) {
+                                HStack(spacing: 10) {
                                     Image(systemName: "square.and.pencil")
-                                        .font(.system(size: 14, weight: .semibold))
-                                    Text("Add Manually")
                                         .font(.system(size: 16, weight: .semibold))
+                                    Text("Add Manually")
+                                        .font(.system(size: 17, weight: .semibold))
                                 }
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(AppPalette.standard.accent)
-                                .cornerRadius(12)
-                                .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: DesignTokens.Size.buttonHeight)
+                                .background(
+                                    LinearGradient(
+                                        colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(DesignTokens.Radius.lg)
+                                .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 15, y: 5)
                             }
+                            .padding(.horizontal, 24)
                         }
                     }
 
@@ -596,58 +748,44 @@ struct AddFoodSearchView: View {
             } else {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
-                        LazyVStack(spacing: 8) {
+                        LazyVStack(spacing: 10) {
                             // Show favorites when search is empty
                             if searchText.isEmpty && !favoriteFoods.isEmpty {
-                                // Favorites Section
+                                // Favorites Section - redesigned header
                                 VStack(alignment: .leading, spacing: 12) {
-                                    HStack {
-                                        Image(systemName: "heart.fill")
-                                            .foregroundColor(.red)
-                                            .font(.system(size: 16, weight: .medium))
-                                        Text("Favourites")
-                                            .font(.system(size: 18, weight: .semibold))
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, 16)
+                                    SearchSectionHeader(icon: "heart.fill", title: "Favourites", iconColor: .red)
 
                                     ForEach(favoriteFoods, id: \.id) { food in
                                         FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, onComplete: onComplete)
-                                            .padding(.horizontal, 16)
+                                            .padding(.horizontal, DesignTokens.Spacing.md)
                                     }
                                 }
                             }
 
                             // Show recent foods when search is empty
                             if searchText.isEmpty && !recentFoods.isEmpty {
-                                // Recent Foods Section
+                                // Recent Foods Section - redesigned header
                                 VStack(alignment: .leading, spacing: 12) {
-                                    HStack {
-                                        Image(systemName: "clock.arrow.circlepath")
-                                            .foregroundColor(AppPalette.standard.accent)
-                                            .font(.system(size: 16, weight: .medium))
-                                        Text("Recent Foods")
-                                            .font(.system(size: 18, weight: .semibold))
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, favoriteFoods.isEmpty ? 16 : 8)
+                                    SearchSectionHeader(icon: "clock.arrow.circlepath", title: "Recent Foods", iconColor: AppPalette.standard.accent)
 
                                     ForEach(recentFoods, id: \.id) { recentFood in
                                         let searchResult = convertToSearchResult(recentFood)
                                         FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, onComplete: onComplete)
-                                            .padding(.horizontal, 16)
+                                            .padding(.horizontal, DesignTokens.Spacing.md)
                                     }
                                 }
                             }
 
                             // Show search results when searching
+                            if !searchText.isEmpty && !searchResults.isEmpty {
+                                // Search Results header
+                                SearchSectionHeader(icon: "magnifyingglass", title: "Results", iconColor: AppPalette.standard.accent)
+                            }
+
                             ForEach(Array(searchResults.enumerated()), id: \.element.id) { index, food in
                                 FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, onComplete: onComplete)
                                     .id("result_\(index)")
+                                    .padding(.horizontal, DesignTokens.Spacing.md)
                             }
 
                             // Spacer for keyboard
@@ -656,8 +794,7 @@ struct AddFoodSearchView: View {
                                 .frame(height: keyboardHeight > 0 ? keyboardHeight + 20 : 80)
                                 .id("bottom_spacer")
                         }
-                        .padding(.horizontal, searchText.isEmpty ? 0 : 16)
-                        .padding(.top, searchText.isEmpty ? 0 : 16)
+                        .padding(.top, 8)
                     }
                     .frame(maxHeight: .infinity)
                     .scrollDismissesKeyboard(.interactively) // Dismiss keyboard on scroll, not tap (avoids gesture conflicts)
@@ -685,6 +822,7 @@ struct AddFoodSearchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppAnimatedBackground())
         .onAppear {
             setupKeyboardObservers()
             checkForEditingMode()

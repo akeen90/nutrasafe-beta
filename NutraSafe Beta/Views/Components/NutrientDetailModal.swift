@@ -94,7 +94,7 @@ struct NutrientDetailModal: View {
                     .padding(.bottom, 40)
                 }
             }
-            .background(Color.adaptiveBackground)
+            .background(AppAnimatedBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

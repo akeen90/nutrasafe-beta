@@ -13,13 +13,17 @@
     <meta property="og:url" content="https://www.nutrasafe.co.uk/food-additives.html">
     <meta property="og:title" content="Food Additives UK — Guide to E-Numbers & Ingredients">
     <meta property="og:description" content="Complete guide to food additives and E-numbers. Learn what they are, which to avoid, and how to check ingredients.">
-    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon.png">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
     <meta property="og:locale" content="en_GB">
 
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Food Additives UK — Guide to E-Numbers & Ingredients">
     <meta name="twitter:description" content="Complete guide to food additives and E-numbers. Learn what they are, which to avoid, and how to check ingredients.">
-    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon.png">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
+
+    <meta name="theme-color" content="#3d7a7a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32-new.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-new.png">
 
     <script type="application/ld+json">
     {
@@ -37,7 +41,7 @@
             "name": "NutraSafe",
             "logo": {
                 "@type": "ImageObject",
-                "url": "https://www.nutrasafe.co.uk/app-icon.png"
+                "url": "https://www.nutrasafe.co.uk/app-icon-2026.png"
             }
         }
     }
@@ -86,99 +90,380 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="/app-icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #6366f1;
-            --primary-light: #818cf8;
-            --primary-dark: #4f46e5;
-            --text-dark: #0f172a;
-            --text-light: #64748b;
-            --bg-dark: #0f172a;
+            --teal: #3d7a7a;
+            --teal-dark: #2d5a5a;
+            --teal-light: #5a9a9a;
+            --coral: #d4a574;
+            --sage: #7ab3a0;
+            --text-dark: #1a1a1a;
+            --text-medium: #4a4a4a;
+            --text-light: #7a7a7a;
+            --bg-start: #dce4ec;
+            --bg-end: #f5f3ef;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(255, 255, 255, 0.9);
             --green: #10b981;
             --yellow: #f59e0b;
             --red: #ef4444;
         }
-        body { font-family: 'Inter', sans-serif; line-height: 1.7; color: var(--text-dark); background: #ffffff; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
+            color: var(--text-dark);
+            background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
 
-        header { background: var(--bg-dark); padding: 1rem 0; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        nav { max-width: 1200px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
-        .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; font-weight: 700; color: white; text-decoration: none; }
-        .logo-icon { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(99,102,241,0.3); }
+        header {
+            background: rgba(220, 228, 236, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 40px rgba(0, 0, 0, 0.05);
+        }
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(61, 122, 122, 0.2);
+        }
         .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
-        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
-        .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; }
-        .nav-links a:hover { color: white; }
-        .nav-cta { padding: 0.65rem 1.6rem; background: linear-gradient(135deg, var(--primary), #7a6cf8); color: white !important; border-radius: 999px; font-weight: 700; box-shadow: 0 10px 20px rgba(99,102,241,0.25); }
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-medium);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--teal); }
+        .nav-cta {
+            padding: 0.75rem 1.75rem;
+            background: var(--teal);
+            color: white !important;
+            border-radius: 100px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .nav-cta:hover {
+            background: var(--teal-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(61, 122, 122, 0.3);
+        }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
-        .hero { background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1b4b 100%); color: white; padding: 100px 2rem 80px; text-align: center; }
-        .hero-content { max-width: 800px; margin: 0 auto; }
-        .hero h1 { font-size: 3rem; margin-bottom: 1.5rem; font-weight: 800; line-height: 1.2; }
-        .hero h1 span { background: linear-gradient(135deg, #818cf8, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .hero p { font-size: 1.25rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
-        .hero-cta { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 2rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; text-decoration: none; border-radius: 14px; font-weight: 600; font-size: 1.1rem; box-shadow: 0 10px 40px rgba(99,102,241,0.4); transition: transform 0.3s; }
-        .hero-cta:hover { transform: translateY(-3px); }
+        .hero {
+            padding: 80px 2rem 60px;
+            text-align: center;
+        }
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            color: var(--text-dark);
+        }
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 8px 30px rgba(61, 122, 122, 0.25);
+            transition: all 0.4s ease;
+        }
+        .hero-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(61, 122, 122, 0.35);
+        }
 
-        .content { max-width: 900px; margin: 0 auto; padding: 60px 2rem 80px; }
-        h2 { font-size: 2rem; margin: 3rem 0 1.5rem; color: var(--text-dark); font-weight: 700; }
-        h3 { font-size: 1.3rem; margin: 2rem 0 1rem; color: var(--text-dark); font-weight: 600; }
-        p { color: var(--text-light); margin-bottom: 1rem; font-size: 1.05rem; }
-        ul, ol { margin: 1rem 0 1.5rem 1.5rem; color: var(--text-light); }
-        li { margin-bottom: 0.75rem; font-size: 1.05rem; }
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 2rem 80px;
+        }
+        h2 {
+            font-size: 2rem;
+            margin: 3rem 0 1.5rem;
+            color: var(--text-dark);
+        }
+        h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.2rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        p {
+            color: var(--text-medium);
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+        ul, ol {
+            margin: 1rem 0 1.5rem 1.5rem;
+            color: var(--text-medium);
+        }
+        li {
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+        }
+        a {
+            color: var(--teal);
+        }
+        a:hover {
+            color: var(--teal-dark);
+        }
 
-        .additive-categories { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin: 2rem 0; }
-        .category-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; transition: all 0.3s; }
-        .category-card:hover { border-color: var(--primary-light); transform: translateY(-3px); box-shadow: 0 10px 30px rgba(99,102,241,0.1); }
-        .category-card h3 { margin: 0 0 0.75rem; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; }
-        .category-card p { margin: 0; font-size: 1rem; }
-        .category-range { font-size: 0.9rem; color: var(--primary); font-weight: 600; margin-top: 0.75rem; }
+        .additive-categories {
+            display: grid;
+            gap: 1.25rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            margin: 2rem 0;
+        }
+        .category-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .category-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            border-color: var(--teal-light);
+        }
+        .category-card h3 {
+            margin: 0 0 0.75rem;
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .category-card p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+        .category-range {
+            font-size: 0.9rem;
+            color: var(--teal);
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
 
-        .safety-section { background: #f8fafc; padding: 60px 2rem; margin: 40px 0; }
-        .safety-content { max-width: 900px; margin: 0 auto; }
-        .safety-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-top: 2rem; }
-        .safety-card { background: white; padding: 1.5rem; border-radius: 12px; border-left: 4px solid; }
+        .safety-section {
+            background: linear-gradient(180deg, rgba(61, 122, 122, 0.03) 0%, transparent 100%);
+            padding: 60px 2rem;
+            margin: 40px 0;
+            border-radius: 30px;
+        }
+        .safety-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .safety-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            margin-top: 2rem;
+        }
+        .safety-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 20px;
+            border-left: 4px solid;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
         .safety-card.safe { border-color: var(--green); }
         .safety-card.caution { border-color: var(--yellow); }
         .safety-card.avoid { border-color: var(--red); }
-        .safety-card h4 { font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .safety-card h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
         .safety-card.safe h4 { color: var(--green); }
         .safety-card.caution h4 { color: var(--yellow); }
         .safety-card.avoid h4 { color: var(--red); }
+        .safety-card p { margin: 0; }
 
-        .e-number-examples { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin: 2rem 0; }
+        .e-number-examples {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            margin: 2rem 0;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
         .e-number-examples h3 { margin-top: 0; }
-        .example-list { display: grid; gap: 0.75rem; margin-top: 1rem; }
-        .example-item { display: flex; gap: 1rem; padding: 0.75rem; background: #f8fafc; border-radius: 8px; }
-        .example-code { font-weight: 700; color: var(--primary); min-width: 60px; }
+        .example-list {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        .example-item {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: rgba(61, 122, 122, 0.03);
+            border-radius: 12px;
+        }
+        .example-code {
+            font-weight: 700;
+            color: var(--teal);
+            min-width: 60px;
+        }
         .example-name { font-weight: 500; }
-        .example-desc { color: var(--text-light); font-size: 0.95rem; }
+        .example-desc {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
 
         .faq-section { margin: 3rem 0; }
-        .faq-item { border-bottom: 1px solid #e2e8f0; padding: 1.5rem 0; }
+        .faq-item {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 1.5rem 0;
+        }
         .faq-item:last-child { border-bottom: none; }
-        .faq-question { font-weight: 600; font-size: 1.1rem; color: var(--text-dark); margin-bottom: 0.75rem; }
-        .faq-answer { color: var(--text-light); }
+        .faq-question {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin-bottom: 0.75rem;
+        }
+        .faq-answer { color: var(--text-medium); }
 
-        .cta-section { background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); color: white; padding: 60px 2rem; text-align: center; margin-top: 40px; }
-        .cta-section h2 { color: white; margin-bottom: 1rem; }
-        .cta-section p { color: rgba(255,255,255,0.8); max-width: 600px; margin: 0 auto 2rem; }
-        .cta-button { display: inline-block; }
-        .cta-button img { height: 55px; }
+        .cta-section {
+            padding: 80px 2rem;
+            text-align: center;
+            margin-top: 40px;
+        }
+        .cta-section h2 {
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+        .cta-section > p {
+            color: var(--text-light);
+            font-size: 1.15rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .app-store-btn {
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .app-store-btn img { height: 55px; }
+        .app-store-btn:hover { transform: scale(1.05); }
 
-        footer { background: var(--bg-dark); color: white; padding: 3rem 2rem 2rem; }
-        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3,1fr); gap: 2rem; }
-        .footer-section h4 { text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; color: rgba(255,255,255,0.9); }
+        footer {
+            background: linear-gradient(180deg, transparent 0%, rgba(61, 122, 122, 0.05) 100%);
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .footer-brand .logo { margin-bottom: 1rem; }
+        .footer-brand p {
+            color: var(--text-light);
+            line-height: 1.7;
+            font-size: 0.9rem;
+        }
+        .footer-section h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+            color: var(--text-dark);
+        }
         .footer-section ul { list-style: none; margin: 0; padding: 0; }
-        .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.35rem 0; }
-        .footer-section a:hover { color: white; }
-        .footer-section p { color: rgba(255,255,255,0.6); }
-        .footer-bottom { text-align: center; color: rgba(255,255,255,0.5); padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); }
-        @media (max-width: 968px) { .footer-content { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 640px) { .footer-content { grid-template-columns: 1fr; text-align: center; } .hero h1 { font-size: 2.25rem; } }
+        .footer-section a {
+            color: var(--text-light);
+            text-decoration: none;
+            display: block;
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .footer-section a:hover { color: var(--teal); }
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.25rem; }
+            h2 { font-size: 1.75rem; }
+            .footer-content { grid-template-columns: 1fr; text-align: center; }
+        }
     </style>
 </head>
 <body>
@@ -186,7 +471,7 @@
         <nav>
             <a href="/" class="logo">
                 <div class="logo-icon">
-                    <img src="/app-icon.png" alt="NutraSafe">
+                    <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
                 </div>
                 <span>NutraSafe</span>
             </a>
@@ -195,17 +480,17 @@
                 <li><a href="/#how-it-works">How It Works</a></li>
                 <li><a href="/resources.html">Resources</a></li>
                 <li><a href="/#faqs">FAQ</a></li>
-                <li><a href="/#download" class="nav-cta">Download</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download</a></li>
             </ul>
         </nav>
     </header>
 
     <section class="hero">
         <div class="hero-content">
-            <h1>Food Additives <span>& E-Numbers Guide</span></h1>
+            <h1>Food Additives & E-Numbers Guide</h1>
             <p>Understand what's really in your food. Learn about additives, E-numbers, and how to check ingredients in UK products.</p>
             <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="hero-cta">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                 Check Additives in Your Food
             </a>
         </div>
@@ -221,42 +506,42 @@
 
         <div class="additive-categories">
             <div class="category-card">
-                <h3>🎨 Colours</h3>
+                <h3>Colours</h3>
                 <p>Give or restore colour to food. Includes natural colours (like beetroot) and synthetic dyes (like tartrazine).</p>
                 <div class="category-range">E100-E199</div>
             </div>
             <div class="category-card">
-                <h3>🛡️ Preservatives</h3>
+                <h3>Preservatives</h3>
                 <p>Extend shelf life by preventing bacterial growth, mould or oxidation. Common in processed meats, bread and drinks.</p>
                 <div class="category-range">E200-E299</div>
             </div>
             <div class="category-card">
-                <h3>🧪 Antioxidants</h3>
+                <h3>Antioxidants</h3>
                 <p>Prevent food from going rancid or changing colour. Used in fats, oils and processed foods.</p>
                 <div class="category-range">E300-E399</div>
             </div>
             <div class="category-card">
-                <h3>🥄 Emulsifiers & Stabilisers</h3>
+                <h3>Emulsifiers & Stabilisers</h3>
                 <p>Keep ingredients mixed together and improve texture. Found in ice cream, mayonnaise and dressings.</p>
                 <div class="category-range">E400-E499</div>
             </div>
             <div class="category-card">
-                <h3>⚖️ Anti-caking Agents</h3>
+                <h3>Anti-caking Agents</h3>
                 <p>Stop powders clumping together. Used in salt, flour and powdered products.</p>
                 <div class="category-range">E500-E599</div>
             </div>
             <div class="category-card">
-                <h3>🍬 Flavour Enhancers</h3>
+                <h3>Flavour Enhancers</h3>
                 <p>Boost existing flavours without adding their own. MSG is the most well-known example.</p>
                 <div class="category-range">E600-E699</div>
             </div>
             <div class="category-card">
-                <h3>🍭 Sweeteners</h3>
+                <h3>Sweeteners</h3>
                 <p>Add sweetness with fewer or no calories. Includes aspartame, sucralose and stevia.</p>
                 <div class="category-range">E900-E999</div>
             </div>
             <div class="category-card">
-                <h3>📦 Glazing Agents</h3>
+                <h3>Glazing Agents</h3>
                 <p>Coat food surfaces for protection or appearance. Used on sweets, fruits and baked goods.</p>
                 <div class="category-range">E900-E999</div>
             </div>
@@ -326,15 +611,15 @@
 
             <div class="safety-grid">
                 <div class="safety-card safe">
-                    <h4>✓ Generally Safe</h4>
+                    <h4>Generally Safe</h4>
                     <p>Natural additives and vitamins. Examples: E100 (curcumin), E300 (vitamin C), E306 (vitamin E), E160a (carotene).</p>
                 </div>
                 <div class="safety-card caution">
-                    <h4>⚠ Use Caution</h4>
+                    <h4>Use Caution</h4>
                     <p>Some people may be sensitive. Examples: E621 (MSG), E951 (aspartame), E211 (sodium benzoate), E220 (sulphur dioxide).</p>
                 </div>
                 <div class="safety-card avoid">
-                    <h4>✕ Consider Avoiding</h4>
+                    <h4>Consider Avoiding</h4>
                     <p>Linked to concerns in research. Examples: E102 (tartrazine), E110 (sunset yellow), E129 (allura red), E951 (aspartame for some).</p>
                 </div>
             </div>
@@ -415,48 +700,58 @@
     <section class="cta-section">
         <h2>Check Additives in Any Food</h2>
         <p>Scan any barcode to instantly see all additives, E-numbers and ingredients with plain-language explanations.</p>
-        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">
+        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" target="_blank" class="app-store-btn">
             <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download NutraSafe to check food additives">
         </a>
-        <p style="margin-top: 1.5rem; color: rgba(255,255,255,0.6); font-size: 0.95rem;">Free to download. Available on iOS.</p>
+        <p style="margin-top: 1.5rem; font-size: 0.95rem;">Free to download. Available on iOS.</p>
     </section>
 
     <footer>
         <div class="footer-content">
-            <div class="footer-section">
-                <h4>NutraSafe</h4>
-                <p>Your complete guide to food additives, E-numbers and nutrition in the UK.</p>
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <div class="logo-icon">
+                        <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44" loading="lazy">
+                    </div>
+                    <span>NutraSafe</span>
+                </a>
+                <p>The food intelligence app that helps you understand what you eat. Food clarity. Body clarity. Simple.</p>
             </div>
+
             <div class="footer-section">
-                <h4>Food Additives</h4>
+                <h4>Learn</h4>
                 <ul>
-                    <li><a href="/food-additives.html">Food Additives Guide</a></li>
-                    <li><a href="/e-numbers.html">E-Numbers Database</a></li>
                     <li><a href="/food-scanner.html">Food Scanner</a></li>
                     <li><a href="/food-tracker.html">Food Tracker</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h4>Resources</h4>
-                <ul>
+                    <li><a href="/food-additives.html">Food Additives</a></li>
+                    <li><a href="/e-numbers.html">E-Numbers Database</a></li>
                     <li><a href="/resources.html">All Resources</a></li>
-                    <li><a href="/food-additive-scanner-uk.html">Additive Scanner UK</a></li>
-                    <li><a href="/resources/what-are-e-numbers-uk.html">What Are E-Numbers?</a></li>
-                    <li><a href="/best-food-scanner-app-uk.html">Best Food Scanner</a></li>
                 </ul>
             </div>
+
             <div class="footer-section">
-                <h4>Legal</h4>
+                <h4>Nutrition</h4>
                 <ul>
+                    <li><a href="/calorie-counter-uk.html">Calorie Counter UK</a></li>
+                    <li><a href="/macro-tracker-uk.html">Macro Tracker UK</a></li>
+                    <li><a href="/keto-diet-uk.html">Keto Diet Guide</a></li>
+                    <li><a href="/high-protein-diet-uk.html">High Protein Diet</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/support.html">Support</a></li>
                     <li><a href="/privacy-policy.html">Privacy Policy</a></li>
                     <li><a href="/terms-of-service.html">Terms of Service</a></li>
-                    <li><a href="/support.html">Support</a></li>
                     <li><a href="/sitemap.html">Sitemap</a></li>
                 </ul>
             </div>
         </div>
+
         <div class="footer-bottom">
-            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+            <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
         </div>
     </footer>
 </body>

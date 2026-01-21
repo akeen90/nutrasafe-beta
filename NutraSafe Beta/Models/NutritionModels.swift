@@ -900,6 +900,47 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         }
     }
 
+    /// Formats a serving size with appropriate unit (ml for drinks, g for solids)
+    /// This ensures drinks show as "330ml" instead of "330g"
+    func formattedServingSize(_ grams: Double) -> String {
+        if isLiquidCategory {
+            // Use ml for drinks
+            if grams >= 1000 {
+                let liters = grams / 1000
+                if liters == liters.rounded() {
+                    return "\(Int(liters))L"
+                } else {
+                    return String(format: "%.1fL", liters)
+                }
+            } else {
+                return "\(Int(grams))ml"
+            }
+        } else {
+            // Use g for solid foods
+            return "\(Int(grams))g"
+        }
+    }
+
+    /// Returns true if this item has a meaningful serving size (not just default 100g)
+    /// Used for ranking to prefer items with actual serving data
+    var hasActualServingSize: Bool {
+        // Has explicit servingSizeG that isn't 100g
+        if let g = servingSizeG, g > 0 && g != 100 {
+            return true
+        }
+        // Has a description that contains size info
+        if let desc = servingDescription,
+           desc.lowercased().contains("ml") || desc.lowercased().contains("g)") {
+            return true
+        }
+        // Name contains size info (e.g., "330ml", "51g")
+        let nameLower = name.lowercased()
+        if nameLower.range(of: "\\d+\\s*(ml|g)\\b", options: .regularExpression) != nil {
+            return true
+        }
+        return false
+    }
+
     // MARK: - Fasting Philosophy Helpers
 
     /// Determines if this food is allowed during a fast based on the user's drinks philosophy

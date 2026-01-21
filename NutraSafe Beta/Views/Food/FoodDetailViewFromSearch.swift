@@ -6366,6 +6366,34 @@ extension FoodDetailViewFromSearch {
                     .foregroundColor(palette.textSecondary)
             }
             .tint(palette.accent)
+
+            // Per 100g values - collapsible
+            DisclosureGroup {
+                VStack(spacing: 8) {
+                    per100gNutritionRow("Calories", value: displayFood.calories, unit: "kcal")
+                    per100gNutritionRow("Protein", value: displayFood.protein, unit: "g")
+                    per100gNutritionRow("Carbohydrates", value: displayFood.carbs, unit: "g")
+                    per100gNutritionRow("Fat", value: displayFood.fat, unit: "g")
+                    if let satFat = displayFood.saturatedFat {
+                        per100gNutritionRow("Saturated Fat", value: satFat, unit: "g")
+                    }
+                    per100gNutritionRow("Fibre", value: displayFood.fiber, unit: "g")
+                    per100gNutritionRow("Sugar", value: displayFood.sugar, unit: "g")
+                    per100gNutritionRow("Salt", value: displayFood.sodium / 1000, unit: "g") // Convert mg to g
+                }
+                .padding(.top, 12)
+            } label: {
+                HStack {
+                    Text("Per 100g values")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(palette.textSecondary)
+                    Spacer()
+                    Text("(base values)")
+                        .font(.system(size: 12))
+                        .foregroundColor(palette.textTertiary)
+                }
+            }
+            .tint(palette.accent)
         }
         .padding(DesignTokens.Spacing.cardInternal)
         .background(
@@ -6415,6 +6443,20 @@ extension FoodDetailViewFromSearch {
                 .foregroundColor(palette.textPrimary)
         }
         .padding(.vertical, 6)
+    }
+
+    // MARK: - Per 100g Nutrition Row Helper
+    private func per100gNutritionRow(_ label: String, value: Double, unit: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundColor(palette.textSecondary)
+            Spacer()
+            Text(String(format: unit == "kcal" ? "%.0f" : "%.1f", value) + unit)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(palette.textTertiary)
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Redesigned Scores Section (Calm Insights)
@@ -7281,7 +7323,7 @@ struct SugarScoreInfoView: View {
                 }
                 .padding(20)
             }
-            .background(Color.adaptiveBackground)
+            .background(AppAnimatedBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

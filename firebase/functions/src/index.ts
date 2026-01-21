@@ -60,3 +60,6 @@ export { extractUKProductData, extractWithPuppeteer, lookupTescoProduct } from '
 
 // Tesco Database Builder - builds comprehensive UK food database from Tesco API
 export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, stopTescoBuild, resetTescoDatabase, getTescoDatabaseStats, configureTescoAlgoliaIndex, syncTescoToAlgolia, scheduledTescoBuild, cleanupTescoDatabase } from './tesco-database-builder';
+
+// AI Food Categorization - categorizes foods for intelligent serving size suggestions
+export { categorizeFoods, categorizeFoodsFromDatabase, getCategorizeStats, updateFoodCategory, getCategories, getFoodsForCategorization } from './categorize-foods';

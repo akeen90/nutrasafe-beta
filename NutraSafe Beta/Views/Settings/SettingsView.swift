@@ -112,7 +112,7 @@ struct SettingsView: View {
                 .padding(.top, 16)
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
@@ -199,6 +199,7 @@ struct SettingsView: View {
 // MARK: - Account Section (PHASE 1)
 
 struct AccountSection: View {
+    @Environment(\.colorScheme) private var colorScheme
     let userEmail: String
     let onChangePassword: () -> Void
     let onSignOut: () -> Void
@@ -206,28 +207,39 @@ struct AccountSection: View {
     var body: some View {
         SettingsSection(title: "Account") {
             // User Email Display
-            HStack {
-                Image(systemName: "envelope.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(AppPalette.standard.accent)
-                    .frame(width: 24)
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [AppPalette.standard.accent.opacity(0.15), AppPalette.standard.accent.opacity(0.08)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 38, height: 38)
+
+                    Image(systemName: "envelope.fill")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(AppPalette.standard.accent)
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Email")
-                        .font(.system(size: 14))
+                        .font(.system(size: 13))
                         .foregroundColor(.secondary)
                     Text(userEmail)
-                        .font(.system(size: 16))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
                 }
 
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 14)
 
             Divider()
-                .padding(.leading, 52)
+                .padding(.leading, 56)
 
             // Change Password
             SettingsRow(
@@ -238,7 +250,7 @@ struct AccountSection: View {
             )
 
             Divider()
-                .padding(.leading, 52)
+                .padding(.leading, 56)
 
             // Sign Out
             SettingsRow(
@@ -247,8 +259,6 @@ struct AccountSection: View {
                 iconColor: .red,
                 action: onSignOut
             )
-
-
         }
     }
 }
@@ -256,6 +266,7 @@ struct AccountSection: View {
 // MARK: - Profile Section (Gender & Birthday)
 
 struct ProfileSection: View {
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var onboardingManager = OnboardingManager.shared
     @State private var showingGenderPicker = false
     @State private var showingBirthdayPicker = false
@@ -264,64 +275,88 @@ struct ProfileSection: View {
         SettingsSection(title: "Profile") {
             // Gender
             Button(action: { showingGenderPicker = true }) {
-                HStack(spacing: 12) {
-                    Image(systemName: onboardingManager.userGender.icon)
-                        .font(.system(size: 16))
-                        .foregroundColor(.purple)
-                        .frame(width: 24)
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.purple.opacity(0.15), Color.purple.opacity(0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 38, height: 38)
+
+                        Image(systemName: onboardingManager.userGender.icon)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.purple)
+                    }
 
                     Text("Gender")
-                        .font(.system(size: 16))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
 
                     Spacer()
 
                     Text(onboardingManager.userGender.displayName)
-                        .font(.system(size: 16))
+                        .font(.system(size: 15))
                         .foregroundColor(.secondary)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.6))
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
 
             Divider()
-                .padding(.leading, 52)
+                .padding(.leading, 56)
 
             // Birthday/Age
             Button(action: { showingBirthdayPicker = true }) {
-                HStack(spacing: 12) {
-                    Image(systemName: "birthday.cake.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.orange)
-                        .frame(width: 24)
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.orange.opacity(0.15), Color.orange.opacity(0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 38, height: 38)
+
+                        Image(systemName: "birthday.cake.fill")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.orange)
+                    }
 
                     Text("Birthday")
-                        .font(.system(size: 16))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
 
                     Spacer()
 
                     if let age = onboardingManager.userAge {
                         Text("\(age) years old")
-                            .font(.system(size: 16))
+                            .font(.system(size: 15))
                             .foregroundColor(.secondary)
                     } else {
                         Text("Not set")
-                            .font(.system(size: 16))
+                            .font(.system(size: 15))
                             .foregroundColor(.secondary)
                     }
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.6))
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -574,26 +609,42 @@ struct SettingsSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.medium) {
-            // Serif section title (from onboarding)
-            Text(title)
-                .font(AppTypography.sectionTitle(18))
-                .foregroundColor(Color.textPrimary)
-                .padding(.horizontal, AppSpacing.medium)
+        VStack(alignment: .leading, spacing: 12) {
+            // Section title with icon container style
+            HStack(spacing: 10) {
+                Text(title)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
                 content
             }
             .background(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(Color.nutraSafeCard)
             )
-            .cardShadow()
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .stroke(
+                        colorScheme == .dark
+                            ? Color.white.opacity(0.08)
+                            : Color.black.opacity(0.04),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06),
+                radius: 10,
+                y: 4
+            )
         }
     }
 }
 
 struct SettingsRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let icon: String
     let title: String
     var iconColor: Color = .blue
@@ -601,38 +652,211 @@ struct SettingsRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: AppSpacing.medium) {
-                // Icon with subtle circular background (from onboarding)
+            HStack(spacing: 14) {
+                // Icon with gradient background matching brand style
                 ZStack {
                     Circle()
-                        .fill(iconColor.opacity(0.12))
-                        .frame(width: 36, height: 36)
+                        .fill(
+                            LinearGradient(
+                                colors: [iconColor.opacity(0.15), iconColor.opacity(0.08)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 38, height: 38)
 
                     Image(systemName: icon)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 17, weight: .medium))
                         .foregroundColor(iconColor)
                 }
 
                 Text(title)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(Color.textPrimary)
+                    .foregroundColor(.primary)
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color.textTertiary)
+                    .foregroundColor(.secondary.opacity(0.6))
             }
-            .padding(.horizontal, AppSpacing.medium)
-            .padding(.vertical, AppSpacing.medium - 2)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+/// Settings row with a value display on the right side
+struct SettingsValueRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let icon: String
+    let title: String
+    var iconColor: Color = .blue
+    var value: String? = nil
+    var valueColor: Color? = nil
+    var subtitle: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                // Icon with gradient background matching brand style
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [iconColor.opacity(0.15), iconColor.opacity(0.08)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 38, height: 38)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(iconColor)
+                }
+
+                Text(title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                if let value = value {
+                    Text(value)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(valueColor ?? iconColor)
+                        .fixedSize()
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.6))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Nutrition Goal Row Component
+
+/// Reusable row for nutrition goal settings with stepper
+struct NutritionGoalRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let icon: String
+    let iconColor: Color
+    let title: String
+    var subtitle: String? = nil
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let step: Int
+    let unit: String
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            // Icon with gradient background
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [iconColor.opacity(0.15), iconColor.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 38, height: 38)
+
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(iconColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+
+                    if let subtitle = subtitle {
+                        Spacer()
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Text("\(formatNumber(value)) \(unit)")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(iconColor)
+            }
+
+            Spacer()
+
+            // Compact stepper buttons
+            HStack(spacing: 0) {
+                Button(action: {
+                    if value - step >= range.lowerBound {
+                        value -= step
+                        onChange(value)
+                    }
+                }) {
+                    Image(systemName: "minus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(value <= range.lowerBound ? .secondary.opacity(0.3) : .primary)
+                        .frame(width: 40, height: 36)
+                }
+                .disabled(value <= range.lowerBound)
+
+                Divider()
+                    .frame(height: 20)
+
+                Button(action: {
+                    if value + step <= range.upperBound {
+                        value += step
+                        onChange(value)
+                    }
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(value >= range.upperBound ? .secondary.opacity(0.3) : .primary)
+                        .frame(width: 40, height: 36)
+                }
+                .disabled(value >= range.upperBound)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func formatNumber(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
 }
 
 // MARK: - Nutrition Goals Section (PHASE 2)
 
 struct NutritionGoalsSection: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var firebaseManager: FirebaseManager
 
     @State private var caloricGoal: Int = 2000
@@ -654,163 +878,102 @@ struct NutritionGoalsSection: View {
 
     var body: some View {
         SettingsSection(title: "Nutrition Goals") {
-            if isLoading {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .padding(.vertical, 20)
-                    Spacer()
-                }
-            } else {
-                VStack(spacing: 0) {
-                    // Exercise Goal
-                    VStack(spacing: 8) {
-                        HStack {
-                            Image(systemName: "figure.run")
-                                .font(.system(size: 16))
-                                .foregroundColor(.orange)
-                                .frame(width: 24)
+            // Always render content immediately from cached values - no loading state
+            VStack(spacing: 0) {
+                // Exercise Goal
+                NutritionGoalRow(
+                    icon: "figure.run",
+                    iconColor: .orange,
+                    title: "Exercise Goal",
+                    value: $exerciseGoal,
+                    range: 100...2000,
+                    step: 50,
+                    unit: "cal",
+                    onChange: saveExerciseGoal
+                )
 
-                            Text("Exercise Goal")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
+                Divider()
+                    .padding(.leading, 56)
 
-                            Spacer()
-                        }
+                // Step Goal
+                NutritionGoalRow(
+                    icon: "figure.walk",
+                    iconColor: .green,
+                    title: "Step Goal",
+                    value: $stepGoal,
+                    range: 1000...30000,
+                    step: 500,
+                    unit: "steps",
+                    onChange: saveStepGoal
+                )
 
-                        HStack {
-                            Spacer()
+                Divider()
+                    .padding(.leading, 56)
 
-                            Stepper(value: $exerciseGoal, in: 100...2000, step: 50) {
-                                Text("\(formatNumber(exerciseGoal)) cal")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.orange)
-                            }
-                            .onChange(of: exerciseGoal) { _, newValue in
-                                saveExerciseGoal(newValue)
-                            }
+                // Water Goal
+                NutritionGoalRow(
+                    icon: "drop.fill",
+                    iconColor: .cyan,
+                    title: "Water Goal",
+                    subtitle: "NHS: 6-8 glasses",
+                    value: $waterGoal,
+                    range: 4...16,
+                    step: 1,
+                    unit: "glasses",
+                    onChange: { newValue in savedWaterGoal = newValue }
+                )
 
-                            Spacer()
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                Divider()
+                    .padding(.leading, 56)
 
-                    Divider()
-                        .padding(.leading, 52)
+                // Diet Management
+                Button(action: { showingMacroManagement = true }) {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.green.opacity(0.15), Color.green.opacity(0.08)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 38, height: 38)
 
-                    // Step Goal
-                    VStack(spacing: 8) {
-                        HStack {
-                            Image(systemName: "figure.walk")
-                                .font(.system(size: 16))
-                                .foregroundColor(.green)
-                                .frame(width: 24)
-
-                            Text("Step Goal")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-                        }
-
-                        HStack {
-                            Spacer()
-
-                            Stepper(value: $stepGoal, in: 1000...30000, step: 500) {
-                                Text("\(formatNumber(stepGoal)) steps")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.green)
-                            }
-                            .onChange(of: stepGoal) { _, newValue in
-                                saveStepGoal(newValue)
-                            }
-
-                            Spacer()
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-
-                    Divider()
-                        .padding(.leading, 52)
-
-                    // Water Goal (NHS recommends 6-8 glasses per day)
-                    VStack(spacing: 8) {
-                        HStack {
-                            Image(systemName: "drop.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.cyan)
-                                .frame(width: 24)
-
-                            Text("Water Goal")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-
-                            Text("NHS: 6-8 glasses")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-
-                        HStack {
-                            Spacer()
-
-                            Stepper(value: $waterGoal, in: 4...16, step: 1) {
-                                Text("\(waterGoal) glasses")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.cyan)
-                            }
-                            .onChange(of: waterGoal) { _, newValue in
-                                savedWaterGoal = newValue
-                            }
-
-                            Spacer()
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-
-                    Divider()
-                        .padding(.leading, 52)
-
-                    // Diet Management
-                    Button(action: { showingMacroManagement = true }) {
-                        HStack(spacing: 12) {
                             Image(systemName: "fork.knife")
-                                .font(.system(size: 16))
+                                .font(.system(size: 17, weight: .medium))
                                 .foregroundColor(.green)
-                                .frame(width: 24)
-
-                            Text("Diet Management")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-
-                            Text(macroGoals.map { $0.macroType.displayName }.joined(separator: " • "))
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+
+                        Text("Diet Management")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Text(macroGoals.map { $0.macroType.displayName }.joined(separator: " • "))
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary.opacity(0.6))
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(PlainButtonStyle())
             }
         }
         .onAppear {
-            // Instant render from cached values
-            caloricGoal = cachedCaloricGoal
+            // Instant render from cached values - no loading spinner
             exerciseGoal = cachedExerciseGoal
             stepGoal = cachedStepGoal
             waterGoal = savedWaterGoal
+            isLoading = false
+            // Load fresh data in background (updates silently)
             Task { await loadNutritionGoals() }
         }
         .fullScreenCover(isPresented: $showingMacroManagement) {
@@ -826,7 +989,6 @@ struct NutritionGoalsSection: View {
         } message: {
             Text(errorMessage)
         }
-        .redacted(reason: isLoading ? .placeholder : [])
     }
 
     @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 2000
@@ -843,25 +1005,30 @@ struct NutritionGoalsSection: View {
             let loadedDiet = try await dietTask
 
             await MainActor.run {
-                caloricGoal = settings.caloricGoal ?? cachedCaloricGoal
-                exerciseGoal = settings.exerciseGoal ?? cachedExerciseGoal
-                stepGoal = settings.stepGoal ?? cachedStepGoal
-                cachedCaloricGoal = caloricGoal
-                cachedExerciseGoal = exerciseGoal
-                cachedStepGoal = stepGoal
+                // Only update if values differ from cached
+                if let newCaloric = settings.caloricGoal, newCaloric != caloricGoal {
+                    caloricGoal = newCaloric
+                    cachedCaloricGoal = newCaloric
+                }
+                if let newExercise = settings.exerciseGoal, newExercise != exerciseGoal {
+                    exerciseGoal = newExercise
+                    cachedExerciseGoal = newExercise
+                }
+                if let newStep = settings.stepGoal, newStep != stepGoal {
+                    stepGoal = newStep
+                    cachedStepGoal = newStep
+                }
                 macroGoals = loadedMacroGoals
                 selectedDietType = loadedDiet
                 customCarbLimit = savedCarbLimit
-                isLoading = false
-                            }
+            }
         } catch {
             await MainActor.run {
                 errorMessage = "Failed to load nutrition goals: \(error.localizedDescription)"
                 showingError = true
-                isLoading = false
             }
         }
-        }
+    }
 
     private func saveCaloricGoal(_ goal: Int) {
         Task {
@@ -975,193 +1142,73 @@ struct ProgressGoalsSection: View {
 
     var body: some View {
         SettingsSection(title: "Progress Goals") {
-            if isLoading {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .padding(.vertical, 20)
-                    Spacer()
-                }
-            } else {
+            // Always render from cached values - no loading spinner
+            VStack(spacing: 0) {
                 // Current Weight
-                VStack(spacing: 0) {
-                    Button(action: { showingWeightEditor = true }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "scalemass.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(AppPalette.standard.accent)
-                                .frame(width: 24)
+                SettingsValueRow(
+                    icon: "scalemass.fill",
+                    title: "Current Weight",
+                    iconColor: AppPalette.standard.accent,
+                    value: currentWeight.map { formatWeight($0) } ?? "Not set",
+                    valueColor: currentWeight != nil ? AppPalette.standard.accent : .secondary,
+                    action: { showingWeightEditor = true }
+                )
 
-                            Text("Current Weight")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
+                Divider()
+                    .padding(.leading, 56)
 
-                            Spacer()
+                // Goal Weight
+                SettingsValueRow(
+                    icon: "flag.fill",
+                    title: "Goal Weight",
+                    iconColor: .green,
+                    value: goalWeight.map { formatWeight($0) } ?? "Not set",
+                    valueColor: goalWeight != nil ? .green : .secondary,
+                    action: { showingGoalEditor = true }
+                )
 
-                            if let weight = currentWeight {
-                                Text(formatWeight(weight))
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(AppPalette.standard.accent)
-                                    .fixedSize()
-                            } else {
-                                Text("Not set")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
-                            }
+                Divider()
+                    .padding(.leading, 56)
 
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                // Height
+                SettingsValueRow(
+                    icon: "ruler.fill",
+                    title: "Height",
+                    iconColor: .purple,
+                    value: height.map { formatHeight($0) } ?? "Not set",
+                    valueColor: height != nil ? .purple : .secondary,
+                    action: { showingHeightEditor = true }
+                )
 
+                // BMI Display (if height and weight are set)
+                if let h = height, let w = currentWeight, h > 0 {
                     Divider()
-                        .padding(.leading, 52)
+                        .padding(.leading, 56)
 
-                    // Goal Weight
-                    Button(action: { showingGoalEditor = true }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "flag.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.green)
-                                .frame(width: 24)
-
-                            Text("Goal Weight")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-
-                            if let goal = goalWeight {
-                                Text(formatWeight(goal))
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.green)
-                                    .fixedSize()
-                            } else {
-                                Text("Not set")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Divider()
-                        .padding(.leading, 52)
-
-                    // Height
-                    Button(action: { showingHeightEditor = true }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "ruler.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.purple)
-                                .frame(width: 24)
-
-                            Text("Height")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-
-                            if let h = height {
-                                Text(formatHeight(h))
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.purple)
-                                    .fixedSize()
-                            } else {
-                                Text("Not set")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    // BMI Display (if height and weight are set)
-                    if let h = height, let w = currentWeight, h > 0 {
-                        Divider()
-                            .padding(.leading, 52)
-
-                        Button(action: { }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "heart.text.square.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.pink)
-                                    .frame(width: 24)
-
-                                Text("BMI")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.primary)
-
-                                Spacer()
-
-                                let bmi = calculateBMI(weight: w, heightCm: h)
-                                HStack(spacing: 8) {
-                                    Text(bmiCategory(bmi))
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
-
-                                    Text(String(format: "%.1f", bmi))
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(bmiColor(bmi))
-                                }
-                                .fixedSize()
-
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-
-                    Divider()
-                        .padding(.leading, 52)
-
-                    // Weight History
-                    Button(action: { showingWeightHistory = true }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                                .font(.system(size: 16))
-                                .foregroundColor(.orange)
-                                .frame(width: 24)
-
-                            Text("Weight History")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-
-                            Text("\(weightEntries.count) entries")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    let bmi = calculateBMI(weight: w, heightCm: h)
+                    SettingsValueRow(
+                        icon: "heart.text.square.fill",
+                        title: "BMI",
+                        iconColor: .pink,
+                        value: String(format: "%.1f", bmi),
+                        valueColor: bmiColor(bmi),
+                        subtitle: bmiCategory(bmi),
+                        action: { }
+                    )
                 }
+
+                Divider()
+                    .padding(.leading, 56)
+
+                // Weight History
+                SettingsValueRow(
+                    icon: "chart.line.uptrend.xyaxis",
+                    title: "Weight History",
+                    iconColor: .orange,
+                    value: "\(weightEntries.count) entries",
+                    valueColor: .secondary,
+                    action: { showingWeightHistory = true }
+                )
             }
         }
         .onAppear {
@@ -1214,7 +1261,6 @@ struct ProgressGoalsSection: View {
         } message: {
             Text(errorMessage)
         }
-        .redacted(reason: isLoading ? .placeholder : [])
     }
 
     private func loadProgressData() async {
@@ -1378,7 +1424,7 @@ struct HeightEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Height")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1494,7 +1540,7 @@ struct CurrentWeightEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Current Weight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1686,7 +1732,7 @@ struct GoalWeightEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Goal Weight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1752,63 +1798,31 @@ struct HealthSafetySection: View {
 
     var body: some View {
         SettingsSection(title: "Health & Safety") {
-            if isLoading {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .padding(.vertical, 20)
-                    Spacer()
-                }
-            } else {
-                VStack(spacing: 0) {
-                    // Allergen Management
-                    SettingsRow(
-                        icon: "exclamationmark.triangle.fill",
-                        title: "Allergen Management",
-                        iconColor: .red,
-                        action: {
-                            showingAllergenManagement = true
-                        }
-                    )
+            VStack(spacing: 0) {
+                // Allergen Management
+                SettingsRow(
+                    icon: "exclamationmark.triangle.fill",
+                    title: "Allergen Management",
+                    iconColor: .red,
+                    action: { showingAllergenManagement = true }
+                )
 
-                    Divider()
-                        .padding(.leading, 52)
+                Divider()
+                    .padding(.leading, 56)
 
-                    // Food Reactions History
-                    Button(action: {
-                        showingReactionsHistory = true
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                                .font(.system(size: 16))
-                                .foregroundColor(.orange)
-                                .frame(width: 24)
-
-                            Text("Food Reactions History")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-
-                            Text("\(reactionCount) logged")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
+                // Food Reactions History
+                SettingsValueRow(
+                    icon: "chart.line.uptrend.xyaxis",
+                    title: "Food Reactions History",
+                    iconColor: .orange,
+                    value: "\(reactionCount) logged",
+                    valueColor: .secondary,
+                    action: { showingReactionsHistory = true }
+                )
             }
         }
         .onAppear {
-            Task {
-                await loadHealthSafetyData()
-            }
+            Task { await loadHealthSafetyData() }
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
@@ -1869,187 +1883,100 @@ struct AppPreferencesSection: View {
         SettingsSection(title: "App Preferences") {
             VStack(spacing: 0) {
                 // Theme
-                Button(action: { showingThemeSelector = true }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "paintbrush.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.purple)
-                            .frame(width: 24)
-
-                        Text("Theme")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-
-                        Text(appearanceMode.displayName)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(PlainButtonStyle())
+                SettingsValueRow(
+                    icon: "paintbrush.fill",
+                    title: "Theme",
+                    iconColor: .purple,
+                    value: appearanceMode.displayName,
+                    valueColor: .secondary,
+                    action: { showingThemeSelector = true }
+                )
 
                 Divider()
-                    .padding(.leading, 52)
+                    .padding(.leading, 56)
 
-                // Apple Health Menu
-                NavigationLink(destination: AppleHealthSettingsView()) {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.white)
-                                .frame(width: 28, height: 28)
-                                .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 0.5)
-
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 15))
-                                .foregroundColor(Color(red: 1.0, green: 0.23, blue: 0.19))
-                        }
-                        .frame(width: 28)
-
-                        Text("Apple Health")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.secondary)
+                // Apple Health
+                SettingsRow(
+                    icon: "heart.fill",
+                    title: "Apple Health",
+                    iconColor: Color(red: 1.0, green: 0.23, blue: 0.19),
+                    action: { }
+                )
+                .background(
+                    NavigationLink(destination: AppleHealthSettingsView()) {
+                        EmptyView()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
+                    .opacity(0)
+                )
 
                 Divider()
-                    .padding(.leading, 52)
+                    .padding(.leading, 56)
 
                 // Units
-                Button(action: { showingUnitsSelector = true }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "ruler.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(AppPalette.standard.accent)
-                            .frame(width: 24)
-
-                        Text("Units")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-
-                        Text(unitSystem.displayName)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(PlainButtonStyle())
+                SettingsValueRow(
+                    icon: "ruler.fill",
+                    title: "Units",
+                    iconColor: AppPalette.standard.accent,
+                    value: unitSystem.displayName,
+                    valueColor: .secondary,
+                    action: { showingUnitsSelector = true }
+                )
 
                 Divider()
-                    .padding(.leading, 52)
+                    .padding(.leading, 56)
 
                 // Notifications
-                Button(action: { showingNotificationSettings = true }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "bell.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.red)
-                            .frame(width: 24)
-
-                        Text("Notifications")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(PlainButtonStyle())
+                SettingsRow(
+                    icon: "bell.fill",
+                    title: "Notifications",
+                    iconColor: .red,
+                    action: { showingNotificationSettings = true }
+                )
 
                 Divider()
-                    .padding(.leading, 52)
+                    .padding(.leading, 56)
 
                 // Data & Privacy
                 SettingsRow(
                     icon: "lock.shield.fill",
                     title: "Data & Privacy",
                     iconColor: .orange,
-                    action: {
-                        showingDataPrivacy = true
-                    }
+                    action: { showingDataPrivacy = true }
                 )
 
                 Divider()
-                    .padding(.leading, 52)
+                    .padding(.leading, 56)
 
                 // Email Marketing Consent
-                NavigationLink(destination: EmailMarketingConsentView()) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "envelope.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(AppPalette.standard.accent)
-                            .frame(width: 24)
-
-                        Text("Email Preferences")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                SettingsRow(
+                    icon: "envelope.fill",
+                    title: "Email Preferences",
+                    iconColor: AppPalette.standard.accent,
+                    action: { }
+                )
+                .background(
+                    NavigationLink(destination: EmailMarketingConsentView()) {
+                        EmptyView()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
+                    .opacity(0)
+                )
 
                 Divider()
-                    .padding(.leading, 52)
+                    .padding(.leading, 56)
 
                 // Reset Feature Tips
-                Button(action: {
-                    FeatureTipsManager.shared.resetAllTips()
-                    // Provide haptic feedback
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
-                    // Navigate to diary tab and dismiss settings
-                    selectedTab?.wrappedValue = .diary
-                    dismiss()
-                }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "lightbulb.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.orange)
-                            .frame(width: 24)
-
-                        Text("Reset Feature Tips")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
+                SettingsRow(
+                    icon: "lightbulb.fill",
+                    title: "Reset Feature Tips",
+                    iconColor: .orange,
+                    action: {
+                        FeatureTipsManager.shared.resetAllTips()
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                        selectedTab?.wrappedValue = .diary
+                        dismiss()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(PlainButtonStyle())
+                )
             }
         }
         .fullScreenCover(isPresented: $showingThemeSelector) {
@@ -2154,7 +2081,7 @@ struct ThemeSelectorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Theme")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2241,7 +2168,7 @@ struct UnitsSelectorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Units")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2453,7 +2380,7 @@ struct DataPrivacyView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Data & Privacy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2553,7 +2480,7 @@ struct DataPrivacyView: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.adaptiveBackground.ignoresSafeArea())
+                .background(AppAnimatedBackground().ignoresSafeArea())
                 .navigationTitle("Confirm Deletion")
                 .navigationBarTitleDisplayMode(.inline)
             }
@@ -2873,7 +2800,7 @@ struct MacroManagementView: View {
                 .padding(.top, 12)
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Diet Management")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3847,7 +3774,7 @@ struct BMRCalculatorSheet: View {
                 .padding(.top, 12)
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("BMR Calculator")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4158,7 +4085,7 @@ struct HealthDisclaimerView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Disclaimer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4250,7 +4177,7 @@ struct AllergenManagementView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Allergen Management")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4425,7 +4352,7 @@ struct FoodReactionsHistoryView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Reaction History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4584,7 +4511,7 @@ struct SafetyAlertsConfigView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Safety Alerts")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4654,7 +4581,7 @@ struct MicronutrientDisplayView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Micronutrient Display")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4907,7 +4834,7 @@ struct NotificationSettingsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -5169,7 +5096,7 @@ struct AppleHealthSettingsView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.adaptiveBackground.ignoresSafeArea())
+        .background(AppAnimatedBackground().ignoresSafeArea())
         .navigationTitle("Apple Health")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -5586,7 +5513,7 @@ struct EmailMarketingConsentView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.adaptiveBackground.ignoresSafeArea())
+        .background(AppAnimatedBackground().ignoresSafeArea())
         .navigationTitle("Email Preferences")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Success", isPresented: $showingSuccess) {

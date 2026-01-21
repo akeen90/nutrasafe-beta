@@ -63,14 +63,14 @@ class FeatureTipsManager: ObservableObject {
     static let tipContent: [TipKey: TipContent] = [
         .diaryOverview: TipContent(
             title: "Your Food Diary",
-            message: "Track everything you eat here. The + button at the bottom is your quickest way to add food — search, scan a barcode, or enter it manually.",
+            message: "This is your daily food log. Hit the + button to add what you've eaten — it's quick and easy!",
             icon: "fork.knife.circle.fill",
             accentColor: .blue,
             bulletPoints: [
-                "Tap + to search foods or scan product barcodes",
-                "See your daily calories and macros (protein, carbs, fat)",
-                "Tap any food to view details, edit portions, or delete",
-                "Swipe to quickly navigate between days"
+                "Tap + to search, scan a barcode, or add manually",
+                "Track your calories and macros at a glance",
+                "Tap any food to edit portions or see details",
+                "Swipe left and right to browse different days"
             ]
         ),
         .diarySearch: TipContent(
@@ -80,80 +80,80 @@ class FeatureTipsManager: ObservableObject {
             accentColor: .blue
         ),
         .healthOverview: TipContent(
-            title: "Health: Reactions & Fasting",
-            message: "This section has two parts — use the toggle at the top to switch between tracking food reactions and intermittent fasting.",
+            title: "Health & Wellbeing",
+            message: "Two powerful tools in one place — track how foods make you feel, or try intermittent fasting.",
             icon: "heart.circle.fill",
             accentColor: .pink,
             bulletPoints: [
-                "Reactions: Log when food doesn't agree with you",
-                "Fasting: Track eating windows like 16:8",
-                "We'll spot patterns in foods that upset you",
-                "Perfect for identifying food intolerances"
+                "Log reactions when food doesn't sit right",
+                "Try fasting plans like 16:8 or 18:6",
+                "We'll spot patterns in problem foods",
+                "Great for finding what works for you"
             ]
         ),
         .healthReactions: TipContent(
-            title: "Track Food Reactions",
-            message: "If certain foods don't agree with you (bloating, tiredness, etc.), log them here. We'll save the ingredients and look for patterns.",
+            title: "Food Reactions",
+            message: "Some foods just don't agree with us. Log how you feel and we'll help you spot the culprits.",
             icon: "exclamationmark.bubble.fill",
             accentColor: .orange,
             bulletPoints: [
                 "Tap + then 'Log Reaction' after eating",
-                "Choose the food and your symptoms",
-                "Ingredients are saved automatically",
-                "After 3+ reactions, we'll show what's common"
+                "Pick the food and describe how you feel",
+                "Ingredients are tracked automatically",
+                "After a few logs, patterns will emerge"
             ]
         ),
         .healthPatterns: TipContent(
-            title: "Pattern Analysis",
-            message: "Once you've logged 3 or more reactions, we analyse which ingredients keep appearing. This can help identify potential trigger foods.",
+            title: "Spot the Patterns",
+            message: "Once you've logged a few reactions, we'll show which ingredients keep popping up.",
             icon: "chart.bar.doc.horizontal.fill",
             accentColor: .purple,
             bulletPoints: [
-                "See ingredients that appear in multiple reactions",
-                "Identify potential foods to avoid",
-                "Track reaction frequency over time"
+                "See common ingredients across reactions",
+                "Discover potential trigger foods",
+                "Track how often issues occur"
             ]
         ),
         .healthFasting: TipContent(
             title: "Intermittent Fasting",
-            message: "Intermittent fasting means taking regular breaks from eating. The 16:8 plan (fast 16 hours, eat in an 8-hour window) is a popular choice.",
+            message: "Give your body regular breaks from eating. Start with 16:8 — you'll be asleep for most of it!",
             icon: "timer",
             accentColor: .green,
             bulletPoints: [
-                "Choose from 16:8, 18:6, 20:4, and more",
-                "Live timer tracks your fasting stages",
-                "Most of your fasting happens whilst sleeping",
-                "Build streaks and track your history"
+                "Pick a plan: 16:8, 18:6, 20:4, and more",
+                "Watch your progress with a live timer",
+                "Sleep counts towards fasting time",
+                "Build streaks and stay motivated"
             ]
         ),
         .progressOverview: TipContent(
-            title: "Track Your Weight",
-            message: "Log your weight regularly to see trends over time. Tap + then 'Weigh In' to record today's weight.",
+            title: "Your Progress",
+            message: "Keep track of your weight and see how far you've come. Small changes add up!",
             icon: "figure.run.circle.fill",
             accentColor: .teal,
             bulletPoints: [
-                "Tap + then 'Weigh In' to log your weight",
-                "See your progress on a visual chart",
-                "Syncs with Apple Health if enabled",
-                "Set a goal weight to stay motivated"
+                "Tap + then 'Weigh In' to log today",
+                "Watch your progress on a chart",
+                "Syncs with Apple Health if you like",
+                "Set a goal to keep you on track"
             ]
         ),
         .progressWeight: TipContent(
             title: "Weight Tracking",
-            message: "Tap + then 'Weigh In' to record your weight. Regular tracking helps you see trends and stay motivated.",
+            message: "Regular weigh-ins help you see the bigger picture. Don't stress about daily fluctuations!",
             icon: "scalemass.fill",
             accentColor: .teal
         ),
         .useByOverview: TipContent(
-            title: "Track Use-By Dates",
-            message: "Never waste opened food again. Add items you've opened and we'll remind you before they go off.",
+            title: "Use-By Tracker",
+            message: "No more forgotten leftovers! Add opened items and we'll nudge you before they expire.",
             icon: "calendar.circle.fill",
             accentColor: .orange,
             bulletPoints: [
-                "Tap + then 'Use By' to add opened items",
-                "Get notifications before food expires",
-                "Items sorted by how soon they expire",
-                "Reduce food waste and save money"
+                "Tap + then 'Use By' to add items",
+                "Get a heads up before food goes off",
+                "Urgent items bubble to the top",
+                "Save money by wasting less"
             ]
         ),
         .nutrientsOverview: TipContent(

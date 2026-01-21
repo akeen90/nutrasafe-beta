@@ -421,8 +421,8 @@ struct TipsSection: View {
             }
             
             LazyVStack(spacing: 12) {
-                ForEach(tips, id: \.self) { tip in
-                    TipRow(tip: tip)
+                ForEach(Array(tips.enumerated()), id: \.element) { index, tip in
+                    TipRow(tip: tip, index: index)
                 }
             }
         }
@@ -464,27 +464,56 @@ struct TipsSection: View {
 
 struct TipRow: View {
     let tip: Tip
-    
+    var index: Int = 0
+
+    @State private var isVisible = false
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: tip.icon)
-                .font(.title3)
-                .foregroundColor(.orange)
-                .frame(width: 30)
-                .padding(.top, 2)
-            
+        HStack(alignment: .top, spacing: 14) {
+            // Gradient icon in soft container
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.orange.opacity(0.2), Color.yellow.opacity(0.15)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: tip.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.orange, .yellow],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(tip.title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+
                 Text(tip.description)
-                    .font(.caption)
+                    .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 12)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.3 + Double(index) * 0.1)) {
+                isVisible = true
+            }
+        }
     }
 }
 

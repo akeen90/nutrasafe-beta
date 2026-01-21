@@ -14,8 +14,17 @@
     <meta property="og:url" content="https://www.nutrasafe.co.uk/e-numbers.html">
     <meta property="og:title" content="E Numbers List UK — Complete Food Additive Database">
     <meta property="og:description" content="Search 300+ E-numbers with safety info. Find out about food additives used in UK products.">
-    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon.png">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
     <meta property="og:locale" content="en_GB">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="E Numbers List UK — Complete Food Additive Database">
+    <meta name="twitter:description" content="Search 300+ E-numbers with safety info. Find out about food additives used in UK products.">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
+
+    <meta name="theme-color" content="#3d7a7a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32-new.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-new.png">
 
     <script src="/cookie-consent.js" defer></script>
 
@@ -26,7 +35,7 @@
         "headline": "E Numbers List UK — Complete Food Additive Database",
         "description": "Complete guide to E-numbers used in UK food products with safety information and dietary flags.",
         "author": {"@type": "Person", "name": "Aaron Keen"},
-        "publisher": {"@type": "Organization", "name": "NutraSafe", "logo": {"@type": "ImageObject", "url": "https://www.nutrasafe.co.uk/app-icon.png"}}
+        "publisher": {"@type": "Organization", "name": "NutraSafe", "logo": {"@type": "ImageObject", "url": "https://www.nutrasafe.co.uk/app-icon-2026.png"}}
     }
     </script>
     <script type="application/ld+json">
@@ -41,88 +50,351 @@
     }
     </script>
 
-    <link rel="icon" type="image/png" href="/app-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #6366f1;
-            --primary-light: #818cf8;
-            --text-dark: #0f172a;
-            --text-light: #64748b;
-            --bg-dark: #0f172a;
+            --teal: #3d7a7a;
+            --teal-dark: #2d5a5a;
+            --teal-light: #5a9a9a;
+            --coral: #d4a574;
+            --sage: #7ab3a0;
+            --text-dark: #1a1a1a;
+            --text-medium: #4a4a4a;
+            --text-light: #7a7a7a;
+            --bg-start: #dce4ec;
+            --bg-end: #f5f3ef;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(255, 255, 255, 0.9);
         }
-        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: var(--text-dark); background: #f8fafc; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
+            color: var(--text-dark);
+            background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
 
-        header { background: var(--bg-dark); padding: 1rem 0; position: sticky; top: 0; z-index: 100; }
-        nav { max-width: 1200px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
-        .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; font-weight: 700; color: white; text-decoration: none; }
-        .logo-icon { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; }
+        header {
+            background: rgba(220, 228, 236, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 40px rgba(0, 0, 0, 0.05);
+        }
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(61, 122, 122, 0.2);
+        }
         .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
-        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
-        .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; }
-        .nav-links a:hover { color: white; }
-        .nav-cta { padding: 0.6rem 1.5rem; background: var(--primary); color: white !important; border-radius: 100px; font-weight: 600; }
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-medium);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--teal); }
+        .nav-cta {
+            padding: 0.75rem 1.75rem;
+            background: var(--teal);
+            color: white !important;
+            border-radius: 100px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .nav-cta:hover {
+            background: var(--teal-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(61, 122, 122, 0.3);
+        }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
-        .hero { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 60px 2rem 40px; text-align: center; }
-        .hero h1 { font-size: 2.5rem; color: white; margin-bottom: 0.75rem; }
-        .hero p { color: rgba(255,255,255,0.7); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+        .hero {
+            padding: 80px 2rem 60px;
+            text-align: center;
+        }
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            color: var(--text-dark);
+        }
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 0;
+            font-style: italic;
+        }
 
-        .search-section { background: white; padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; position: sticky; top: 76px; z-index: 50; }
+        .search-section {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--card-border);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 76px;
+            z-index: 50;
+        }
         .search-container { max-width: 900px; margin: 0 auto; }
         .search-box { position: relative; }
-        .search-box input { width: 100%; padding: 1rem 1rem 1rem 3rem; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; }
-        .search-box input:focus { outline: none; border-color: var(--primary); }
+        .search-box input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            background: white;
+            transition: all 0.3s;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(61, 122, 122, 0.1);
+        }
         .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light); }
         .search-stats { margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-light); }
         .filter-tabs { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
-        .filter-tab { padding: 0.4rem 0.9rem; background: #f1f5f9; border: none; border-radius: 100px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; }
-        .filter-tab:hover { background: #e2e8f0; }
-        .filter-tab.active { background: var(--primary); color: white; }
+        .filter-tab {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid var(--card-border);
+            border-radius: 100px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-medium);
+            transition: all 0.3s;
+        }
+        .filter-tab:hover {
+            border-color: var(--teal-light);
+            color: var(--teal);
+        }
+        .filter-tab.active {
+            background: var(--teal);
+            border-color: var(--teal);
+            color: white;
+        }
 
-        .content { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
 
-        .e-table { width: 100%; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .e-table th { background: var(--bg-dark); color: white; padding: 1rem; text-align: left; font-weight: 600; font-size: 0.9rem; }
-        .e-table td { padding: 0.875rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-        .e-table tr:hover { background: #f8fafc; }
+        .info-box {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+        }
+        .info-box h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+        }
+        .info-box p {
+            color: var(--text-medium);
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .e-table {
+            width: 100%;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .e-table th {
+            background: var(--teal);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+        }
+        .e-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            vertical-align: top;
+        }
+        .e-table tr:hover { background: rgba(61, 122, 122, 0.03); }
         .e-table tr:last-child td { border-bottom: none; }
-        .e-code { font-weight: 700; color: var(--primary); white-space: nowrap; }
+        .e-code { font-weight: 700; color: var(--teal); white-space: nowrap; }
         .e-name { font-weight: 600; color: var(--text-dark); }
         .e-category { font-size: 0.8rem; color: var(--text-light); }
-        .e-desc { font-size: 0.9rem; color: var(--text-light); line-height: 1.5; }
-        .e-research { font-size: 0.8rem; color: #b45309; background: #fef3c7; padding: 0.5rem 0.75rem; border-radius: 6px; margin-top: 0.5rem; line-height: 1.4; border-left: 3px solid #f59e0b; }
-        .tag { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin: 0.15rem; }
-        .tag-vegan { background: #dcfce7; color: #166534; }
-        .tag-halal { background: #dbeafe; color: #1e40af; }
-        .tag-natural { background: #fef3c7; color: #92400e; }
-        .tag-synthetic { background: #f1f5f9; color: #475569; }
+        .e-desc { font-size: 0.95rem; color: var(--text-medium); line-height: 1.6; }
+        .e-research {
+            font-size: 0.85rem;
+            color: #92400e;
+            background: rgba(212, 165, 116, 0.15);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            margin-top: 0.75rem;
+            line-height: 1.5;
+            border-left: 3px solid var(--coral);
+        }
+        .tag {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin: 0.15rem;
+        }
+        .tag-vegan { background: rgba(122, 179, 160, 0.2); color: #166534; }
+        .tag-halal { background: rgba(61, 122, 122, 0.15); color: var(--teal-dark); }
+        .tag-natural { background: rgba(212, 165, 116, 0.2); color: #92400e; }
+        .tag-synthetic { background: rgba(0, 0, 0, 0.05); color: var(--text-light); }
 
-        .no-results { text-align: center; padding: 3rem; color: var(--text-light); }
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+        }
 
-        .info-box { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .info-box h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
-        .info-box p { color: var(--text-light); margin: 0; font-size: 0.95rem; }
+        .cta-section {
+            padding: 60px 2rem;
+            text-align: center;
+            margin: 2rem 0;
+            background: linear-gradient(180deg, rgba(61, 122, 122, 0.03) 0%, transparent 100%);
+            border-radius: 30px;
+        }
+        .cta-section h2 {
+            color: var(--text-dark);
+            margin-bottom: 0.75rem;
+            font-size: 2rem;
+        }
+        .cta-section p {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+            color: white;
+            border-radius: 16px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            box-shadow: 0 8px 30px rgba(61, 122, 122, 0.25);
+            transition: all 0.4s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(61, 122, 122, 0.35);
+        }
 
-        .cta-section { background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1b4b 100%); padding: 3rem 2rem; text-align: center; border-radius: 16px; margin: 2rem 0; }
-        .cta-section h2 { color: white; margin-bottom: 0.75rem; font-size: 1.5rem; }
-        .cta-section p { color: rgba(255,255,255,0.7); margin-bottom: 1.5rem; }
-        .cta-button { display: inline-block; padding: 0.875rem 1.75rem; background: var(--primary); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; }
-
-        footer { background: var(--bg-dark); color: white; padding: 3rem 2rem 1.5rem; margin-top: 2rem; }
-        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 2rem; margin-bottom: 2rem; }
-        .footer-section h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
-        .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.25rem 0; font-size: 0.9rem; }
-        .footer-section a:hover { color: white; }
-        .footer-section ul { list-style: none; }
-        .footer-bottom { text-align: center; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+        footer {
+            background: linear-gradient(180deg, transparent 0%, rgba(61, 122, 122, 0.05) 100%);
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            margin-top: 2rem;
+        }
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .footer-brand .logo { margin-bottom: 1rem; }
+        .footer-brand p {
+            color: var(--text-light);
+            line-height: 1.7;
+            font-size: 0.9rem;
+        }
+        .footer-section h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+            color: var(--text-dark);
+        }
+        .footer-section ul { list-style: none; margin: 0; padding: 0; }
+        .footer-section a {
+            color: var(--text-light);
+            text-decoration: none;
+            display: block;
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .footer-section a:hover { color: var(--teal); }
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
         @media (max-width: 768px) {
-            .footer-content { grid-template-columns: 1fr 1fr; }
-            .hero h1 { font-size: 1.75rem; }
+            .hero h1 { font-size: 2.25rem; }
+            .footer-content { grid-template-columns: 1fr; text-align: center; }
             .e-table { font-size: 0.9rem; }
             .e-table th, .e-table td { padding: 0.75rem 0.5rem; }
         }
@@ -132,20 +404,26 @@
     <header>
         <nav>
             <a href="/" class="logo">
-                <div class="logo-icon"><img src="/app-icon.png" alt="NutraSafe"></div>
+                <div class="logo-icon">
+                    <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
+                </div>
                 <span>NutraSafe</span>
             </a>
             <ul class="nav-links">
                 <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
                 <li><a href="/resources.html">Resources</a></li>
-                <li><a href="/#download" class="nav-cta">Download</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download</a></li>
             </ul>
         </nav>
     </header>
 
     <section class="hero">
-        <h1>E Numbers Database</h1>
-        <p>Search the complete list of food additives approved for use in the UK and EU.</p>
+        <div class="hero-content">
+            <h1>E Numbers Database</h1>
+            <p>Search the complete list of food additives approved for use in the UK and EU.</p>
+        </div>
     </section>
 
     <section class="search-section">
@@ -194,7 +472,10 @@
         <div class="cta-section">
             <h2>Scan Products Instantly</h2>
             <p>Use NutraSafe to scan any UK food product and see all additives and nutrition information.</p>
-            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free</a>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download Free
+            </a>
         </div>
     </div>
 
@@ -202,36 +483,48 @@
         <div class="footer-content">
             <div class="footer-brand">
                 <a href="/" class="logo">
-                    <div class="logo-icon"><img src="/app-icon.png" alt="NutraSafe"></div>
+                    <div class="logo-icon">
+                        <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44" loading="lazy">
+                    </div>
                     <span>NutraSafe</span>
                 </a>
-                <p style="color: rgba(255,255,255,0.6); margin-top: 1rem; font-size: 0.9rem;">UK food scanner for additives, allergens, and nutrition.</p>
+                <p>The food intelligence app that helps you understand what you eat. Food clarity. Body clarity. Simple.</p>
             </div>
+
             <div class="footer-section">
-                <h4>Product</h4>
+                <h4>Learn</h4>
                 <ul>
-                    <li><a href="/#features">Features</a></li>
-                    <li><a href="/#how-it-works">How It Works</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h4>Resources</h4>
-                <ul>
+                    <li><a href="/food-scanner.html">Food Scanner</a></li>
+                    <li><a href="/food-tracker.html">Food Tracker</a></li>
+                    <li><a href="/food-additives.html">Food Additives</a></li>
                     <li><a href="/e-numbers.html">E-Numbers Database</a></li>
                     <li><a href="/resources.html">All Resources</a></li>
                 </ul>
             </div>
+
+            <div class="footer-section">
+                <h4>Nutrition</h4>
+                <ul>
+                    <li><a href="/calorie-counter-uk.html">Calorie Counter UK</a></li>
+                    <li><a href="/macro-tracker-uk.html">Macro Tracker UK</a></li>
+                    <li><a href="/keto-diet-uk.html">Keto Diet Guide</a></li>
+                    <li><a href="/high-protein-diet-uk.html">High Protein Diet</a></li>
+                </ul>
+            </div>
+
             <div class="footer-section">
                 <h4>Company</h4>
                 <ul>
                     <li><a href="/support.html">Support</a></li>
                     <li><a href="/privacy-policy.html">Privacy Policy</a></li>
-                    <li><a href="/terms-of-service.html">Terms</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                    <li><a href="/sitemap.html">Sitemap</a></li>
                 </ul>
             </div>
         </div>
+
         <div class="footer-bottom">
-            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+            <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
         </div>
     </footer>
 

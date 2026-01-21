@@ -5050,32 +5050,54 @@ struct AddFoodMainView: View {
         }
     }
 
-    // Lightweight button component to simplify option selector and reduce type-checking complexity
+    // Redesigned tab selector matching NutraSafe onboarding/diary visual language
+    // Uses glassmorphic pills with soft backgrounds and proper visual hierarchy
     private struct OptionSelectorButton: View {
         @Environment(\.colorScheme) var colorScheme
         let title: String
         let icon: String
         let isSelected: Bool
         let onTap: () -> Void
+        @Namespace private var animation
 
         var body: some View {
-            Button(action: { onTap() }) {
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onTap()
+            }) {
                 HStack(spacing: 6) {
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
                     Text(title)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
                 }
-                .foregroundColor(isSelected ? .white : .primary)
+                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white.opacity(0.7) : .primary.opacity(0.7)))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 12)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : AppPalette.standard.accent) : Color(.systemGray6))
+                    ZStack {
+                        if isSelected {
+                            // Active state: gradient fill with soft glow
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 8, y: 2)
+                        } else {
+                            // Inactive state: subtle translucent background
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
+                        }
+                    }
                 )
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
         }
     }
 
@@ -5102,25 +5124,33 @@ struct AddFoodMainView: View {
                         onDismiss: { isPresented = false }
                     )
                 } else {
-                    // Normal add food flow
+                    // Normal add food flow - redesigned with NutraSafe visual language
                     VStack(spacing: 0) {
-                        // Header
-                        VStack(spacing: 12) {
-                        // Option selector - Search, My Meals, Manual (barcode accessed from search)
-                        HStack(spacing: 0) {
-                            ForEach(AddOption.visibleCases, id: \.self) { option in
-                                OptionSelectorButton(title: option.rawValue, icon: option.icon, isSelected: selectedAddOption == option) {
-                                    selectedAddOption = option
+                        // Tab selector with glassmorphic pill container
+                        VStack(spacing: 0) {
+                            // Option selector - Search, My Meals, Manual (barcode accessed from search)
+                            HStack(spacing: 6) {
+                                ForEach(AddOption.visibleCases, id: \.self) { option in
+                                    OptionSelectorButton(title: option.rawValue, icon: option.icon, isSelected: selectedAddOption == option) {
+                                        selectedAddOption = option
+                                    }
                                 }
                             }
+                            .padding(6)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                    )
+                            )
+                            .padding(.horizontal, DesignTokens.Spacing.md)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .background(Color.green.opacity(0.001)) // Ultra-transparent hit test helper
-                    }
-                    .background(Color.adaptiveBackground)
-                    .zIndex(999)
-                    .allowsHitTesting(true)
+                        .zIndex(999)
+                        .allowsHitTesting(true)
 
                     // Content based on selected option
                     Group {
@@ -5158,7 +5188,7 @@ struct AddFoodMainView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .zIndex(0)
                     }
-                    .background(Color.adaptiveBackground)
+                    .background(AppAnimatedBackground())
                 }
             }
             .navigationTitle("Diary")

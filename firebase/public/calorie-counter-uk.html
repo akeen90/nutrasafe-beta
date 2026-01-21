@@ -15,7 +15,7 @@
     <meta property="og:url" content="https://www.nutrasafe.co.uk/calorie-counter-uk.html">
     <meta property="og:title" content="Calorie Counter UK — Free Calorie Tracker App">
     <meta property="og:description" content="Free calorie counter with 500,000+ UK foods. Track calories, macros, weight loss. Barcode scanner included.">
-    <meta property="og:image" content="https://www.nutrasafe.co.uk/nutrition-dashboard.webp">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
     <meta property="og:locale" content="en_GB">
     <meta property="og:site_name" content="NutraSafe">
 
@@ -23,7 +23,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Calorie Counter UK — Free Calorie Tracker App">
     <meta name="twitter:description" content="Free calorie counter with 500,000+ UK foods. Track calories, macros, weight loss.">
-    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/nutrition-dashboard.webp">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
 
     <!-- Structured Data - SoftwareApplication -->
     <script type="application/ld+json">
@@ -90,9 +90,10 @@
     }
     </script>
 
-    <!-- Favicons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <!-- Theme and Favicons -->
+    <meta name="theme-color" content="#3d7a7a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32-new.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-new.png">
 
     <!-- Preload critical resources -->
     <link rel="preload" href="nutrition-dashboard.webp" as="image" type="image/webp">
@@ -100,144 +101,558 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #6366f1;
-            --primary-light: #818cf8;
-            --primary-dark: #4f46e5;
-            --accent: #10b981;
-            --text-dark: #0f172a;
-            --text-light: #64748b;
-            --text-muted: #94a3b8;
-            --bg-dark: #0f172a;
-            --border: #e2e8f0;
+            --teal: #3d7a7a;
+            --teal-dark: #2d5a5a;
+            --teal-light: #5a9a9a;
+            --coral: #d4a574;
+            --sage: #7ab3a0;
+            --text-dark: #1a1a1a;
+            --text-medium: #4a4a4a;
+            --text-light: #7a7a7a;
+            --bg-start: #dce4ec;
+            --bg-end: #f5f3ef;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(255, 255, 255, 0.9);
         }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.7; color: var(--text-dark); background: #ffffff; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
+            color: var(--text-dark);
+            background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
 
         /* Header */
-        header { background: var(--bg-dark); padding: 1rem 0; position: sticky; top: 0; z-index: 100; }
-        nav { max-width: 1200px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
-        .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; font-weight: 700; color: white; text-decoration: none; }
-        .logo-icon { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; }
+        header {
+            background: rgba(220, 228, 236, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 40px rgba(0, 0, 0, 0.05);
+        }
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(61, 122, 122, 0.2);
+        }
         .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
-        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
-        .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; transition: color 0.3s; }
-        .nav-links a:hover { color: white; }
-        .nav-cta { padding: 0.65rem 1.6rem; background: linear-gradient(135deg, var(--primary), #7a6cf8); color: white !important; border-radius: 999px; font-weight: 700; }
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-medium);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--teal); }
+        .nav-cta {
+            padding: 0.75rem 1.75rem;
+            background: var(--teal);
+            color: white !important;
+            border-radius: 100px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .nav-cta:hover {
+            background: var(--teal-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(61, 122, 122, 0.3);
+        }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
         /* Hero */
-        .hero { background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1b4b 50%, #0f172a 100%); color: white; padding: 80px 2rem 100px; position: relative; overflow: hidden; }
-        .hero::before { content: ''; position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%); top: -300px; right: -200px; }
-        .hero-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; position: relative; z-index: 1; }
-        .hero-content h1 { font-size: 3.25rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
-        .gradient-text { background: linear-gradient(135deg, #818cf8 0%, #22d3ee 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .hero-content p { font-size: 1.25rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; line-height: 1.7; }
-        .hero-badges { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
-        .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); border-radius: 100px; font-size: 0.9rem; color: #6ee7b7; }
-        .badge-free { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3); color: var(--primary-light); }
-        .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
-        .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 600; text-decoration: none; box-shadow: 0 10px 40px rgba(99,102,241,0.4); transition: all 0.3s; }
-        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 20px 50px rgba(99,102,241,0.5); }
-        .btn-secondary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2rem; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 14px; font-size: 1.1rem; font-weight: 600; text-decoration: none; transition: all 0.3s; }
-        .btn-secondary:hover { background: rgba(255,255,255,0.1); }
-        .hero-visual { display: flex; justify-content: center; }
-        .phone-mockup { width: 320px; border-radius: 40px; box-shadow: 0 50px 100px rgba(0,0,0,0.4); }
-        @media (max-width: 968px) {
-            .hero-container { grid-template-columns: 1fr; text-align: center; }
-            .hero-content h1 { font-size: 2.5rem; }
-            .hero-badges, .hero-buttons { justify-content: center; }
-            .hero-visual { order: -1; margin-bottom: 2rem; }
-            .phone-mockup { width: 260px; }
+        .hero {
+            padding: 80px 2rem 60px;
+            text-align: center;
+        }
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .hero-badges {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(61, 122, 122, 0.1);
+            border: 1px solid rgba(61, 122, 122, 0.2);
+            border-radius: 100px;
+            font-size: 0.9rem;
+            color: var(--teal);
+            font-weight: 500;
+        }
+        .badge-free {
+            background: rgba(122, 179, 160, 0.15);
+            border-color: rgba(122, 179, 160, 0.3);
+            color: var(--sage);
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            color: var(--text-dark);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 8px 30px rgba(61, 122, 122, 0.25);
+            transition: all 0.4s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(61, 122, 122, 0.35);
+        }
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: var(--card-bg);
+            color: var(--text-dark);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .btn-secondary:hover {
+            background: white;
+            border-color: var(--teal-light);
+            transform: translateY(-2px);
+        }
+        .hero-visual {
+            margin-top: 3rem;
+            display: flex;
+            justify-content: center;
+        }
+        .phone-mockup {
+            width: 280px;
+            border-radius: 30px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15);
+        }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.25rem; }
+            .phone-mockup { width: 220px; }
         }
 
         /* Stats */
-        .stats-section { background: white; padding: 4rem 2rem; border-bottom: 1px solid var(--border); }
-        .stats-container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; text-align: center; }
-        .stat-item h3 { font-size: 2.5rem; font-weight: 800; color: var(--primary); margin-bottom: 0.5rem; }
-        .stat-item p { color: var(--text-light); font-weight: 500; }
-        @media (max-width: 768px) { .stats-container { grid-template-columns: repeat(2, 1fr); } }
+        .stats-section {
+            padding: 3rem 2rem;
+        }
+        .stats-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+        .stat-item {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .stat-item h3 {
+            font-size: 2rem;
+            color: var(--teal);
+            margin-bottom: 0.25rem;
+        }
+        .stat-item p {
+            color: var(--text-light);
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        @media (max-width: 768px) {
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+        }
 
-        /* Features */
-        .features-section { padding: 100px 2rem; background: #f8fafc; }
-        .section-container { max-width: 1200px; margin: 0 auto; }
-        .section-header { text-align: center; margin-bottom: 4rem; }
-        .section-label { display: inline-block; padding: 0.5rem 1rem; background: rgba(99,102,241,0.1); color: var(--primary); border-radius: 100px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .section-title { font-size: 2.5rem; font-weight: 800; color: var(--text-dark); margin-bottom: 1rem; }
-        .section-subtitle { font-size: 1.2rem; color: var(--text-light); max-width: 600px; margin: 0 auto; }
-        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-        .feature-card { background: white; border: 1px solid var(--border); border-radius: 20px; padding: 2rem; transition: all 0.3s; }
-        .feature-card:hover { border-color: var(--primary-light); box-shadow: 0 20px 40px rgba(0,0,0,0.08); transform: translateY(-5px); }
-        .feature-icon { width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-dark); }
-        .feature-card p { color: var(--text-light); line-height: 1.7; }
-        @media (max-width: 968px) { .features-grid { grid-template-columns: 1fr; } }
+        /* Content sections */
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 2rem 80px;
+        }
+        h2 {
+            font-size: 2rem;
+            margin: 3rem 0 1.5rem;
+            color: var(--text-dark);
+        }
+        h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.2rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        p {
+            color: var(--text-medium);
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+        ul, ol {
+            margin: 1rem 0 1.5rem 1.5rem;
+            color: var(--text-medium);
+        }
+        li {
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+        }
+
+        /* Features grid */
+        .features-grid {
+            display: grid;
+            gap: 1.25rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            margin: 2rem 0;
+        }
+        .feature-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            border-color: var(--teal-light);
+        }
+        .feature-card h3 {
+            margin: 0 0 0.75rem;
+            font-size: 1.15rem;
+        }
+        .feature-card p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
 
         /* How it works */
-        .how-section { padding: 100px 2rem; background: var(--bg-dark); }
-        .how-section .section-title, .how-section .section-subtitle { color: white; }
-        .how-section .section-subtitle { color: rgba(255,255,255,0.7); }
-        .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-        .step-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2.5rem; text-align: center; }
-        .step-number { width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), #f472b6); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: white; margin: 0 auto 1.5rem; }
-        .step-card h3 { color: white; font-size: 1.35rem; margin-bottom: 1rem; }
-        .step-card p { color: rgba(255,255,255,0.7); }
-        @media (max-width: 768px) { .steps-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; } }
+        .how-it-works {
+            background: linear-gradient(180deg, rgba(61, 122, 122, 0.03) 0%, transparent 100%);
+            padding: 60px 2rem;
+            margin: 40px 0;
+            border-radius: 30px;
+        }
+        .how-it-works-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .how-it-works h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .steps {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            margin-top: 2rem;
+        }
+        .step {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: var(--teal);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin: 0 auto 1rem;
+        }
+        .step h3 { margin-bottom: 0.5rem; }
+        .step p { color: var(--text-light); margin: 0; }
 
-        /* Comparison */
-        .comparison-section { padding: 100px 2rem; background: white; }
-        .comparison-table { max-width: 900px; margin: 0 auto; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
-        .comparison-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; background: var(--bg-dark); color: white; font-weight: 600; }
-        .comparison-header > div { padding: 1.25rem; text-align: center; }
+        /* Comparison table */
+        .comparison-section {
+            padding: 60px 2rem;
+        }
+        .comparison-section h2 {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .comparison-subtitle {
+            text-align: center;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .comparison-table {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .comparison-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            background: var(--teal);
+            color: white;
+            font-weight: 600;
+        }
+        .comparison-header > div {
+            padding: 1.25rem;
+            text-align: center;
+        }
         .comparison-header > div:first-child { text-align: left; }
-        .comparison-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; border-bottom: 1px solid var(--border); }
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
         .comparison-row:last-child { border-bottom: none; }
-        .comparison-row > div { padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: center; }
-        .comparison-row > div:first-child { justify-content: flex-start; font-weight: 500; }
-        .check { color: var(--accent); font-size: 1.25rem; }
-        .cross { color: #ef4444; font-size: 1.25rem; }
-        .partial { color: #f59e0b; font-size: 1.25rem; }
+        .comparison-row > div {
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .comparison-row > div:first-child {
+            justify-content: flex-start;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+        .check { color: var(--sage); font-size: 1.25rem; font-weight: bold; }
+        .cross { color: #e57373; font-size: 1.25rem; }
+        .partial { color: var(--coral); font-size: 0.85rem; font-weight: 500; }
         @media (max-width: 768px) {
-            .comparison-header, .comparison-row { grid-template-columns: 1.5fr 1fr 1fr 1fr; font-size: 0.85rem; }
+            .comparison-header, .comparison-row {
+                grid-template-columns: 1.5fr 1fr 1fr 1fr;
+                font-size: 0.85rem;
+            }
             .comparison-header > div, .comparison-row > div { padding: 0.75rem; }
         }
 
         /* FAQ */
-        .faq-section { padding: 100px 2rem; background: #f8fafc; }
-        .faq-container { max-width: 800px; margin: 0 auto; }
-        .faq-item { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1rem; overflow: hidden; background: white; }
-        .faq-question { padding: 1.25rem 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--text-dark); }
-        .faq-question:hover { background: #f8fafc; }
-        .faq-arrow { width: 32px; height: 32px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
-        .faq-arrow svg { width: 16px; height: 16px; stroke: var(--text-light); transition: transform 0.3s; }
-        .faq-item.active .faq-arrow { background: var(--primary); }
-        .faq-item.active .faq-arrow svg { stroke: white; transform: rotate(180deg); }
-        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .faq-section { margin: 3rem 0; }
+        .faq-item {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .faq-question {
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text-dark);
+            transition: background 0.3s;
+        }
+        .faq-question:hover { background: rgba(255, 255, 255, 0.5); }
+        .faq-arrow {
+            width: 32px;
+            height: 32px;
+            background: rgba(61, 122, 122, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .faq-arrow svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--teal);
+            transition: transform 0.3s;
+        }
+        .faq-item.active .faq-arrow {
+            background: var(--teal);
+        }
+        .faq-item.active .faq-arrow svg {
+            stroke: white;
+            transform: rotate(180deg);
+        }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
         .faq-item.active .faq-answer { max-height: 500px; }
-        .faq-answer p { padding: 0 1.5rem 1.5rem; color: var(--text-light); line-height: 1.8; }
+        .faq-answer p {
+            padding: 0 1.5rem 1.5rem;
+            color: var(--text-medium);
+            line-height: 1.8;
+        }
 
         /* CTA */
-        .cta-section { padding: 100px 2rem; background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); text-align: center; position: relative; overflow: hidden; }
-        .cta-section::before { content: ''; position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%); top: -250px; right: -150px; }
-        .cta-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
-        .cta-content h2 { font-size: 2.75rem; font-weight: 800; color: white; margin-bottom: 1rem; }
-        .cta-content p { font-size: 1.25rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
-        .app-store-btn img { height: 60px; transition: transform 0.3s; }
-        .app-store-btn:hover img { transform: scale(1.05); }
-        .cta-tagline { margin-top: 2rem; color: rgba(255,255,255,0.6); }
+        .cta-section {
+            padding: 80px 2rem;
+            text-align: center;
+            margin-top: 40px;
+        }
+        .cta-section h2 {
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+        .cta-section > p {
+            color: var(--text-light);
+            font-size: 1.15rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .app-store-btn {
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .app-store-btn img { height: 55px; }
+        .app-store-btn:hover { transform: scale(1.05); }
+        .cta-tagline {
+            margin-top: 1.5rem;
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
 
         /* Footer */
-        footer { background: var(--bg-dark); color: white; padding: 3rem 2rem 2rem; border-top: 1px solid rgba(255,255,255,0.1); }
-        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3,1fr); gap: 2rem; }
-        .footer-section h4 { text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; color: rgba(255,255,255,0.9); }
-        .footer-section ul { list-style: none; }
-        .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.35rem 0; transition: color 0.3s; }
-        .footer-section a:hover { color: white; }
-        .footer-section p { color: rgba(255,255,255,0.6); }
-        .footer-bottom { text-align: center; color: rgba(255,255,255,0.5); padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); }
+        footer {
+            background: linear-gradient(180deg, transparent 0%, rgba(61, 122, 122, 0.05) 100%);
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(4, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .footer-brand .logo { margin-bottom: 1rem; }
+        .footer-brand p {
+            color: var(--text-light);
+            line-height: 1.7;
+            font-size: 0.9rem;
+        }
+        .footer-section h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+            color: var(--text-dark);
+        }
+        .footer-section ul { list-style: none; margin: 0; padding: 0; }
+        .footer-section a {
+            color: var(--text-light);
+            text-decoration: none;
+            display: block;
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .footer-section a:hover { color: var(--teal); }
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
         @media (max-width: 968px) { .footer-content { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 640px) { .footer-content { grid-template-columns: 1fr; text-align: center; } }
     </style>
@@ -247,10 +662,7 @@
         <nav>
             <a href="/" class="logo">
                 <div class="logo-icon">
-                    <picture>
-                        <source srcset="/app-icon.webp" type="image/webp">
-                        <img src="/app-icon.png" alt="NutraSafe" width="44" height="44">
-                    </picture>
+                    <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
                 </div>
                 <span>NutraSafe</span>
             </a>
@@ -265,29 +677,27 @@
     </header>
 
     <section class="hero">
-        <div class="hero-container">
-            <div class="hero-content">
-                <div class="hero-badges">
-                    <span class="badge badge-free">Free to Download</span>
-                    <span class="badge">500K+ UK Foods</span>
-                </div>
-                <h1>The <span class="gradient-text">Calorie Counter</span> Built for the UK</h1>
-                <p>Track calories, macros, and nutrition with the UK's most comprehensive food database. Scan barcodes from Tesco, Asda, Sainsbury's, and every major supermarket. Free tier includes 5 logs/day.</p>
-                <div class="hero-buttons">
-                    <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="btn-primary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                        Download Free
-                    </a>
-                    <a href="/tdee-bmr-calculator.html" class="btn-secondary">
-                        Calculate Your Calories
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
+        <div class="hero-content">
+            <div class="hero-badges">
+                <span class="badge badge-free">Free to Download</span>
+                <span class="badge">500K+ UK Foods</span>
+            </div>
+            <h1>The <span class="gradient-text">Calorie Counter</span> Built for the UK</h1>
+            <p>Track calories, macros, and nutrition with the UK's most comprehensive food database. Scan barcodes from Tesco, Asda, Sainsbury's, and every major supermarket. Free tier includes 5 logs/day.</p>
+            <div class="hero-buttons">
+                <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    Download Free
+                </a>
+                <a href="/tdee-bmr-calculator.html" class="btn-secondary">
+                    Calculate Your Calories
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
             </div>
             <div class="hero-visual">
                 <picture>
                     <source srcset="/nutrition-dashboard.webp" type="image/webp">
-                    <img src="/nutrition-dashboard.png" alt="NutraSafe calorie counter app showing daily calorie tracking and macros" class="phone-mockup" width="320" height="631" fetchpriority="high">
+                    <img src="/nutrition-dashboard.png" alt="NutraSafe calorie counter app showing daily calorie tracking and macros" class="phone-mockup" width="280" height="551" fetchpriority="high">
                 </picture>
             </div>
         </div>
@@ -314,200 +724,181 @@
         </div>
     </section>
 
-    <section class="features-section">
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-label">Calorie Counter Features</div>
-                <h2 class="section-title">Everything You Need to Track Calories</h2>
-                <p class="section-subtitle">Simple, accurate calorie counting with tools designed for UK users</p>
-            </div>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Calorie & Macro Tracking</h3>
-                    <p>Track calories, protein, carbs, fat, fibre, and sugar. Set personalised goals and watch your progress in real-time throughout the day.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📷</div>
-                    <h3>Barcode Scanner</h3>
-                    <p>Scan any UK product barcode for instant nutritional information. Works with Tesco, Asda, Sainsbury's, Morrisons, Aldi, Lidl, and more.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🇬🇧</div>
-                    <h3>UK Food Database</h3>
-                    <p>500,000+ verified UK foods including supermarket own-brands, restaurant meals from Greggs, Nando's, Costa, and homemade recipes.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Weight Loss Goals</h3>
-                    <p>Set your target weight and let NutraSafe calculate your daily calorie budget. Track progress with weekly summaries and insights.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🍽️</div>
-                    <h3>Meal Logging</h3>
-                    <p>Quick-add meals and snacks. Save favourite foods and recent meals for one-tap logging. Create custom recipes with accurate calorie counts.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💊</div>
-                    <h3>Vitamin & Mineral Tracking</h3>
-                    <p>Go beyond calories. Track vitamins A, B, C, D, E, K plus iron, calcium, zinc and more. See which nutrients you're missing.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    <div class="content">
+        <h2>Everything You Need to Track Calories</h2>
+        <p>Simple, accurate calorie counting with tools designed for UK users.</p>
 
-    <section class="how-section">
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-label" style="background: rgba(255,255,255,0.1); color: white;">How It Works</div>
-                <h2 class="section-title">Start Counting Calories in 3 Steps</h2>
-                <p class="section-subtitle">Get set up in under a minute and start tracking your food</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Calorie & Macro Tracking</h3>
+                <p>Track calories, protein, carbs, fat, fibre, and sugar. Set personalised goals and watch your progress in real-time throughout the day.</p>
             </div>
-            <div class="steps-grid">
-                <div class="step-card">
-                    <div class="step-number">1</div>
-                    <h3>Set Your Goals</h3>
-                    <p>Enter your details and NutraSafe calculates your daily calorie target based on your goals — lose weight, maintain, or gain.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">2</div>
-                    <h3>Log Your Food</h3>
-                    <p>Scan barcodes, search the database, or use AI to snap photos of your meals. Logging takes seconds.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">3</div>
-                    <h3>Track Progress</h3>
-                    <p>See your daily totals, weekly trends, and nutrient breakdowns. Stay on track and hit your targets.</p>
+            <div class="feature-card">
+                <div class="feature-icon">📷</div>
+                <h3>Barcode Scanner</h3>
+                <p>Scan any UK product barcode for instant nutritional information. Works with Tesco, Asda, Sainsbury's, Morrisons, Aldi, Lidl, and more.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🇬🇧</div>
+                <h3>UK Food Database</h3>
+                <p>500,000+ verified UK foods including supermarket own-brands, restaurant meals from Greggs, Nando's, Costa, and homemade recipes.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Weight Loss Goals</h3>
+                <p>Set your target weight and let NutraSafe calculate your daily calorie budget. Track progress with weekly summaries and insights.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🍽️</div>
+                <h3>Meal Logging</h3>
+                <p>Quick-add meals and snacks. Save favourite foods and recent meals for one-tap logging. Create custom recipes with accurate calorie counts.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💊</div>
+                <h3>Vitamin & Mineral Tracking</h3>
+                <p>Go beyond calories. Track vitamins A, B, C, D, E, K plus iron, calcium, zinc and more. See which nutrients you're missing.</p>
+            </div>
+        </div>
+
+        <div class="how-it-works">
+            <div class="how-it-works-content">
+                <h2>Start Counting Calories in 3 Steps</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <h3>Set Your Goals</h3>
+                        <p>Enter your details and NutraSafe calculates your daily calorie target based on your goals — lose weight, maintain, or gain.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <h3>Log Your Food</h3>
+                        <p>Scan barcodes, search the database, or use AI to snap photos of your meals. Logging takes seconds.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <h3>Track Progress</h3>
+                        <p>See your daily totals, weekly trends, and nutrient breakdowns. Stay on track and hit your targets.</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
     <section class="comparison-section">
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-label">Comparison</div>
-                <h2 class="section-title">How NutraSafe Compares</h2>
-                <p class="section-subtitle">See why UK users choose NutraSafe over other calorie counters</p>
+        <h2>How NutraSafe Compares</h2>
+        <p class="comparison-subtitle">See why UK users choose NutraSafe over other calorie counters</p>
+        <div class="comparison-table">
+            <div class="comparison-header">
+                <div>Feature</div>
+                <div>NutraSafe</div>
+                <div>MyFitnessPal</div>
+                <div>Nutracheck</div>
             </div>
-            <div class="comparison-table">
-                <div class="comparison-header">
-                    <div>Feature</div>
-                    <div>NutraSafe</div>
-                    <div>MyFitnessPal</div>
-                    <div>Nutracheck</div>
-                </div>
-                <div class="comparison-row">
-                    <div>Free calorie tracking</div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="partial">7 days</span></div>
-                </div>
-                <div class="comparison-row">
-                    <div>UK food database</div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="partial">Limited</span></div>
-                    <div><span class="check">✓</span></div>
-                </div>
-                <div class="comparison-row">
-                    <div>Barcode scanner</div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="check">✓</span></div>
-                </div>
-                <div class="comparison-row">
-                    <div>Additive warnings</div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                </div>
-                <div class="comparison-row">
-                    <div>Food reaction tracking</div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                </div>
-                <div class="comparison-row">
-                    <div>Expiry date tracker</div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                </div>
-                <div class="comparison-row">
-                    <div>No ads in free version</div>
-                    <div><span class="check">✓</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span></div>
-                </div>
+            <div class="comparison-row">
+                <div>Free calorie tracking</div>
+                <div><span class="check">✓</span></div>
+                <div><span class="check">✓</span></div>
+                <div><span class="partial">7 days</span></div>
+            </div>
+            <div class="comparison-row">
+                <div>UK food database</div>
+                <div><span class="check">✓</span></div>
+                <div><span class="partial">Limited</span></div>
+                <div><span class="check">✓</span></div>
+            </div>
+            <div class="comparison-row">
+                <div>Barcode scanner</div>
+                <div><span class="check">✓</span></div>
+                <div><span class="check">✓</span></div>
+                <div><span class="check">✓</span></div>
+            </div>
+            <div class="comparison-row">
+                <div>Additive warnings</div>
+                <div><span class="check">✓</span></div>
+                <div><span class="cross">✗</span></div>
+                <div><span class="cross">✗</span></div>
+            </div>
+            <div class="comparison-row">
+                <div>Food reaction tracking</div>
+                <div><span class="check">✓</span></div>
+                <div><span class="cross">✗</span></div>
+                <div><span class="cross">✗</span></div>
+            </div>
+            <div class="comparison-row">
+                <div>Expiry date tracker</div>
+                <div><span class="check">✓</span></div>
+                <div><span class="cross">✗</span></div>
+                <div><span class="cross">✗</span></div>
+            </div>
+            <div class="comparison-row">
+                <div>No ads in free version</div>
+                <div><span class="check">✓</span></div>
+                <div><span class="cross">✗</span></div>
+                <div><span class="check">✓</span></div>
             </div>
         </div>
     </section>
 
-    <section class="faq-section">
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-label">FAQ</div>
-                <h2 class="section-title">Calorie Counter Questions</h2>
+    <div class="content">
+        <div class="faq-section">
+            <h2>Calorie Counter Questions</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    Is NutraSafe calorie counter free?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="faq-answer">
+                    <p>Yes, NutraSafe offers a free calorie counter with barcode scanning and access to our UK food database. Free users can log up to 5 foods per day — plenty for light tracking. Premium unlocks unlimited daily logging, detailed additive analysis, and pattern recognition from £2.99/month.</p>
+                </div>
             </div>
-            <div class="faq-container">
-                <div class="faq-item">
-                    <div class="faq-question">
-                        Is NutraSafe calorie counter free?
-                        <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Yes, NutraSafe offers a free calorie counter with barcode scanning and access to our UK food database. Free users can log up to 5 foods per day — plenty for light tracking. Premium unlocks unlimited daily logging, detailed additive analysis, and pattern recognition from £2.99/month.</p>
-                    </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    How many UK foods are in the database?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
                 </div>
-                <div class="faq-item">
-                    <div class="faq-question">
-                        How many UK foods are in the database?
-                        <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>NutraSafe has over 500,000 UK foods including products from Tesco, Asda, Sainsbury's, Morrisons, Aldi, Lidl, M&S, Waitrose, Co-op, and more. We also include restaurant meals from Greggs, Nando's, Costa, Pret, McDonald's, and other UK chains. Our database is updated regularly with new products.</p>
-                    </div>
+                <div class="faq-answer">
+                    <p>NutraSafe has over 500,000 UK foods including products from Tesco, Asda, Sainsbury's, Morrisons, Aldi, Lidl, M&S, Waitrose, Co-op, and more. We also include restaurant meals from Greggs, Nando's, Costa, Pret, McDonald's, and other UK chains. Our database is updated regularly with new products.</p>
                 </div>
-                <div class="faq-item">
-                    <div class="faq-question">
-                        Can I track macros with NutraSafe?
-                        <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Yes, NutraSafe tracks all macronutrients including protein, carbohydrates, fat, fibre, and sugar. You can set personalised macro goals (like 40/30/30 split) and see your daily progress in real-time. Perfect for keto, low-carb, high-protein, or any other macro-focused diet.</p>
-                    </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    Can I track macros with NutraSafe?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
                 </div>
-                <div class="faq-item">
-                    <div class="faq-question">
-                        How accurate is the calorie counting?
-                        <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>NutraSafe uses verified UK food data directly from product labels and official sources. Our barcode scanner pulls exact nutritional information from manufacturer data. For best accuracy, we recommend weighing portions and logging immediately after eating. UK food labels are legally required to be accurate within 20%.</p>
-                    </div>
+                <div class="faq-answer">
+                    <p>Yes, NutraSafe tracks all macronutrients including protein, carbohydrates, fat, fibre, and sugar. You can set personalised macro goals (like 40/30/30 split) and see your daily progress in real-time. Perfect for keto, low-carb, high-protein, or any other macro-focused diet.</p>
                 </div>
-                <div class="faq-item">
-                    <div class="faq-question">
-                        What makes NutraSafe different from other calorie counters?
-                        <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>NutraSafe is built specifically for UK users with a comprehensive British food database. Unlike US-focused apps, we include UK supermarket own-brands, British restaurant chains, and use UK portion sizes. Plus, we offer unique features like food additive warnings, reaction tracking, and expiry date monitoring that other calorie counters don't have.</p>
-                    </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    How accurate is the calorie counting?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="faq-answer">
+                    <p>NutraSafe uses verified UK food data directly from product labels and official sources. Our barcode scanner pulls exact nutritional information from manufacturer data. For best accuracy, we recommend weighing portions and logging immediately after eating. UK food labels are legally required to be accurate within 20%.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    What makes NutraSafe different from other calorie counters?
+                    <span class="faq-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="faq-answer">
+                    <p>NutraSafe is built specifically for UK users with a comprehensive British food database. Unlike US-focused apps, we include UK supermarket own-brands, British restaurant chains, and use UK portion sizes. Plus, we offer unique features like food additive warnings, reaction tracking, and expiry date monitoring that other calorie counters don't have.</p>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
     <section class="cta-section">
-        <div class="cta-content">
-            <h2>Start Counting Calories Today</h2>
-            <p>Join thousands of UK users tracking their nutrition with NutraSafe. Free to download with 5 logs/day.</p>
-            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="app-store-btn">
-                <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download NutraSafe calorie counter on the App Store" width="200" height="60">
-            </a>
-            <p class="cta-tagline">Free download • No credit card required • UK food database</p>
-        </div>
+        <h2>Start Counting Calories Today</h2>
+        <p>Join thousands of UK users tracking their nutrition with NutraSafe. Free to download with 5 logs/day.</p>
+        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="app-store-btn">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download NutraSafe calorie counter on the App Store" width="200" height="60">
+        </a>
+        <p class="cta-tagline">Free download • No credit card required • UK food database</p>
     </section>
 
     <footer>
@@ -515,10 +906,7 @@
             <div class="footer-brand">
                 <a href="/" class="logo">
                     <div class="logo-icon">
-                        <picture>
-                            <source srcset="/app-icon.webp" type="image/webp">
-                            <img src="/app-icon.png" alt="NutraSafe" width="44" height="44" loading="lazy">
-                        </picture>
+                        <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44" loading="lazy">
                     </div>
                     <span>NutraSafe</span>
                 </a>

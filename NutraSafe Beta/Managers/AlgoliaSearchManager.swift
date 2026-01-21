@@ -885,18 +885,35 @@ final class AlgoliaSearchManager {
 
             // SERVING SIZE SCORING
             if let servingGrams = result.servingSizeG, servingGrams > 0 {
+                // Prefer single-serve portions
                 if servingGrams <= 50 {
-                    score += 1200  // Snack-sized
+                    score += 1200  // Snack-sized (chocolate bar, single can appetizer)
                 } else if servingGrams <= 100 {
                     score += 800   // Standard portion
                 } else if servingGrams <= 200 {
                     score += 300   // Reasonable portion
-                } else if servingGrams > 500 {
+                } else if servingGrams <= 500 {
+                    // No bonus or penalty for medium portions
+                    score += 0
+                } else if servingGrams > 500 && servingGrams <= 1000 {
                     score -= 600   // Large portion (likely bulk)
+                } else if servingGrams > 1000 {
+                    score -= 1200  // Very large (definitely bulk like 2L bottles)
                 }
-                if servingGrams > 1000 {
-                    score -= 1200  // Very large (definitely bulk)
+
+                // BONUS: Prefer items with ACTUAL serving size over generic 100g
+                // If servingGrams is NOT exactly 100, it's likely real data
+                if servingGrams != 100 {
+                    score += 1500  // Strong bonus for actual serving data
                 }
+            } else {
+                // PENALTY: No serving size = generic 100g default
+                score -= 800  // Demote items without serving data
+            }
+
+            // BONUS: Item has meaningful serving size (from name or description)
+            if result.hasActualServingSize {
+                score += 1000  // Reward items with concrete size info
             }
 
             // NAME LENGTH BONUS (shorter = more canonical)
@@ -945,42 +962,53 @@ final class AlgoliaSearchManager {
                 }
 
             case .genericFood(let foodName):
-                // Generic food search (e.g., "banana", "apple", "rice")
-                // This is where we STRONGLY prioritize base/raw foods over branded products
+                // Generic food search (e.g., "banana", "apple", "steak", "chicken")
+                // HOLISTIC APPROACH: Prioritize raw/base foods over prepared/composite products
 
-                // Check if UKFoodDefaults has demote patterns for this food
-                // Apply additional penalty for branded/processed items
+                // === HOLISTIC PREPARED FOOD DETECTION ===
+                // This works for ANY food, not just items in UKFoodDefaults
+                let preparedPenalty = PreparedFoodDetector.preparedFoodPenalty(productName: result.name, query: foodName)
+                score += preparedPenalty
+
+                // Extra penalty if query word is in "modifier position" (e.g., "Steak" in "Steak Bake")
+                if PreparedFoodDetector.isModifierPosition(query: foodName, productName: result.name) {
+                    score -= 5000  // "steak" in "Steak Bake" - user didn't want this
+                }
+
+                // Check if UKFoodDefaults has specific patterns for this food
+                // (provides additional fine-tuning for common foods like milk, bread, etc.)
                 let defaultBonus = UKFoodDefaults.defaultScore(productName: result.name, forQuery: foodName)
                 if defaultBonus < 0 {
-                    // Strengthen the demote penalty for branded products
                     score += defaultBonus * 2  // Double the demotion effect
                 } else if defaultBonus > 0 {
                     score += defaultBonus
                 }
 
-                // Additional penalty for items with brands when searching generic foods
-                // (e.g., "Getbuzzing Banana Bars" should be heavily demoted for "banana" search)
+                // Penalty for branded items (user searching generic food doesn't want branded)
                 if !brandLower.isEmpty {
-                    score -= 3000  // Branded items get demoted for generic food searches
+                    score -= 3000
                 }
 
-                // Boost for simple names (2-3 words max)
+                // Strong penalty for fast food restaurant sources
+                if result.source == "fast_foods_database" {
+                    score -= 6000  // User searching "steak" doesn't want Greggs Steak Bake
+                }
+
+                // Boost for simple, short names (likely the canonical raw food)
                 if nameWords.count <= 3 && brandLower.isEmpty {
-                    score += 2000  // Strong boost for simple unbranded names
+                    score += 3000  // Strong boost for simple unbranded names like "Beef Steak"
                 } else if nameWords.count <= 3 {
-                    score += 500   // Small boost even with brand
+                    score += 500
                 }
 
-                // Heavy penalty for common processed food indicators
-                let processedIndicators = ["bar", "bars", "bread", "chip", "chips", "cake", "muffin",
-                                          "smoothie", "milkshake", "ice cream", "pudding", "split",
-                                          "flavour", "flavor", "dried", "loaf", "pancake", "pie",
-                                          "crumble", "turnover", "strudel", "sauce", "juice"]
-                for indicator in processedIndicators {
-                    if nameLower.contains(indicator) {
-                        score -= 4000  // Heavy penalty for processed foods
-                        break  // Only apply once
-                    }
+                // Boost if the name is JUST the food (or food + size/variety)
+                let sizeVarietyWords: Set<String> = ["raw", "fresh", "small", "medium", "large", "whole", "ripe",
+                                                     "cooked", "boiled", "grilled", "roasted", "fried", "baked",
+                                                     "lean", "skinless", "boneless", "fillet", "breast", "leg",
+                                                     "sirloin", "ribeye", "rump", "mince", "minced", "diced"]
+                let nonFoodWords = nameWords.filter { !$0.contains(foodName) && !sizeVarietyWords.contains($0) }
+                if nonFoodWords.isEmpty && nameWords.count <= 4 {
+                    score += 4000  // Name is basically just the food + qualifiers
                 }
 
             default:
@@ -1339,8 +1367,206 @@ final class AlgoliaSearchManager {
 
             // Extract optional fields with fallback names
             let brand = (hit["brandName"] as? String) ?? (hit["brand"] as? String)
-            let servingDescription = (hit["servingSize"] as? String) ?? (hit["serving_description"] as? String)
-            let servingSizeG = getNumber(hit, "servingSizeG", "serving_size_g", "serving_size")
+
+            // === SERVING SIZE PARSING - Multiple field name variants ===
+            // Different Algolia indices use different field names for serving info
+            // Priority: specific grams > description with grams > generic description
+
+            // Try to get numeric serving size from various field names
+            var servingSizeG = getNumber(hit,
+                "servingSizeG",           // Our standard format
+                "serving_size_g",         // Snake case variant
+                "serving_size",           // Generic
+                "servingWeight",          // Weight variant
+                "serving_weight",         // Snake case weight
+                "servingGrams",           // Explicit grams
+                "serving_grams",          // Snake case grams
+                "portionSize",            // Portion variant
+                "portion_size",           // Snake case portion
+                "portionWeight",          // Portion weight
+                "portion_weight",         // Snake case portion weight
+                "quantity_g",             // Quantity in grams
+                "amount_g"                // Amount in grams
+            )
+
+            // Try to get serving description from various field names
+            var servingDescription = (hit["servingSize"] as? String)
+                ?? (hit["serving_description"] as? String)
+                ?? (hit["servingDescription"] as? String)
+                ?? (hit["serving_size_description"] as? String)
+                ?? (hit["portionDescription"] as? String)
+                ?? (hit["portion_description"] as? String)
+                ?? (hit["serving"] as? String)
+                ?? (hit["portion"] as? String)
+
+            // If we have a description but no numeric size, try to extract grams from the description
+            // e.g., "330ml can" -> 330, "1 bar (51g)" -> 51, "per 100g" -> 100
+            if servingSizeG == nil, let desc = servingDescription {
+                let descLower = desc.lowercased()
+
+                // Pattern 1: "XXXml" for drinks (ml ≈ g for water-based drinks)
+                if let mlMatch = descLower.range(of: "(\\d+)\\s*ml", options: .regularExpression) {
+                    let mlString = String(descLower[mlMatch]).replacingOccurrences(of: "ml", with: "").trimmingCharacters(in: .whitespaces)
+                    if let ml = Double(mlString) {
+                        servingSizeG = ml  // ml ≈ g for drinks
+                    }
+                }
+                // Pattern 2: "(XXXg)" - grams in parentheses
+                else if let gMatch = descLower.range(of: "\\((\\d+\\.?\\d*)g\\)", options: .regularExpression) {
+                    let gString = String(descLower[gMatch])
+                        .replacingOccurrences(of: "(", with: "")
+                        .replacingOccurrences(of: "g)", with: "")
+                    if let g = Double(gString) {
+                        servingSizeG = g
+                    }
+                }
+                // Pattern 3: "XXXg" at end of string
+                else if let gMatch = descLower.range(of: "(\\d+\\.?\\d*)g$", options: .regularExpression) {
+                    let gString = String(descLower[gMatch]).replacingOccurrences(of: "g", with: "")
+                    if let g = Double(gString) {
+                        servingSizeG = g
+                    }
+                }
+                // Pattern 4: "per 100g" - standard per 100g serving
+                else if descLower.contains("per 100g") || descLower.contains("per 100 g") {
+                    servingSizeG = 100
+                }
+            }
+
+            // For drinks, also check for volume-based fields and convert to grams
+            if servingSizeG == nil {
+                if let ml = getNumber(hit, "serving_ml", "servingMl", "volume_ml", "volumeMl", "ml") {
+                    servingSizeG = ml  // ml ≈ g for most drinks
+                }
+            }
+
+            // ALWAYS try to extract serving size from the PRODUCT NAME
+            // This runs even if we have a servingSizeG value, because:
+            // - Data often has servingSizeG=100 (the per-100g default) which isn't useful
+            // - The name "Coca-Cola 330ml Can" clearly tells us the actual serving size
+            // - We prefer explicit size from name over generic 100g default
+            let nameLower = name.lowercased()
+            var extractedFromName: Double? = nil
+            var extractedUnit: String? = nil
+
+            // Pattern 1: "XXXml" in name (for drinks) - most specific, check first
+            if let mlMatch = nameLower.range(of: "(\\d+)\\s*ml\\b", options: .regularExpression) {
+                let matchedString = String(nameLower[mlMatch])
+                let mlString = matchedString.replacingOccurrences(of: "ml", with: "").trimmingCharacters(in: .whitespaces)
+                if let ml = Double(mlString), ml > 0 && ml < 3000 {
+                    extractedFromName = ml
+                    extractedUnit = "ml"
+                }
+            }
+            // Pattern 2: "X.Xl" or "Xl" for liters (e.g., "2L bottle") - check before grams
+            else if let lMatch = nameLower.range(of: "(\\d+\\.?\\d*)\\s*l\\b", options: .regularExpression) {
+                let matchedString = String(nameLower[lMatch])
+                let lString = matchedString.replacingOccurrences(of: "l", with: "").trimmingCharacters(in: .whitespaces)
+                if let liters = Double(lString), liters > 0 && liters <= 5 {
+                    extractedFromName = liters * 1000  // Convert liters to ml
+                    extractedUnit = liters == 1.0 ? "L" : "\(lString)L"
+                }
+            }
+            // Pattern 3: "XXXg" in name (for snacks/bars)
+            else if let gMatch = nameLower.range(of: "(\\d+\\.?\\d*)\\s*g\\b", options: .regularExpression) {
+                let matchedString = String(nameLower[gMatch])
+                let gString = matchedString.replacingOccurrences(of: "g", with: "").trimmingCharacters(in: .whitespaces)
+                if let g = Double(gString), g > 0 && g < 2000 && g != 100 {
+                    // Only use if it's not 100g (which is likely "per 100g" not actual serving)
+                    extractedFromName = g
+                    extractedUnit = "g"
+                }
+            }
+
+            // Use extracted value if:
+            // 1. We don't have a servingSizeG at all, OR
+            // 2. We have 100 (the useless default), OR
+            // 3. The extracted value is more specific (e.g., name says 330ml but data says 100)
+            if let extracted = extractedFromName {
+                if servingSizeG == nil || servingSizeG == 100 || (servingSizeG != extracted && extracted != 100) {
+                    servingSizeG = extracted
+
+                    // Also update serving description to be more accurate
+                    if let unit = extractedUnit {
+                        if unit == "ml" {
+                            servingDescription = "\(Int(extracted))ml"
+                        } else if unit == "L" || unit.hasSuffix("L") {
+                            servingDescription = unit
+                        } else {
+                            servingDescription = "\(Int(extracted))g"
+                        }
+                    }
+                }
+            }
+
+            // SMART DEFAULTS: Apply typical serving sizes for common drinks/snacks
+            // when no explicit size was found and we're stuck with useless 100ml/g default
+            // This handles cases like "Coca Cola" (no size in name) → assume 330ml can
+            if servingSizeG == nil || servingSizeG == 100 {
+                let typicalServingSizes: [String: (size: Double, unit: String)] = [
+                    // Carbonated drinks - 330ml cans
+                    "coca-cola": (330, "ml"), "coca cola": (330, "ml"), "coke": (330, "ml"),
+                    "pepsi": (330, "ml"), "fanta": (330, "ml"), "sprite": (330, "ml"),
+                    "7up": (330, "ml"), "7-up": (330, "ml"), "dr pepper": (330, "ml"),
+                    "irn-bru": (330, "ml"), "irn bru": (330, "ml"), "tango": (330, "ml"),
+                    "lilt": (330, "ml"), "rio": (330, "ml"), "rubicon": (330, "ml"),
+                    "san pellegrino": (330, "ml"), "schweppes": (330, "ml"),
+
+                    // Energy drinks
+                    "red bull": (250, "ml"), "monster energy": (500, "ml"), "monster": (500, "ml"),
+                    "rockstar": (500, "ml"), "relentless": (500, "ml"), "boost energy": (250, "ml"),
+                    "lucozade energy": (380, "ml"), "lucozade sport": (500, "ml"),
+                    "lucozade": (380, "ml"), "powerade": (500, "ml"), "gatorade": (500, "ml"),
+
+                    // Bottled water
+                    "evian": (500, "ml"), "volvic": (500, "ml"), "buxton": (500, "ml"),
+                    "highland spring": (500, "ml"),
+
+                    // Juices - typical cartons/bottles
+                    "tropicana": (250, "ml"), "innocent": (250, "ml"),
+                    "ribena": (500, "ml"), "capri sun": (200, "ml"),
+                    "oasis": (500, "ml"), "j2o": (275, "ml"),
+
+                    // Coffee drinks
+                    "starbucks frappuccino": (250, "ml"), "costa iced": (250, "ml"),
+
+                    // Chocolate bars - typical single bar weights
+                    "mars bar": (51, "g"), "mars": (51, "g"),
+                    "snickers": (52, "g"), "snickers bar": (52, "g"),
+                    "twix": (50, "g"), "twix bar": (50, "g"),
+                    "kit kat": (41.5, "g"), "kitkat": (41.5, "g"),
+                    "dairy milk": (45, "g"), "cadbury dairy milk": (45, "g"),
+                    "galaxy": (42, "g"), "galaxy bar": (42, "g"),
+                    "aero": (36, "g"), "aero bar": (36, "g"),
+                    "crunchie": (40, "g"), "bounty": (57, "g"),
+                    "milky way": (21.5, "g"), "maltesers": (37, "g"),
+                    "wispa": (36, "g"), "double decker": (54.5, "g"),
+                    "boost": (48.5, "g"), "picnic": (48.4, "g"),
+                    "yorkie": (46, "g"), "lion bar": (42, "g"),
+                    "kinder bueno": (43, "g"), "ferrero rocher": (12.5, "g"),
+                    "toblerone": (35, "g"), "curly wurly": (26, "g"),
+                    "freddo": (18, "g"), "fudge": (25.5, "g"),
+
+                    // Crisps - typical bag sizes
+                    "walkers": (32.5, "g"), "walkers crisps": (32.5, "g"),
+                    "quavers": (16, "g"), "wotsits": (16.5, "g"),
+                    "hula hoops": (34, "g"), "monster munch": (22, "g"),
+                    "skips": (17, "g"), "frazzles": (18, "g"),
+                    "pringles": (40, "g"), "doritos": (40, "g"),
+                    "sensations": (40, "g"), "kettle chips": (40, "g"),
+                    "mccoys": (45, "g")
+                ]
+
+                // Check if product name matches any known item
+                for (itemName, serving) in typicalServingSizes {
+                    if nameLower.contains(itemName) {
+                        servingSizeG = serving.size
+                        servingDescription = "\(serving.unit == "ml" ? Int(serving.size) : Int(serving.size))\(serving.unit)"
+                        break
+                    }
+                }
+            }
+
             let isPerUnit = (hit["per_unit_nutrition"] as? Bool) ?? (hit["isPerUnit"] as? Bool)
             // Check multiple field name variants for verification status
             let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? (hit["is_verified"] as? Bool) ?? false

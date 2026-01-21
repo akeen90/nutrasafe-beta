@@ -55,7 +55,7 @@ struct AllergenManagementView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Allergen Management")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -258,7 +258,7 @@ struct SafetyAlertsConfigView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Safety Alerts")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -401,7 +401,7 @@ struct MicronutrientDisplayView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Micronutrient Display")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

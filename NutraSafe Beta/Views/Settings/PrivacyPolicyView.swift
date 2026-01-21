@@ -456,7 +456,7 @@ struct PrivacyPolicyView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Privacy Policy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

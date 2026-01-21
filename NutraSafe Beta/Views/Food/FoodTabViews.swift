@@ -120,7 +120,7 @@ private var foodGlassBackground: some View {
             endRadius: 300
         )
         RadialGradient(
-            colors: [Color.purple.opacity(0.08), Color.clear],
+            colors: [AppPalette.standard.primary.opacity(0.08), Color.clear],
             center: .bottomTrailing,
             startRadius: 0,
             endRadius: 280
@@ -149,8 +149,8 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
                             selectedTab == tab ?
                             LinearGradient(
                                 colors: [
-                                    Color(red: 0.3, green: 0.5, blue: 1.0),
-                                    Color(red: 0.5, green: 0.3, blue: 0.9)
+                                    AppPalette.standard.accent,
+                                    AppPalette.standard.accent.opacity(0.8)
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -267,8 +267,8 @@ struct FoodReactionsView: View {
                             selectedSubTab == tab ?
                             LinearGradient(
                                 colors: [
-                                    Color(red: 0.3, green: 0.5, blue: 1.0),
-                                    Color(red: 0.5, green: 0.3, blue: 0.9)
+                                    AppPalette.standard.accent,
+                                    AppPalette.standard.accent.opacity(0.8)
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -2297,7 +2297,7 @@ struct ReactionDetailView: View {
                 }
                 .padding(20)
             }
-            .background(Color.adaptiveBackground)
+            .background(AppAnimatedBackground())
             .navigationTitle("Reaction Details")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(

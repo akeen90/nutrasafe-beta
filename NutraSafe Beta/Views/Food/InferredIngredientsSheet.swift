@@ -50,7 +50,7 @@ struct InferredIngredientsSheet: View {
                 }
                 .padding()
             }
-            .background(Color.adaptiveBackground)
+            .background(AppAnimatedBackground())
             .navigationTitle("Estimated Ingredients")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

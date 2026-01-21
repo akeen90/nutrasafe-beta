@@ -1262,7 +1262,7 @@ struct LogReactionSheet: View {
                 }
                 .padding(20)
             }
-            .background(Color.adaptiveBackground)
+            .background(AppAnimatedBackground())
             .navigationTitle("Log Reaction")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

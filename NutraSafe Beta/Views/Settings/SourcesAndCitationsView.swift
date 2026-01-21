@@ -79,7 +79,7 @@ struct SourcesAndCitationsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

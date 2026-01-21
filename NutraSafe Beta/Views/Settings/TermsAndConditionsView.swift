@@ -360,7 +360,7 @@ struct TermsAndConditionsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.adaptiveBackground.ignoresSafeArea())
+            .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Terms & Conditions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

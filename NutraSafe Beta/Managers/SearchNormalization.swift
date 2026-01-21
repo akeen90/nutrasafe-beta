@@ -225,7 +225,8 @@ struct SearchQueryNormalizer {
             "heinz", "tesco", "sainsburys", "asda", "morrisons", "aldi", "lidl",
             "walkers", "mccoys", "pringles", "doritos", "mcdonalds", "kfc",
             "coca-cola", "pepsi", "fanta", "sprite", "lucozade", "ribena",
-            "warburtons", "hovis", "kingsmill", "mcvities", "birdseye", "quorn"
+            "warburtons", "hovis", "kingsmill", "mcvities", "birdseye", "quorn",
+            "greggs", "subway", "nandos", "costa", "starbucks", "burger king"
         ])
 
         if words.count == 1 && knownBrands.contains(words[0]) {
@@ -240,20 +241,142 @@ struct SearchQueryNormalizer {
             }
         }
 
-        // Check if it's a generic food search
-        let genericFoods = Set([
-            "milk", "bread", "cheese", "butter", "eggs", "egg", "chicken", "beef",
-            "pork", "lamb", "fish", "rice", "pasta", "potato", "potatoes", "apple",
-            "banana", "orange", "tomato", "onion", "carrot", "broccoli", "water",
-            "juice", "yoghurt", "cream", "flour", "sugar", "salt", "oil"
-        ])
-
-        if words.count == 1 && genericFoods.contains(words[0]) {
-            return .genericFood(words[0])
+        // HOLISTIC APPROACH: Treat ALL single-word queries as potential generic food searches
+        // UNLESS they're a known brand or look like a product code
+        // The ranking logic will handle demoting composite/prepared foods
+        if words.count == 1 {
+            let word = words[0]
+            // Must be at least 3 chars, not all digits, not a known brand
+            if word.count >= 3 && !word.allSatisfy({ $0.isNumber }) && !knownBrands.contains(word) {
+                return .genericFood(word)
+            }
         }
 
         // Default: product search
         return .productSearch(query)
+    }
+}
+
+// MARK: - Prepared Food Detection (Holistic)
+
+/// Universal detection of prepared/composite foods vs raw ingredients
+/// This works for ANY food, not just items in a hardcoded list
+struct PreparedFoodDetector {
+
+    /// Suffixes that indicate a prepared/composite food product
+    /// If a product name ENDS with these, it's likely prepared food
+    /// e.g., "Steak Bake", "Banana Bread", "Chicken Curry"
+    static let preparedFoodSuffixes: Set<String> = [
+        // Baked goods
+        "bake", "pie", "pies", "tart", "tarts", "cake", "cakes", "bread", "loaf",
+        "muffin", "muffins", "scone", "scones", "croissant", "pastry", "pasty",
+        "roll", "rolls", "bun", "buns", "wrap", "wraps", "bagel", "bagels",
+        "crumble", "pudding", "strudel", "turnover", "flapjack", "brownie",
+
+        // Sandwiches & meals
+        "sandwich", "sandwiches", "burger", "burgers", "sub", "panini",
+        "toastie", "kebab", "kebabs", "hotdog", "burrito", "taco", "tacos",
+
+        // Prepared dishes
+        "curry", "curries", "stew", "stews", "soup", "soups", "casserole",
+        "lasagne", "lasagna", "risotto", "paella", "biryani", "korma", "masala",
+        "tikka", "vindaloo", "madras", "balti", "jalfrezi", "bhuna", "dopiaza",
+
+        // Processed snacks
+        "bar", "bars", "crisp", "crisps", "chip", "chips", "nugget", "nuggets",
+        "finger", "fingers", "bite", "bites", "pop", "pops", "ball", "balls",
+        "stick", "sticks", "ring", "rings", "puff", "puffs", "cracker", "crackers",
+
+        // Dairy products (prepared)
+        "shake", "shakes", "milkshake", "smoothie", "smoothies", "yoghurt", "yogurt",
+        "icecream", "ice cream", "mousse", "custard", "parfait",
+
+        // Preserves & sauces
+        "jam", "jelly", "marmalade", "chutney", "sauce", "sauces", "dip", "dips",
+        "spread", "paste", "puree", "ketchup", "mayo", "mayonnaise", "relish",
+
+        // Other prepared foods
+        "salad", "salads", "slaw", "coleslaw", "hummus", "guacamole", "salsa",
+        "quiche", "frittata", "omelette", "omelet", "scramble",
+        "kiev", "kievs", "schnitzel", "goujons", "escalope",
+
+        // Drinks
+        "juice", "juices", "squash", "cordial", "lemonade", "cola", "soda",
+        "drink", "drinks", "cocktail", "smoothie"
+    ]
+
+    /// Words that indicate the query itself is for a prepared food (user wants it)
+    static let preparedFoodQueryIndicators: Set<String> = [
+        "bake", "pie", "cake", "bread", "muffin", "wrap", "sandwich", "burger",
+        "curry", "soup", "stew", "bar", "chips", "crisps", "nuggets", "fingers",
+        "shake", "smoothie", "juice", "salad", "jam", "sauce"
+    ]
+
+    /// Check if a product name indicates a prepared/composite food
+    /// Returns true if the product is likely a prepared food containing an ingredient
+    static func isPreparedFood(_ productName: String) -> Bool {
+        let nameLower = productName.lowercased()
+        let words = nameLower.split(separator: " ").map(String.init)
+
+        guard words.count >= 2 else { return false }
+
+        // Check if name ends with a prepared food suffix
+        if let lastWord = words.last, preparedFoodSuffixes.contains(lastWord) {
+            return true
+        }
+
+        // Check second-to-last word for compound endings like "ice cream"
+        if words.count >= 2 {
+            let lastTwo = words.suffix(2).joined(separator: " ")
+            if preparedFoodSuffixes.contains(lastTwo) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /// Check if the user's query indicates they WANT a prepared food
+    static func queryWantsPreparedFood(_ query: String) -> Bool {
+        let queryWords = Set(query.lowercased().split(separator: " ").map(String.init))
+        return !queryWords.isDisjoint(with: preparedFoodQueryIndicators)
+    }
+
+    /// Calculate penalty score for prepared foods when user searched for raw ingredient
+    /// Returns negative score (penalty) if product is prepared but query was for raw
+    static func preparedFoodPenalty(productName: String, query: String) -> Int {
+        let queryWords = query.lowercased().split(separator: " ").map(String.init)
+
+        // Only apply for single-word queries (likely raw ingredient searches)
+        guard queryWords.count == 1 else { return 0 }
+
+        // If user explicitly wants prepared food, no penalty
+        if queryWantsPreparedFood(query) { return 0 }
+
+        // If product is a prepared food, apply penalty
+        if isPreparedFood(productName) {
+            return -8000  // Heavy penalty - user searched "steak", got "steak bake"
+        }
+
+        return 0
+    }
+
+    /// Check if query word is in "modifier position" (first word of multi-word product)
+    /// e.g., "steak" in "Steak Bake" is a modifier; "steak" in "Beef Steak" is the head noun
+    static func isModifierPosition(query: String, productName: String) -> Bool {
+        let queryLower = query.lowercased()
+        let nameWords = productName.lowercased().split(separator: " ").map(String.init)
+
+        guard nameWords.count >= 2 else { return false }
+
+        // Query word is first AND there's a prepared food suffix at end
+        if nameWords.first == queryLower || nameWords.first?.hasPrefix(queryLower) == true {
+            if let lastWord = nameWords.last, preparedFoodSuffixes.contains(lastWord) {
+                return true  // "Steak" in "Steak Bake" - modifier position
+            }
+        }
+
+        return false
     }
 }
 
@@ -1039,6 +1162,52 @@ struct UKFoodDefaults {
             preferencePatterns: ["turkey raw", "turkey fresh", "turkey breast", "turkey mince"],
             neutralPatterns: ["turkey"],
             demotePatterns: ["turkey sandwich", "roast turkey", "turkey dinosaurs", "turkey twizzlers", "turkey bacon"]
+        ),
+
+        // MARK: - Specific Cuts (Raw Meat)
+        "steak": GenericFoodDefault(
+            defaultProduct: "Beef Steak",
+            preferencePatterns: ["beef steak", "sirloin steak", "ribeye steak", "rump steak", "fillet steak",
+                               "steak raw", "steak fresh", "stewing steak", "braising steak", "frying steak",
+                               "minute steak", "flash fry steak", "grilling steak"],
+            neutralPatterns: ["steak"],
+            demotePatterns: ["steak bake", "steak pie", "steak slice", "steak pasty", "steak sandwich",
+                           "steak and kidney", "steak burger", "steak wrap", "steak sub", "steak roll",
+                           "philly steak", "cheese steak", "cheesesteak", "steak pudding", "steak house",
+                           "greggs", "ginsters", "pukka", "fray bentos", "hollands"]
+        ),
+        "mince": GenericFoodDefault(
+            defaultProduct: "Beef Mince",
+            preferencePatterns: ["beef mince", "minced beef", "lean mince", "extra lean mince", "5% fat mince",
+                               "mince fresh", "mince raw", "steak mince"],
+            neutralPatterns: ["mince", "minced"],
+            demotePatterns: ["mince pie", "mincemeat", "mince and onion", "shepherds pie", "cottage pie",
+                           "bolognese", "lasagne", "chilli con carne", "meatballs", "burger"]
+        ),
+        "bacon": GenericFoodDefault(
+            defaultProduct: "Back Bacon",
+            preferencePatterns: ["back bacon", "streaky bacon", "smoked bacon", "unsmoked bacon", "bacon rashers",
+                               "bacon raw", "bacon fresh", "dry cured bacon", "bacon medallions"],
+            neutralPatterns: ["bacon"],
+            demotePatterns: ["bacon sandwich", "bacon roll", "bacon bap", "bacon butty", "bacon and eggs",
+                           "bacon bits", "bacon flavour", "turkey bacon", "bacon jam", "bacon wrap"]
+        ),
+        "sausage": GenericFoodDefault(
+            defaultProduct: "Pork Sausage",
+            preferencePatterns: ["pork sausage", "sausage raw", "sausage fresh", "cumberland sausage",
+                               "lincolnshire sausage", "chipolata", "breakfast sausage", "thick sausage"],
+            neutralPatterns: ["sausage", "sausages"],
+            demotePatterns: ["sausage roll", "sausage sandwich", "sausage bap", "sausage casserole",
+                           "sausage and mash", "toad in the hole", "hot dog", "frankfurt", "bratwurst",
+                           "sausage meat", "sausage stuffing"]
+        ),
+        "ham": GenericFoodDefault(
+            defaultProduct: "Cooked Ham",
+            preferencePatterns: ["ham sliced", "cooked ham", "honey roast ham", "smoked ham", "gammon",
+                               "ham fresh", "ham joint", "parma ham", "serrano ham"],
+            neutralPatterns: ["ham"],
+            demotePatterns: ["ham sandwich", "ham and cheese", "ham roll", "ham salad", "ham hock",
+                           "ham and pineapple", "ham pizza", "ham croquette", "spam"]
         ),
 
         // MARK: - Nuts & Seeds (Base/Raw Foods)

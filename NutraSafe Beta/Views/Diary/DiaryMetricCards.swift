@@ -978,5 +978,5 @@ struct CompactMetricItem: View {
         }
         .padding()
     }
-    .background(Color.adaptiveBackground)
+    .background(AppAnimatedBackground())
 }

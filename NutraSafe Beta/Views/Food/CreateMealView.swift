@@ -563,7 +563,7 @@ struct AddFoodToMealView: View {
                     }
                 }
             }
-            .background(Color.adaptiveBackground)
+            .background(AppAnimatedBackground())
             .navigationTitle("Add Food")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

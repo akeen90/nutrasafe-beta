@@ -30,7 +30,7 @@ struct MyMealsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.adaptiveBackground)
+        .background(AppAnimatedBackground())
         .fullScreenCover(isPresented: $showingCreateMeal) {
             CreateMealView(selectedTab: $selectedTab, onComplete: onComplete)
                 .environmentObject(diaryDataManager)
@@ -67,118 +67,147 @@ struct MyMealsView: View {
         .trackScreen("My Meals")
     }
 
-    // MARK: - Empty State
+    // MARK: - Empty State - Redesigned with NutraSafe visual language
     private var emptyStateView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
             Spacer()
 
-            // Icon
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [AppPalette.standard.accent.opacity(0.2), Color.purple.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 120, height: 120)
+            // Central card panel
+            VStack(spacing: 24) {
+                // Icon with soft container
+                ZStack {
+                    Circle()
+                        .fill(AppPalette.standard.accent.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                        .frame(width: 88, height: 88)
 
-                Image(systemName: "fork.knife.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [AppPalette.standard.accent, Color.purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-
-            VStack(spacing: 12) {
-                Text("No Saved Meals")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                Text("Create meals to quickly log your favourite combinations")
-                    .font(.system(size: 16))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-
-            // Benefits
-            VStack(alignment: .leading, spacing: 12) {
-                BenefitRow(icon: "bolt.fill", text: "Log entire meals in one tap", color: .orange)
-                BenefitRow(icon: "clock.fill", text: "Save time on daily logging", color: .blue)
-                BenefitRow(icon: "heart.fill", text: "Track your favourites easily", color: .pink)
-            }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 16)
-
-            // Create Button
-            Button(action: { showingCreateMeal = true }) {
-                HStack(spacing: 10) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 20))
-                    Text("Create Your First Meal")
-                        .font(.system(size: 17, weight: .semibold))
+                    Image(systemName: "fork.knife.circle")
+                        .font(.system(size: 40, weight: .medium))
+                        .foregroundColor(AppPalette.standard.accent)
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+
+                VStack(spacing: 10) {
+                    Text("No saved meals yet")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Create meals to log your favourite\ncombinations in one tap")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                }
+
+                // Benefits - redesigned with soft styling
+                VStack(alignment: .leading, spacing: 14) {
+                    BenefitRow(icon: "bolt.fill", text: "Log entire meals in one tap", color: SemanticColors.neutral)
+                    BenefitRow(icon: "clock.fill", text: "Save time on daily logging", color: AppPalette.standard.accent)
+                    BenefitRow(icon: "heart.fill", text: "Track your favourites easily", color: .pink)
+                }
+                .padding(20)
                 .background(
-                    LinearGradient(
-                        colors: [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
                 )
-                .cornerRadius(14)
+
+                // Create Button - primary CTA style
+                Button(action: { showingCreateMeal = true }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 18, weight: .medium))
+                        Text("Create Your First Meal")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: DesignTokens.Size.buttonHeight)
+                    .background(
+                        LinearGradient(
+                            colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(DesignTokens.Radius.lg)
+                    .shadow(color: AppPalette.standard.accent.opacity(0.3), radius: 15, y: 5)
+                }
             }
-            .padding(.horizontal, 24)
+            .padding(32)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                    .fill(Color.nutraSafeCard)
+                    .shadow(
+                        color: DesignTokens.Shadow.subtle.color,
+                        radius: DesignTokens.Shadow.subtle.radius,
+                        y: DesignTokens.Shadow.subtle.y
+                    )
+            )
+            .padding(.horizontal, DesignTokens.Spacing.screenEdge)
 
             Spacer()
         }
     }
 
-    // MARK: - Meals List
+    @Environment(\.colorScheme) private var colorScheme
+
+    // MARK: - Meals List - Redesigned with NutraSafe visual language
     private var mealsListView: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Header with create button
-                HStack {
-                    Text("My Meals")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.primary)
+                // Header with create button - redesigned
+                HStack(alignment: .center) {
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(AppPalette.standard.accent.opacity(0.12))
+                                .frame(width: 36, height: 36)
+
+                            Image(systemName: "fork.knife.circle")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(AppPalette.standard.accent)
+                        }
+
+                        Text("My Meals")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.primary)
+                    }
 
                     Spacer()
 
                     Button(action: { showingCreateMeal = true }) {
                         HStack(spacing: 6) {
                             Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 13, weight: .bold))
                             Text("New")
                                 .font(.system(size: 14, weight: .semibold))
                         }
                         .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(AppPalette.standard.accent)
-                        .cornerRadius(20)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            LinearGradient(
+                                colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(DesignTokens.Radius.pill)
+                        .shadow(color: AppPalette.standard.accent.opacity(0.2), radius: 6, y: 2)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.top, DesignTokens.Spacing.md)
 
-                // Hint text
+                // Hint text - softer styling
                 HStack {
+                    Image(systemName: "hand.tap")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary.opacity(0.6))
                     Text("Long press to edit or delete")
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.secondary.opacity(0.8))
                     Spacer()
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, 4)
 
                 // Meals Grid/List
@@ -195,7 +224,7 @@ struct MyMealsView: View {
                         )
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DesignTokens.Spacing.md)
 
                 // Bottom spacing
                 Rectangle()
@@ -206,7 +235,7 @@ struct MyMealsView: View {
     }
 }
 
-// MARK: - Benefit Row
+// MARK: - Benefit Row - Redesigned with icon container
 private struct BenefitRow: View {
     let icon: String
     let text: String
@@ -214,10 +243,15 @@ private struct BenefitRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(color)
-                .frame(width: 24)
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.12))
+                    .frame(width: 28, height: 28)
+
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(color)
+            }
 
             Text(text)
                 .font(.system(size: 15))
@@ -228,7 +262,7 @@ private struct BenefitRow: View {
     }
 }
 
-// MARK: - Meal Card
+// MARK: - Meal Card - Redesigned with NutraSafe visual language
 struct MealCard: View {
     let meal: Meal
     let onTap: () -> Void
@@ -241,11 +275,17 @@ struct MealCard: View {
             VStack(spacing: 0) {
                 // Main content
                 HStack(spacing: 14) {
-                    // Icon
+                    // Icon with gradient container
                     ZStack {
                         Circle()
-                            .fill(AppPalette.standard.accent.opacity(0.12))
-                            .frame(width: 50, height: 50)
+                            .fill(
+                                LinearGradient(
+                                    colors: [AppPalette.standard.accent.opacity(0.15), AppPalette.standard.primary.opacity(0.1)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 52, height: 52)
 
                         Image(systemName: meal.iconName)
                             .font(.system(size: 22, weight: .medium))
@@ -253,9 +293,9 @@ struct MealCard: View {
                     }
 
                     // Name and items
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(meal.name)
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(.primary)
                             .lineLimit(1)
 
@@ -269,7 +309,7 @@ struct MealCard: View {
                     // Calories
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("\(meal.totalCalories)")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.primary)
                         Text("kcal")
                             .font(.system(size: 12, weight: .medium))
@@ -278,29 +318,33 @@ struct MealCard: View {
 
                     // Chevron
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(.systemGray3))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.5))
                 }
-                .padding(16)
+                .padding(18)
 
-                // Macro bar
-                HStack(spacing: 16) {
-                    MacroTag(label: "P", value: meal.totalProtein, color: .red)
-                    MacroTag(label: "C", value: meal.totalCarbs, color: .orange)
-                    MacroTag(label: "F", value: meal.totalFat, color: .purple)
+                // Macro bar - redesigned with softer colors
+                HStack(spacing: 12) {
+                    MacroTag(label: "P", value: meal.totalProtein, color: Color(red: 0.9, green: 0.4, blue: 0.4))
+                    MacroTag(label: "C", value: meal.totalCarbs, color: SemanticColors.neutral)
+                    MacroTag(label: "F", value: meal.totalFat, color: Color(red: 0.6, green: 0.5, blue: 0.8))
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 14)
             }
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .fill(Color.nutraSafeCard)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(Color(.systemGray5), lineWidth: 1)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+            .shadow(
+                color: DesignTokens.Shadow.subtle.color,
+                radius: DesignTokens.Shadow.subtle.radius,
+                y: DesignTokens.Shadow.subtle.y
+            )
         }
         .buttonStyle(PlainButtonStyle())
         .contextMenu {
@@ -315,26 +359,28 @@ struct MealCard: View {
     }
 }
 
-// MARK: - Macro Tag
+// MARK: - Macro Tag - Redesigned with softer styling
 private struct MacroTag: View {
     let label: String
     let value: Double
     let color: Color
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             Text(label)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(color)
 
             Text("\(Int(value))g")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary.opacity(0.7))
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(color.opacity(0.1))
-        .cornerRadius(8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                .fill(color.opacity(0.12))
+        )
     }
 }
 
@@ -481,7 +527,7 @@ struct LogMealSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppAnimatedBackground())
             .navigationTitle("Log Meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

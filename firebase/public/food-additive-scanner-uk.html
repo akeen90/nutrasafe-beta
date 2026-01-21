@@ -17,8 +17,18 @@
     <meta property="og:url" content="https://www.nutrasafe.co.uk/food-additive-scanner-uk.html">
     <meta property="og:title" content="Food Additive Scanner UK — Check E-Numbers Instantly">
     <meta property="og:description" content="Scan barcodes to check food additives and E-numbers in UK products. Instant safety information.">
-    <meta property="og:image" content="https://www.nutrasafe.co.uk/ingredients-view.png">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
     <meta property="og:locale" content="en_GB">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Food Additive Scanner UK — Check E-Numbers Instantly">
+    <meta name="twitter:description" content="Scan barcodes to check food additives and E-numbers in UK products. Instant safety information.">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
+
+    <meta name="theme-color" content="#3d7a7a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32-new.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-new.png">
 
     <!-- Cookie Consent - Loads Google Analytics conditionally -->
     <script src="/cookie-consent.js" defer></script>
@@ -61,54 +71,49 @@
     }
     </script>
 
-    <link rel="icon" type="image/png" href="/app-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #6366f1;
-            --primary-light: #818cf8;
-            --primary-dark: #4f46e5;
-            --accent: #f472b6;
-            --accent-secondary: #22d3ee;
-            --text-dark: #0f172a;
-            --text-light: #64748b;
-            --text-muted: #94a3b8;
-            --bg-dark: #0f172a;
-            --bg-card: rgba(255, 255, 255, 0.03);
+            --teal: #3d7a7a;
+            --teal-dark: #2d5a5a;
+            --teal-light: #5a9a9a;
+            --coral: #d4a574;
+            --sage: #7ab3a0;
+            --text-dark: #1a1a1a;
+            --text-medium: #4a4a4a;
+            --text-light: #7a7a7a;
+            --bg-start: #dce4ec;
+            --bg-end: #f5f3ef;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(255, 255, 255, 0.9);
         }
-
         body {
-            font-family: 'Inter', sans-serif;
-            line-height: 1.6;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
             color: var(--text-dark);
-            background: #ffffff;
+            background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
         }
 
         header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            padding: 1rem 0;
-            transition: all 0.3s ease;
-        }
-
-        header.scrolled {
-            background: rgba(15, 23, 42, 0.8);
+            background: rgba(220, 228, 236, 0.85);
             backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 40px rgba(0, 0, 0, 0.05);
         }
-
         nav {
             max-width: 1200px;
             margin: 0 auto;
@@ -117,259 +122,265 @@
             justify-content: space-between;
             align-items: center;
         }
-
         .logo {
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            font-family: 'Playfair Display', Georgia, serif;
             font-size: 1.5rem;
-            font-weight: 700;
-            color: white;
+            font-weight: 600;
+            color: var(--text-dark);
             text-decoration: none;
         }
-
         .logo-icon {
             width: 44px;
             height: 44px;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 15px rgba(61, 122, 122, 0.2);
         }
-
-        .logo-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
         .nav-links {
             display: flex;
             gap: 2.5rem;
             list-style: none;
+            align-items: center;
         }
-
         .nav-links a {
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-medium);
             text-decoration: none;
             font-weight: 500;
             font-size: 0.95rem;
             transition: color 0.3s;
         }
-
-        .nav-links a:hover {
-            color: white;
-        }
-
+        .nav-links a:hover { color: var(--teal); }
         .nav-cta {
-            padding: 0.6rem 1.5rem;
-            background: var(--primary);
+            padding: 0.75rem 1.75rem;
+            background: var(--teal);
             color: white !important;
             border-radius: 100px;
             font-weight: 600;
             transition: all 0.3s;
         }
-
         .nav-cta:hover {
-            background: var(--primary-light);
+            background: var(--teal-dark);
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 10px 30px rgba(61, 122, 122, 0.3);
         }
-
-        .nav-cta:hover {
-            background: var(--primary-light);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
-        }
-
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-        }
+        @media (max-width: 768px) { .nav-links { display: none; } }
 
         .hero {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            color: white;
-            padding: 120px 2rem 80px;
+            padding: 80px 2rem 60px;
             text-align: center;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 1.5rem;
-            line-height: 1.2;
-        }
-
-        .hero p {
-            font-size: 1.25rem;
-            color: rgba(255,255,255,0.8);
-            max-width: 700px;
-            margin: 0 auto 2rem;
-        }
-
-        .cta-button {
-            display: inline-block;
-            padding: 1rem 2rem;
-            background: var(--primary);
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        section {
-            padding: 80px 2rem;
-        }
-
-        h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            color: var(--text-dark);
-        }
-
-        h3 {
-            font-size: 1.5rem;
-            margin: 2rem 0 1rem;
-            color: var(--text-dark);
-        }
-
-        .content {
+        .hero-content {
             max-width: 800px;
             margin: 0 auto;
         }
-
-        .content p {
+        .hero h1 {
+            font-size: 3rem;
             margin-bottom: 1.5rem;
+            line-height: 1.2;
+            color: var(--text-dark);
+        }
+        .hero p {
+            font-size: 1.2rem;
             color: var(--text-light);
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 16px;
+            font-weight: 600;
             font-size: 1.1rem;
-            line-height: 1.8;
+            box-shadow: 0 8px 30px rgba(61, 122, 122, 0.25);
+            transition: all 0.4s ease;
+        }
+        .hero-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(61, 122, 122, 0.35);
         }
 
-        .content ul {
-            margin: 1.5rem 0;
-            padding-left: 2rem;
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 2rem 80px;
         }
-
-        .content li {
+        h2 {
+            font-size: 2rem;
+            margin: 3rem 0 1.5rem;
+            color: var(--text-dark);
+        }
+        h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.2rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        p {
+            color: var(--text-medium);
             margin-bottom: 1rem;
-            color: var(--text-light);
-            line-height: 1.8;
+            font-size: 1.05rem;
+        }
+        ul, ol {
+            margin: 1rem 0 1.5rem 1.5rem;
+            color: var(--text-medium);
+        }
+        li {
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
         }
 
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin: 3rem 0;
+            gap: 1.25rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            margin: 2rem 0;
         }
-
         .feature-card {
-            background: #f8fafc;
-            padding: 2rem;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            border-color: var(--teal-light);
+        }
+        .feature-card h3 {
+            margin: 0 0 0.75rem;
+            font-size: 1.15rem;
+        }
+        .feature-card p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
         }
 
-        .feature-card h3 {
+        .highlight-section {
+            background: linear-gradient(180deg, rgba(61, 122, 122, 0.03) 0%, transparent 100%);
+            padding: 60px 2rem;
+            margin: 40px 0;
+            border-radius: 30px;
+        }
+        .highlight-section .content {
+            padding: 0;
+        }
+        .highlight-section h2:first-child {
             margin-top: 0;
         }
 
-        .bg-light {
-            background: #f8fafc;
+        .faq-section { margin: 3rem 0; }
+        .faq-item {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 1.5rem 0;
         }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-question {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin-bottom: 0.75rem;
+        }
+        .faq-answer { color: var(--text-medium); }
 
         .cta-section {
-            background: linear-gradient(135deg, var(--text-dark) 0%, #1e1b4b 100%);
-            color: white;
-            text-align: center;
             padding: 80px 2rem;
+            text-align: center;
+            margin-top: 40px;
         }
-
         .cta-section h2 {
-            color: white;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
         }
+        .cta-section > p {
+            color: var(--text-light);
+            font-size: 1.15rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .app-store-btn {
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .app-store-btn img { height: 55px; }
+        .app-store-btn:hover { transform: scale(1.05); }
 
         footer {
-            background: var(--bg-dark);
-            color: white;
+            background: linear-gradient(180deg, transparent 0%, rgba(61, 122, 122, 0.05) 100%);
             padding: 4rem 2rem 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
         }
-
         .footer-content {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: 2fr repeat(3, 1fr);
-            gap: 3rem;
+            gap: 2rem;
             margin-bottom: 3rem;
         }
-
+        .footer-brand .logo { margin-bottom: 1rem; }
         .footer-brand p {
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 1rem;
+            color: var(--text-light);
             line-height: 1.7;
-        }
-
-        .footer-section h4 {
             font-size: 0.9rem;
+        }
+        .footer-section h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 1.5rem;
-            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1.25rem;
+            color: var(--text-dark);
         }
-
-        .footer-section ul {
-            list-style: none;
-        }
-
+        .footer-section ul { list-style: none; margin: 0; padding: 0; }
         .footer-section a {
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-light);
             text-decoration: none;
             display: block;
-            padding: 0.4rem 0;
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
             transition: color 0.3s;
         }
-
-        .footer-section a:hover {
-            color: white;
-        }
-
+        .footer-section a:hover { color: var(--teal); }
         .footer-bottom {
             text-align: center;
             padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.5);
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-light);
+            font-size: 0.85rem;
         }
-
-        @media (max-width: 968px) {
-            .footer-content {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .footer-content {
-                grid-template-columns: 1fr;
-                text-align: center;
-            }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.25rem; }
+            h2 { font-size: 1.75rem; }
+            .footer-content { grid-template-columns: 1fr; text-align: center; }
         }
     </style>
 </head>
 <body>
-    <header id="header">
+    <header>
         <nav>
             <a href="/" class="logo">
                 <div class="logo-icon">
-                    <img src="/app-icon.png" alt="NutraSafe food diary and nutrition tracker app icon">
+                    <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
                 </div>
                 <span>NutraSafe</span>
             </a>
@@ -378,69 +389,66 @@
                 <li><a href="/#how-it-works">How It Works</a></li>
                 <li><a href="/resources.html">Resources</a></li>
                 <li><a href="/#faqs">FAQ</a></li>
-                <li><a href="/#download" class="nav-cta">Download</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download</a></li>
             </ul>
         </nav>
     </header>
 
     <section class="hero">
-        <div class="container">
+        <div class="hero-content">
             <h1>Food Additive Scanner UK — Check E-Numbers Instantly</h1>
             <p>Scan any barcode to check food additives, E-numbers, and ultra-processed ingredients in UK products. Instant safety information based on scientific research.</p>
-            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="hero-cta">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download Free
+            </a>
         </div>
     </section>
 
-    <section>
-        <div class="content">
-            <h2>E-number checker app for UK supermarkets</h2>
-            <p>Scan products from Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, and Waitrose. NutraSafe highlights additives, allergens, and ultra-processed ingredients in seconds.</p>
-        </div>
-    </section>
+    <div class="content">
+        <h2>E-number checker app for UK supermarkets</h2>
+        <p>Scan products from Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, and Waitrose. NutraSafe highlights additives, allergens, and ultra-processed ingredients in seconds.</p>
 
-    <section>
-        <div class="content">
-            <h2>What Are Food Additives and E-Numbers?</h2>
-            <p>Food additives are substances added to food to preserve flavour, enhance taste, or improve appearance. In the UK and EU, these additives are assigned E-numbers — standardised codes that identify specific additives like preservatives, colourings, sweeteners, and emulsifiers.</p>
+        <h2>What Are Food Additives and E-Numbers?</h2>
+        <p>Food additives are substances added to food to preserve flavour, enhance taste, or improve appearance. In the UK and EU, these additives are assigned E-numbers — standardised codes that identify specific additives like preservatives, colourings, sweeteners, and emulsifiers.</p>
 
-            <p>Whilst many additives are safe, some have been linked to health concerns including allergic reactions, hyperactivity in children, and digestive issues. Understanding which E-numbers are in your food helps you make informed choices about what you eat.</p>
+        <p>Whilst many additives are safe, some have been linked to health concerns including allergic reactions, hyperactivity in children, and digestive issues. Understanding which E-numbers are in your food helps you make informed choices about what you eat.</p>
 
-            <h3>Common Types of Food Additives</h3>
-            <ul>
-                <li><strong>Preservatives (E200-E299):</strong> Prevent food spoilage and extend shelf life</li>
-                <li><strong>Colourings (E100-E199):</strong> Add or restore colour to food products</li>
-                <li><strong>Antioxidants (E300-E399):</strong> Prevent oxidation and rancidity</li>
-                <li><strong>Sweeteners (E420-E499, E950-E969):</strong> Provide sweetness without sugar</li>
-                <li><strong>Emulsifiers (E400-E499):</strong> Help mix ingredients that don't naturally combine</li>
-                <li><strong>Flavour enhancers (E620-E650):</strong> Intensify taste, like MSG (E621)</li>
-            </ul>
+        <h3>Common Types of Food Additives</h3>
+        <ul>
+            <li><strong>Preservatives (E200-E299):</strong> Prevent food spoilage and extend shelf life</li>
+            <li><strong>Colourings (E100-E199):</strong> Add or restore colour to food products</li>
+            <li><strong>Antioxidants (E300-E399):</strong> Prevent oxidation and rancidity</li>
+            <li><strong>Sweeteners (E420-E499, E950-E969):</strong> Provide sweetness without sugar</li>
+            <li><strong>Emulsifiers (E400-E499):</strong> Help mix ingredients that don't naturally combine</li>
+            <li><strong>Flavour enhancers (E620-E650):</strong> Intensify taste, like MSG (E621)</li>
+        </ul>
 
-            <h3>Why Use a Food Additive Scanner?</h3>
-            <p>Reading ingredient lists on food packaging can be confusing and time-consuming. Many E-numbers have complex chemical names, making it difficult to know what you're consuming. A food additive scanner like NutraSafe solves this by:</p>
+        <h3>Why Use a Food Additive Scanner?</h3>
+        <p>Reading ingredient lists on food packaging can be confusing and time-consuming. Many E-numbers have complex chemical names, making it difficult to know what you're consuming. A food additive scanner like NutraSafe solves this by:</p>
 
-            <ul>
-                <li>Instantly identifying all additives and E-numbers in a product</li>
-                <li>Providing safety information based on scientific research</li>
-                <li>Highlighting potentially harmful or controversial additives</li>
-                <li>Detecting ultra-processed ingredients</li>
-                <li>Checking for allergens and intolerances</li>
-            </ul>
+        <ul>
+            <li>Instantly identifying all additives and E-numbers in a product</li>
+            <li>Providing safety information based on scientific research</li>
+            <li>Highlighting potentially harmful or controversial additives</li>
+            <li>Detecting ultra-processed ingredients</li>
+            <li>Checking for allergens and intolerances</li>
+        </ul>
 
-            <h3>How NutraSafe's Additive Scanner Works</h3>
-            <p>NutraSafe makes checking food additives simple:</p>
+        <h3>How NutraSafe's Additive Scanner Works</h3>
+        <p>NutraSafe makes checking food additives simple:</p>
 
-            <ol>
-                <li><strong>Scan the barcode:</strong> Use your phone's camera to scan any UK food product</li>
-                <li><strong>View instant results:</strong> See a complete list of all additives, E-numbers, and ingredients</li>
-                <li><strong>Check safety information:</strong> Get detailed information about each additive's purpose and safety profile</li>
-                <li><strong>Identify concerns:</strong> NutraSafe highlights potentially harmful additives and ultra-processed ingredients</li>
-            </ol>
+        <ol>
+            <li><strong>Scan the barcode:</strong> Use your phone's camera to scan any UK food product</li>
+            <li><strong>View instant results:</strong> See a complete list of all additives, E-numbers, and ingredients</li>
+            <li><strong>Check safety information:</strong> Get detailed information about each additive's purpose and safety profile</li>
+            <li><strong>Identify concerns:</strong> NutraSafe highlights potentially harmful additives and ultra-processed ingredients</li>
+        </ol>
 
-            <p>Our database covers over 500,000 products from UK supermarkets including Tesco, Sainsbury's, Asda, Morrisons, Waitrose, Aldi, Lidl, and more.</p>
-        </div>
-    </section>
+        <p>Our database covers over 500,000 products from UK supermarkets including Tesco, Sainsbury's, Asda, Morrisons, Waitrose, Aldi, Lidl, and more.</p>
+    </div>
 
-    <section class="bg-light">
+    <section class="highlight-section">
         <div class="content">
             <h2>Which Additives Should You Avoid?</h2>
             <p>Whilst regulatory bodies like the FSA (Food Standards Agency) approve additives for use, some may cause adverse reactions in sensitive individuals. NutraSafe helps you identify:</p>
@@ -457,78 +465,91 @@
         </div>
     </section>
 
-    <section>
-        <div class="content">
-            <h2>Ultra-Processed Foods and Your Health</h2>
-            <p>Ultra-processed foods contain multiple additives, preservatives, and industrial ingredients. Research links high consumption of ultra-processed foods to obesity, heart disease, and other health issues.</p>
+    <div class="content">
+        <h2>Ultra-Processed Foods and Your Health</h2>
+        <p>Ultra-processed foods contain multiple additives, preservatives, and industrial ingredients. Research links high consumption of ultra-processed foods to obesity, heart disease, and other health issues.</p>
 
-            <p>NutraSafe's additive scanner helps you identify ultra-processed foods by analysing:</p>
-            <ul>
-                <li>Number and type of additives present</li>
-                <li>Processing level and industrial ingredients</li>
-                <li>Nutritional quality and density</li>
-                <li>Presence of artificial ingredients</li>
-            </ul>
+        <p>NutraSafe's additive scanner helps you identify ultra-processed foods by analysing:</p>
+        <ul>
+            <li>Number and type of additives present</li>
+            <li>Processing level and industrial ingredients</li>
+            <li>Nutritional quality and density</li>
+            <li>Presence of artificial ingredients</li>
+        </ul>
 
-            <h3>Beyond Additive Scanning: NutraSafe's Complete Features</h3>
-            <p>NutraSafe isn't just an additive scanner. It's a complete food intelligence app that helps you:</p>
+        <h3>Beyond Additive Scanning: NutraSafe's Complete Features</h3>
+        <p>NutraSafe isn't just an additive scanner. It's a complete food intelligence app that helps you:</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>Allergen Detection</h3>
+                <p>Instantly check for allergens like gluten, dairy, nuts, soya, and others in any product</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🧬</div>
+                <h3>Food Reaction Tracking</h3>
+                <p>Log how you feel after eating and identify patterns between foods and symptoms</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">💊</div>
+                <h3>Vitamin & Nutrient Tracking</h3>
+                <p>Monitor micronutrients and vitamin intake throughout the day and week</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Nutrition Scoring</h3>
+                <p>Get A+ to F grades based on processing level, additives, and nutritional quality</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">⏱️</div>
+                <h3>Intermittent Fasting</h3>
+                <p>Track fasting windows for 16:8, 18:6, or custom schedules</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📅</div>
+                <h3>Expiry Date Tracker</h3>
+                <p>Never waste food — track use-by dates and get reminders before food expires</p>
+            </div>
         </div>
 
-        <div class="container">
-            <div class="features-grid">
-                <div class="feature-card">
-                    <h3>🔍 Allergen Detection</h3>
-                    <p>Instantly check for allergens like gluten, dairy, nuts, soya, and others in any product</p>
-                </div>
+        <div class="faq-section">
+            <h2>Frequently Asked Questions</h2>
 
-                <div class="feature-card">
-                    <h3>🧬 Food Reaction Tracking</h3>
-                    <p>Log how you feel after eating and identify patterns between foods and symptoms</p>
+            <div class="faq-item">
+                <div class="faq-question">Is this an E-number checker app?</div>
+                <div class="faq-answer">
+                    <p>Yes. Scan any UK product barcode to see every additive/E-number with plain-language explanations.</p>
                 </div>
+            </div>
 
-                <div class="feature-card">
-                    <h3>💊 Vitamin & Nutrient Tracking</h3>
-                    <p>Monitor micronutrients and vitamin intake throughout the day and week</p>
+            <div class="faq-item">
+                <div class="faq-question">Which supermarkets are supported?</div>
+                <div class="faq-answer">
+                    <p>We cover major UK retailers including Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, and Waitrose.</p>
                 </div>
+            </div>
 
-                <div class="feature-card">
-                    <h3>📊 Nutrition Scoring</h3>
-                    <p>Get A+ to F grades based on processing level, additives, and nutritional quality</p>
-                </div>
-
-                <div class="feature-card">
-                    <h3>⏱️ Intermittent Fasting</h3>
-                    <p>Track fasting windows for 16:8, 18:6, or custom schedules</p>
-                </div>
-
-                <div class="feature-card">
-                    <h3>📅 Expiry Date Tracker</h3>
-                    <p>Never waste food — track use-by dates and get reminders before food expires</p>
+            <div class="faq-item">
+                <div class="faq-question">Does it flag ultra-processed ingredients and allergens?</div>
+                <div class="faq-answer">
+                    <p>NutraSafe highlights ultra-processed indicators, additives of concern, and the 14 UK allergens on every scan.</p>
                 </div>
             </div>
         </div>
-    </section>
-
-    <section>
-        <div class="content">
-            <h2>Frequently Asked Questions</h2>
-            <h3>Is this an E-number checker app?</h3>
-            <p>Yes. Scan any UK product barcode to see every additive/E-number with plain-language explanations.</p>
-
-            <h3>Which supermarkets are supported?</h3>
-            <p>We cover major UK retailers including Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, and Waitrose.</p>
-
-            <h3>Does it flag ultra-processed ingredients and allergens?</h3>
-            <p>NutraSafe highlights ultra-processed indicators, additives of concern, and the 14 UK allergens on every scan.</p>
-        </div>
-    </section>
+    </div>
 
     <section class="cta-section">
-        <div class="container">
-            <h2>Start Checking Food Additives Today</h2>
-            <p style="color: rgba(255,255,255,0.8); margin-bottom: 2rem;">Download NutraSafe and scan your first product in seconds. Free to download.</p>
-            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
-        </div>
+        <h2>Start Checking Food Additives Today</h2>
+        <p>Download NutraSafe and scan your first product in seconds. Free to download.</p>
+        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" target="_blank" class="app-store-btn">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download NutraSafe on the App Store">
+        </a>
     </section>
 
     <footer>
@@ -536,30 +557,31 @@
             <div class="footer-brand">
                 <a href="/" class="logo">
                     <div class="logo-icon">
-                        <img src="/app-icon.png" alt="NutraSafe">
+                        <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44" loading="lazy">
                     </div>
                     <span>NutraSafe</span>
                 </a>
-                <p>The food intelligence app that learns your body. Food clarity. Body clarity. Simple.</p>
+                <p>The food intelligence app that helps you understand what you eat. Food clarity. Body clarity. Simple.</p>
             </div>
 
             <div class="footer-section">
-                <h4>Product</h4>
+                <h4>Learn</h4>
                 <ul>
-                    <li><a href="/#features">Features</a></li>
-                    <li><a href="/#how-it-works">How It Works</a></li>
-                    <li><a href="/#faqs">FAQs</a></li>
+                    <li><a href="/food-scanner.html">Food Scanner</a></li>
+                    <li><a href="/food-tracker.html">Food Tracker</a></li>
+                    <li><a href="/food-additives.html">Food Additives</a></li>
+                    <li><a href="/e-numbers.html">E-Numbers Database</a></li>
+                    <li><a href="/resources.html">All Resources</a></li>
                 </ul>
             </div>
 
             <div class="footer-section">
-                <h4>Resources</h4>
+                <h4>Nutrition</h4>
                 <ul>
-                    <li><a href="/resources.html">All Resources</a></li>
-                    <li><a href="/food-additive-scanner-uk.html">Additive Scanner</a></li>
-                    <li><a href="/food-intolerance-tracker-uk.html">Food Intolerances</a></li>
-                    <li><a href="/intermittent-fasting-app-uk.html">Fasting Guide</a></li>
-                    <li><a href="/food-expiry-tracker-uk.html">Expiry Tracker</a></li>
+                    <li><a href="/calorie-counter-uk.html">Calorie Counter UK</a></li>
+                    <li><a href="/macro-tracker-uk.html">Macro Tracker UK</a></li>
+                    <li><a href="/keto-diet-uk.html">Keto Diet Guide</a></li>
+                    <li><a href="/high-protein-diet-uk.html">High Protein Diet</a></li>
                 </ul>
             </div>
 
@@ -569,6 +591,7 @@
                     <li><a href="/support.html">Support</a></li>
                     <li><a href="/privacy-policy.html">Privacy Policy</a></li>
                     <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                    <li><a href="/sitemap.html">Sitemap</a></li>
                 </ul>
             </div>
         </div>
@@ -577,17 +600,5 @@
             <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
         </div>
     </footer>
-
-    <script>
-        // Header scroll effect
-        window.addEventListener('scroll', function() {
-            const header = document.getElementById('header');
-            if (window.scrollY > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        });
-    </script>
 </body>
 </html>

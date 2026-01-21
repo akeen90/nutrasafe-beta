@@ -646,7 +646,7 @@ struct DiaryTabView: View {
             .fullScreenCover(isPresented: $showingPaywall) {
                 PaywallView()
             }
-            .background(Color.adaptiveBackground)
+            .background(AppAnimatedBackground())
             .trackScreen("Diary")
             .featureTip(isPresented: $showingDiaryTip, tipKey: .diaryOverview)
             .featureTip(isPresented: $showingNutrientsTip, tipKey: .nutrientsOverview)

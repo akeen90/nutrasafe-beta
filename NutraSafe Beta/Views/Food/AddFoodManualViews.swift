@@ -197,61 +197,105 @@ enum IngredientFinderError: LocalizedError {
 // MARK: - Main Manual Add View
 
 /// Main manual food addition view that navigates to detail entry page
+/// Redesigned to match NutraSafe's soft, friendly, confidence-building design language
 struct AddFoodManualView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Binding var selectedTab: TabItem
     var prefilledBarcode: String? = nil
     var onComplete: ((TabItem) -> Void)?
     @State private var showingDetailEntry = false
+    @State private var hasAppeared = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ZStack {
+            // Animated background matching Use By page brand style
+            AppAnimatedBackground()
+                .ignoresSafeArea()
 
-            // Icon
-            Image(systemName: "square.and.pencil")
-                .font(.system(size: 72))
-                .foregroundColor(AppPalette.standard.accent)
-                .padding(.bottom, 16)
+            VStack {
+                Spacer()
 
-            // Title
-            Text("Add Food Manually")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(.primary)
+                // Central card panel - anchors attention and removes hollow feel
+                VStack(spacing: 24) {
+                    // Icon with soft circular container (matches onboarding FeatureRow style)
+                    ZStack {
+                        Circle()
+                            .fill(AppPalette.standard.accent.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                            .frame(width: 88, height: 88)
 
-            // Description
-            Text("Enter nutritional information to add a food to your diary")
-                .font(.system(size: 16))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 40)
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 36, weight: .medium))
+                            .foregroundColor(AppPalette.standard.accent)
+                    }
 
-            // Start Button
-            Button(action: {
-                showingDetailEntry = true
-            }) {
-                HStack(spacing: 12) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 20))
-                    Text("Start Manual Entry")
-                        .font(.system(size: 18, weight: .semibold))
+                    // Copy - human, reassuring, not clinical
+                    VStack(spacing: 10) {
+                        Text("Add your own food")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("Can't find it in our database?\nNo problem — you can add it yourself.")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(4)
+                    }
+
+                    // Primary CTA - matches NutraSafePrimaryButton styling
+                    Button(action: {
+                        showingDetailEntry = true
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 18, weight: .medium))
+                            Text("Start Manual Entry")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: DesignTokens.Size.buttonHeight) // 56pt
+                        .background(
+                            LinearGradient(
+                                colors: [AppPalette.standard.accent, AppPalette.standard.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(DesignTokens.Radius.lg) // 16pt
+                        .shadow(
+                            color: AppPalette.standard.accent.opacity(0.3),
+                            radius: 15,
+                            y: 5
+                        )
+                    }
+                    .padding(.top, 8)
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(AppPalette.standard.accent)
-                .cornerRadius(12)
-            }
-            .padding(.horizontal, 32)
-            .padding(.top, 24)
+                .padding(32)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl) // 20pt
+                        .fill(Color.nutraSafeCard)
+                        .shadow(
+                            color: DesignTokens.Shadow.subtle.color,
+                            radius: DesignTokens.Shadow.subtle.radius,
+                            y: DesignTokens.Shadow.subtle.y
+                        )
+                )
+                .padding(.horizontal, DesignTokens.Spacing.screenEdge) // 24pt
+                .scaleEffect(hasAppeared ? 1.0 : 0.96)
+                .opacity(hasAppeared ? 1.0 : 0)
 
-            Spacer()
+                Spacer()
+            }
         }
         .fullScreenCover(isPresented: $showingDetailEntry) {
             ManualFoodDetailEntryView(selectedTab: $selectedTab, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
         }
         .onAppear {
+            // Subtle entrance animation
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                hasAppeared = true
+            }
+
             // If we have a prefilled barcode, automatically show the detail entry
             if prefilledBarcode != nil {
                 showingDetailEntry = true
@@ -847,6 +891,7 @@ struct ManualFoodDetailEntryView: View {
                     barcode = prefilledBarcode
                 }
             }
+            .background(AppAnimatedBackground())
         }
     }
 
@@ -2383,15 +2428,12 @@ struct IngredientOCRCameraView: View {
 
                     // Tips (only show if no photos yet)
                     if capturedImages.isEmpty && currentImage == nil {
-                        VStack(alignment: .leading, spacing: 10) {
-                            OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
-                            OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
-                            OCRTipRow(icon: "text.magnifyingglass", color: .blue, text: "Focus on the ingredients text")
-                            OCRTipRow(icon: "rectangle.stack.fill", color: .purple, text: "Take multiple photos for long lists")
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        NutraSafeTipCard(tips: [
+                            (icon: "sun.max.fill", text: "Good lighting makes all the difference", tint: .yellow),
+                            (icon: "hand.raised.fill", text: "Hold steady for a crisp shot", tint: .orange),
+                            (icon: "text.magnifyingglass", text: "Get the ingredients text in frame", tint: .blue),
+                            (icon: "rectangle.stack.fill", text: "Long list? Take multiple photos", tint: .purple)
+                        ])
                         .padding(.horizontal)
                     }
 
@@ -2516,26 +2558,6 @@ struct IngredientOCRCameraView: View {
     }
 }
 
-/// Helper view for OCR tips
-private struct OCRTipRow: View {
-    let icon: String
-    let color: Color
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(color)
-                .frame(width: 24)
-
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(.primary)
-        }
-    }
-}
-
 // MARK: - Nutrition OCR Camera View
 
 /// Camera view for scanning nutrition labels with OCR - supports multiple photos
@@ -2636,15 +2658,12 @@ struct NutritionOCRCameraView: View {
 
                     // Tips (only show if no photos yet)
                     if capturedImages.isEmpty && currentImage == nil {
-                        VStack(alignment: .leading, spacing: 10) {
-                            OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
-                            OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
-                            OCRTipRow(icon: "tablecells", color: .green, text: "Include the full nutrition table")
-                            OCRTipRow(icon: "textformat.123", color: .blue, text: "Focus on the 'per 100g' column")
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        NutraSafeTipCard(tips: [
+                            (icon: "sun.max.fill", text: "Good lighting makes all the difference", tint: .yellow),
+                            (icon: "hand.raised.fill", text: "Hold steady for a crisp shot", tint: .orange),
+                            (icon: "tablecells", text: "Capture the full nutrition table", tint: .green),
+                            (icon: "textformat.123", text: "Focus on the 'per 100g' column", tint: .blue)
+                        ])
                         .padding(.horizontal)
                     }
 
@@ -3094,15 +3113,12 @@ struct UnifiedProductScannerView: View {
 
                     // Tips (only show if no photos yet)
                     if totalPhotos == 0 {
-                        VStack(alignment: .leading, spacing: 10) {
-                            OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
-                            OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
-                            OCRTipRow(icon: "text.magnifyingglass", color: .blue, text: "Focus on the text areas")
-                            OCRTipRow(icon: "barcode", color: .purple, text: "Include barcode if visible")
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        NutraSafeTipCard(tips: [
+                            (icon: "sun.max.fill", text: "Good lighting makes all the difference", tint: .yellow),
+                            (icon: "hand.raised.fill", text: "Hold steady for a crisp shot", tint: .orange),
+                            (icon: "text.magnifyingglass", text: "Get the text areas in frame", tint: .blue),
+                            (icon: "barcode", text: "Include the barcode if you can", tint: .purple)
+                        ])
                         .padding(.horizontal)
                     }
 

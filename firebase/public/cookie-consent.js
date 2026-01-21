@@ -33,7 +33,7 @@
         overlay.innerHTML = `
             <div id="cookie-consent-modal">
                 <div class="consent-header">
-                    <h2>🍪 Cookie Consent</h2>
+                    <h2><img src="/app-icon-2026.png" alt="NutraSafe" class="consent-logo">Cookie Consent</h2>
                 </div>
                 <div class="consent-body">
                     <p>We use cookies to improve your experience and analyze site traffic. This includes Google Analytics to understand how visitors use our site.</p>
@@ -54,13 +54,15 @@
         // Add styles
         const style = document.createElement('style');
         style.textContent = `
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
             #cookie-consent-overlay {
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(0, 0, 0, 0.85);
+                background: rgba(61, 122, 122, 0.15);
                 backdrop-filter: blur(8px);
                 z-index: 999999;
                 display: flex;
@@ -76,10 +78,11 @@
             }
 
             #cookie-consent-modal {
-                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-                border: 1px solid rgba(99, 102, 241, 0.3);
-                border-radius: 16px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.9);
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(61, 122, 122, 0.15), 0 8px 24px rgba(0, 0, 0, 0.08);
                 max-width: 560px;
                 width: 100%;
                 padding: 32px;
@@ -99,18 +102,26 @@
 
             .consent-header h2 {
                 margin: 0 0 20px 0;
-                font-size: 24px;
-                font-weight: 700;
-                color: #f1f5f9;
+                font-size: 26px;
+                font-weight: 600;
+                color: #3d7a7a;
                 display: flex;
                 align-items: center;
                 gap: 12px;
+                font-family: 'Playfair Display', Georgia, serif;
+            }
+
+            .consent-logo {
+                width: 36px;
+                height: 36px;
+                border-radius: 8px;
             }
 
             .consent-body {
-                color: #cbd5e1;
-                line-height: 1.6;
+                color: #4a4a4a;
+                line-height: 1.7;
                 margin-bottom: 24px;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             }
 
             .consent-body p {
@@ -127,26 +138,26 @@
             }
 
             .consent-body strong {
-                color: #f1f5f9;
+                color: #1a1a1a;
             }
 
             .consent-legal {
                 font-size: 13px;
-                color: #94a3b8;
-                border-top: 1px solid rgba(99, 102, 241, 0.2);
+                color: #7a7a7a;
+                border-top: 1px solid rgba(61, 122, 122, 0.15);
                 padding-top: 16px;
                 margin-top: 16px;
             }
 
             .consent-legal a {
-                color: #6366f1;
+                color: #3d7a7a;
                 text-decoration: none;
                 border-bottom: 1px solid transparent;
                 transition: border-color 0.2s;
             }
 
             .consent-legal a:hover {
-                border-bottom-color: #6366f1;
+                border-bottom-color: #3d7a7a;
             }
 
             .consent-actions {
@@ -158,35 +169,35 @@
                 flex: 1;
                 padding: 14px 24px;
                 border: none;
-                border-radius: 8px;
+                border-radius: 12px;
                 font-size: 16px;
                 font-weight: 600;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                font-family: inherit;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             }
 
             .btn-reject {
-                background: rgba(148, 163, 184, 0.1);
-                color: #cbd5e1;
-                border: 1px solid rgba(148, 163, 184, 0.3);
+                background: rgba(61, 122, 122, 0.08);
+                color: #4a4a4a;
+                border: 1px solid rgba(61, 122, 122, 0.2);
             }
 
             .btn-reject:hover {
-                background: rgba(148, 163, 184, 0.2);
-                border-color: rgba(148, 163, 184, 0.5);
+                background: rgba(61, 122, 122, 0.12);
+                border-color: rgba(61, 122, 122, 0.3);
                 transform: translateY(-1px);
             }
 
             .btn-accept {
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+                background: linear-gradient(135deg, #3d7a7a 0%, #5a9a9a 100%);
                 color: white;
-                box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+                box-shadow: 0 4px 14px rgba(61, 122, 122, 0.3);
             }
 
             .btn-accept:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+                box-shadow: 0 6px 20px rgba(61, 122, 122, 0.4);
             }
 
             .btn-accept:active,
@@ -200,7 +211,7 @@
                 }
 
                 .consent-header h2 {
-                    font-size: 20px;
+                    font-size: 22px;
                 }
 
                 .consent-actions {
