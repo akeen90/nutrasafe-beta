@@ -351,7 +351,7 @@ struct AddActionMenu: View {
                 ? Color.white.opacity(0.08)
                 : Color.black.opacity(0.06))
             .frame(height: 1)
-            .padding(.leading, 60)
+            .padding(.leading, 94)
     }
 
     // MARK: - Water Tracker Row
@@ -620,7 +620,10 @@ struct CommandTile: View {
         case "barcode.viewfinder":
             BarcodeScanIcon(size: iconSize, gradient: iconGradient)
         case "calendar.badge.clock":
-            PremiumCalendarIcon(size: iconSize)
+            Image("CalendarIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
         case "sparkles.rectangle.stack":
             PremiumAIIcon(size: iconSize)
         default:
@@ -689,14 +692,14 @@ struct QuickTrackerRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                // Icon with gradient background - compact
+            HStack(spacing: 14) {
+                // Icon with gradient background - doubled size for prominence
                 ZStack {
                     // Subtle glow
                     Circle()
                         .fill(iconColor.opacity(0.12))
-                        .frame(width: 38, height: 38)
-                        .blur(radius: 2)
+                        .frame(width: 76, height: 76)
+                        .blur(radius: 3)
 
                     // Background circle
                     Circle()
@@ -707,8 +710,8 @@ struct QuickTrackerRow: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 34, height: 34)
-                        .shadow(color: iconColor.opacity(0.3), radius: 4, y: 2)
+                        .frame(width: 68, height: 68)
+                        .shadow(color: iconColor.opacity(0.3), radius: 6, y: 3)
 
                     // Custom icon
                     customIcon
@@ -762,16 +765,19 @@ struct QuickTrackerRow: View {
 
     @ViewBuilder
     private var customIcon: some View {
-        let iconSize: CGFloat = 18
+        let iconSize: CGFloat = 36
         switch icon {
         case "figure.stand.scale":
-            PremiumBathroomScaleIcon(size: iconSize)
+            Image("ScaleIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
         case "heart.text.square.fill":
             ReactionIcon(size: iconSize, gradient: [iconColor, iconColor.opacity(0.8)])
         default:
             // Fallback to SF Symbol
             Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 30, weight: .semibold))
                 .foregroundColor(.white)
         }
     }
