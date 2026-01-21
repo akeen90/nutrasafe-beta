@@ -4910,45 +4910,34 @@ struct AllergenWarningCard: View {
     let allergenName: String
     @Environment(\.colorScheme) var colorScheme
 
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            // Softer icon - informational, not alarming
-            ZStack {
-                Circle()
-                    .fill(SemanticColors.neutral.opacity(0.1))
-                    .frame(width: 40, height: 40)
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
 
-                Image(systemName: "info.circle.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(SemanticColors.neutral)
-            }
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            // Soft amber indicator line (consistent with additive cards)
+            RoundedRectangle(cornerRadius: 2)
+                .fill(SemanticColors.neutral)
+                .frame(width: 3, height: 32)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(allergenName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(palette.textPrimary)
 
                 Text("Found in this product")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundColor(palette.textTertiary)
             }
 
             Spacer()
-
-            // Subtle chevron for detail access
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary.opacity(0.5))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
         )
     }
 }
