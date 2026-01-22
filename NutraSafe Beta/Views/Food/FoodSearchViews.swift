@@ -270,8 +270,8 @@ struct FoodSearchResultRowEnhanced: View {
             )
             showingFoodDetail = true
         }) {
-            VStack(spacing: 0) {
-                // Product image (only when available)
+            HStack(spacing: 14) {
+                // Product image thumbnail OR category icon
                 if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
                     AsyncImage(url: url) { phase in
                         switch phase {
@@ -279,39 +279,38 @@ struct FoodSearchResultRowEnhanced: View {
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(height: 120)
-                                .clipped()
+                                .frame(width: 48, height: 48)
+                                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md))
                         case .failure(_):
-                            // Hide on failure - don't show anything
-                            EmptyView()
+                            // Fallback to category icon on failure
+                            ZStack {
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                    .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                    .frame(width: 48, height: 48)
+                                Image(systemName: foodIcon.name)
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(foodIcon.color)
+                            }
                         case .empty:
-                            // Loading state
-                            Rectangle()
+                            // Loading - show placeholder
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
                                 .fill(Color.gray.opacity(0.1))
-                                .frame(height: 120)
-                                .overlay(
-                                    ProgressView()
-                                        .tint(.secondary)
-                                )
+                                .frame(width: 48, height: 48)
                         @unknown default:
                             EmptyView()
                         }
                     }
-                }
-
-                HStack(spacing: 14) {
-                    // Food category icon in soft container (only when no image)
-                    if food.imageUrl == nil || food.imageUrl?.isEmpty == true {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                                .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
-                                .frame(width: 48, height: 48)
-
-                            Image(systemName: foodIcon.name)
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(foodIcon.color)
-                        }
+                } else {
+                    // No image - show category icon
+                    ZStack {
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                            .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                            .frame(width: 48, height: 48)
+                        Image(systemName: foodIcon.name)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(foodIcon.color)
                     }
+                }
 
                 // Product name and serving info
                 VStack(alignment: .leading, spacing: 4) {
@@ -401,10 +400,9 @@ struct FoodSearchResultRowEnhanced: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.secondary.opacity(0.4))
-                }
-                .padding(.vertical, 14)
-                .padding(.horizontal, 14)
-            } // VStack
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 14)
         }
         .buttonStyle(PlainButtonStyle())
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
