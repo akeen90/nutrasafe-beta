@@ -438,6 +438,7 @@ struct FoodSearchResultRowEnhanced: View {
             }
             .environmentObject(diaryDataManager)
             .interactiveDismissDisabled(false)
+            .presentationBackground(Color.adaptiveBackground)
             .onAppear {
                 print("[FoodDetailViewFromSearch] onAppear - fullScreenCover presented")
             }
@@ -838,11 +839,9 @@ struct AddFoodSearchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.adaptiveBackground.ignoresSafeArea())
         .background {
-            // Opaque base layer to prevent underlying content showing through
-            Color.adaptiveBackground
-                .ignoresSafeArea()
-            // Then the animated gradient on top
+            // Animated gradient on top of solid base
             AppAnimatedBackground()
         }
         .onAppear {
