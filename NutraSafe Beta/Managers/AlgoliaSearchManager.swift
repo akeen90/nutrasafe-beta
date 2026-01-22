@@ -1673,6 +1673,9 @@ final class AlgoliaSearchManager {
                 }
             }
 
+            // Extract product image URL (from Tesco and other sources)
+            let imageUrl = hit["imageUrl"] as? String
+
             return FoodSearchResult(
                 id: objectID,
                 name: name,
@@ -1693,7 +1696,8 @@ final class AlgoliaSearchManager {
                 barcode: barcode,
                 micronutrientProfile: micronutrientProfile,
                 portions: portions,
-                source: source
+                source: source,
+                imageUrl: imageUrl
             )
         }
     }

@@ -410,7 +410,15 @@ struct FoodSearchResultRowEnhanced: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
+                .fill(
+                    LinearGradient(
+                        colors: colorScheme == .dark
+                            ? [Color.midnightCard, Color.midnightCard.opacity(0.9)]
+                            : [Color.white, Color.white.opacity(0.95)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
@@ -839,9 +847,11 @@ struct AddFoodSearchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.adaptiveBackground.ignoresSafeArea())
         .background {
-            // Animated gradient on top of solid base
+            // Opaque base layer to prevent underlying content showing through
+            Color.adaptiveBackground
+                .ignoresSafeArea()
+            // Then the animated gradient on top
             AppAnimatedBackground()
         }
         .onAppear {
