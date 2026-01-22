@@ -865,12 +865,13 @@ struct NutritionGoalsSection: View {
     @State private var stepGoal: Int = 10000
     @State private var waterGoal: Int = 8
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
-    @State private var selectedDietType: DietType? = .flexible
+    @State private var selectedDietType: DietType? = nil // Initialized from cache in loadGoals
     @State private var customCarbLimit: Int = 50
     @State private var showingCarbLimitEditor = false
 
     @AppStorage("dailyWaterGoal") private var savedWaterGoal: Int = 8
     @AppStorage("customCarbLimit") private var savedCarbLimit: Int = 50
+    @AppStorage("cachedDietType") private var cachedDietType: String = "flexible"
 
     @State private var isLoading = true
     @State private var showingError = false
@@ -998,6 +999,17 @@ struct NutritionGoalsSection: View {
     @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
 
     private func loadNutritionGoals() async {
+        // First, initialize from cached values (includes onboarding-set values)
+        await MainActor.run {
+            if selectedDietType == nil {
+                selectedDietType = DietType(rawValue: cachedDietType) ?? .flexible
+            }
+            // Initialize other values from cache
+            caloricGoal = cachedCaloricGoal
+            exerciseGoal = cachedExerciseGoal
+            stepGoal = cachedStepGoal
+        }
+
         do {
             async let settingsTask = firebaseManager.getUserSettings()
             async let macroTask = firebaseManager.getMacroGoals()
@@ -1021,14 +1033,15 @@ struct NutritionGoalsSection: View {
                     cachedStepGoal = newStep
                 }
                 macroGoals = loadedMacroGoals
-                selectedDietType = loadedDiet
+                // Only update diet type if Firebase has a value
+                if let diet = loadedDiet {
+                    selectedDietType = diet
+                    cachedDietType = diet.rawValue
+                }
                 customCarbLimit = savedCarbLimit
             }
         } catch {
-            await MainActor.run {
-                errorMessage = "Failed to load nutrition goals: \(error.localizedDescription)"
-                showingError = true
-            }
+            // Keep cached values on error (already set above)
         }
     }
 

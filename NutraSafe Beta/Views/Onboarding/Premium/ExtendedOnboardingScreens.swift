@@ -556,6 +556,65 @@ struct SensitivitiesScreen: View {
         let manager = OnboardingManager.shared
         manager.saveAllergens(Array(selectedAllergens))
         manager.saveOtherSensitivities(Array(selectedOtherSensitivities))
+
+        // CRITICAL: Sync to state.selectedSensitivities so saveToManager() has correct data
+        // This prevents saveToManager() from overwriting "userAllergens" with empty array
+        syncToOnboardingState()
+    }
+
+    /// Maps string allergen IDs to FoodSensitivity enum values and syncs to state
+    private func syncToOnboardingState() {
+        var sensitivities = Set<FoodSensitivity>()
+
+        // Map allergen string IDs to FoodSensitivity
+        for allergenId in selectedAllergens {
+            if let sensitivity = foodSensitivityFromAllergenId(allergenId) {
+                sensitivities.insert(sensitivity)
+            }
+        }
+
+        // Map other sensitivities
+        for sensitivityId in selectedOtherSensitivities {
+            if let sensitivity = foodSensitivityFromOtherId(sensitivityId) {
+                sensitivities.insert(sensitivity)
+            }
+        }
+
+        // Update the shared state
+        state.selectedSensitivities = sensitivities
+    }
+
+    /// Maps allergen string ID to FoodSensitivity enum
+    private func foodSensitivityFromAllergenId(_ id: String) -> FoodSensitivity? {
+        switch id {
+        case "celery": return .celery
+        case "gluten": return .gluten
+        case "shellfish": return .shellfish
+        case "eggs": return .eggs
+        case "fish": return .fish
+        case "lupin": return .lupin
+        case "dairy": return .dairy
+        case "molluscs": return .molluscs
+        case "mustard": return .mustard
+        case "treeNuts": return .treeNuts
+        case "peanuts": return .peanuts
+        case "sesame": return .sesame
+        case "soy": return .soy
+        case "sulfites": return .sulphites  // Map US spelling to UK enum
+        default: return nil
+        }
+    }
+
+    /// Maps other sensitivity string ID to FoodSensitivity enum
+    private func foodSensitivityFromOtherId(_ id: String) -> FoodSensitivity? {
+        switch id {
+        case "caffeine": return .caffeine
+        case "alcohol": return .alcohol
+        case "histamines": return .histamines
+        case "nightshades": return .nightshades
+        // Note: highSugar, artificialSweeteners, ultraProcessed, additives don't map to FoodSensitivity
+        default: return nil
+        }
     }
 }
 

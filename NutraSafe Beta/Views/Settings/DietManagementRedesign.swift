@@ -35,6 +35,7 @@ struct DietManagementRedesigned: View {
 
     // Calorie goal settings
     @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 2000
+    @AppStorage("cachedDietType") private var cachedDietType: String = "flexible"
     @State private var calorieGoal: Int = 2000
     @State private var showingBMRCalculator: Bool = false
 
@@ -1186,6 +1187,11 @@ struct DietManagementRedesigned: View {
         macroGoals = newMacroGoals
         dietType = selectedDiet
         cachedCaloricGoal = calorieGoal
+
+        // Save diet type to UserDefaults cache
+        if let diet = selectedDiet {
+            cachedDietType = diet.rawValue
+        }
 
         onSave(selectedDiet)
         dismiss()
