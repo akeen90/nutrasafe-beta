@@ -105,13 +105,31 @@ struct AllergenManagementView: View {
         do {
             let settings = try await firebaseManager.getUserSettings()
             await MainActor.run {
-                selectedAllergens = Set(settings.allergens ?? [])
+                // First try Firebase
+                var loadedAllergens = Set(settings.allergens ?? [])
+
+                // Merge with UserDefaults (onboarding saves here)
+                // This ensures onboarding selections are preserved
+                if let savedStrings = UserDefaults.standard.stringArray(forKey: "userAllergens") {
+                    let userDefaultsAllergens = savedStrings.compactMap { Allergen(rawValue: $0) }
+                    loadedAllergens.formUnion(userDefaultsAllergens)
+                }
+
+                selectedAllergens = loadedAllergens
                 isLoading = false
             }
         } catch {
             await MainActor.run {
-                errorMessage = "Failed to load allergens: \(error.localizedDescription)"
-                showingError = true
+                // If Firebase fails, still try to load from UserDefaults
+                if let savedStrings = UserDefaults.standard.stringArray(forKey: "userAllergens") {
+                    selectedAllergens = Set(savedStrings.compactMap { Allergen(rawValue: $0) })
+                }
+
+                // Only show error if we couldn't load from anywhere
+                if selectedAllergens.isEmpty {
+                    errorMessage = "Failed to load allergens: \(error.localizedDescription)"
+                    showingError = true
+                }
                 isLoading = false
             }
         }
@@ -119,6 +137,11 @@ struct AllergenManagementView: View {
 
     private func saveAllergens() {
         isSaving = true
+
+        // Also save to UserDefaults for consistency with onboarding
+        let allergenStrings = selectedAllergens.map { $0.rawValue }
+        UserDefaults.standard.set(allergenStrings, forKey: "userAllergens")
+
         Task {
             do {
                 try await firebaseManager.saveAllergens(Array(selectedAllergens))
