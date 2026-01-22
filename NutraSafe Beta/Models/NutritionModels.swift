@@ -1220,11 +1220,26 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return dbPortions
         }
 
-        // 2. If food has a real serving size (not default 100g), just use that
-        // No need for multiple presets - user can adjust with quantity or custom amount
+        // 2. If food has a real serving size (not default 100g), use that plus extras for drinks
         if let servingG = servingSizeG, servingG > 0 && servingG != 100 {
             let unit = isLiquidCategory ? "ml" : "g"
             let caloriesForServing = calories * (servingG / 100)
+
+            // For drinks, also offer a 200ml option (common glass size)
+            if isLiquidCategory && servingG != 200 {
+                let calories200 = calories * 2 // 200ml
+                var options = [
+                    PortionOption(name: "1 serving (\(Int(servingG))ml)", calories: caloriesForServing, serving_g: servingG)
+                ]
+                // Add 200ml as second option if serving is larger, or first if smaller
+                if servingG > 200 {
+                    options.insert(PortionOption(name: "200ml Glass", calories: calories200, serving_g: 200), at: 0)
+                } else {
+                    options.append(PortionOption(name: "200ml Glass", calories: calories200, serving_g: 200))
+                }
+                return options
+            }
+
             return [
                 PortionOption(name: "1 serving (\(Int(servingG))\(unit))", calories: caloriesForServing, serving_g: servingG)
             ]

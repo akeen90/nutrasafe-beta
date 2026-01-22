@@ -270,47 +270,46 @@ struct FoodSearchResultRowEnhanced: View {
             )
             showingFoodDetail = true
         }) {
-            HStack(spacing: 14) {
-                // Product image thumbnail OR category icon
+            VStack(spacing: 0) {
+                // Product image header (only when available) with white background
                 if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 48, height: 48)
-                                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md))
-                        case .failure(_):
-                            // Fallback to category icon on failure
-                            ZStack {
-                                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                                    .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
-                                    .frame(width: 48, height: 48)
-                                Image(systemName: foodIcon.name)
-                                    .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(foodIcon.color)
+                    ZStack {
+                        // White background so product images blend in
+                        Color.white
+
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(height: 100)
+                            case .failure(_):
+                                EmptyView()
+                            case .empty:
+                                ProgressView()
+                                    .tint(.secondary)
+                                    .frame(height: 100)
+                            @unknown default:
+                                EmptyView()
                             }
-                        case .empty:
-                            // Loading - show placeholder
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                                .fill(Color.gray.opacity(0.1))
-                                .frame(width: 48, height: 48)
-                        @unknown default:
-                            EmptyView()
                         }
                     }
-                } else {
-                    // No image - show category icon
-                    ZStack {
-                        RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                            .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
-                            .frame(width: 48, height: 48)
-                        Image(systemName: foodIcon.name)
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(foodIcon.color)
-                    }
+                    .frame(height: 100)
                 }
+
+                HStack(spacing: 14) {
+                    // Category icon (only when no image)
+                    if food.imageUrl == nil || food.imageUrl?.isEmpty == true {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                                .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                                .frame(width: 48, height: 48)
+                            Image(systemName: foodIcon.name)
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(foodIcon.color)
+                        }
+                    }
 
                 // Product name and serving info
                 VStack(alignment: .leading, spacing: 4) {
@@ -400,9 +399,10 @@ struct FoodSearchResultRowEnhanced: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.secondary.opacity(0.4))
-            }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 14)
+                }
+                .padding(.vertical, 14)
+                .padding(.horizontal, 14)
+            } // VStack
         }
         .buttonStyle(PlainButtonStyle())
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
