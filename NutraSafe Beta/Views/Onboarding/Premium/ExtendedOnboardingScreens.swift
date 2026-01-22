@@ -16,6 +16,7 @@ import HealthKit
 struct PersonalDetailsScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
 
     @State private var hasBirthdayBeenSet = false
     @State private var heightText: String = ""
@@ -40,7 +41,25 @@ struct PersonalDetailsScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: 50)
+            // Back button
+            if let onBack = onBack {
+                HStack {
+                    Button(action: onBack) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(state.palette.primary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+            }
+
+            Spacer().frame(height: onBack != nil ? 20 : 50)
 
             // Headline
             VStack(spacing: 8) {

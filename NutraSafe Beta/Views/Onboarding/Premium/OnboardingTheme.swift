@@ -391,15 +391,127 @@ class PremiumOnboardingState: ObservableObject {
         UserDefaults.standard.set(habitsArray, forKey: "userEatingHabits")
         UserDefaults.standard.set(dietExperience.rawValue, forKey: "userDietExperience")
 
-        // Save diet setup
+        // Save diet setup - use the SAME keys that DietManagementRedesigned reads from
         UserDefaults.standard.set(selectedDietType.rawValue, forKey: "cachedDietType")
-        UserDefaults.standard.set(targetCalories, forKey: "userTargetCalories")
+        UserDefaults.standard.set(targetCalories, forKey: "cachedCaloricGoal") // Main key used by diet management
+        UserDefaults.standard.set(targetCalories, forKey: "userTargetCalories") // Legacy backup
+
+        // Also save the macro goals based on diet type and target calories
+        let calories = Double(targetCalories)
+        var proteinGrams: Int
+        var carbsGrams: Int
+        var fatGrams: Int
+
+        switch selectedDietType {
+        case .keto:
+            // 5% carbs, 20% protein, 75% fat
+            proteinGrams = Int(calories * 0.20 / 4)
+            carbsGrams = Int(calories * 0.05 / 4)
+            fatGrams = Int(calories * 0.75 / 9)
+        case .lowCarb:
+            // 20% carbs, 30% protein, 50% fat
+            proteinGrams = Int(calories * 0.30 / 4)
+            carbsGrams = Int(calories * 0.20 / 4)
+            fatGrams = Int(calories * 0.50 / 9)
+        case .highProtein:
+            // 40% carbs, 35% protein, 25% fat
+            proteinGrams = Int(calories * 0.35 / 4)
+            carbsGrams = Int(calories * 0.40 / 4)
+            fatGrams = Int(calories * 0.25 / 9)
+        case .highProteinMax:
+            // 25% carbs, 50% protein, 25% fat
+            proteinGrams = Int(calories * 0.50 / 4)
+            carbsGrams = Int(calories * 0.25 / 4)
+            fatGrams = Int(calories * 0.25 / 9)
+        case .mediterranean, .paleo, .flexible:
+            // 45% carbs, 25% protein, 30% fat
+            proteinGrams = Int(calories * 0.25 / 4)
+            carbsGrams = Int(calories * 0.45 / 4)
+            fatGrams = Int(calories * 0.30 / 9)
+        }
+
+        // Save calculated macro goals
+        UserDefaults.standard.set(proteinGrams, forKey: "cachedProteinGoal")
+        UserDefaults.standard.set(carbsGrams, forKey: "cachedCarbsGoal")
+        UserDefaults.standard.set(fatGrams, forKey: "cachedFatGoal")
 
         // Save personal details
         UserDefaults.standard.set(heightCm, forKey: "userHeightCm")
         UserDefaults.standard.set(weightKg, forKey: "userWeightKg")
         UserDefaults.standard.set(birthDate.timeIntervalSince1970, forKey: "userBirthDate")
         UserDefaults.standard.set(gender.rawValue, forKey: "userGender")
+
+        // Also save to Firebase if user is signed in (fire-and-forget)
+        // This ensures Firebase doesn't override onboarding settings on next load
+        saveToFirebase()
+    }
+
+    /// Save diet settings to Firebase (async, fire-and-forget)
+    private func saveToFirebase() {
+        let dietType = selectedDietType
+        let calorieTarget = targetCalories
+        let userHeight = heightCm
+        let userWeight = weightKg
+
+        // Calculate macro percentages based on diet type
+        var proteinPercent: Int
+        var carbsPercent: Int
+        var fatPercent: Int
+
+        switch dietType {
+        case .keto:
+            proteinPercent = 20
+            carbsPercent = 5
+            fatPercent = 75
+        case .lowCarb:
+            proteinPercent = 30
+            carbsPercent = 20
+            fatPercent = 50
+        case .highProtein:
+            proteinPercent = 35
+            carbsPercent = 40
+            fatPercent = 25
+        case .highProteinMax:
+            proteinPercent = 50
+            carbsPercent = 25
+            fatPercent = 25
+        case .mediterranean, .paleo, .flexible:
+            proteinPercent = 25
+            carbsPercent = 45
+            fatPercent = 30
+        }
+
+        Task {
+            let firebaseManager = FirebaseManager.shared
+
+            // Save user settings including height and calorie goal
+            try? await firebaseManager.saveUserSettings(
+                height: userHeight,
+                goalWeight: nil,
+                caloricGoal: calorieTarget,
+                exerciseGoal: nil,
+                stepGoal: nil
+            )
+
+            // Save initial weight entry to weight history
+            let weightEntry = WeightEntry(
+                id: UUID(),
+                weight: userWeight,
+                date: Date(),
+                note: "Starting weight from onboarding",
+                photoURLs: []
+            )
+            try? await firebaseManager.saveWeightEntry(weightEntry)
+
+            // Save diet type and macro goals to Firebase (include Fiber as 4th macro)
+            let macroGoals = [
+                MacroGoal(macroType: .protein, percentage: proteinPercent),
+                MacroGoal(macroType: .carbs, percentage: carbsPercent),
+                MacroGoal(macroType: .fat, percentage: fatPercent),
+                MacroGoal(macroType: .fiber, directTarget: 30.0) // Default 30g fiber goal
+            ]
+            try? await firebaseManager.saveMacroGoals(macroGoals, dietType: dietType)
+        }
     }
 
     // Load from UserDefaults

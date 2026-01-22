@@ -1075,10 +1075,29 @@ struct DietSetupScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
     let onSkip: () -> Void
+    var onBack: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: 60)
+            // Back button
+            if let onBack = onBack {
+                HStack {
+                    Button(action: onBack) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(state.palette.primary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+            }
+
+            Spacer().frame(height: onBack != nil ? 20 : 60)
 
             // Headline
             VStack(spacing: 8) {
@@ -1214,6 +1233,7 @@ struct CalorieTargetScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
     let onSkip: () -> Void
+    var onBack: (() -> Void)? = nil
 
     @State private var calorieOffset: Int = 0 // -500 to +500 from baseline
 
@@ -1222,196 +1242,315 @@ struct CalorieTargetScreen: View {
         state.tdee
     }
 
+    private var bmr: Int {
+        Int(state.bmr)
+    }
+
     private var adjustedCalories: Int {
         // Adjust based on goals
         var calories = maintenanceCalories + calorieOffset
 
         if state.selectedGoals.contains(.loseWeight) {
-            calories -= 300 // Default deficit
+            calories -= 500 // Default 500 cal deficit for ~1 lb/week
         } else if state.selectedGoals.contains(.buildMuscle) {
-            calories += 200 // Default surplus
+            calories += 300 // Default surplus for muscle building
         }
 
         return max(1200, min(4000, calories))
     }
 
-    // Calorie deficit/surplus based on goal
-    private var goalAdjustment: Int {
+    // Total daily deficit including slider adjustment
+    private var totalDailyDeficit: Int {
         if state.selectedGoals.contains(.loseWeight) {
-            return -300
-        } else if state.selectedGoals.contains(.buildMuscle) {
-            return 200
+            return 500 - calorieOffset // Base 500 + slider adjustment
         }
         return 0
     }
 
-    private var goalExplanation: (title: String, detail: String) {
-        if state.selectedGoals.contains(.loseWeight) {
-            let deficit = abs(goalAdjustment + calorieOffset)
-            let weeklyLoss = Double(deficit * 7) / 3500.0 // ~3500 cal = 1 lb
-            let lossText = weeklyLoss >= 0.5 ? String(format: "~%.1f lb/week", weeklyLoss) : "gradual loss"
-            return (
-                "300 cal deficit from maintenance",
-                "This creates a sustainable deficit for \(lossText) fat loss without muscle loss."
-            )
-        } else if state.selectedGoals.contains(.buildMuscle) {
-            return (
-                "200 cal surplus for muscle growth",
-                "A moderate surplus supports muscle building while minimising fat gain."
-            )
-        } else {
-            return (
-                "Maintenance calories",
-                "This will help you maintain your current weight and body composition."
-            )
-        }
+    // Weight loss per week based on deficit (3500 cal = 1 lb)
+    private var weeklyWeightLoss: Double {
+        guard totalDailyDeficit > 0 else { return 0 }
+        return Double(totalDailyDeficit * 7) / 3500.0
+    }
+
+    // Estimated time to lose 10 lbs
+    private var weeksToLose10lbs: Int {
+        guard weeklyWeightLoss > 0 else { return 0 }
+        return Int(ceil(10.0 / weeklyWeightLoss))
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer().frame(height: 50)
-
-            // Headline
-            VStack(spacing: 8) {
-                Text("Your daily")
-                    .font(.system(size: 28, weight: .bold, design: .serif))
-                    .foregroundColor(Color(white: 0.2))
-
-                Text("calorie target")
-                    .font(.system(size: 28, weight: .bold, design: .serif))
-                    .foregroundColor(Color(white: 0.2))
-            }
-            .multilineTextAlignment(.center)
-
-            Spacer().frame(height: 24)
-
-            // Maintenance calories explanation
-            VStack(spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "flame")
-                        .font(.system(size: 14))
-                        .foregroundColor(state.palette.primary)
-                    Text("Your maintenance: \(maintenanceCalories) cal/day")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(Color(white: 0.35))
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                // Back button
+                if let onBack = onBack {
+                    HStack {
+                        Button(action: onBack) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Back")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                            .foregroundColor(state.palette.primary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
                 }
 
-                Text("Calculated from your BMR × \(state.activityLevel.rawValue.lowercased()) activity")
-                    .font(.system(size: 13))
-                    .foregroundColor(Color(white: 0.5))
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(state.palette.primary.opacity(0.08))
-            )
-            .padding(.horizontal, 32)
+                Spacer().frame(height: onBack != nil ? 20 : 50)
 
-            Spacer().frame(height: 28)
+                // Headline
+                VStack(spacing: 8) {
+                    Text("Your personalised")
+                        .font(.system(size: 28, weight: .bold, design: .serif))
+                        .foregroundColor(Color(white: 0.2))
 
-            // Big calorie display
-            VStack(spacing: 8) {
-                Text("\(adjustedCalories)")
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
-                    .foregroundColor(state.palette.primary)
+                    Text("calorie plan")
+                        .font(.system(size: 28, weight: .bold, design: .serif))
+                        .foregroundColor(state.palette.primary)
+                }
+                .multilineTextAlignment(.center)
 
-                Text("calories per day")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundColor(Color(white: 0.4))
-            }
+                Spacer().frame(height: 20)
 
-            // Goal adjustment explanation
-            if goalAdjustment != 0 || calorieOffset != 0 {
-                VStack(spacing: 4) {
-                    Text(goalExplanation.title)
-                        .font(.system(size: 14, weight: .semibold))
+                // BMR Breakdown Card
+                VStack(spacing: 12) {
+                    // BMR Row
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Your BMR")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color(white: 0.3))
+                            Text("Calories burned at rest")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(white: 0.5))
+                        }
+                        Spacer()
+                        Text("\(bmr) cal")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(state.palette.primary)
+                    }
+
+                    Divider()
+
+                    // Activity multiplier row
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Activity: \(state.activityLevel.rawValue)")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color(white: 0.3))
+                            Text("×\(String(format: "%.2f", state.activityLevel.multiplier)) multiplier")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(white: 0.5))
+                        }
+                        Spacer()
+                        Text("= \(maintenanceCalories) cal")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(state.palette.primary)
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.white.opacity(0.9))
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, y: 3)
+                )
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 20)
+
+                // Big calorie display
+                VStack(spacing: 6) {
+                    Text("\(adjustedCalories)")
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
                         .foregroundColor(state.palette.primary)
 
-                    Text(goalExplanation.detail)
-                        .font(.system(size: 13))
+                    Text("calories per day")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(Color(white: 0.4))
+                }
+
+                // Weight loss explanation (if losing weight)
+                if state.selectedGoals.contains(.loseWeight) && weeklyWeightLoss > 0 {
+                    Spacer().frame(height: 16)
+
+                    // Weight loss info card
+                    VStack(spacing: 12) {
+                        // The science
+                        HStack(spacing: 10) {
+                            Image(systemName: "lightbulb.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+
+                            Text("3,500 calories = ~1 lb of fat")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color(white: 0.35))
+
+                            Spacer()
+                        }
+
+                        Divider()
+
+                        // Deficit info
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Your daily deficit")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(Color(white: 0.5))
+                                Text("\(totalDailyDeficit) calories")
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundColor(state.palette.primary)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Weekly loss")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(Color(white: 0.5))
+                                Text(String(format: "~%.1f lbs", weeklyWeightLoss))
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundColor(state.palette.primary)
+                            }
+                        }
+
+                        Divider()
+
+                        // Timeline estimate
+                        HStack(spacing: 10) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 16))
+                                .foregroundColor(state.palette.primary)
+
+                            Text("At this rate, you could lose 10 lbs in ~\(weeksToLose10lbs) weeks")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color(white: 0.35))
+
+                            Spacer()
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(state.palette.primary.opacity(0.08))
+                    )
+                    .padding(.horizontal, 24)
+                } else if state.selectedGoals.contains(.buildMuscle) {
+                    Spacer().frame(height: 16)
+
+                    // Muscle building info
+                    HStack(spacing: 10) {
+                        Image(systemName: "dumbbell.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(state.palette.primary)
+
+                        Text("+300 cal surplus for lean muscle gains")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(white: 0.35))
+
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(state.palette.primary.opacity(0.08))
+                    )
+                    .padding(.horizontal, 24)
+                }
+
+                Spacer().frame(height: 20)
+
+                // Adjustment slider
+                VStack(spacing: 10) {
+                    Text("Adjust your target")
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(Color(white: 0.5))
-                        .multilineTextAlignment(.center)
+
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            if calorieOffset > -500 {
+                                calorieOffset -= 50
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(state.palette.primary.opacity(calorieOffset > -500 ? 1 : 0.3))
+                        }
+
+                        Slider(value: Binding(
+                            get: { Double(calorieOffset) },
+                            set: { calorieOffset = Int($0) }
+                        ), in: -500...500, step: 50)
+                        .accentColor(state.palette.primary)
+
+                        Button(action: {
+                            if calorieOffset < 500 {
+                                calorieOffset += 50
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(state.palette.primary.opacity(calorieOffset < 500 ? 1 : 0.3))
+                        }
+                    }
+                    .padding(.horizontal, 24)
+
+                    if calorieOffset != 0 {
+                        Text("\(calorieOffset > 0 ? "+" : "")\(calorieOffset) from recommended")
+                            .font(.system(size: 13))
+                            .foregroundColor(state.palette.primary)
+                    }
                 }
-                .padding(.top, 12)
-                .padding(.horizontal, 40)
-            }
 
-            Spacer().frame(height: 24)
+                Spacer().frame(height: 20)
 
-            // Adjustment slider
-            VStack(spacing: 12) {
-                Text("Fine-tune your target")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(white: 0.5))
-
+                // Macro preview
                 HStack(spacing: 16) {
-                    Text("Less")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color(white: 0.5))
+                    MacroPreviewPill(
+                        name: "Protein",
+                        grams: macrosForDiet.protein,
+                        color: Color.blue
+                    )
+                    MacroPreviewPill(
+                        name: "Carbs",
+                        grams: macrosForDiet.carbs,
+                        color: Color.orange
+                    )
+                    MacroPreviewPill(
+                        name: "Fat",
+                        grams: macrosForDiet.fat,
+                        color: Color.purple
+                    )
+                }
+                .padding(.horizontal, 24)
 
-                    Slider(value: Binding(
-                        get: { Double(calorieOffset) },
-                        set: { calorieOffset = Int($0) }
-                    ), in: -500...500, step: 50)
-                    .accentColor(state.palette.primary)
+                Spacer().frame(height: 30)
 
-                    Text("More")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color(white: 0.5))
+                // Buttons
+                VStack(spacing: 14) {
+                    PremiumButton(
+                        text: "Set My Goal",
+                        palette: state.palette,
+                        action: {
+                            state.targetCalories = adjustedCalories
+                            onContinue()
+                        }
+                    )
+
+                    Button(action: onSkip) {
+                        Text("I'll set this later")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(Color(white: 0.5))
+                    }
                 }
                 .padding(.horizontal, 32)
-
-                if calorieOffset != 0 {
-                    Text("\(calorieOffset > 0 ? "+" : "")\(calorieOffset) from recommended")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(white: 0.5))
-                }
+                .padding(.bottom, 50)
             }
-
-            Spacer().frame(height: 24)
-
-            // Macro preview
-            HStack(spacing: 20) {
-                MacroPreviewPill(
-                    name: "Protein",
-                    grams: macrosForDiet.protein,
-                    color: Color.blue
-                )
-                MacroPreviewPill(
-                    name: "Carbs",
-                    grams: macrosForDiet.carbs,
-                    color: Color.orange
-                )
-                MacroPreviewPill(
-                    name: "Fat",
-                    grams: macrosForDiet.fat,
-                    color: Color.purple
-                )
-            }
-            .padding(.horizontal, 24)
-
-            Spacer()
-
-            // Buttons
-            VStack(spacing: 14) {
-                PremiumButton(
-                    text: "Continue",
-                    palette: state.palette,
-                    action: {
-                        state.targetCalories = adjustedCalories
-                        onContinue()
-                    }
-                )
-
-                Button(action: onSkip) {
-                    Text("Skip for now")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(Color(white: 0.5))
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 50)
         }
     }
 

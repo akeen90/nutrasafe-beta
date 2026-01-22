@@ -6,9 +6,10 @@
 //  Flow: Breath → Mirror → Processing → Synthesis → Promise →
 //        Goals → GoalsProcessing → Activity → ActivityProcessing →
 //        Habits → Experience → ProfileBuilding →
-//        DietSetup → CalorieTarget →
-//        PersonalDetails → Sensitivities → Camera → Health → Notifications →
+//        PersonalDetails → DietSetup → CalorieTarget →
+//        Sensitivities → Camera → Health → Notifications →
 //        ProUpgrade → Honesty → Completion
+//  Note: PersonalDetails comes BEFORE CalorieTarget for proper BMR calculation
 //
 
 import SwiftUI
@@ -72,22 +73,24 @@ struct PremiumOnboardingView: View {
                     // Profile Building - "Building your profile..."
                     ProfileBuildingScreen(state: state, onComplete: { advanceScreen() })
                 case 13:
+                    // Personal Details (DOB, height, weight, gender) - BEFORE calorie target for BMR calculation
+                    PersonalDetailsScreen(state: state, onContinue: { advanceScreen() }, onBack: { goBackScreen() })
+                case 14:
                     // Diet Setup - Choose eating approach
                     DietSetupScreen(
                         state: state,
                         onContinue: { advanceScreen() },
-                        onSkip: { advanceScreen() }
+                        onSkip: { advanceScreen() },
+                        onBack: { goBackScreen() }
                     )
-                case 14:
-                    // Calorie Target - Daily calorie goal
+                case 15:
+                    // Calorie Target - Daily calorie goal (now has height/weight/age from step 13)
                     CalorieTargetScreen(
                         state: state,
                         onContinue: { advanceScreen() },
-                        onSkip: { advanceScreen() }
+                        onSkip: { advanceScreen() },
+                        onBack: { goBackScreen() }
                     )
-                case 15:
-                    // Personal Details (DOB, height, weight, gender)
-                    PersonalDetailsScreen(state: state, onContinue: { advanceScreen() })
                 case 16:
                     // Sensitivities (UK/EU Allergens + Preferences)
                     SensitivitiesScreen(state: state, onContinue: { advanceScreen() })
@@ -155,6 +158,21 @@ struct PremiumOnboardingView: View {
         }
     }
 
+    private func goBackScreen() {
+        guard currentScreen > 0 else { return }
+
+        withAnimation(.easeOut(duration: 0.3)) {
+            transitionOpacity = 0
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            currentScreen -= 1
+            withAnimation(.easeIn(duration: 0.4)) {
+                transitionOpacity = 1
+            }
+        }
+    }
+
     private func screenName(_ screen: Int) -> String {
         switch screen {
         case 0: return "Breath"
@@ -170,9 +188,9 @@ struct PremiumOnboardingView: View {
         case 10: return "EatingHabits"
         case 11: return "DietExperience"
         case 12: return "ProfileBuilding"
-        case 13: return "DietSetup"
-        case 14: return "CalorieTarget"
-        case 15: return "PersonalDetails"
+        case 13: return "PersonalDetails"
+        case 14: return "DietSetup"
+        case 15: return "CalorieTarget"
         case 16: return "Sensitivities"
         case 17: return "CameraPermission"
         case 18: return "HealthPermission"

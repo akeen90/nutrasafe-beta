@@ -2070,7 +2070,28 @@ class FirebaseManager: ObservableObject {
             }
 
             if !macroGoals.isEmpty {
-                                return macroGoals
+                // Ensure we always have 4 macros (P, C, F + extra)
+                // Pad with defaults if any are missing
+                var paddedMacros = macroGoals
+
+                // Check for core macros and add if missing
+                if !paddedMacros.contains(where: { $0.macroType == .protein }) {
+                    paddedMacros.append(MacroGoal(macroType: .protein, percentage: 30))
+                }
+                if !paddedMacros.contains(where: { $0.macroType == .carbs }) {
+                    paddedMacros.append(MacroGoal(macroType: .carbs, percentage: 40))
+                }
+                if !paddedMacros.contains(where: { $0.macroType == .fat }) {
+                    paddedMacros.append(MacroGoal(macroType: .fat, percentage: 30))
+                }
+
+                // Ensure there's a 4th macro (extra) - default to Fiber if none
+                let hasExtraMacro = paddedMacros.contains(where: { !$0.macroType.isCoreMacro })
+                if !hasExtraMacro {
+                    paddedMacros.append(MacroGoal(macroType: .fiber, directTarget: 30.0))
+                }
+
+                return paddedMacros
             }
         }
 
