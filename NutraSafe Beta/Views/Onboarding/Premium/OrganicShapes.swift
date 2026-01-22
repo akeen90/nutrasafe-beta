@@ -110,7 +110,6 @@ struct BlobShape: Shape {
             let p1 = controlPoints[(i + 1) % controlPoints.count]
             let p2 = controlPoints[(i + 2) % controlPoints.count]
 
-            let _ = CGPoint(x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2)
             let mid2 = CGPoint(x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2)
 
             path.addQuadCurve(to: mid2, control: p1)

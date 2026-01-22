@@ -671,7 +671,6 @@ final class AlgoliaSearchManager {
             let nameLower = result.name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
             let brandLower = result.brand?.lowercased() ?? ""
-            let _ = result.source?.lowercased() ?? ""
 
             var score = 0
             var tier = 4  // Default tier (lowest)
@@ -1090,7 +1089,6 @@ final class AlgoliaSearchManager {
             let name = item.result.name
             let nameLower = name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
-            let _ = item.result.source?.lowercased() ?? ""
 
             var score = 0
 
