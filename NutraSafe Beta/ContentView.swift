@@ -485,7 +485,8 @@ struct ContentView: View {
                     tabContent(for: tab)
                         .id(tab) // Stable identity prevents view re-creation
                         .opacity(selectedTab == tab ? 1 : 0)
-                        .animation(.easeInOut(duration: 0.15), value: selectedTab == tab) // Smooth crossfade
+                        // PERFORMANCE: Remove animation delay for instant tab switching
+                        // Users perceive <100ms as instant; animation was adding 150ms latency
                         .allowsHitTesting(selectedTab == tab)
                         .accessibilityHidden(selectedTab != tab)
                 }
@@ -1654,28 +1655,39 @@ struct WeightTrackingView: View {
             }
         }
         .onAppear {
+            // PERFORMANCE: Guard against redundant loads - critical for tab switching speed
             guard !hasLoadedOnce else { return }
-            if !(firebaseManager.cachedWeightHistory.isEmpty && firebaseManager.cachedUserHeight == nil && firebaseManager.cachedGoalWeight == nil) {
+            hasLoadedOnce = true
+
+            // PERFORMANCE: Use cached data IMMEDIATELY for instant display (no loading spinner)
+            // Background refresh happens silently without blocking the UI
+            let hasCachedData = !firebaseManager.cachedWeightHistory.isEmpty ||
+                                firebaseManager.cachedUserHeight != nil ||
+                                firebaseManager.cachedGoalWeight != nil
+
+            if hasCachedData {
+                // Instant display from cache - no loading state shown
                 currentWeight = firebaseManager.cachedWeightHistory.first?.weight ?? currentWeight
                 weightHistory = firebaseManager.cachedWeightHistory
                 if let h = firebaseManager.cachedUserHeight { userHeight = h }
                 if let g = firebaseManager.cachedGoalWeight { goalWeight = g }
                 hasCheckedHeight = true
-                hasLoadedOnce = true
+                // Silent background refresh to check for newer data
                 loadWeightHistory(silent: true)
             } else {
-                hasLoadedOnce = true
+                // No cache - must show loading state
                 loadWeightHistory()
             }
+
+            // PERFORMANCE: Defer non-critical UI (modals/tips) to avoid blocking render
             if needsHeightSetup {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
                     showingHeightSetup = true
                 }
-            }
-
-            // Show feature tip on first visit (after height setup if needed)
-            if !FeatureTipsManager.shared.hasSeenTip(.progressOverview) && !needsHeightSetup {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            } else if !FeatureTipsManager.shared.hasSeenTip(.progressOverview) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
                     showingProgressTip = true
                 }
             }
@@ -1915,7 +1927,8 @@ struct DietManagementTabContent: View {
 
     // Macro goals
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
-    @State private var selectedDietType: DietType? = .flexible
+    @AppStorage("cachedDietType") private var cachedDietType: String = "flexible"
+    @State private var selectedDietType: DietType? = nil // Initialized from cached value in onAppear
 
     // BMR Calculator
     @State private var showingBMRCalculator: Bool = false
@@ -2489,6 +2502,18 @@ struct DietManagementTabContent: View {
 
     private func loadDietSettings() {
         Task {
+            // First, initialize from cached values (includes onboarding-set values)
+            await MainActor.run {
+                // Initialize diet type from UserDefaults cache if not already set
+                if selectedDietType == nil {
+                    selectedDietType = DietType(rawValue: cachedDietType) ?? .flexible
+                }
+                // Initialize calorie goal from cache
+                if calorieGoal == 2000 {
+                    calorieGoal = cachedCaloricGoal
+                }
+            }
+
             do {
                 let settings = try await firebaseManager.getUserSettings()
                 await MainActor.run {
@@ -2498,21 +2523,28 @@ struct DietManagementTabContent: View {
                     }
                 }
 
-                // Load diet type from Firebase
+                // Load diet type from Firebase (overrides cache if present)
                 if let dietData = try? await firebaseManager.getDietType() {
                     await MainActor.run {
                         selectedDietType = dietData
+                        cachedDietType = dietData.rawValue
                     }
                 }
+                // If Firebase doesn't have diet data, keep the cached value (from onboarding)
             } catch {
-                // Use cached values
+                // Use cached values (already initialized above)
             }
         }
     }
 
     private func saveDietSettings() {
+        // Update local cache immediately
+        if let diet = selectedDietType {
+            cachedDietType = diet.rawValue
+        }
+
         Task {
-            // Save diet type along with macro goals
+            // Save diet type along with macro goals to Firebase
             try? await firebaseManager.saveMacroGoals(macroGoals, dietType: selectedDietType)
         }
     }

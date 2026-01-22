@@ -701,6 +701,9 @@ struct AppAnimatedBackground: View {
                 endRadius: 280
             )
         }
+        // PERFORMANCE: drawingGroup() flattens gradients to a single Metal texture
+        // This prevents expensive per-frame gradient recalculation during animation
+        .drawingGroup()
         .ignoresSafeArea()
         .onAppear {
             withAnimation(DesignTokens.Animation.ambient) {
