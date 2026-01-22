@@ -517,7 +517,7 @@ struct ContentView: View {
             .environmentObject(sharedFastingViewModelWrapper)
 
         case .weight:
-            WeightTrackingView(showingSettings: $showingSettings)
+            WeightTrackingView(showingSettings: $showingSettings, selectedTab: $selectedTab)
                 .environmentObject(healthKitManager)
                 .environmentObject(subscriptionManager)
 
@@ -972,6 +972,7 @@ enum JourneyTimeRange: String, CaseIterable {
 struct WeightTrackingView: View {
     @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
+    @Binding var selectedTab: TabItem
     var isPresentedAsModal: Bool = false
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
@@ -989,6 +990,12 @@ struct WeightTrackingView: View {
     @State private var hasLoadedOnce = false
 
     @State private var progressSubTab: ProgressSubTab = .weight
+
+    // MARK: - Scroll Reset Trigger
+    // Combines main tab and subtab to reset scroll when returning to this tab
+    private var scrollResetTrigger: String {
+        "\(selectedTab)-\(progressSubTab)"
+    }
     @State private var editingEntry: WeightEntry?
     @State private var entryToDelete: WeightEntry?
     @State private var showingDeleteConfirmation = false
@@ -1100,7 +1107,7 @@ struct WeightTrackingView: View {
                     ZStack {
                         // MARK: Weight Tab Content
                         if progressSubTab == .weight {
-                        ScrollViewWithTopReset {
+                        ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
                             // PERFORMANCE: LazyVStack defers rendering of off-screen content
                             LazyVStack(spacing: 24) {
 
@@ -1585,7 +1592,7 @@ struct WeightTrackingView: View {
 
                         // MARK: Diet Tab Content
                         if progressSubTab == .diet {
-                            ScrollViewWithTopReset {
+                            ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
                                 DietManagementTabContent()
                                     .environmentObject(firebaseManager)
                             }

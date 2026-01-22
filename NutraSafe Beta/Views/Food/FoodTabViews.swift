@@ -218,6 +218,12 @@ struct FoodReactionsView: View {
     @State private var selectedSubTab: ReactionSubTab = .overview
     @State private var selectedSymptomFilter: String? = nil
 
+    // MARK: - Scroll Reset Trigger
+    // Combines main tab and subtab to reset scroll when returning to this tab
+    private var scrollResetTrigger: String {
+        "\(selectedTab)-\(selectedSubTab)"
+    }
+
     enum ReactionSubTab: String, CaseIterable {
         case overview = "Overview"
         case timeline = "Timeline"
@@ -288,7 +294,7 @@ struct FoodReactionsView: View {
 
     // MARK: - Timeline View
     private var reactionTimelineView: some View {
-        ScrollViewWithTopReset(.vertical, showsIndicators: true) {
+        ScrollViewWithTopReset(.vertical, showsIndicators: true, resetOn: scrollResetTrigger) {
             VStack(spacing: 16) {
                 // Symptom filter
                 symptomFilterSection
@@ -413,7 +419,7 @@ struct FoodReactionsView: View {
     }
 
     private var foodBasedReactionsView: some View {
-        ScrollViewWithTopReset(.vertical, showsIndicators: true) {
+        ScrollViewWithTopReset(.vertical, showsIndicators: true, resetOn: scrollResetTrigger) {
             VStack(spacing: 12) {
                 // Reaction Summary
                 FoodReactionSummaryCard(selectedTab: $selectedTab)

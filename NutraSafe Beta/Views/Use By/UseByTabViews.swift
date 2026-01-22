@@ -79,6 +79,12 @@ struct UseByTabView: View {
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
 
+    // MARK: - Scroll Reset Trigger
+    // Resets scroll when returning to this tab
+    private var scrollResetTrigger: TabItem {
+        selectedTab
+    }
+
     // MARK: - Hero Header (Glassmorphic Search Bar)
     private var useByHeroHeader: some View {
         VStack(spacing: 12) {
@@ -181,7 +187,7 @@ struct UseByTabView: View {
                 // Check premium access
                 if subscriptionManager.hasAccess {
                     // Premium users see full content
-                    ScrollViewWithTopReset {
+                    ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
                         LazyVStack(spacing: 16) {
                             // Search bar section
                             useByHeroHeader

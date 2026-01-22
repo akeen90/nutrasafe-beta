@@ -82,6 +82,12 @@ struct DiaryTabView: View {
     @StateObject private var additiveTrackerVM = AdditiveTrackerViewModel()
     @State private var insightsSubTab: InsightsSubTab = .additives
 
+    // MARK: - Scroll Reset Trigger
+    // Combines main tab and subtab to reset scroll when returning to this tab
+    private var scrollResetTrigger: String {
+        "\(selectedTab)-\(diarySubTab)"
+    }
+
     private struct NutritionTotals {
         var totalCalories: Int = 0
         var totalProtein: Double = 0
@@ -594,7 +600,7 @@ struct DiaryTabView: View {
             ZStack {
                 // Overview tab - show/hide with opacity (no animation)
                 // Reduced spacing for tighter layout - foods feel more immediate
-                ScrollViewWithTopReset {
+                ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
                     LazyVStack(spacing: 10) {
                         overviewTabContent
                     }
@@ -603,7 +609,7 @@ struct DiaryTabView: View {
                 .allowsHitTesting(diarySubTab == .overview)
 
                 // Nutrients tab - show/hide with opacity (no animation)
-                ScrollViewWithTopReset {
+                ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
                     LazyVStack(spacing: 16) {
                         nutrientsTabContent
                     }

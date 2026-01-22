@@ -1251,7 +1251,7 @@ struct ProgressGoalsSection: View {
             }
         }
         .fullScreenCover(isPresented: $showingWeightHistory) {
-            WeightTrackingView(showingSettings: $showingWeightHistory, isPresentedAsModal: true)
+            WeightTrackingView(showingSettings: $showingWeightHistory, selectedTab: .constant(.weight), isPresentedAsModal: true)
                 .environmentObject(firebaseManager)
                 .environmentObject(healthKitManager)
                 .environmentObject(subscriptionManager)
