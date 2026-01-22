@@ -368,7 +368,8 @@ function formatFoodResult(id, data, customCategories = []) {
         additives: data.additives || null,
         verifiedBy: data.verifiedBy || null,
         verificationMethod: data.verificationMethod || null,
-        verifiedAt: data.verifiedAt || null
+        verifiedAt: data.verifiedAt || null,
+        imageUrl: data.imageUrl || null
     };
 }
 // Extract raw serving size (no validation)

@@ -423,7 +423,8 @@ function formatFoodResult(id: string, data: any, customCategories: FoodCategory[
     additives: data.additives || null,
     verifiedBy: data.verifiedBy || null,
     verificationMethod: data.verificationMethod || null,
-    verifiedAt: data.verifiedAt || null
+    verifiedAt: data.verifiedAt || null,
+    imageUrl: data.imageUrl || null
   };
 }
 
