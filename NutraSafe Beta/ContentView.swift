@@ -2286,7 +2286,7 @@ struct DietManagementTabContent: View {
                                 .keyboardType(.numberPad)
                                 .focused($stepFieldFocused)
                                 .multilineTextAlignment(.center)
-                                .frame(width: 70)
+                                .frame(width: 80)
                                 .onSubmit { commitStepEdit() }
                                 .onChange(of: stepFieldFocused) { _, focused in
                                     if !focused { commitStepEdit() }
@@ -2295,7 +2295,8 @@ struct DietManagementTabContent: View {
                             Text(formatStepCount(Double(stepGoal)))
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
                                 .foregroundColor(.green)
-                                .frame(minWidth: 60)
+                                .frame(width: 80)
+                                .lineLimit(1)
                                 .contentTransition(.numericText())
                                 .onTapGesture {
                                     stepText = "\(stepGoal)"
@@ -2358,7 +2359,7 @@ struct DietManagementTabContent: View {
                                 .keyboardType(.numberPad)
                                 .focused($exerciseFieldFocused)
                                 .multilineTextAlignment(.center)
-                                .frame(width: 70)
+                                .frame(width: 80)
                                 .onSubmit { commitExerciseEdit() }
                                 .onChange(of: exerciseFieldFocused) { _, focused in
                                     if !focused { commitExerciseEdit() }
@@ -2372,7 +2373,8 @@ struct DietManagementTabContent: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(palette.textTertiary)
                             }
-                            .frame(minWidth: 70)
+                            .frame(width: 80)
+                            .lineLimit(1)
                             .contentTransition(.numericText())
                             .onTapGesture {
                                 exerciseText = "\(exerciseGoal)"
