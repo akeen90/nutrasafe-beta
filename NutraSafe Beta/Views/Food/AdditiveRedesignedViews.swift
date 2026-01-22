@@ -20,11 +20,11 @@ enum AdditiveGrade: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .A: return "Clean Label"
-        case .B: return "Few Additives"
-        case .C: return "Some Additives"
-        case .D: return "Many Additives"
-        case .F: return "High Additive Count"
+        case .A: return "Excellent"
+        case .B: return "Good"
+        case .C: return "Moderate"
+        case .D: return "Poor"
+        case .F: return "Avoid"
         }
     }
 
@@ -40,20 +40,20 @@ enum AdditiveGrade: String, CaseIterable {
 
     var shortDescription: String {
         switch self {
-        case .A: return "No additives to watch"
-        case .B: return "All additives are safe"
-        case .C: return "A few to be aware of"
-        case .D: return "Several to watch"
-        case .F: return "Multiple concerning additives"
+        case .A: return "Minimal or no additives"
+        case .B: return "Only low-risk additives"
+        case .C: return "Some to be aware of"
+        case .D: return "Several concerning additives"
+        case .F: return "Multiple high-risk additives"
         }
     }
 
     static func from(score: Int) -> AdditiveGrade {
         switch score {
-        case 85...100: return .A
-        case 70..<85: return .B
-        case 55..<70: return .C
-        case 40..<55: return .D
+        case 80...100: return .A
+        case 60..<80: return .B
+        case 40..<60: return .C
+        case 20..<40: return .D
         default: return .F
         }
     }
@@ -135,75 +135,76 @@ struct AdditiveSafetyBadge: View {
     // MARK: - Grade Badge
 
     private func gradeBadge(analysis: AdditiveAnalysisResult) -> some View {
-        Button(action: { onTap?() }) {
-            HStack(spacing: 12) {
-                // Grade circle
-                ZStack {
-                    Circle()
-                        .fill(analysis.grade.color)
-                        .frame(width: 44, height: 44)
+        HStack(spacing: 12) {
+            // Grade circle
+            ZStack {
+                Circle()
+                    .fill(analysis.grade.color)
+                    .frame(width: 44, height: 44)
 
-                    Text(analysis.grade.rawValue)
-                        .font(.system(size: 22, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
-                }
-
-                // Description
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(analysis.grade.label)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(palette.textPrimary)
-
-                    HStack(spacing: 4) {
-                        if analysis.totalCount == 0 {
-                            Text("No additives detected")
-                                .font(.system(size: 13))
-                                .foregroundColor(palette.textSecondary)
-                        } else {
-                            Text("\(analysis.totalCount) additive\(analysis.totalCount == 1 ? "" : "s")")
-                                .font(.system(size: 13))
-                                .foregroundColor(palette.textSecondary)
-
-                            if analysis.watchCount > 0 {
-                                Text("•")
-                                    .foregroundColor(palette.textTertiary)
-                                Text("\(analysis.watchCount) to watch")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(analysis.grade.color)
-                            }
-                        }
-                    }
-
-                    // Personal alert indicator
-                    if analysis.hasPersonalAlerts {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bolt.fill")
-                                .font(.system(size: 10))
-                            Text("\(analysis.personalAlerts.count) affects your sensitivities")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        .foregroundColor(SemanticColors.caution)
-                    }
-                }
-
-                Spacer()
-
-                // Chevron to indicate tappable
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(palette.textTertiary)
+                Text(analysis.grade.rawValue)
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(analysis.grade.color.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(analysis.grade.color.opacity(0.2), lineWidth: 1)
-                    )
-            )
+
+            // Description
+            VStack(alignment: .leading, spacing: 2) {
+                Text(analysis.grade.label)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(palette.textPrimary)
+
+                HStack(spacing: 4) {
+                    if analysis.totalCount == 0 {
+                        Text("No additives detected")
+                            .font(.system(size: 13))
+                            .foregroundColor(palette.textSecondary)
+                    } else {
+                        Text("\(analysis.totalCount) additive\(analysis.totalCount == 1 ? "" : "s")")
+                            .font(.system(size: 13))
+                            .foregroundColor(palette.textSecondary)
+
+                        if analysis.watchCount > 0 {
+                            Text("•")
+                                .foregroundColor(palette.textTertiary)
+                            Text("\(analysis.watchCount) to watch")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(analysis.grade.color)
+                        }
+                    }
+                }
+
+                // Personal alert indicator
+                if analysis.hasPersonalAlerts {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 10))
+                        Text("\(analysis.personalAlerts.count) affects your sensitivities")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(SemanticColors.caution)
+                }
+            }
+
+            Spacer()
+
+            // Chevron to indicate tappable
+            Image(systemName: "chevron.down.circle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(analysis.grade.color.opacity(0.6))
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(analysis.grade.color.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(analysis.grade.color.opacity(0.2), lineWidth: 1)
+                )
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap?()
+        }
     }
 
     // MARK: - No Data Badge
@@ -832,7 +833,7 @@ class AdditiveAnalyzer {
         var lowRiskCount = 0
         var safeCount = 0
 
-        // Process detected additives
+        // Process detected E-number additives
         for additive in detectionResult.detectedAdditives {
             let riskLevel = AdditiveOverrides.getRiskLevel(for: additive)
             let override = AdditiveOverrides.override(for: additive)
@@ -843,19 +844,38 @@ class AdditiveAnalyzer {
                 userSensitivities: userSensitivities
             )
 
-            // Build why flagged reasons
+            // Build why flagged reasons - ALWAYS provide a clear reason
             var whyFlagged: [String] = []
+
+            // Add specific warnings first
             if additive.hasChildWarning {
                 whyFlagged.append("Not recommended for children")
             }
             if additive.hasSulphitesAllergenLabel {
                 whyFlagged.append("Contains sulphites (allergen)")
             }
+
+            // Add the risk summary from overrides (most accurate info)
             if let riskSummary = override?.riskSummary, !riskSummary.isEmpty {
                 whyFlagged.append(riskSummary)
             }
-            if additive.effectsVerdict == .avoid {
-                whyFlagged.append("Some studies suggest limiting intake")
+
+            // If still no reason, add one based on risk level (ensure every additive has info)
+            if whyFlagged.isEmpty {
+                switch riskLevel {
+                case .highRisk:
+                    whyFlagged.append("Studies suggest limiting intake of this additive")
+                case .moderateRisk:
+                    whyFlagged.append("Safe in small amounts, but worth being aware of")
+                case .lowRisk:
+                    whyFlagged.append("Generally considered safe for most people")
+                case .noRisk:
+                    if isVitaminOrMineral(additive) {
+                        whyFlagged.append("A vitamin or mineral - beneficial to health")
+                    } else {
+                        whyFlagged.append("Natural or well-studied with no known concerns")
+                    }
+                }
             }
 
             let analyzed = AnalyzedAdditive(
@@ -892,6 +912,53 @@ class AdditiveAnalyzer {
             }
         }
 
+        // ALSO process ultra-processed ingredients (palm oil, hydrogenated fats, etc.)
+        for ultraProcessed in detectionResult.ultraProcessedIngredients {
+            // Determine risk level based on processing penalty and NOVA group
+            let riskLevel: AdditiveRiskLevel
+            if ultraProcessed.novaGroup == 4 || ultraProcessed.processingPenalty >= 8 {
+                riskLevel = .highRisk
+                highRiskCount += 1
+            } else if ultraProcessed.processingPenalty >= 5 {
+                riskLevel = .moderateRisk
+                moderateRiskCount += 1
+            } else if ultraProcessed.processingPenalty >= 2 {
+                riskLevel = .lowRisk
+                lowRiskCount += 1
+            } else {
+                riskLevel = .noRisk
+                safeCount += 1
+            }
+
+            // Build why flagged for ultra-processed
+            var whyFlagged: [String] = []
+            if !ultraProcessed.concerns.isEmpty {
+                whyFlagged.append(ultraProcessed.concerns)
+            }
+            if ultraProcessed.novaGroup == 4 {
+                whyFlagged.append("Highly processed (NOVA Group 4)")
+            }
+            if whyFlagged.isEmpty {
+                whyFlagged.append("An industrially processed ingredient")
+            }
+
+            let analyzed = AnalyzedAdditive(
+                name: ultraProcessed.name,
+                eNumber: ultraProcessed.eNumbers.first ?? "",
+                riskLevel: riskLevel,
+                shortDescription: ultraProcessed.category,
+                whatItIs: ultraProcessed.whatItIs ?? "A processed ingredient used in food manufacturing.",
+                origin: ultraProcessed.whereItComesFrom ?? "Industrial processing",
+                whyFlagged: whyFlagged,
+                affectsUserSensitivity: false,
+                sensitivityName: nil,
+                isVitaminOrMineral: false
+            )
+
+            groupedAdditives[riskLevel, default: []].append(analyzed)
+            totalCount += 1
+        }
+
         // Calculate score (100 = no additives or all safe, 0 = many high risk)
         let score = calculateScore(
             highRisk: highRiskCount,
@@ -922,13 +989,32 @@ class AdditiveAnalyzer {
             return 100 // No additives = perfect score
         }
 
-        // Weight penalties: high risk = -15, moderate = -8, low = -3, safe = 0
-        let penalty = (highRisk * 15) + (moderate * 8) + (low * 3)
+        // Start with base 100
+        var score = 100
 
-        // Base score of 100, subtract penalties, minimum 0
-        let score = max(0, 100 - penalty)
+        // Heavy penalties for risk levels (more aggressive than before)
+        // High risk: -20 each (e.g., 3 high risk = -60 = score 40)
+        // Moderate: -10 each
+        // Low risk: -5 each
+        // Safe/vitamins: -1 each (still counts against perfect score)
+        let riskPenalty = (highRisk * 20) + (moderate * 10) + (low * 5) + (safe * 1)
+        score -= riskPenalty
 
-        return score
+        // Additional penalty for sheer quantity (more than 3 additives starts hurting)
+        // This ensures even "safe" additives lower the score when there are many
+        if total > 3 {
+            let quantityPenalty = (total - 3) * 3  // -3 per additive over 3
+            score -= quantityPenalty
+        }
+
+        // Extra penalty if more than half are high/moderate risk
+        let concerningCount = highRisk + moderate
+        if concerningCount > 0 && Double(concerningCount) / Double(total) > 0.5 {
+            score -= 10  // Additional -10 if majority are concerning
+        }
+
+        // Clamp to 0-100
+        return max(0, min(100, score))
     }
 
     private func checkSensitivity(

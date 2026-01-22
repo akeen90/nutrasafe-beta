@@ -28,6 +28,52 @@ struct AdditiveTrackerSection: View {
         viewModel.additiveAggregates.filter { $0.effectsVerdict.lowercased() == "neutral" || $0.effectsVerdict.isEmpty }
     }
 
+    // Calculate overall additive grade for the period
+    private var overallGrade: AdditiveGrade {
+        let avoid = avoidAdditives.count
+        let caution = cautionAdditives.count
+        let neutral = neutralAdditives.count
+        let total = avoid + caution + neutral
+
+        if total == 0 { return .A }
+
+        // Calculate score similar to the analyzer
+        var score = 100
+        score -= (avoid * 20) + (caution * 10) + (neutral * 2)
+        if total > 5 { score -= (total - 5) * 2 }
+        score = max(0, min(100, score))
+
+        return AdditiveGrade.from(score: score)
+    }
+
+    // Generate actionable insight based on the data
+    private var actionableInsight: (text: String, icon: String, color: Color)? {
+        let avoid = avoidAdditives.count
+        let caution = cautionAdditives.count
+        let total = viewModel.totalAdditiveCount
+
+        if total == 0 {
+            return ("Great job! No additives detected in your food log.", "checkmark.circle.fill", SemanticColors.positive)
+        }
+
+        if avoid > 2 {
+            // Find most common avoid additive
+            if let topAvoid = avoidAdditives.sorted(by: { $0.occurrenceCount > $1.occurrenceCount }).first {
+                return ("Consider reducing \(topAvoid.name) - appeared \(topAvoid.occurrenceCount) time\(topAvoid.occurrenceCount == 1 ? "" : "s")", "exclamationmark.triangle.fill", SemanticColors.caution)
+            }
+        }
+
+        if avoid == 0 && caution <= 2 {
+            return ("You're doing well! Mostly safe additives in your diet.", "hand.thumbsup.fill", SemanticColors.positive)
+        }
+
+        if caution > 3 {
+            return ("Try swapping some processed foods for whole foods to reduce additives.", "lightbulb.fill", palette.accent)
+        }
+
+        return nil
+    }
+
     @Environment(\.colorScheme) private var colorScheme
 
     private var palette: AppPalette {
@@ -206,31 +252,101 @@ struct AdditiveTrackerSection: View {
     // MARK: - Summary Card
 
     private var summaryCard: some View {
-        HStack(spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(viewModel.totalAdditiveCount)")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-                Text("additive\(viewModel.totalAdditiveCount == 1 ? "" : "s") detected")
-                    .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(palette.textTertiary)
+        VStack(spacing: 16) {
+            // Grade + Stats row
+            HStack(spacing: 16) {
+                // Grade circle
+                ZStack {
+                    Circle()
+                        .fill(overallGrade.color)
+                        .frame(width: 56, height: 56)
+
+                    Text(overallGrade.rawValue)
+                        .font(.system(size: 26, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                }
+
+                // Stats
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(viewModel.totalAdditiveCount)")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(palette.textPrimary)
+                            Text("additives")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(palette.textTertiary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(viewModel.foodItemCount)")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(palette.textPrimary)
+                            Text("foods")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(palette.textTertiary)
+                        }
+
+                        Spacer()
+                    }
+
+                    // Risk breakdown pills
+                    HStack(spacing: 6) {
+                        if avoidAdditives.count > 0 {
+                            riskPill(count: avoidAdditives.count, label: "avoid", color: .red)
+                        }
+                        if cautionAdditives.count > 0 {
+                            riskPill(count: cautionAdditives.count, label: "caution", color: SemanticColors.neutral)
+                        }
+                        if neutralAdditives.count > 0 {
+                            riskPill(count: neutralAdditives.count, label: "safe", color: SemanticColors.positive)
+                        }
+                    }
+                }
             }
 
-            Spacer()
+            // Actionable insight
+            if let insight = actionableInsight {
+                HStack(spacing: 10) {
+                    Image(systemName: insight.icon)
+                        .font(.system(size: 14))
+                        .foregroundColor(insight.color)
 
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("\(viewModel.foodItemCount)")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-                Text("food\(viewModel.foodItemCount == 1 ? "" : "s") with additives")
-                    .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(palette.textTertiary)
+                    Text(insight.text)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(palette.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer()
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(insight.color.opacity(0.08))
+                )
             }
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(palette.tertiary.opacity(colorScheme == .dark ? 0.1 : 0.06))
+        )
+    }
+
+    // Risk pill helper
+    private func riskPill(count: Int, label: String, color: Color) -> some View {
+        HStack(spacing: 3) {
+            Text("\(count)")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+            Text(label)
+                .font(.system(size: 10, design: .rounded))
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(color.opacity(0.12))
         )
     }
 
