@@ -106,7 +106,6 @@ struct BlobShape: Shape {
 
         path.move(to: controlPoints[0])
         for i in 0..<controlPoints.count {
-            let p0 = controlPoints[i]
             let p1 = controlPoints[(i + 1) % controlPoints.count]
             let p2 = controlPoints[(i + 2) % controlPoints.count]
 
