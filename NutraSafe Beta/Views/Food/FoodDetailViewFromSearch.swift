@@ -378,6 +378,10 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingAllergenCitations = false
     @State private var cachedDetectedNutrients: [String] = []
 
+    // Redesigned additive analysis (Yuka-style)
+    @State private var additiveAnalysis: AdditiveAnalysisResult? = nil
+    @State private var expandedAdditiveId: UUID? = nil
+
     private var buttonText: String {
         if diaryEntryId != nil || isEditingMode {
             return "Update"
@@ -1140,6 +1144,35 @@ struct FoodDetailViewFromSearch: View {
         }
     }
 
+    // Run redesigned additive analysis (Yuka-style)
+    private func runAdditiveAnalysis() async {
+        guard let ingredients = cachedIngredients, !ingredients.isEmpty else {
+            await MainActor.run {
+                additiveAnalysis = nil
+            }
+            return
+        }
+
+        // Convert user allergens to sensitivity strings for the analyzer
+        let sensitivities: Set<String> = Set(userAllergens.compactMap { allergen -> String? in
+            switch allergen {
+            case .sulfites: return "sulphites"
+            case .gluten: return "gluten"
+            case .dairy: return "dairy"
+            default: return nil
+            }
+        })
+
+        let analysis = await AdditiveAnalyzer.shared.analyze(
+            ingredients: ingredients,
+            userSensitivities: sensitivities
+        )
+
+        await MainActor.run {
+            additiveAnalysis = analysis
+        }
+    }
+
     // Check if food contains any of the user's allergens
     private func detectUserAllergensInFood(userAllergens: [Allergen]) -> [Allergen] {
         // Get food name and ingredients (PERFORMANCE: use cached ingredients)
@@ -1458,7 +1491,17 @@ struct FoodDetailViewFromSearch: View {
                         redesignedActionButtons
 
                         // REDESIGN: Serving selection - human and interactive
-                        redesignedServingSection
+                        FoodDetailServingView(
+                            food: food,
+                            isPerUnit: isPerUnit,
+                            palette: palette,
+                            selectedMeal: $selectedMeal,
+                            selectedPortionName: $selectedPortionName,
+                            servingAmount: $servingAmount,
+                            servingUnit: $servingUnit,
+                            quantityMultiplier: $quantityMultiplier,
+                            gramsAmount: $gramsAmount
+                        )
                             .onAppear {
                             // Determine the appropriate unit based on food category
                             let appropriateUnit = food.isLiquidCategory ? "ml" : "g"
@@ -1543,13 +1586,57 @@ struct FoodDetailViewFromSearch: View {
                         }
                     
                         // REDESIGN: Glanceable nutrition card
-                        redesignedNutritionCard
+                        FoodDetailNutritionCard(
+                            adjustedCalories: adjustedCalories,
+                            adjustedProtein: adjustedProtein,
+                            adjustedCarbs: adjustedCarbs,
+                            adjustedFat: adjustedFat,
+                            adjustedSatFat: adjustedSatFat,
+                            adjustedFiber: adjustedFiber,
+                            adjustedSugar: adjustedSugar,
+                            adjustedSalt: adjustedSalt,
+                            displayFood: displayFood,
+                            palette: palette
+                        )
 
                         // REDESIGN: Calm insight scores (not warnings)
-                        redesignedScoresSection
+                        FoodDetailScoresView(
+                            nutraSafeGrade: {
+                                let hasIngredients: Bool = {
+                                    guard let ingredients = cachedIngredients else { return false }
+                                    let clean = ingredients.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                                    return !clean.isEmpty
+                                }()
+                                return (hasIngredients && !isPerUnit && !isFastFoodBrand) ? nutraSafeGrade : nil
+                            }(),
+                            sugarScore: sugarScore,
+                            hasIngredients: {
+                                guard let ingredients = cachedIngredients else { return false }
+                                let clean = ingredients.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                                return !clean.isEmpty
+                            }(),
+                            isPerUnit: isPerUnit,
+                            isFastFood: isFastFoodBrand,
+                            palette: palette,
+                            showingNutraSafeInfo: $showingNutraSafeInfo,
+                            showingSugarInfo: $showingSugarInfo
+                        )
 
                         // REDESIGN: Pill-style insight tabs
-                        redesignedWatchTabs
+                        FoodDetailWatchTabsView(
+                            selectedTab: $selectedWatchTab,
+                            palette: palette,
+                            additivesContent: { additivesContent },
+                            allergensContent: { allergensContent },
+                            vitaminsContent: {
+                                FoodDetailVitaminsContent(
+                                    hasAccess: subscriptionManager.hasAccess,
+                                    detectedNutrients: cachedDetectedNutrients,
+                                    palette: palette,
+                                    showingCitations: $showingVitaminCitations
+                                )
+                            }
+                        )
 
                         // REDESIGN: Clean, readable ingredients
                         redesignedIngredientsSection
@@ -1619,6 +1706,9 @@ struct FoodDetailViewFromSearch: View {
             // Load user allergens from cache (instant) and detect if present in this food
             Task {
                 await loadAndDetectUserAllergensOptimized()
+
+                // Run redesigned additive analysis after allergens are loaded
+                await runAdditiveAnalysis()
             }
 
             // Check if food is in favorites
@@ -1685,6 +1775,7 @@ struct FoodDetailViewFromSearch: View {
             cachedNutraSafeGrade = nil
             hasInitialized = false
             cachedDetectedNutrients = []
+            additiveAnalysis = nil
         }
         .onChange(of: enhancedIngredientsText) {
             // Invalidate caches when enhanced ingredients data changes
@@ -1693,9 +1784,14 @@ struct FoodDetailViewFromSearch: View {
             cachedAdditives = nil
             cachedNutraSafeGrade = nil  // Grade depends on ingredients
             cachedDetectedNutrients = []
+            additiveAnalysis = nil
         }
         .onChange(of: cachedIngredients) {
             recomputeDetectedNutrients()
+            // Re-run additive analysis when ingredients change
+            Task {
+                await runAdditiveAnalysis()
+            }
         }
         .onChange(of: enhancedNutrition?.calories) {
             // Invalidate caches when enhanced nutrition data changes
@@ -1729,6 +1825,7 @@ struct FoodDetailViewFromSearch: View {
         )
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
+                .environmentObject(subscriptionManager)
         }
         .fullScreenCover(isPresented: $showingNutritionCamera) {
             IngredientCameraView(
@@ -4377,15 +4474,29 @@ private var nutritionFactsSection: some View {
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
     
-    // MARK: - Additive Analysis Content
+    // MARK: - Additive Analysis Content (Redesigned Yuka-style)
     private var additivesContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             if subscriptionManager.hasAccess {
-                // Premium users see full additive analysis
-                if let ingredientsList = cachedIngredients, !ingredientsList.isEmpty {
-                    AdditiveWatchView(ingredients: ingredientsList)
-                } else {
+                // Premium users see redesigned additive analysis
+                if let analysis = additiveAnalysis {
+                    AdditiveScoreCard(
+                        analysis: analysis,
+                        expandedAdditiveId: $expandedAdditiveId
+                    )
+                } else if cachedIngredients == nil || cachedIngredients?.isEmpty == true {
                     noIngredientDataView
+                } else {
+                    // Loading state
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                        Text("Analyzing additives...")
+                            .font(.system(size: 13))
+                            .foregroundColor(palette.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
                 }
             } else {
                 // Free users see locked preview
@@ -5945,6 +6056,20 @@ extension FoodDetailViewFromSearch {
             if !detectedUserAllergens.isEmpty {
                 redesignedAllergenBanner
             }
+
+            // Additive Safety Badge (Yuka-style) - shows at-a-glance safety grade
+            AdditiveSafetyBadge(
+                analysis: additiveAnalysis,
+                hasIngredients: hasIngredients,
+                onTap: {
+                    // Scroll to additive section (switch to additives tab)
+                    withAnimation {
+                        selectedWatchTab = .additives
+                    }
+                }
+            )
+            .padding(.top, 8)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
         }
         .padding(.top, 4)
         .padding(.horizontal, DesignTokens.Spacing.sm)
@@ -6036,685 +6161,11 @@ extension FoodDetailViewFromSearch {
         }
     }
 
-    // MARK: - Redesigned Serving Section (Compact)
-    private var redesignedServingSection: some View {
-        VStack(spacing: 12) {
-            // Section header
-            HStack {
-                Text("How much?")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-                Spacer()
-            }
+    // NOTE: Serving section views moved to FoodDetailServingView.swift
 
-            // Meal selector - pill style
-            redesignedMealSelector
 
-            // Portion cards - interactive, not spreadsheet
-            redesignedPortionCards
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
-                .shadow(
-                    color: DesignTokens.Shadow.subtle.color,
-                    radius: DesignTokens.Shadow.subtle.radius,
-                    y: DesignTokens.Shadow.subtle.y
-                )
-        )
-    }
-
-    // MARK: - Redesigned Meal Selector (Pill Style)
-    private var redesignedMealSelector: some View {
-        HStack(spacing: 8) {
-            ForEach(["Breakfast", "Lunch", "Dinner", "Snack"], id: \.self) { meal in
-                let isSelected = selectedMeal.lowercased() == meal.lowercased()
-                Button(action: { selectedMeal = meal }) {
-                    Text(meal)
-                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
-                        .foregroundColor(isSelected ? .white : palette.textSecondary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(isSelected ? palette.accent : palette.tertiary.opacity(0.15))
-                        )
-                }
-            }
-        }
-    }
-
-    // MARK: - Redesigned Portion Cards (Compact)
-    private var redesignedPortionCards: some View {
-        VStack(spacing: 8) {
-            if isPerUnit {
-                // Per-unit foods: single intuitive card
-                redesignedPerUnitCard
-            } else {
-                // Per-100g foods: portion options as cards
-                let effectiveQuery = food.name
-                if food.hasAnyPortionOptions(forQuery: effectiveQuery) {
-                    let portions = food.portionsForQuery(effectiveQuery)
-                    ForEach(portions) { portion in
-                        redesignedPortionCard(portion: portion)
-                    }
-                }
-                // Custom grams option
-                redesignedCustomGramsCard
-            }
-
-            // Quantity stepper - always visible
-            redesignedQuantityStepper
-        }
-    }
-
-    // MARK: - Redesigned Per-Unit Card (Compact)
-    private var redesignedPerUnitCard: some View {
-        let isSelected = selectedPortionName != "__custom__"
-        return Button(action: { selectedPortionName = servingUnit }) {
-            HStack(spacing: 10) {
-                // Icon - smaller
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
-                }
-
-                // Description
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(servingUnit.capitalized)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(palette.textPrimary)
-                    Text("\(Int(food.calories)) kcal")
-                        .font(.system(size: 12))
-                        .foregroundColor(palette.textSecondary)
-                }
-
-                Spacer()
-
-                // Selection indicator - smaller
-                ZStack {
-                    Circle()
-                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 1.5)
-                        .frame(width: 20, height: 20)
-                    if isSelected {
-                        Circle()
-                            .fill(palette.accent)
-                            .frame(width: 20, height: 20)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                }
-            }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-
-    // MARK: - Redesigned Portion Card (Compact)
-    private func redesignedPortionCard(portion: PortionOption) -> some View {
-        let isSelected = selectedPortionName == portion.name
-        let multiplier = portion.serving_g / 100.0
-        let portionCalories = food.calories * multiplier
-
-        return Button(action: {
-            selectedPortionName = portion.name
-            servingAmount = String(format: "%.0f", portion.serving_g)
-            servingUnit = food.isLiquidCategory ? "ml" : "g"
-        }) {
-            HStack(spacing: 10) {
-                // Icon - smaller
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: portionIcon(for: portion.name))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
-                }
-
-                // Description
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(portion.name)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(palette.textPrimary)
-                    Text("\(Int(portion.serving_g))\(food.isLiquidCategory ? "ml" : "g") • \(Int(portionCalories)) kcal")
-                        .font(.system(size: 12))
-                        .foregroundColor(palette.textSecondary)
-                }
-
-                Spacer()
-
-                // Selection indicator - smaller
-                ZStack {
-                    Circle()
-                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 1.5)
-                        .frame(width: 20, height: 20)
-                    if isSelected {
-                        Circle()
-                            .fill(palette.accent)
-                            .frame(width: 20, height: 20)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                }
-            }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-
-    // MARK: - Portion Icon Helper
-    private func portionIcon(for name: String) -> String {
-        let lower = name.lowercased()
-        if lower.contains("small") { return "s.circle" }
-        if lower.contains("medium") { return "m.circle" }
-        if lower.contains("large") { return "l.circle" }
-        if lower.contains("cup") { return "cup.and.saucer" }
-        if lower.contains("slice") { return "square.split.1x2" }
-        if lower.contains("piece") { return "square.on.square" }
-        return "fork.knife"
-    }
-
-    // MARK: - Redesigned Custom Grams Card (Compact)
-    private var redesignedCustomGramsCard: some View {
-        let isSelected = selectedPortionName == "__custom__"
-        return Button(action: { selectedPortionName = "__custom__" }) {
-            HStack(spacing: 10) {
-                // Icon - smaller
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: "pencil.and.ruler")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
-                }
-
-                // Input field
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Custom amount")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(palette.textPrimary)
-
-                    if isSelected {
-                        HStack(spacing: 6) {
-                            TextField("100", text: $gramsAmount)
-                                .keyboardType(.numberPad)
-                                .font(.system(size: 14, weight: .medium))
-                                .frame(width: 50)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(palette.tertiary.opacity(0.1))
-                                )
-                            Text(food.isLiquidCategory ? "ml" : "g")
-                                .font(.system(size: 12))
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } else {
-                        Text("Enter specific amount")
-                            .font(.system(size: 12))
-                            .foregroundColor(palette.textSecondary)
-                    }
-                }
-
-                Spacer()
-
-                // Selection indicator - smaller
-                ZStack {
-                    Circle()
-                        .stroke(isSelected ? palette.accent : palette.tertiary.opacity(0.3), lineWidth: 1.5)
-                        .frame(width: 20, height: 20)
-                    if isSelected {
-                        Circle()
-                            .fill(palette.accent)
-                            .frame(width: 20, height: 20)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                }
-            }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? palette.accent.opacity(0.06) : (colorScheme == .dark ? Color.midnightCardSecondary : palette.tertiary.opacity(0.08)))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? palette.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-
-    // MARK: - Redesigned Quantity Stepper
-    private var redesignedQuantityStepper: some View {
-        HStack(spacing: 16) {
-            Text("Quantity")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(palette.textSecondary)
-
-            Spacer()
-
-            HStack(spacing: 0) {
-                // Minus button
-                Button(action: {
-                    if quantityMultiplier > 0.5 {
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            quantityMultiplier = quantityMultiplier == 1 ? 0.5 : quantityMultiplier - 1
-                        }
-                    }
-                }) {
-                    Image(systemName: "minus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(quantityMultiplier > 0.5 ? palette.accent : palette.textTertiary)
-                        .frame(width: 36, height: 36)
-                }
-                .disabled(quantityMultiplier <= 0.5)
-
-                // Current value
-                Text(formatQuantityMultiplier(quantityMultiplier))
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-                    .frame(width: 44)
-
-                // Plus button
-                Button(action: {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        quantityMultiplier = quantityMultiplier < 1 ? 1 : quantityMultiplier + 1
-                    }
-                }) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(palette.accent)
-                        .frame(width: 36, height: 36)
-                }
-            }
-            .padding(.horizontal, 4)
-            .background(
-                Capsule()
-                    .fill(palette.tertiary.opacity(0.1))
-            )
-        }
-        .padding(.top, 8)
-    }
-
-    // MARK: - Redesigned Nutrition Card (Glanceable)
-    private var redesignedNutritionCard: some View {
-        VStack(spacing: 20) {
-            // Hero: Calories
-            VStack(spacing: 6) {
-                HStack(alignment: .bottom, spacing: 6) {
-                    Text(String(format: "%.0f", adjustedCalories))
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
-                    Text("kcal")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(palette.textSecondary)
-                        .padding(.bottom, 8)
-                }
-                Text("per serving")
-                    .font(.system(size: 13))
-                    .foregroundColor(palette.textTertiary)
-            }
-
-            // Macro summary - clean cards
-            HStack(spacing: 12) {
-                redesignedMacroCard(label: "Protein", value: adjustedProtein, color: SemanticColors.nutrient)
-                redesignedMacroCard(label: "Carbs", value: adjustedCarbs, color: palette.accent)
-                redesignedMacroCard(label: "Fat", value: adjustedFat, color: SemanticColors.neutral)
-            }
-
-            // Detailed nutrition - collapsible
-            DisclosureGroup {
-                VStack(spacing: 8) {
-                    redesignedNutritionRow("Saturated Fat", value: adjustedSatFat)
-                    redesignedNutritionRow("Fibre", value: adjustedFiber)
-                    redesignedNutritionRow("Sugar", value: adjustedSugar)
-                    redesignedNutritionRow("Salt", value: adjustedSalt)
-                }
-                .padding(.top, 12)
-            } label: {
-                Text("More nutrition details")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(palette.textSecondary)
-            }
-            .tint(palette.accent)
-
-            // Per 100g values - collapsible
-            DisclosureGroup {
-                VStack(spacing: 8) {
-                    per100gNutritionRow("Calories", value: displayFood.calories, unit: "kcal")
-                    per100gNutritionRow("Protein", value: displayFood.protein, unit: "g")
-                    per100gNutritionRow("Carbohydrates", value: displayFood.carbs, unit: "g")
-                    per100gNutritionRow("Fat", value: displayFood.fat, unit: "g")
-                    if let satFat = displayFood.saturatedFat {
-                        per100gNutritionRow("Saturated Fat", value: satFat, unit: "g")
-                    }
-                    per100gNutritionRow("Fibre", value: displayFood.fiber, unit: "g")
-                    per100gNutritionRow("Sugar", value: displayFood.sugar, unit: "g")
-                    per100gNutritionRow("Salt", value: displayFood.sodium / 1000, unit: "g") // Convert mg to g
-                }
-                .padding(.top, 12)
-            } label: {
-                HStack {
-                    Text("Per 100g values")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(palette.textSecondary)
-                    Spacer()
-                    Text("(base values)")
-                        .font(.system(size: 12))
-                        .foregroundColor(palette.textTertiary)
-                }
-            }
-            .tint(palette.accent)
-        }
-        .padding(DesignTokens.Spacing.cardInternal)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
-                .shadow(
-                    color: DesignTokens.Shadow.subtle.color,
-                    radius: DesignTokens.Shadow.subtle.radius,
-                    y: DesignTokens.Shadow.subtle.y
-                )
-        )
-    }
-
-    // MARK: - Macro Card Helper
-    private func redesignedMacroCard(label: String, value: Double, color: Color) -> some View {
-        VStack(spacing: 6) {
-            HStack(alignment: .bottom, spacing: 2) {
-                Text(String(format: "%.0f", value))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-                Text("g")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(palette.textSecondary)
-                    .padding(.bottom, 3)
-            }
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(palette.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                .fill(color.opacity(0.08))
-        )
-    }
-
-    // MARK: - Nutrition Row Helper
-    private func redesignedNutritionRow(_ label: String, value: Double) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 14))
-                .foregroundColor(palette.textSecondary)
-            Spacer()
-            Text(String(format: "%.1fg", value))
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundColor(palette.textPrimary)
-        }
-        .padding(.vertical, 6)
-    }
-
-    // MARK: - Per 100g Nutrition Row Helper
-    private func per100gNutritionRow(_ label: String, value: Double, unit: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 14))
-                .foregroundColor(palette.textSecondary)
-            Spacer()
-            Text(String(format: unit == "kcal" ? "%.0f" : "%.1f", value) + unit)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundColor(palette.textTertiary)
-        }
-        .padding(.vertical, 4)
-    }
-
-    // MARK: - Redesigned Scores Section (Calm Insights)
-    private var redesignedScoresSection: some View {
-        let hasIngredients: Bool = {
-            guard let ingredients = cachedIngredients else { return false }
-            let clean = ingredients.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-            return !clean.isEmpty
-        }()
-        let isPerUnitMode = displayFood.isPerUnit == true
-        let isFastFood = isFastFoodBrand
-        let gradeToShow = (hasIngredients && !isPerUnitMode && !isFastFood) ? nutraSafeGrade : nil
-
-        return VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                // Processing score card
-                if let ns = gradeToShow {
-                    Button(action: { showingNutraSafeInfo = true }) {
-                        redesignedScoreCard(
-                            title: "Processing",
-                            grade: ns.grade,
-                            label: ns.label,
-                            color: scoreColor(for: ns.grade)
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-
-                // Sugar score card
-                if sugarScore.grade != .unknown {
-                    Button(action: { showingSugarInfo = true }) {
-                        redesignedScoreCard(
-                            title: "Sugar",
-                            grade: sugarScore.grade.rawValue,
-                            label: sugarLabel(for: sugarScore.grade),
-                            color: sugarScore.color
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
-
-            // Info tip
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "lightbulb")
-                    .font(.system(size: 14))
-                    .foregroundColor(palette.accent)
-                Text("A = closest to natural, F = heavily processed. Tap cards to learn more.")
-                    .font(.system(size: 13))
-                    .foregroundColor(palette.textSecondary)
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                    .fill(palette.accent.opacity(0.05))
-            )
-        }
-    }
-
-    // MARK: - Score Card Helper
-    private func redesignedScoreCard(title: String, grade: String, label: String, color: Color) -> some View {
-        VStack(spacing: 8) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundColor(palette.textTertiary)
-                .tracking(0.5)
-
-            Text(grade)
-                .font(.system(size: 32, weight: .black, design: .rounded))
-                .foregroundColor(color)
-
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(palette.textSecondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .fill(color.opacity(0.06))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .stroke(color.opacity(0.12), lineWidth: 1)
-        )
-    }
-
-    // MARK: - Score Color Helper
-    private func scoreColor(for grade: String) -> Color {
-        switch grade.uppercased() {
-        case "A+", "A": return SemanticColors.positive
-        case "B": return SemanticColors.nutrient
-        case "C", "D": return SemanticColors.neutral
-        case "F": return SemanticColors.caution
-        default: return palette.textTertiary
-        }
-    }
-
-    // MARK: - Sugar Label Helper
-    private func sugarLabel(for grade: SugarGrade) -> String {
-        switch grade {
-        case .excellent, .veryGood: return "Low Sugar"
-        case .good: return "Moderate"
-        case .moderate: return "High Sugar"
-        case .high, .veryHigh: return "Very High"
-        case .unknown: return "Unknown"
-        }
-    }
-
-    // MARK: - Redesigned Watch Tabs (Pill Style)
-    private var redesignedWatchTabs: some View {
-        VStack(spacing: 0) {
-            // Tab pills
-            HStack(spacing: 8) {
-                ForEach(WatchTab.allCases, id: \.self) { tab in
-                    let isSelected = selectedWatchTab == tab
-                    Button(action: {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            selectedWatchTab = tab
-                        }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: tab.icon)
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(tab.shortName)
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundColor(isSelected ? .white : palette.textSecondary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            Capsule()
-                                .fill(isSelected ? tab.color : palette.tertiary.opacity(0.1))
-                        )
-                    }
-                }
-            }
-            .padding(.vertical, 14)
-
-            // Tab content
-            Group {
-                switch selectedWatchTab {
-                case .additives:
-                    additivesContent
-                case .allergies:
-                    allergensContent
-                case .vitamins:
-                    redesignedVitaminsContent
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
-        }
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
-                .shadow(
-                    color: DesignTokens.Shadow.subtle.color,
-                    radius: DesignTokens.Shadow.subtle.radius,
-                    y: DesignTokens.Shadow.subtle.y
-                )
-        )
-    }
-
-    // MARK: - Redesigned Vitamins Content
-    private var redesignedVitaminsContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if subscriptionManager.hasAccess {
-                if !cachedDetectedNutrients.isEmpty {
-                    ForEach(Array(cachedDetectedNutrients.prefix(8)), id: \.self) { nutrientName in
-                        HStack {
-                            Text(nutrientName)
-                                .font(.system(size: 14))
-                                .foregroundColor(palette.textPrimary)
-                            Spacer()
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(SemanticColors.nutrient)
-                        }
-                        .padding(.vertical, 6)
-                    }
-
-                    Button(action: { showingVitaminCitations = true }) {
-                        HStack {
-                            Image(systemName: "book.closed")
-                                .font(.system(size: 12))
-                            Text("View sources")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        .foregroundColor(palette.accent)
-                    }
-                    .padding(.top, 8)
-                } else {
-                    noIngredientDataView
-                }
-            } else {
-                vitaminsLockedView
-            }
-        }
-    }
-
-    // MARK: - Vitamins Locked View
-    var vitaminsLockedView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 28))
-                .foregroundColor(palette.textTertiary)
-            Text("Unlock vitamin details")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(palette.textSecondary)
-            Text("Subscribe to view detailed vitamin and mineral information")
-                .font(.system(size: 13))
-                .foregroundColor(palette.textTertiary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.vertical, 24)
-    }
+    // NOTE: Nutrition card, scores, watch tabs, and vitamins views moved to extracted files
+    // See: FoodDetailNutritionCard.swift, FoodDetailScoresView.swift, FoodDetailWatchTabsView.swift
 
     // MARK: - Redesigned Ingredients Section
     var redesignedIngredientsSection: some View {

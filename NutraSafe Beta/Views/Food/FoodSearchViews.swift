@@ -133,6 +133,8 @@ struct FoodSearchResultRowEnhanced: View {
     @State private var quickAddMealType = ""
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
 
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
@@ -338,6 +340,15 @@ struct FoodSearchResultRowEnhanced: View {
                             .foregroundColor(.secondary.opacity(0.8))
                             .lineLimit(1)
                     }
+
+                    // Mini additive badge - show if we have additive data
+                    if let additiveCount = food.additives?.count, additiveCount > 0, let grade = food.processingGrade {
+                        AdditiveMiniGradeBadge(
+                            grade: AdditiveGrade(rawValue: grade) ?? .C,
+                            watchCount: additiveCount,
+                            hasPersonalAlert: false
+                        )
+                    }
                 }
 
                 Spacer(minLength: 8)
@@ -443,6 +454,8 @@ struct FoodSearchResultRowEnhanced: View {
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
+            .environmentObject(subscriptionManager)
+            .environmentObject(firebaseManager)
             .interactiveDismissDisabled(false)
             // Note: presentationBackground is handled by FoodDetailViewFromSearch internally
             .onAppear {

@@ -17,12 +17,14 @@
 		24D3ACC266DD4F91AE1F1045B7BE8F34 /* BarcodeScanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D2ABE73E734F6F8D147178AE588182 /* BarcodeScanningViews.swift */; };
 		25DFD742946D899129F72798 /* DiaryMetricCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE66DFC8777762545539ED47 /* DiaryMetricCards.swift */; };
 		26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */; };
+		2826897CF17548B7F1D72811 /* FoodDetailNutritionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5CAC64039C124DB4C5EAF5 /* FoodDetailNutritionCard.swift */; };
 		28291D8E59C24DBEEC0CB4B3 /* SearchNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EF393E4B5FC384966969A5 /* SearchNormalization.swift */; };
+		2B7CC4E96CFBEE795ABD9951 /* NutraSafeTipRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5F369E2FD255D512AAE952A /* NutraSafeTipRow.swift */; };
+		2D021CE0E8AFA51E9667F28B /* InferredIngredientsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90ACAE8BE5C254A22D04F05D /* InferredIngredientsSheet.swift */; };
 		2DA31381E3C0ED7887D04FBF /* PremiumOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */; };
-		EXT0NBOARD001BUILD /* ExtendedOnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */; };
-		GOALSONBOARD001BUILD /* GoalsOnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */; };
 		3AB0945DA7E34CDA8CF326D8 /* DiaryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2F7F8ABA91448198A8CB77 /* DiaryComponents.swift */; };
 		3B8228DB0918054597694FC4 /* MicronutrientDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151F33BF94E6DC1B4BA66ED0 /* MicronutrientDashboard.swift */; };
+		3CD5ED2A7009D5658CCE69B2 /* FoodDetailWatchTabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B65061DE906BF3F74DFED9F /* FoodDetailWatchTabsView.swift */; };
 		41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */ = {isa = PBXBuildFile; fileRef = E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */; };
 		42B4CA708B0E403EAFFD2EED /* NutrientCacheActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD400E363874479B2EC2A32 /* NutrientCacheActor.swift */; };
 		44D4C7FE8AA62D4D81116871 /* FastingConfirmationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E289D96672BF3F6322CE44 /* FastingConfirmationSheet.swift */; };
@@ -44,7 +46,6 @@
 		6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */ = {isa = PBXBuildFile; fileRef = 9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */; };
 		71B4756E80AC49019B62DD26BC7FC2D9 /* ultra_processed_ingredients.json in Resources */ = {isa = PBXBuildFile; fileRef = D0FEC9B4AA084ED5BF9A4E53858FE767 /* ultra_processed_ingredients.json */; };
 		73C56727E489A7AACBFA399E /* DiarySegmentedControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA14171316486136D376E50 /* DiarySegmentedControl.swift */; };
-		2B7CC4E96CFBEE795ABD9951 /* NutraSafeTipRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5F369E2FD255D512AAE952A /* NutraSafeTipRow.swift */; };
 		75337286195F467FA2A082D1 /* MacroViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45915D62F0F14714AC688437 /* MacroViews.swift */; };
 		79517406CCBD54CFEC482DB9 /* NutrientTrackingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40A9E8C4089D4E1EF9BCBAD1 /* NutrientTrackingModels.swift */; };
 		7B541C601DBA40B089B6FB04 /* AddActionMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B68ABA9D7B4CBCB6E31FC7 /* AddActionMenu.swift */; };
@@ -57,6 +58,7 @@
 		90F34D6AE6BE45A98262E4B1 /* TermsAndConditionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34316E0BF18B3895987C4AAF /* TermsAndConditionsView.swift */; };
 		93A33269CDCAB100C4C60379 /* MicronutrientScoringModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */; };
 		947EE7E17360015FB3D6CA3A /* AdditiveTrackerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE2465CED35D0FAE99CCB17 /* AdditiveTrackerViewModel.swift */; };
+		95E64F490F3DB1B31AF866CB /* AdditiveRedesignedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAEE86912A424375B407BE0B /* AdditiveRedesignedViews.swift */; };
 		99761F32D25B9DA7ED306333 /* AddFoodManualViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */; };
 		99C873C9DCA241B8B3F6C5CA /* FoodSearchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F424654E4CD941D1B3565C0B /* FoodSearchViews.swift */; };
 		9E5CB88F-07E2-4BD1-9C28- /* FastingCitationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800A45E9-3EDE-4391-B526- /* FastingCitationsView.swift */; };
@@ -96,6 +98,7 @@
 		B1234567890123456789SE02 /* SearchModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789SE01 /* SearchModels.swift */; };
 		B1234567890123456789SM02 /* ScoringModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789SM01 /* ScoringModels.swift */; };
 		B1234567890123456789UM02 /* UserModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789UM01 /* UserModels.swift */; };
+		B5CB939963239BE0F60270BD /* FoodDetailScoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B6381F4E84BD92F3DDA90A /* FoodDetailScoresView.swift */; };
 		B8C6385939B44D77AA09BE43 /* ActionButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D23EEA8C59479AB6188B94 /* ActionButtons.swift */; };
 		B9AC0B956B3045128E12E890 /* AddFoodAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */; };
 		B9E69A3D4385429DA8CB3239 /* FastingEarlyEndViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3904D5585038499D93BAFF26 /* FastingEarlyEndViews.swift */; };
@@ -103,7 +106,6 @@
 		BDD6569256384DFA94AA3B4C /* SQLiteFoodDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B76858ACCE4497889EDFCC0 /* SQLiteFoodDatabase.swift */; };
 		BE43B1A4B3D845F3E0BC73CC /* NutrientDetailModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDD7105BF741325DAC10A12 /* NutrientDetailModal.swift */; };
 		BF231388045111DFD57DEE3C /* FastingMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B4E72CAAA222A7D0ACC1ED /* FastingMainView.swift */; };
-		FASTREDESIGN001BUILD /* FastingRedesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTREDESIGN001FILE /* FastingRedesign.swift */; };
 		BGTASKMGR001BLD /* BackgroundTaskManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BGTASKMGR001REF /* BackgroundTaskManager.swift */; };
 		C1D4E6259B6DDC850735FACC /* MicronutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */; };
 		C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FB33855679471485B474B4 /* SettingsView.swift */; };
@@ -113,8 +115,10 @@
 		DB01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift */; };
 		DB02WEEKD000CACHE000ACTOR /* WeekDataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC02WEEKD000CACHE000ACTOR /* WeekDataCache.swift */; };
 		DEBOUNCER001BLD /* Debouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEBOUNCER001REF /* Debouncer.swift */; };
+		DIETREDESIGN001BUILD /* DietManagementRedesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = DIETREDESIGN001FILE /* DietManagementRedesign.swift */; };
 		E0D7A2553A41000A8C20AA18 /* FastingLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */; };
 		EC0CE2C1561B24FEFEEB9408 /* UseByNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */; };
+		EXT0NBOARD001BUILD /* ExtendedOnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */; };
 		F274CF78968B4290ADA3C260F96936CE /* UseByTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* UseByTabViews.swift */; };
 		F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */; };
 		F30EE587A7676BDEA5D95EC6 /* FastingInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3406DEB9F89048699F964329 /* FastingInsightsView.swift */; };
@@ -124,21 +128,23 @@
 		FASTHIST0001BUILD /* FastingHistoryDropdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTHIST0001FILE /* FastingHistoryDropdown.swift */; };
 		FASTMGR0001BUILD /* FastingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTMGR0001FILE /* FastingManager.swift */; };
 		FASTNOTMGR001BLD /* FastingNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTNOTMGR001REF /* FastingNotificationManager.swift */; };
+		FASTREDESIGN001BUILD /* FastingRedesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTREDESIGN001FILE /* FastingRedesign.swift */; };
+		FC5C2FC2DC01206CD686FC0A /* FoodDetailServingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE6732C35F29BE06EE995BC /* FoodDetailServingView.swift */; };
 		FC60C4299246265536D0CF46 /* NutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
 		FEATTIPOVER001BUILD /* FeatureTipOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEATTIPOVER001FILE /* FeatureTipOverlay.swift */; };
 		FEATTIPS001BUILD /* FeatureTipsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEATTIPS001FILE /* FeatureTipsManager.swift */; };
+		GOALSONBOARD001BUILD /* GoalsOnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */; };
 		IMGCACHE001BUILD /* ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMGCACHE001FILE /* ImageCacheManager.swift */; };
 		INFERREDINGMGR001BUILD /* InferredIngredientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = INFERREDINGMGR001FILE /* InferredIngredientManager.swift */; };
 		INFERREDINGMOD001BUILD /* InferredIngredientModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = INFERREDINGMOD001FILE /* InferredIngredientModels.swift */; };
-		INFERREDINGSHEET001BUILD /* InferredIngredientsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = INFERREDINGSHEET001FILE /* InferredIngredientsSheet.swift */; };
 		MEALMANAGER001BUILD /* MealManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = MEALMANAGER001FILE /* MealManager.swift */; };
 		MEALMODELS001BUILD /* MealModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = MEALMODELS001FILE /* MealModels.swift */; };
 		MIGRMGR001BUILD /* MigrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = MIGRMGR001FILE /* MigrationManager.swift */; };
 		MYMEALSVIEW001BUILD /* MyMealsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MYMEALSVIEW001FILE /* MyMealsView.swift */; };
+		ONBGOALSSETUP001BUILD /* OnboardingGoalsSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBGOALSSETUP001FILE /* OnboardingGoalsSetup.swift */; };
 		ONBMGR0001BUILD /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBMGR0001FILE /* OnboardingManager.swift */; };
 		ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBSCREEN0001FILE /* OnboardingScreens.swift */; };
-		ONBGOALSSETUP001BUILD /* OnboardingGoalsSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBGOALSSETUP001FILE /* OnboardingGoalsSetup.swift */; };
 		ONBVIEW0001BUILD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBVIEW0001FILE /* OnboardingView.swift */; };
 		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
 		PREMWRAP001BUILD /* PremiumFeatureWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = PREMWRAP001FILE /* PremiumFeatureWrapper.swift */; };
@@ -146,7 +152,6 @@
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* SubscriptionManager.swift */; };
 		WELCOMESCREEN001BUILD /* WelcomeScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WELCOMESCREEN001FILE /* WelcomeScreenView.swift */; };
-		DIETREDESIGN001BUILD /* DietManagementRedesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = DIETREDESIGN001FILE /* DietManagementRedesign.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -161,7 +166,6 @@
 		22C6BF8B3C55423CB194379A /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Configuration/AppConfig.swift"; sourceTree = "<group>"; };
 		2748185AC3934123A2EE1CEC /* ReactionLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/ReactionLogManager.swift"; sourceTree = SOURCE_ROOT; };
 		30B4E72CAAA222A7D0ACC1ED /* FastingMainView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingMainView.swift; sourceTree = "<group>"; };
-		FASTREDESIGN001FILE /* FastingRedesign.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingRedesign.swift; sourceTree = "<group>"; };
 		33B4B31B7774BE3AE3988004 /* NutraSafeComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutraSafeComponents.swift; path = "NutraSafe Beta/Design/NutraSafeComponents.swift"; sourceTree = SOURCE_ROOT; };
 		3406DEB9F89048699F964329 /* FastingInsightsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingInsightsView.swift; sourceTree = "<group>"; };
 		34316E0BF18B3895987C4AAF /* TermsAndConditionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsAndConditionsView.swift; sourceTree = "<group>"; };
@@ -171,16 +175,19 @@
 		3A54BFFF132CC2A8F263644F /* MicronutrientDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientDatabase.swift; sourceTree = "<group>"; };
 		40A9E8C4089D4E1EF9BCBAD1 /* NutrientTrackingModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientTrackingModels.swift; sourceTree = "<group>"; };
 		428A9D43EB8D032F3AFC9F39 /* StrictMicronutrientValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StrictMicronutrientValidator.swift; sourceTree = "<group>"; };
+		42B6381F4E84BD92F3DDA90A /* FoodDetailScoresView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodDetailScoresView.swift; sourceTree = "<group>"; };
 		43138BC44E1C41359750CBA3 /* DiaryTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryTabView.swift; sourceTree = "<group>"; };
 		45915D62F0F14714AC688437 /* MacroViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/MacroViews.swift"; sourceTree = "<group>"; };
 		493422FA56E54C918E7155AD /* CustomTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/CustomTabBar.swift"; sourceTree = "<group>"; };
 		4B76858ACCE4497889EDFCC0 /* SQLiteFoodDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteFoodDatabase.swift; sourceTree = "<group>"; };
 		4EBE697EABA1800E1CF7758D /* MicronutrientTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientTimelineView.swift; sourceTree = "<group>"; };
 		4EDD7105BF741325DAC10A12 /* NutrientDetailModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutrientDetailModal.swift; path = "NutraSafe Beta/Views/Components/NutrientDetailModal.swift"; sourceTree = "<group>"; };
+		4FE6732C35F29BE06EE995BC /* FoodDetailServingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodDetailServingView.swift; sourceTree = "<group>"; };
 		52B8A5EC55614642B91A36C9 /* DateHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/DateHelper.swift"; sourceTree = SOURCE_ROOT; };
 		55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientTrackingManager.swift; sourceTree = "<group>"; };
 		58C0E084EB93A5E882900C67 /* NutrientGapsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutrientGapsView.swift; path = "NutraSafe Beta/Views/Components/NutrientGapsView.swift"; sourceTree = "<group>"; };
+		6B65061DE906BF3F74DFED9F /* FoodDetailWatchTabsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodDetailWatchTabsView.swift; sourceTree = "<group>"; };
 		6E7842ED57ED61E938E78541 /* AppDesignSystem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppDesignSystem.swift; path = "NutraSafe Beta/Design/AppDesignSystem.swift"; sourceTree = SOURCE_ROOT; };
 		760CD77654AC93ADD8BE558E /* AdditiveTrackerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdditiveTrackerView.swift; sourceTree = "<group>"; };
 		7CE2465CED35D0FAE99CCB17 /* AdditiveTrackerViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdditiveTrackerViewModel.swift; sourceTree = "<group>"; };
@@ -188,12 +195,12 @@
 		8777C7021556545BB35DF7D8 /* OrganicShapes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrganicShapes.swift; sourceTree = "<group>"; };
 		8F10FFBFB4E351F43FDBC8F2 /* FastingService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingService.swift; sourceTree = "<group>"; };
 		8F5A6F0D63BA4C07B7D06EA6 /* AppConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/AppConstants.swift"; sourceTree = SOURCE_ROOT; };
+		90ACAE8BE5C254A22D04F05D /* InferredIngredientsSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InferredIngredientsSheet.swift; sourceTree = "<group>"; };
 		92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientTrackingManager.swift; sourceTree = "<group>"; };
 		95FB33855679471485B474B4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = Settings/SettingsView.swift; sourceTree = "<group>"; };
 		98B68ABA9D7B4CBCB6E31FC7 /* AddActionMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/AddActionMenu.swift"; sourceTree = "<group>"; };
 		9DE8FF1321AD41AE8218BF92 /* NutritionValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/NutritionValidator.swift"; sourceTree = SOURCE_ROOT; };
 		9EA14171316486136D376E50 /* DiarySegmentedControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiarySegmentedControl.swift; path = "NutraSafe Beta/Views/Components/DiarySegmentedControl.swift"; sourceTree = "<group>"; };
-		A5F369E2FD255D512AAE952A /* NutraSafeTipRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutraSafeTipRow.swift; path = "NutraSafe Beta/Views/Components/NutraSafeTipRow.swift"; sourceTree = "<group>"; };
 		9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = ingredients_consolidated.json; sourceTree = "<group>"; };
 		A1234567890123456789012000 /* NutraSafe Beta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NutraSafe Beta.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1234567890123456789012001 /* NutraSafeBetaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutraSafeBetaApp.swift; sourceTree = "<group>"; };
@@ -204,6 +211,7 @@
 		A1234567890123456789012013 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		A4B4BB31C0ED4E9FAF2B4EE0 /* nutrasafe_foods.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = nutrasafe_foods.db; sourceTree = "<group>"; };
 		A4CC825B3113A674F68A6B62 /* FastingPlanViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingPlanViews.swift; sourceTree = "<group>"; };
+		A5F369E2FD255D512AAE952A /* NutraSafeTipRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutraSafeTipRow.swift; path = "NutraSafe Beta/Views/Components/NutraSafeTipRow.swift"; sourceTree = "<group>"; };
 		A6EF393E4B5FC384966969A5 /* SearchNormalization.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SearchNormalization.swift; path = Managers/SearchNormalization.swift; sourceTree = "<group>"; };
 		AB13BC172EAE215A00C7B892 /* AIMicronutrientParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMicronutrientParser.swift; sourceTree = "<group>"; };
 		AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientMicronutrientParser.swift; sourceTree = "<group>"; };
@@ -230,8 +238,6 @@
 		B1E4A63C54154D289C990AE1BEA07BB8 /* FoodTabViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTabViews.swift; sourceTree = "<group>"; };
 		B2E3B509554C438DB764FD12 /* SecureStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/SecureStorage.swift"; sourceTree = SOURCE_ROOT; };
 		B3E4B540312BF3B1C1A18C6B /* PremiumOnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PremiumOnboardingView.swift; sourceTree = "<group>"; };
-		EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtendedOnboardingScreens.swift; sourceTree = "<group>"; };
-		GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalsOnboardingScreens.swift; sourceTree = "<group>"; };
 		B45D6F2FD4A7496BA9C12D66 /* NutritionScoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/NutritionScoreViews.swift"; sourceTree = "<group>"; };
 		B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientScoringModels.swift; sourceTree = "<group>"; };
 		B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AddFoodManualViews.swift; sourceTree = "<group>"; };
@@ -242,6 +248,8 @@
 		C0D23EEA8C59479AB6188B94 /* ActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/ActionButtons.swift"; sourceTree = "<group>"; };
 		C66F1A0043C040B68C17D123 /* FirestoreTransactionHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/FirestoreTransactionHelper.swift"; sourceTree = SOURCE_ROOT; };
 		CACHEMGR001FILE /* CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/CacheManager.swift"; sourceTree = SOURCE_ROOT; };
+		CAEE86912A424375B407BE0B /* AdditiveRedesignedViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdditiveRedesignedViews.swift; sourceTree = "<group>"; };
+		CD5CAC64039C124DB4C5EAF5 /* FoodDetailNutritionCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodDetailNutritionCard.swift; sourceTree = "<group>"; };
 		CF1C3CB3424C495E9408953D /* ReactionPDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/ReactionPDFExporter.swift"; sourceTree = SOURCE_ROOT; };
 		CREATEMEALVIEW001FILE /* CreateMealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateMealView.swift; sourceTree = "<group>"; };
 		D0FEC9B4AA084ED5BF9A4E53858FE767 /* ultra_processed_ingredients.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "NutraSafe Beta/ultra_processed_ingredients.json"; sourceTree = SOURCE_ROOT; };
@@ -251,33 +259,36 @@
 		DC01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryCacheActor.swift; sourceTree = "<group>"; };
 		DC02WEEKD000CACHE000ACTOR /* WeekDataCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekDataCache.swift; sourceTree = "<group>"; };
 		DEBOUNCER001REF /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/Debouncer.swift; sourceTree = "<group>"; };
+		DIETREDESIGN001FILE /* DietManagementRedesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietManagementRedesign.swift; sourceTree = "<group>"; };
 		E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = micronutrients_ingredients_v6.db; sourceTree = "<group>"; };
 		E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/ReactionLogView.swift"; sourceTree = SOURCE_ROOT; };
 		E4E289D96672BF3F6322CE44 /* FastingConfirmationSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingConfirmationSheet.swift; sourceTree = "<group>"; };
 		EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryDailySummaryCard.swift; sourceTree = "<group>"; };
 		EE66DFC8777762545539ED47 /* DiaryMetricCards.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryMetricCards.swift"; sourceTree = SOURCE_ROOT; };
 		EF86AB54327E46EA98DD76AB /* FoodManagementViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodManagementViews.swift; sourceTree = "<group>"; };
+		EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtendedOnboardingScreens.swift; sourceTree = "<group>"; };
 		F424654E4CD941D1B3565C0B /* FoodSearchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchViews.swift; sourceTree = "<group>"; };
 		F6794A3B8C5E40B74BFFC944 /* NutrientTrackingTypes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutrientTrackingTypes.swift; path = "NutraSafe Beta/Views/Components/NutrientTrackingTypes.swift"; sourceTree = "<group>"; };
 		FA2F7F8ABA91448198A8CB77 /* DiaryComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryComponents.swift"; sourceTree = "<group>"; };
 		FASTHIST0001FILE /* FastingHistoryDropdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingHistoryDropdown.swift; sourceTree = "<group>"; };
 		FASTMGR0001FILE /* FastingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/FastingManager.swift; sourceTree = "<group>"; };
 		FASTNOTMGR001REF /* FastingNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/FastingNotificationManager.swift; sourceTree = "<group>"; };
+		FASTREDESIGN001FILE /* FastingRedesign.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingRedesign.swift; sourceTree = "<group>"; };
 		FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodAIView.swift; sourceTree = "<group>"; };
 		FEATTIPOVER001FILE /* FeatureTipOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/FeatureTipOverlay.swift"; sourceTree = SOURCE_ROOT; };
 		FEATTIPS001FILE /* FeatureTipsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/FeatureTipsManager.swift"; sourceTree = SOURCE_ROOT; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
+		GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalsOnboardingScreens.swift; sourceTree = "<group>"; };
 		IMGCACHE001FILE /* ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ImageCacheManager.swift; sourceTree = "<group>"; };
 		INFERREDINGMGR001FILE /* InferredIngredientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientManager.swift; path = "NutraSafe Beta/Managers/InferredIngredientManager.swift"; sourceTree = SOURCE_ROOT; };
 		INFERREDINGMOD001FILE /* InferredIngredientModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientModels.swift; path = "NutraSafe Beta/Models/InferredIngredientModels.swift"; sourceTree = SOURCE_ROOT; };
-		INFERREDINGSHEET001FILE /* InferredIngredientsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientsSheet.swift; path = "NutraSafe Beta/Views/Food/InferredIngredientsSheet.swift"; sourceTree = SOURCE_ROOT; };
 		MEALMANAGER001FILE /* MealManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/MealManager.swift; sourceTree = "<group>"; };
 		MEALMODELS001FILE /* MealModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealModels.swift; sourceTree = "<group>"; };
 		MIGRMGR001FILE /* MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/MigrationManager.swift"; sourceTree = SOURCE_ROOT; };
 		MYMEALSVIEW001FILE /* MyMealsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyMealsView.swift; sourceTree = "<group>"; };
+		ONBGOALSSETUP001FILE /* OnboardingGoalsSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingGoalsSetup.swift; sourceTree = "<group>"; };
 		ONBMGR0001FILE /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/OnboardingManager.swift; sourceTree = "<group>"; };
 		ONBSCREEN0001FILE /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
-		ONBGOALSSETUP001FILE /* OnboardingGoalsSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingGoalsSetup.swift; sourceTree = "<group>"; };
 		ONBVIEW0001FILE /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		PAYWALL0001FILE /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		PREMWRAP001FILE /* PremiumFeatureWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/PremiumFeatureWrapper.swift"; sourceTree = SOURCE_ROOT; };
@@ -285,7 +296,6 @@
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
 		WELCOMESCREEN001FILE /* WelcomeScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeScreenView.swift; sourceTree = "<group>"; };
-		DIETREDESIGN001FILE /* DietManagementRedesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietManagementRedesign.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -321,7 +331,12 @@
 				B1E4A63C54154D289C990AE1BEA07BB8 /* FoodTabViews.swift */,
 				MYMEALSVIEW001FILE /* MyMealsView.swift */,
 				B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */,
-				INFERREDINGSHEET001FILE /* InferredIngredientsSheet.swift */,
+				4FE6732C35F29BE06EE995BC /* FoodDetailServingView.swift */,
+				CD5CAC64039C124DB4C5EAF5 /* FoodDetailNutritionCard.swift */,
+				42B6381F4E84BD92F3DDA90A /* FoodDetailScoresView.swift */,
+				6B65061DE906BF3F74DFED9F /* FoodDetailWatchTabsView.swift */,
+				90ACAE8BE5C254A22D04F05D /* InferredIngredientsSheet.swift */,
+				CAEE86912A424375B407BE0B /* AdditiveRedesignedViews.swift */,
 			);
 			path = Food;
 			sourceTree = "<group>";
@@ -812,7 +827,6 @@
 				ANALYTICS001BUILD /* AnalyticsManager.swift in Sources */,
 				INFERREDINGMOD001BUILD /* InferredIngredientModels.swift in Sources */,
 				INFERREDINGMGR001BUILD /* InferredIngredientManager.swift in Sources */,
-				INFERREDINGSHEET001BUILD /* InferredIngredientsSheet.swift in Sources */,
 				28291D8E59C24DBEEC0CB4B3 /* SearchNormalization.swift in Sources */,
 				04FCA287EF973A67D3EC636D /* OnboardingTheme.swift in Sources */,
 				17BDBE5F1F972B8D2A455AC1 /* OrganicShapes.swift in Sources */,
@@ -824,6 +838,12 @@
 				25DFD742946D899129F72798 /* DiaryMetricCards.swift in Sources */,
 				8C04CDFED59699D90D63C586 /* LogWeightView.swift in Sources */,
 				F3DF752EB2C082AE0AB0A804 /* StrictMicronutrientValidator.swift in Sources */,
+				FC5C2FC2DC01206CD686FC0A /* FoodDetailServingView.swift in Sources */,
+				2826897CF17548B7F1D72811 /* FoodDetailNutritionCard.swift in Sources */,
+				B5CB939963239BE0F60270BD /* FoodDetailScoresView.swift in Sources */,
+				3CD5ED2A7009D5658CCE69B2 /* FoodDetailWatchTabsView.swift in Sources */,
+				2D021CE0E8AFA51E9667F28B /* InferredIngredientsSheet.swift in Sources */,
+				95E64F490F3DB1B31AF866CB /* AdditiveRedesignedViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
