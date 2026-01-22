@@ -1081,7 +1081,7 @@ struct ViewfinderBracket: Shape {
 struct SparkleShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let _ = CGPoint(x: rect.midX, y: rect.midY)
         let points: [(CGFloat, CGFloat)] = [
             (0.5, 0), (0.65, 0.35), (1, 0.5), (0.65, 0.65),
             (0.5, 1), (0.35, 0.65), (0, 0.5), (0.35, 0.35)

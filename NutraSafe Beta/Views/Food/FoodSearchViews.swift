@@ -444,7 +444,7 @@ struct FoodSearchResultRowEnhanced: View {
             }
             .environmentObject(diaryDataManager)
             .interactiveDismissDisabled(false)
-            .presentationBackground(Color.adaptiveBackground)
+            // Note: presentationBackground is handled by FoodDetailViewFromSearch internally
             .onAppear {
                 print("[FoodDetailViewFromSearch] onAppear - fullScreenCover presented")
             }

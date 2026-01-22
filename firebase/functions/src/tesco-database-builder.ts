@@ -608,7 +608,7 @@ function prepareAlgoliaObject(product: TescoProduct): any {
         servingDescription: servingSizeStr, // iOS app expects this key
         servingSizeG: servingSizeG, // Parse actual serving size
         category: product.category || '',
-        imageUrl: product.imageUrl || '',
+        imageUrl: '', // Tesco images not used
         source: 'Tesco',
         verified: true,
         isVerified: true,
@@ -1339,7 +1339,7 @@ async function getProductDetails(productId: string): Promise<ProductDetailsResul
             description: Array.isArray(productData.description)
                 ? productData.description.join(' ')
                 : productData.description,
-            imageUrl: productData.defaultImageUrl,
+            imageUrl: '', // Tesco images not used
             price: productData.price?.actual,
             unitPrice: productData.price?.unitPrice,
             nutrition,
@@ -2551,7 +2551,7 @@ export const syncTescoToAlgolia = functions
                     servingSize: data.servingSize || 'per 100g',
                     servingSizeG: 100,
                     category: data.category || '',
-                    imageUrl: data.imageUrl || '',
+                    imageUrl: '', // Tesco images not used
                     source: 'Tesco',
                     verified: true,
                     isVerified: true,

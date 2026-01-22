@@ -322,6 +322,17 @@ exports.fastSearchFoods = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: 'Search failed' });
     }
 });
+// Filter out Tesco image URLs (blocked domain)
+function filterImageUrl(imageUrl) {
+    if (!imageUrl)
+        return null;
+    const lowerUrl = imageUrl.toLowerCase();
+    // Block Tesco image URLs
+    if (lowerUrl.includes('tesco.com') || lowerUrl.includes('tescolabs.') || lowerUrl.includes('.tesco.')) {
+        return null;
+    }
+    return imageUrl;
+}
 // Simplified food result formatting
 function formatFoodResult(id, data, customCategories = []) {
     const nutrition = data.nutritionData || data.nutrition || {};
@@ -369,7 +380,7 @@ function formatFoodResult(id, data, customCategories = []) {
         verifiedBy: data.verifiedBy || null,
         verificationMethod: data.verificationMethod || null,
         verifiedAt: data.verifiedAt || null,
-        imageUrl: data.imageUrl || null
+        imageUrl: filterImageUrl(data.imageUrl)
     };
 }
 // Extract raw serving size (no validation)

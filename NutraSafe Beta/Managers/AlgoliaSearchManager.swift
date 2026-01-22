@@ -554,8 +554,6 @@ final class AlgoliaSearchManager {
             }
         }
 
-        // Track if Algolia search fails completely
-        var algoliaFailed = false
         var allResults: [FoodSearchResult] = []
 
         do {
@@ -654,34 +652,7 @@ final class AlgoliaSearchManager {
         )
 
         return rankedResults
-
-        } catch {
-            // Algolia search failed - mark for fallback
-            print("⚠️ Algolia search failed: \(error.localizedDescription)")
-            algoliaFailed = true
         }
-
-        // === STAGE 5: FIREBASE FALLBACK ===
-        // If Algolia failed completely or returned no results, try Firebase
-        if algoliaFailed || allResults.isEmpty {
-            print("🔄 Using Firebase fallback search for: \(trimmedQuery)")
-            do {
-                let firebaseResults = try await FirebaseManager.shared.searchFoodsFirebaseFallback(query: trimmedQuery)
-                if !firebaseResults.isEmpty {
-                    // Cache Firebase results too
-                    searchCache.setObject(
-                        SearchCacheEntry(results: firebaseResults, timestamp: Date()),
-                        forKey: cacheKey
-                    )
-                    return firebaseResults
-                }
-            } catch {
-                print("❌ Firebase fallback also failed: \(error.localizedDescription)")
-            }
-        }
-
-        // If both Algolia and Firebase failed, return empty results
-        return allResults
     }
 
     // MARK: - Multi-Stage Ranking
@@ -700,7 +671,7 @@ final class AlgoliaSearchManager {
             let nameLower = result.name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
             let brandLower = result.brand?.lowercased() ?? ""
-            let sourceLower = result.source?.lowercased() ?? ""
+            let _ = result.source?.lowercased() ?? ""
 
             var score = 0
             var tier = 4  // Default tier (lowest)
@@ -1119,7 +1090,7 @@ final class AlgoliaSearchManager {
             let name = item.result.name
             let nameLower = name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
-            let sourceLower = item.result.source?.lowercased() ?? ""
+            let _ = item.result.source?.lowercased() ?? ""
 
             var score = 0
 
@@ -1673,8 +1644,16 @@ final class AlgoliaSearchManager {
                 }
             }
 
-            // Extract product image URL (from Tesco and other sources)
-            let imageUrl = hit["imageUrl"] as? String
+            // Extract product image URL (filter out Tesco images)
+            let rawImageUrl = hit["imageUrl"] as? String
+            let imageUrl: String? = {
+                guard let url = rawImageUrl?.lowercased() else { return nil }
+                // Block Tesco image URLs
+                if url.contains("tesco.com") || url.contains("tescolabs.") || url.contains(".tesco.") {
+                    return nil
+                }
+                return rawImageUrl
+            }()
 
             return FoodSearchResult(
                 id: objectID,

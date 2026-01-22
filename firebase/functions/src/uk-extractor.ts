@@ -1153,7 +1153,7 @@ async function tryTesco8Api(productName: string): Promise<{ product: ExtractedPr
             }
         }
 
-        // Build the product
+        // Build the product (note: Tesco images excluded - use other sources only)
         const product: ExtractedProduct = {
             name: productData.title,
             brand: productData.brandName,
@@ -1162,7 +1162,7 @@ async function tryTesco8Api(productName: string): Promise<{ product: ExtractedPr
             nutrition,
             ingredients: details.ingredients?.join(', '),
             allergens: details.allergenInfo ? identifyAllergens(details.allergenInfo) : [],
-            imageUrl: productData.defaultImageUrl,
+            imageUrl: undefined, // Tesco images not used
             servingSize: details.packSize?.[0]?.value ? `${details.packSize[0].value}${details.packSize[0].units}` : undefined
         };
 

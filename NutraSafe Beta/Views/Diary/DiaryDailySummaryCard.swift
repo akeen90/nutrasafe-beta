@@ -442,7 +442,7 @@ struct DiaryDailySummaryCard: View {
         let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
 
         guard let weekStart = calendar.date(byAdding: .day, value: daysFromMonday, to: currentDate),
-              let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
+              let _ = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
             return
         }
 

@@ -482,12 +482,8 @@ struct FuzzyMatcher {
         let chars = Array(query.lowercased())
 
         // Common letter swaps (single characters only)
-        let commonSwaps: [(Character, Character)] = [
-            ("a", "e"), ("e", "a"), ("i", "y"), ("y", "i"),
-            ("o", "u"), ("u", "o"), ("c", "k"), ("k", "c"),
-            ("s", "z"), ("z", "s"),
-        ]
         // Note: Multi-character swaps like f/ph handled separately below
+        // Adjacent key typos are used instead of these swap pairs
 
         // Adjacent key typos (QWERTY layout)
         let adjacentKeys: [Character: [Character]] = [

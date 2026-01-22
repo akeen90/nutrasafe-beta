@@ -5884,35 +5884,36 @@ extension FoodDetailViewFromSearch {
     // MARK: - Redesigned Header Section
     private var redesignedHeaderSection: some View {
         VStack(spacing: 4) {
-            // Product image (only when available)
+            // Product image (only when available) with white background
             if let imageUrl = displayFood.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
-                            .shadow(color: Color.black.opacity(0.1), radius: 8, y: 4)
-                            .padding(.bottom, 12)
-                    case .failure(_):
-                        // Hide on failure - don't show anything
-                        EmptyView()
-                    case .empty:
-                        // Loading state
-                        RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                            .fill(Color.gray.opacity(0.1))
-                            .frame(height: 140)
-                            .overlay(
-                                ProgressView()
-                                    .tint(.secondary)
-                            )
-                            .padding(.bottom, 12)
-                    @unknown default:
-                        EmptyView()
+                ZStack {
+                    // White background so product images blend in
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                        .fill(Color.white)
+                        .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
+
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxHeight: 160)
+                                .padding(12)
+                        case .failure(_):
+                            EmptyView()
+                        case .empty:
+                            ProgressView()
+                                .tint(.secondary)
+                                .frame(height: 140)
+                        @unknown default:
+                            EmptyView()
+                        }
                     }
                 }
+                .frame(maxHeight: 180)
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.bottom, 12)
             }
 
             // Product name - prominent

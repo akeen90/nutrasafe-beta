@@ -2014,7 +2014,7 @@ struct DietManagementTabContent: View {
                             .multilineTextAlignment(.leading)
                             .frame(width: 140)
                             .onSubmit { commitCalorieEdit() }
-                            .onChange(of: calorieFieldFocused) { focused in
+                            .onChange(of: calorieFieldFocused) { _, focused in
                                 if !focused { commitCalorieEdit() }
                             }
                     } else {
@@ -2275,7 +2275,7 @@ struct DietManagementTabContent: View {
                                 .multilineTextAlignment(.center)
                                 .frame(width: 70)
                                 .onSubmit { commitStepEdit() }
-                                .onChange(of: stepFieldFocused) { focused in
+                                .onChange(of: stepFieldFocused) { _, focused in
                                     if !focused { commitStepEdit() }
                                 }
                         } else {
@@ -2347,7 +2347,7 @@ struct DietManagementTabContent: View {
                                 .multilineTextAlignment(.center)
                                 .frame(width: 70)
                                 .onSubmit { commitExerciseEdit() }
-                                .onChange(of: exerciseFieldFocused) { focused in
+                                .onChange(of: exerciseFieldFocused) { _, focused in
                                     if !focused { commitExerciseEdit() }
                                 }
                         } else {
@@ -5306,6 +5306,11 @@ struct AddFoodMainView: View {
     var body: some View {
         NavigationView {
             ZStack {
+                // CRITICAL: Global opaque background to prevent transparency during transitions
+                // This ensures the background persists when fullScreenCover dismiss animations occur
+                Color.adaptiveBackground
+                    .ignoresSafeArea()
+
                 if isCheckingLimit {
                     // Loading state while checking limit
                     VStack(spacing: 16) {

@@ -53,7 +53,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let micronutrientProfile: MicronutrientProfile?
     let portions: [PortionOption]? // Available portion sizes (e.g., McNuggets 6pc, 9pc, 20pc)
     let source: String? // Source index (e.g., "tesco_products", "uk_foods_cleaned") for tier-based ranking
-    let imageUrl: String? // Product image URL (from Tesco/external sources)
+    let imageUrl: String? // Product image URL (from external sources)
 
     // Firebase category-based serving sizes (from AI categorization)
     let foodCategory: String? // Category ID (e.g., "chocolate_bar", "raw_beef", "spirits")
@@ -340,20 +340,30 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             ]
         }
 
-        // For liquid portions, use appropriate multipliers
+        // For liquid portions, use appropriate multipliers and always include 200ml
         if isLiquid {
-            // Round to nice ml values
-            let half = (servingSize * 0.5).rounded()
             let one = servingSize
-            let oneHalf = (servingSize * 1.5).rounded()
-            let double = servingSize * 2
+            var options: [PortionOption] = []
 
-            return [
-                PortionOption(name: formatPortion(half, "Half"), calories: caloriesFor(half), serving_g: half),
-                PortionOption(name: formatPortion(one, "1 \(cleanDesc)"), calories: caloriesFor(one), serving_g: one),
-                PortionOption(name: formatPortion(oneHalf, "Large"), calories: caloriesFor(oneHalf), serving_g: oneHalf),
-                PortionOption(name: formatPortion(double, "2x"), calories: caloriesFor(double), serving_g: double)
-            ]
+            // Always include 200ml glass option for drinks (common serving size)
+            let has200 = (one == 200)
+            if !has200 {
+                options.append(PortionOption(name: "200ml Glass", calories: caloriesFor(200), serving_g: 200))
+            }
+
+            // Add the suggested serving
+            options.append(PortionOption(name: formatPortion(one, "1 \(cleanDesc)"), calories: caloriesFor(one), serving_g: one))
+
+            // Add a larger option if serving is small
+            if one < 300 {
+                let larger = (one * 1.5).rounded()
+                if larger != 200 { // Don't duplicate 200ml
+                    options.append(PortionOption(name: formatPortion(larger, "Large"), calories: caloriesFor(larger), serving_g: larger))
+                }
+            }
+
+            // Sort by size (smallest first)
+            return options.sorted { $0.serving_g < $1.serving_g }
         }
 
         // For solid portions
@@ -858,9 +868,6 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         let cordialKeywords = ["cordial", "squash", "dilute", "diluting", "concentrate"]
         let cordialBrands = ["robinsons", "robinson's", "ribena", "vimto", "miwadi", "mi wadi", "rocks", "belvoir", "bottlegreen", "bottle green", "elderflower cordial", "lime cordial", "barley water"]
         let juiceKeywords = ["juice", "smoothie"]  // Removed squash/cordial - now separate category
-        let hotDrinkKeywords = ["coffee", "tea", "latte", "cappuccino", "espresso", "americano", "hot chocolate", "mocha"]
-        let waterKeywords = ["water", "sparkling water", "still water", "mineral water"]
-        let alcoholKeywords = ["beer", "lager", "ale", "wine", "cider", "prosecco", "champagne"]
         let spiritKeywords = ["vodka", "gin", "whisky", "whiskey", "rum", "brandy", "tequila", "bourbon", "scotch", "liqueur", "schnapps", "sambuca", "jagermeister", "baileys"]
         let chocolateKeywords = ["chocolate bar", "chocolate", "truffle"]
         let sweetKeywords = ["gummy", "jelly", "sweets", "candy", "lollipop", "toffee", "fudge", "mints"]
@@ -1516,22 +1523,6 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "Medium (100g)", calories: caloriesPer100 * 1.0, serving_g: 100),
                 PortionOption(name: "Large (150g)", calories: caloriesPer100 * 1.5, serving_g: 150),
                 PortionOption(name: "Block (200g)", calories: caloriesPer100 * 2.0, serving_g: 200)
-            ]
-        case .processedMeat:
-            return [
-                PortionOption(name: "1 slice (20g)", calories: caloriesPer100 * 0.2, serving_g: 20),
-                PortionOption(name: "2 slices (40g)", calories: caloriesPer100 * 0.4, serving_g: 40),
-                PortionOption(name: "3 slices (60g)", calories: caloriesPer100 * 0.6, serving_g: 60),
-                PortionOption(name: "1 sausage (50g)", calories: caloriesPer100 * 0.5, serving_g: 50),
-                PortionOption(name: "2 rashers bacon (60g)", calories: caloriesPer100 * 0.6, serving_g: 60)
-            ]
-        case .aromatics:
-            return [
-                PortionOption(name: "1 clove garlic (3g)", calories: caloriesPer100 * 0.03, serving_g: 3),
-                PortionOption(name: "1 tsp minced (5g)", calories: caloriesPer100 * 0.05, serving_g: 5),
-                PortionOption(name: "1 tbsp minced (15g)", calories: caloriesPer100 * 0.15, serving_g: 15),
-                PortionOption(name: "1 small onion (70g)", calories: caloriesPer100 * 0.7, serving_g: 70),
-                PortionOption(name: "1 medium onion (110g)", calories: caloriesPer100 * 1.1, serving_g: 110)
             ]
         case .other:
             return []

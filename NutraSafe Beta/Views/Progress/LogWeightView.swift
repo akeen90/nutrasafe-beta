@@ -79,7 +79,7 @@ struct LogWeightView: View {
     private var weightInKg: Double {
         let decimal = Double(weightDecimal) / 10.0
         let total = weightValue + decimal
-        return selectedUnit.toKg(primary: total, secondary: nil) ?? total
+        return selectedUnit.toKg(primary: total, secondary: nil)
     }
 
     private var displayWeight: String {

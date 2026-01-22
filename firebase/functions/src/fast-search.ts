@@ -364,6 +364,17 @@ export const fastSearchFoods = functions.https.onRequest(async (req, res) => {
   }
 });
 
+// Filter out Tesco image URLs (blocked domain)
+function filterImageUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) return null;
+  const lowerUrl = imageUrl.toLowerCase();
+  // Block Tesco image URLs
+  if (lowerUrl.includes('tesco.com') || lowerUrl.includes('tescolabs.') || lowerUrl.includes('.tesco.')) {
+    return null;
+  }
+  return imageUrl;
+}
+
 // Simplified food result formatting
 function formatFoodResult(id: string, data: any, customCategories: FoodCategory[] = []) {
   const nutrition = data.nutritionData || data.nutrition || {};
@@ -424,7 +435,7 @@ function formatFoodResult(id: string, data: any, customCategories: FoodCategory[
     verifiedBy: data.verifiedBy || null,
     verificationMethod: data.verificationMethod || null,
     verifiedAt: data.verifiedAt || null,
-    imageUrl: data.imageUrl || null
+    imageUrl: filterImageUrl(data.imageUrl)
   };
 }
 

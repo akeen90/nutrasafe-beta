@@ -1003,7 +1003,7 @@ async function tryTesco8Api(productName) {
                 nutrition.salt = parseNumber(value);
             }
         }
-        // Build the product
+        // Build the product (note: Tesco images excluded - use other sources only)
         const product = {
             name: productData.title,
             brand: productData.brandName,
@@ -1012,7 +1012,7 @@ async function tryTesco8Api(productName) {
             nutrition,
             ingredients: details.ingredients?.join(', '),
             allergens: details.allergenInfo ? identifyAllergens(details.allergenInfo) : [],
-            imageUrl: productData.defaultImageUrl,
+            imageUrl: undefined, // Tesco images not used
             servingSize: details.packSize?.[0]?.value ? `${details.packSize[0].value}${details.packSize[0].units}` : undefined
         };
         if (hasValidNutrition(product.nutrition)) {
