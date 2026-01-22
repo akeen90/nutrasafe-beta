@@ -385,21 +385,22 @@ struct SensitivitiesScreen: View {
     @State private var selectedOtherSensitivities: Set<String> = []
 
     // UK/EU Major Allergens (required by law)
+    // IMPORTANT: IDs must match Allergen enum rawValues exactly for sync to work
     private let majorAllergens: [(id: String, name: String, icon: String)] = [
         ("celery", "Celery", "leaf"),
         ("gluten", "Gluten", "leaf.circle"),
-        ("crustaceans", "Crustaceans", "drop"),
+        ("shellfish", "Crustaceans", "drop"),          // Allergen.shellfish
         ("eggs", "Eggs", "oval"),
         ("fish", "Fish", "fish"),
         ("lupin", "Lupin", "leaf.fill"),
         ("dairy", "Milk / Dairy", "cup.and.saucer"),
         ("molluscs", "Molluscs", "tortoise"),
         ("mustard", "Mustard", "leaf"),
-        ("nuts", "Tree Nuts", "leaf.arrow.circlepath"),
+        ("treeNuts", "Tree Nuts", "leaf.arrow.circlepath"),  // Allergen.treeNuts
         ("peanuts", "Peanuts", "p.circle"),
         ("sesame", "Sesame", "circle.grid.3x3"),
         ("soy", "Soya", "leaf"),
-        ("sulphites", "Sulphites", "s.circle")
+        ("sulfites", "Sulphites", "s.circle")          // Allergen.sulfites (US spelling)
     ]
 
     // Other sensitivities and preferences
