@@ -2672,6 +2672,22 @@ struct ReactionLogDetailView: View {
                 if categoryLower == "msg" { return true }
             case .corn:
                 if categoryLower == "corn" { return true }
+            case .celery:
+                if categoryLower == "celery" { return true }
+            case .mustard:
+                if categoryLower == "mustard" { return true }
+            case .lupin:
+                if categoryLower == "lupin" { return true }
+            case .molluscs:
+                if categoryLower == "molluscs" || categoryLower == "mollusks" { return true }
+            case .nightshades:
+                if categoryLower == "nightshades" { return true }
+            case .histamines:
+                if categoryLower == "histamines" { return true }
+            case .caffeine:
+                if categoryLower == "caffeine" { return true }
+            case .alcohol:
+                if categoryLower == "alcohol" { return true }
             }
         }
         return false

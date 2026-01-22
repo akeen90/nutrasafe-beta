@@ -121,7 +121,7 @@ struct AllergenManagementView: View {
         isSaving = true
         Task {
             do {
-                try await firebaseManager.saveUserAllergens(Array(selectedAllergens))
+                try await firebaseManager.saveAllergens(Array(selectedAllergens))
                 await MainActor.run {
                     // Success haptic
                     let notificationFeedback = UINotificationFeedbackGenerator()

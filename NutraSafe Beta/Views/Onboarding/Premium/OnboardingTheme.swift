@@ -155,22 +155,97 @@ struct OnboardingTypography {
 // MARK: - Sensitivities
 
 enum FoodSensitivity: String, CaseIterable, Identifiable {
+    // UK/EU 14 Allergens
     case gluten = "Gluten"
     case dairy = "Dairy"
-    case nuts = "Nuts"
-    case soy = "Soy"
     case eggs = "Eggs"
+    case fish = "Fish"
     case shellfish = "Shellfish"
+    case treeNuts = "Tree Nuts"
+    case peanuts = "Peanuts"
+    case wheat = "Wheat"
+    case soy = "Soy"
+    case sesame = "Sesame"
+    case celery = "Celery"
+    case mustard = "Mustard"
+    case lupin = "Lupin"
+    case molluscs = "Molluscs"
     case sulphites = "Sulphites"
+
+    // Additional sensitivities (not legal allergens but common concerns)
+    case lactose = "Lactose"
     case nightshades = "Nightshades"
     case histamines = "Histamines"
     case caffeine = "Caffeine"
     case alcohol = "Alcohol"
+    case msg = "MSG"
+    case corn = "Corn"
+
+    // None option
     case nothingSpecific = "Nothing specific"
 
     var id: String { rawValue }
 
     var isNone: Bool { self == .nothingSpecific }
+
+    /// Maps this FoodSensitivity to the corresponding Allergen for detection
+    /// Returns nil only for "nothingSpecific"
+    var toAllergen: Allergen? {
+        switch self {
+        case .gluten: return .gluten
+        case .dairy: return .dairy
+        case .eggs: return .eggs
+        case .fish: return .fish
+        case .shellfish: return .shellfish
+        case .treeNuts: return .treeNuts
+        case .peanuts: return .peanuts
+        case .wheat: return .wheat
+        case .soy: return .soy
+        case .sesame: return .sesame
+        case .celery: return .celery
+        case .mustard: return .mustard
+        case .lupin: return .lupin
+        case .molluscs: return .molluscs
+        case .sulphites: return .sulfites
+        case .lactose: return .lactose
+        case .nightshades: return .nightshades
+        case .histamines: return .histamines
+        case .caffeine: return .caffeine
+        case .alcohol: return .alcohol
+        case .msg: return .msg
+        case .corn: return .corn
+        case .nothingSpecific: return nil
+        }
+    }
+
+    /// Icon for display in UI
+    var icon: String {
+        switch self {
+        case .gluten: return "🍞"
+        case .dairy: return "🥛"
+        case .eggs: return "🥚"
+        case .fish: return "🐟"
+        case .shellfish: return "🦐"
+        case .treeNuts: return "🌰"
+        case .peanuts: return "🥜"
+        case .wheat: return "🌾"
+        case .soy: return "🫘"
+        case .sesame: return "🫰"
+        case .celery: return "🥬"
+        case .mustard: return "🟡"
+        case .lupin: return "🌼"
+        case .molluscs: return "🦪"
+        case .sulphites: return "🍷"
+        case .lactose: return "🥛"
+        case .nightshades: return "🍆"
+        case .histamines: return "⚠️"
+        case .caffeine: return "☕"
+        case .alcohol: return "🍺"
+        case .msg: return "🧂"
+        case .corn: return "🌽"
+        case .nothingSpecific: return "✓"
+        }
+    }
 }
 
 // MARK: - Goals & Lifestyle Enums
@@ -441,6 +516,11 @@ class PremiumOnboardingState: ObservableObject {
         UserDefaults.standard.set(birthDate.timeIntervalSince1970, forKey: "userBirthDate")
         UserDefaults.standard.set(gender.rawValue, forKey: "userGender")
 
+        // Convert sensitivities to allergens and save to UserDefaults
+        // This syncs onboarding selections with allergen management
+        let allergenStrings = selectedSensitivities.compactMap { $0.toAllergen?.rawValue }
+        UserDefaults.standard.set(allergenStrings, forKey: "userAllergens")
+
         // Also save to Firebase if user is signed in (fire-and-forget)
         // This ensures Firebase doesn't override onboarding settings on next load
         saveToFirebase()
@@ -452,6 +532,7 @@ class PremiumOnboardingState: ObservableObject {
         let calorieTarget = targetCalories
         let userHeight = heightCm
         let userWeight = weightKg
+        let sensitivities = selectedSensitivities  // Capture before Task
 
         // Calculate macro percentages based on diet type
         var proteinPercent: Int
@@ -511,6 +592,13 @@ class PremiumOnboardingState: ObservableObject {
                 MacroGoal(macroType: .fiber, directTarget: 30.0) // Default 30g fiber goal
             ]
             try? await firebaseManager.saveMacroGoals(macroGoals, dietType: dietType)
+
+            // Convert selected sensitivities to Allergens and save to Firebase
+            // This ensures allergen management in settings matches onboarding selections
+            let allergens: [Allergen] = sensitivities.compactMap { $0.toAllergen }
+            if !allergens.isEmpty {
+                try? await firebaseManager.saveAllergens(allergens)
+            }
         }
     }
 

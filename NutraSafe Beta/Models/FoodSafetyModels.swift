@@ -83,9 +83,11 @@ struct FoodAdditive {
     }
 }
 
-enum Allergen: String, CaseIterable, Identifiable {
+enum Allergen: String, CaseIterable, Identifiable, Codable {
+    // UK/EU 14 Allergens
+    case gluten = "gluten"
     case dairy = "dairy"
-    case eggs = "eggs"  
+    case eggs = "eggs"
     case fish = "fish"
     case shellfish = "shellfish"
     case treeNuts = "treeNuts"
@@ -93,16 +95,26 @@ enum Allergen: String, CaseIterable, Identifiable {
     case wheat = "wheat"
     case soy = "soy"
     case sesame = "sesame"
-    case gluten = "gluten"
-    case lactose = "lactose"
+    case celery = "celery"
+    case mustard = "mustard"
+    case lupin = "lupin"
+    case molluscs = "molluscs"
     case sulfites = "sulfites"
+
+    // Additional common allergens/sensitivities
+    case lactose = "lactose"
     case msg = "msg"
     case corn = "corn"
-    
+    case nightshades = "nightshades"
+    case histamines = "histamines"
+    case caffeine = "caffeine"
+    case alcohol = "alcohol"
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
+        case .gluten: return "Gluten"
         case .dairy: return "Dairy"
         case .eggs: return "Eggs"
         case .fish: return "Fish"
@@ -112,16 +124,24 @@ enum Allergen: String, CaseIterable, Identifiable {
         case .wheat: return "Wheat"
         case .soy: return "Soy"
         case .sesame: return "Sesame"
-        case .gluten: return "Gluten"
+        case .celery: return "Celery"
+        case .mustard: return "Mustard"
+        case .lupin: return "Lupin"
+        case .molluscs: return "Molluscs"
+        case .sulfites: return "Sulphites"
         case .lactose: return "Lactose"
-        case .sulfites: return "Sulfites"
         case .msg: return "MSG"
         case .corn: return "Corn"
+        case .nightshades: return "Nightshades"
+        case .histamines: return "Histamines"
+        case .caffeine: return "Caffeine"
+        case .alcohol: return "Alcohol"
         }
     }
-    
+
     var icon: String {
         switch self {
+        case .gluten: return "🍞"
         case .dairy: return "🥛"
         case .eggs: return "🥚"
         case .fish: return "🐟"
@@ -131,11 +151,18 @@ enum Allergen: String, CaseIterable, Identifiable {
         case .wheat: return "🌾"
         case .soy: return "🫘"
         case .sesame: return "🫰"
-        case .gluten: return "🍞"
-        case .lactose: return "🥛"
+        case .celery: return "🥬"
+        case .mustard: return "🟡"
+        case .lupin: return "🌼"
+        case .molluscs: return "🦪"
         case .sulfites: return "🍷"
+        case .lactose: return "🥛"
         case .msg: return "🧂"
         case .corn: return "🌽"
+        case .nightshades: return "🍆"
+        case .histamines: return "⚠️"
+        case .caffeine: return "☕"
+        case .alcohol: return "🍺"
         }
     }
     
@@ -231,16 +258,58 @@ enum Allergen: String, CaseIterable, Identifiable {
                 "corn flour", "dextrose", "maltodextrin", "polenta", "grits", "hominy",
                 "corn oil", "popcorn", "tortilla chip", "corn chip", "nachos"
             ]
+        case .celery:
+            return [
+                "celery", "celeriac", "celery salt", "celery seed", "celery powder",
+                "celery juice", "celery extract"
+            ]
+        case .mustard:
+            return [
+                "mustard", "mustard seed", "mustard powder", "mustard oil", "dijon",
+                "wholegrain mustard", "english mustard", "french mustard", "mustard flour"
+            ]
+        case .lupin:
+            return [
+                "lupin", "lupine", "lupini", "lupin flour", "lupin seed", "lupin bean"
+            ]
+        case .molluscs:
+            return [
+                "clam", "mussel", "oyster", "scallop", "cockle", "winkle", "whelk",
+                "squid", "calamari", "octopus", "cuttlefish", "abalone", "snail", "escargot"
+            ]
+        case .nightshades:
+            return [
+                "tomato", "potato", "eggplant", "aubergine", "bell pepper", "capsicum",
+                "paprika", "cayenne", "chili", "chilli", "jalapeño", "habanero"
+            ]
+        case .histamines:
+            return [
+                "aged cheese", "fermented", "cured meat", "smoked fish", "sauerkraut",
+                "kimchi", "miso", "soy sauce", "vinegar", "alcohol", "wine", "beer"
+            ]
+        case .caffeine:
+            return [
+                "caffeine", "coffee", "espresso", "tea", "matcha", "guarana", "cola",
+                "energy drink", "chocolate", "cocoa", "cacao"
+            ]
+        case .alcohol:
+            return [
+                "alcohol", "wine", "beer", "lager", "ale", "spirits", "vodka", "gin",
+                "rum", "whisky", "whiskey", "brandy", "liqueur", "cider"
+            ]
         }
     }
-    
+
     var severity: AllergenSeverity {
         switch self {
-        case .dairy, .eggs, .fish, .shellfish, .treeNuts, .peanuts:
+        // High: Common severe allergies
+        case .dairy, .eggs, .fish, .shellfish, .treeNuts, .peanuts, .molluscs:
             return .high
-        case .wheat, .soy, .gluten:
+        // Medium: Common but often less severe
+        case .wheat, .soy, .gluten, .celery, .mustard, .lupin:
             return .medium
-        case .sesame, .lactose, .sulfites, .msg, .corn:
+        // Low: Sensitivities and less common allergens
+        case .sesame, .lactose, .sulfites, .msg, .corn, .nightshades, .histamines, .caffeine, .alcohol:
             return .low
         }
     }
