@@ -1100,7 +1100,7 @@ struct WeightTrackingView: View {
                     ZStack {
                         // MARK: Weight Tab Content
                         if progressSubTab == .weight {
-                        ScrollView {
+                        ScrollViewWithTopReset {
                             // PERFORMANCE: LazyVStack defers rendering of off-screen content
                             LazyVStack(spacing: 24) {
 
@@ -1585,7 +1585,7 @@ struct WeightTrackingView: View {
 
                         // MARK: Diet Tab Content
                         if progressSubTab == .diet {
-                            ScrollView {
+                            ScrollViewWithTopReset {
                                 DietManagementTabContent()
                                     .environmentObject(firebaseManager)
                             }

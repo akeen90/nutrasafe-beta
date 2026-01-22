@@ -181,7 +181,7 @@ struct UseByTabView: View {
                 // Check premium access
                 if subscriptionManager.hasAccess {
                     // Premium users see full content
-                    ScrollView {
+                    ScrollViewWithTopReset {
                         LazyVStack(spacing: 16) {
                             // Search bar section
                             useByHeroHeader

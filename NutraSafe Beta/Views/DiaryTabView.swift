@@ -8,6 +8,7 @@ struct DiaryTabView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var selectedDate: Date = Date()
     @State private var showingDatePicker: Bool = false
     @State private var refreshTrigger: Bool = false
@@ -593,7 +594,7 @@ struct DiaryTabView: View {
             ZStack {
                 // Overview tab - show/hide with opacity (no animation)
                 // Reduced spacing for tighter layout - foods feel more immediate
-                ScrollView {
+                ScrollViewWithTopReset {
                     LazyVStack(spacing: 10) {
                         overviewTabContent
                     }
@@ -602,7 +603,7 @@ struct DiaryTabView: View {
                 .allowsHitTesting(diarySubTab == .overview)
 
                 // Nutrients tab - show/hide with opacity (no animation)
-                ScrollView {
+                ScrollViewWithTopReset {
                     LazyVStack(spacing: 16) {
                         nutrientsTabContent
                     }
@@ -637,6 +638,9 @@ struct DiaryTabView: View {
                     diaryDate: selectedDate,
                     fastingViewModel: fastingViewModelWrapper.viewModel
                 )
+                .environmentObject(diaryDataManager)
+                .environmentObject(subscriptionManager)
+                .environmentObject(firebaseManager)
             }
             .diaryLimitAlert(
                 isPresented: $showingDiaryLimitError,
@@ -644,6 +648,7 @@ struct DiaryTabView: View {
             )
             .fullScreenCover(isPresented: $showingPaywall) {
                 PaywallView()
+                    .environmentObject(subscriptionManager)
             }
             .background(AppAnimatedBackground())
             .trackScreen("Diary")
@@ -2899,7 +2904,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         // CRITICAL FIX: If food has no actual micronutrient data AND no ingredients,
         // return an empty profile instead of estimating from macros (which creates false positives)
         let hasActualMicronutrientData = entry.micronutrientProfile != nil
-        let hasIngredients = entry.ingredients != nil && !entry.ingredients!.isEmpty
+        let hasIngredients = !(entry.ingredients?.isEmpty ?? true)
 
         if !hasActualMicronutrientData && !hasIngredients {
             // Return empty profile - don't estimate from macros alone

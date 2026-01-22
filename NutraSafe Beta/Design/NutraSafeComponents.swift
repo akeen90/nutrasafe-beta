@@ -658,6 +658,87 @@ struct NutraSafeInsightBanner: View {
     }
 }
 
+// MARK: - Scroll To Top on Appear
+
+/// A ScrollView wrapper that automatically scrolls to top when the view appears.
+/// Use this to ensure users always start at the top when returning to a tab/page.
+struct ScrollViewWithTopReset<Content: View>: View {
+    let axes: Axis.Set
+    let showsIndicators: Bool
+    let content: Content
+
+    @State private var scrollID = UUID()
+
+    init(
+        _ axes: Axis.Set = .vertical,
+        showsIndicators: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.axes = axes
+        self.showsIndicators = showsIndicators
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(axes, showsIndicators: showsIndicators) {
+                VStack(spacing: 0) {
+                    Color.clear
+                        .frame(height: 0)
+                        .id("scrollTop")
+
+                    content
+                }
+            }
+            .onAppear {
+                // Small delay to ensure view is rendered before scrolling
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    withAnimation(.none) {
+                        proxy.scrollTo("scrollTop", anchor: .top)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// View modifier to add scroll-to-top behavior to any view containing a ScrollView.
+/// Apply to parent views that should reset scroll position on appear.
+struct ScrollToTopOnAppearModifier: ViewModifier {
+    let scrollViewID: String
+    @State private var shouldScrollToTop = false
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                shouldScrollToTop = true
+            }
+            .onDisappear {
+                shouldScrollToTop = false
+            }
+            .environment(\.scrollToTopTrigger, shouldScrollToTop)
+    }
+}
+
+/// Environment key for scroll-to-top trigger
+private struct ScrollToTopTriggerKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var scrollToTopTrigger: Bool {
+        get { self[ScrollToTopTriggerKey.self] }
+        set { self[ScrollToTopTriggerKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Modifier that resets scroll position to top when view appears
+    func scrollsToTopOnAppear(id: String = "scrollTop") -> some View {
+        modifier(ScrollToTopOnAppearModifier(scrollViewID: id))
+    }
+}
+
 // MARK: - Preview
 
 #Preview {

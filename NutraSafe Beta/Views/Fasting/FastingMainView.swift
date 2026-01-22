@@ -64,12 +64,13 @@ struct FastingMainViewLegacy: View {
         )
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
+                .environmentObject(subscriptionManager)
         }
     }
 
     // MARK: - Fasting Content (Premium with Animated Background)
     private var fastingContent: some View {
-        ScrollView {
+        ScrollViewWithTopReset {
             VStack(spacing: 20) {
                 // Always show IdleStateView which contains PlanDashboardView
                 // PlanDashboardView handles all fasting states via RegimeTimerCard

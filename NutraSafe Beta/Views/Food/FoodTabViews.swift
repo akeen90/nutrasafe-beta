@@ -288,7 +288,7 @@ struct FoodReactionsView: View {
 
     // MARK: - Timeline View
     private var reactionTimelineView: some View {
-        ScrollView(.vertical, showsIndicators: true) {
+        ScrollViewWithTopReset(.vertical, showsIndicators: true) {
             VStack(spacing: 16) {
                 // Symptom filter
                 symptomFilterSection
@@ -413,7 +413,7 @@ struct FoodReactionsView: View {
     }
 
     private var foodBasedReactionsView: some View {
-        ScrollView(.vertical, showsIndicators: true) {
+        ScrollViewWithTopReset(.vertical, showsIndicators: true) {
             VStack(spacing: 12) {
                 // Reaction Summary
                 FoodReactionSummaryCard(selectedTab: $selectedTab)
