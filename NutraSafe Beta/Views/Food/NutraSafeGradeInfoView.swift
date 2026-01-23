@@ -297,7 +297,7 @@ private struct GradeInfoBullet: View {
 }
 
 private struct GradeCitationCard: View {
-    let citation: ResearchCitation
+    let citation: CitationManager.Citation
     let palette: AppPalette
 
     var body: some View {

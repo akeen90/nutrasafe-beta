@@ -762,12 +762,17 @@ struct HonestyScreen: View {
 
                 // Text
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("NutraSafe helps you understand food—ingredients, allergens, nutrition.")
+                    Text("NutraSafe is a quick reference to help you explore food—ingredients, allergens, nutrition.")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundColor(Color(white: 0.4))
                         .lineSpacing(4)
 
                     Text("We're a companion to your choices, not a replacement for medical advice.")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(Color(white: 0.4))
+                        .lineSpacing(4)
+
+                    Text("Ingredient data may be incomplete, outdated, or vary by region—always check the label before you eat, especially with allergies.")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundColor(Color(white: 0.4))
                         .lineSpacing(4)

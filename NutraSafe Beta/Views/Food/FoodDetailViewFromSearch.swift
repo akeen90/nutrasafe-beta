@@ -6927,7 +6927,7 @@ private struct SugarInfoBullet: View {
 }
 
 private struct SugarCitationCard: View {
-    let citation: ResearchCitation
+    let citation: CitationManager.Citation
     let palette: AppPalette
 
     var body: some View {
