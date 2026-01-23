@@ -30,9 +30,11 @@ struct LogWeightView: View {
     @AppStorage("weightUnit") private var selectedUnit: WeightUnit = .kg
     @AppStorage("heightUnit") private var selectedHeightUnit: HeightUnit = .cm
     @AppStorage("userGender") private var userGender: Gender = .other
+    @AppStorage("cachedCurrentWeight") private var cachedCurrentWeight: Double = 0
 
     // Weight state
     @State private var weightValue: Double = 70.0
+    @State private var hasInitializedWeight = false
     @State private var weightDecimal: Int = 0
     @State private var isEditingWeight = false
     @State private var weightTextInput: String = ""
@@ -70,6 +72,8 @@ struct LogWeightView: View {
     // UI state
     @State private var isUploading = false
     @State private var showSaveConfirmation = false
+    @State private var showSaveError = false
+    @State private var saveErrorMessage = ""
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
@@ -166,6 +170,26 @@ struct LogWeightView: View {
             }
         }
         .onAppear(perform: setupInitialValues)
+        .onChange(of: currentWeight) { _, newWeight in
+            // If weight binding updates after view appeared (data loaded late)
+            // and user hasn't manually edited yet, update to the correct weight
+            if !hasInitializedWeight && existingEntry == nil && newWeight > 0 {
+                let converted = selectedUnit.fromKg(newWeight)
+                weightValue = floor(converted.primary)
+                weightDecimal = Int(round((converted.primary - weightValue) * 10))
+                hasInitializedWeight = true
+            }
+        }
+        .onChange(of: weightHistory) { _, newHistory in
+            // If weight history binding updates after view appeared
+            // and we still haven't initialized, use the latest entry
+            if !hasInitializedWeight && existingEntry == nil, let latest = newHistory.first {
+                let converted = selectedUnit.fromKg(latest.weight)
+                weightValue = floor(converted.primary)
+                weightDecimal = Int(round((converted.primary - weightValue) * 10))
+                hasInitializedWeight = true
+            }
+        }
         .fullScreenCover(item: $activePickerType) { pickerType in
             if pickerType == .camera {
                 ImagePicker(selectedImage: nil, sourceType: .camera) { image in
@@ -194,6 +218,14 @@ struct LogWeightView: View {
             PhotoDetailView(image: photo.image) {
                 selectedPhotoForViewing = nil
             }
+        }
+        .alert("Save Failed", isPresented: $showSaveError) {
+            Button("Try Again") {
+                saveWeight()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text(saveErrorMessage)
         }
     }
 
@@ -1135,6 +1167,7 @@ struct LogWeightView: View {
             let converted = selectedUnit.fromKg(entry.weight)
             weightValue = floor(converted.primary)
             weightDecimal = Int(round((converted.primary - weightValue) * 10))
+            hasInitializedWeight = true
 
             // Load date
             entryDate = entry.date
@@ -1158,11 +1191,30 @@ struct LogWeightView: View {
             // Load photos if available
             loadExistingPhotos(from: entry)
         } else {
-            // Creating new entry - use current weight
+            // Creating new entry - use best available weight source
+            // Priority: currentWeight > weightHistory > cachedWeightHistory > AppStorage cache > default
+            let weightToUse: Double
             if currentWeight > 0 {
-                let converted = selectedUnit.fromKg(currentWeight)
+                weightToUse = currentWeight
+            } else if let latestEntry = weightHistory.first {
+                // Fallback to most recent weight history entry from binding
+                weightToUse = latestEntry.weight
+            } else if let cachedEntry = firebaseManager.cachedWeightHistory.first {
+                // Fallback to FirebaseManager's cache
+                weightToUse = cachedEntry.weight
+            } else if cachedCurrentWeight > 0 {
+                // Fallback to locally persisted weight (AppStorage)
+                weightToUse = cachedCurrentWeight
+            } else {
+                // No weight data available - keep default
+                weightToUse = 0
+            }
+
+            if weightToUse > 0 {
+                let converted = selectedUnit.fromKg(weightToUse)
                 weightValue = floor(converted.primary)
                 weightDecimal = Int(round((converted.primary - weightValue) * 10))
+                hasInitializedWeight = true
             }
         }
 
@@ -1326,6 +1378,8 @@ struct LogWeightView: View {
                 // Update local state
                 await MainActor.run {
                     currentWeight = weightInKg
+                    // Persist to AppStorage for instant access on app restart
+                    cachedCurrentWeight = weightInKg
 
                     // Update height if changed
                     if let heightCm = heightInCm, heightCm != userHeight {
@@ -1352,6 +1406,8 @@ struct LogWeightView: View {
             } catch {
                 await MainActor.run {
                     isUploading = false
+                    saveErrorMessage = "Failed to save. Please try again."
+                    showSaveError = true
                     print("Save failed: \(error)")
                 }
             }

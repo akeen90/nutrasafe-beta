@@ -576,7 +576,15 @@ class FirebaseManager: ObservableObject {
                 do {
                     try await HealthKitManager.shared.writeDietaryEnergyConsumed(calories: entry.calories, date: entry.date)
                 } catch {
-                                    }
+                    // Retry once on HealthKit write failure
+                    do {
+                        try await Task.sleep(nanoseconds: 300_000_000)
+                        try await HealthKitManager.shared.writeDietaryEnergyConsumed(calories: entry.calories, date: entry.date)
+                    } catch {
+                        // HealthKit sync failed - non-fatal, food entry is already saved
+                        print("HealthKit sync failed after retry: \(error.localizedDescription)")
+                    }
+                }
             }
         }
     }
@@ -1652,9 +1660,25 @@ class FirebaseManager: ObservableObject {
             entryData["dressSize"] = dressSize
         }
 
-        try await db.collection("users").document(userId)
-            .collection("weightHistory").document(entry.id.uuidString).setData(entryData)
-                DispatchQueue.main.async {
+        // Wrap with retry for network resilience (consistent with saveFoodEntry)
+        try await withRetry {
+            try await self.db.collection("users").document(userId)
+                .collection("weightHistory").document(entry.id.uuidString).setData(entryData)
+        }
+
+        // Update cached weight history immediately after successful save
+        // This ensures the cache is always in sync and prevents stale data issues
+        await MainActor.run {
+            // Check if entry already exists (editing existing entry)
+            if let existingIndex = self.cachedWeightHistory.firstIndex(where: { $0.id == entry.id }) {
+                self.cachedWeightHistory[existingIndex] = entry
+            } else {
+                // Insert new entry at beginning (most recent first)
+                self.cachedWeightHistory.insert(entry, at: 0)
+            }
+            // Re-sort by date to maintain correct order
+            self.cachedWeightHistory.sort { $0.date > $1.date }
+
             NotificationCenter.default.post(name: .weightHistoryUpdated, object: nil, userInfo: ["entry": entry])
         }
     }
@@ -1702,7 +1726,12 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("weightHistory").document(id.uuidString).delete()
-            }
+
+        // Update cached weight history after successful delete
+        await MainActor.run {
+            self.cachedWeightHistory.removeAll { $0.id == id }
+        }
+    }
 
     // MARK: - Favorite Foods
 
@@ -3432,20 +3461,33 @@ struct FoodSearchResponse: Decodable {
 }
 
 extension FirebaseManager {
+    // Whitelisted emails that get premium access
+    private static let premiumWhitelistedEmails: Set<String> = [
+        "aaronmkeen@gmail.com"
+    ]
+
     func getPremiumOverride() async throws -> Bool {
         ensureAuthStateLoaded()
-        // Domain-based override for staff/users with nutrasafe.co.uk emails
-        if let email = currentUser?.email?.lowercased(),
-           let domain = email.split(separator: "@").last,
-           domain == "nutrasafe.co.uk" {
-            return true
+
+        if let email = currentUser?.email?.lowercased() {
+            // Domain-based override for staff/users with nutrasafe.co.uk emails
+            if let domain = email.split(separator: "@").last,
+               domain == "nutrasafe.co.uk" {
+                return true
+            }
+
+            // Specific whitelisted emails
+            if Self.premiumWhitelistedEmails.contains(email) {
+                return true
+            }
         }
+
         guard let userId = currentUser?.uid else { return false }
         let doc = try await Firestore.firestore()
             .collection("users").document(userId)
             .collection("settings").document("preferences")
             .getDocument()
-        let value = doc.data()? ["premiumOverride"] as? Bool ?? false
+        let value = doc.data()?["premiumOverride"] as? Bool ?? false
         return value
     }
 }

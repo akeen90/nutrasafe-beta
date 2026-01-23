@@ -586,11 +586,8 @@ struct ContentView: View {
                 isPresented: $showingAddMenu,
                 onSelectDiary: {
                     previousTabBeforeAdd = selectedTab
-                    // Set option first, then present in next run loop to ensure state is settled
                     diaryAddInitialOption = .search
-                    DispatchQueue.main.async {
-                        showingDiaryAdd = true
-                    }
+                    showingDiaryAdd = true
                 },
                 onSelectUseBy: {
                     // Navigate directly to Use By tab instead of showing redundant sheet
@@ -740,7 +737,8 @@ struct ContentView: View {
                     withTransaction(transaction) {
                         showingWeightAdd = false
                     }
-                }
+                },
+                onSave: { refreshMainViewWeightData() }
             )
                 .environmentObject(FirebaseManager.shared)
                 .onDisappear {
@@ -812,7 +810,20 @@ struct ContentView: View {
                 showOnboarding = true
             }
         }
-        
+        .onReceive(NotificationCenter.default.publisher(for: .weightHistoryUpdated)) { notification in
+            // Update ContentView's weight state when a weight entry is saved
+            // This keeps the main view in sync with weight changes from LogWeightView
+            if let entry = notification.userInfo?["entry"] as? WeightEntry {
+                if let existingIndex = weightHistory.firstIndex(where: { $0.id == entry.id }) {
+                    weightHistory[existingIndex] = entry
+                } else {
+                    weightHistory.insert(entry, at: 0)
+                }
+                weightHistory.sort { $0.date > $1.date }
+                currentWeight = entry.weight
+            }
+        }
+
         .onChange(of: selectedTab) { _, newTab in
             // Track visited tabs for pre-loading optimization
             visitedTabs.insert(newTab)
@@ -895,6 +906,23 @@ struct ContentView: View {
     private func deleteSelectedFoods() {
         guard selectedTab == .diary && !selectedFoodItems.isEmpty else { return }
         deleteTrigger = true
+    }
+
+    // MARK: - Weight Data Refresh (for main ContentView)
+    private func refreshMainViewWeightData() {
+        Task {
+            do {
+                let history = try await firebaseManager.getWeightHistory()
+                await MainActor.run {
+                    weightHistory = history
+                    if let latest = history.first {
+                        currentWeight = latest.weight
+                    }
+                }
+            } catch {
+                // Silent failure - notification should have already updated state
+            }
+        }
     }
 
     // MARK: - Water Tracking Quick Add
@@ -1015,6 +1043,7 @@ struct WeightTrackingView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @AppStorage("weightUnit") private var selectedWeightUnit: WeightUnit = .kg
+    @AppStorage("cachedCurrentWeight") private var cachedCurrentWeight: Double = 0
 
     @State private var currentWeight: Double = 0
     @State private var goalWeight: Double = 0
@@ -1651,7 +1680,8 @@ struct WeightTrackingView: View {
                     withTransaction(transaction) {
                         showingAddWeight = false
                     }
-                }
+                },
+                onSave: { loadWeightHistory() }
             )
                 .environmentObject(firebaseManager)
         }
@@ -1708,6 +1738,12 @@ struct WeightTrackingView: View {
             let hasCachedData = !firebaseManager.cachedWeightHistory.isEmpty ||
                                 firebaseManager.cachedUserHeight != nil ||
                                 firebaseManager.cachedGoalWeight != nil
+
+            // CRITICAL FIX: Use locally cached weight for instant display on app restart
+            // This prevents the 70kg default issue when Firebase hasn't loaded yet
+            if cachedCurrentWeight > 0 && currentWeight == 0 {
+                currentWeight = cachedCurrentWeight
+            }
 
             if hasCachedData {
                 // Instant display from cache - no loading state shown
@@ -1769,8 +1805,15 @@ struct WeightTrackingView: View {
                 // Update current weight and re-sort by date
                 weightHistory.sort { $0.date > $1.date }
                 currentWeight = entry.weight
+                cachedCurrentWeight = entry.weight
             } else {
                 loadWeightHistory()
+            }
+        }
+        .onChange(of: currentWeight) { _, newWeight in
+            // Persist current weight locally for instant access on app restart
+            if newWeight > 0 {
+                cachedCurrentWeight = newWeight
             }
         }
     }
@@ -3040,7 +3083,7 @@ enum HeightUnit: String, CaseIterable, Codable {
 }
 
 // MARK: - Weight Entry Model
-struct WeightEntry: Identifiable, Codable {
+struct WeightEntry: Identifiable, Codable, Equatable {
     let id: UUID
     let weight: Double // Always stored in kg
     let date: Date
@@ -5403,6 +5446,7 @@ struct AddFoodMainView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.adaptiveBackground)
+                    .transition(.opacity)
                 } else if !canAddMore {
                     // At limit - show upgrade prompt
                     DiaryLimitReachedView(
@@ -5520,23 +5564,34 @@ struct AddFoodMainView: View {
 
     private func checkDiaryLimit() {
         Task {
-            isCheckingLimit = true
-            do {
-                let hasAccess = subscriptionManager.hasAccess
-                                if hasAccess {
+            // Don't show loading for subscribers - instant check
+            let hasAccess = subscriptionManager.hasAccess
+            if hasAccess {
+                // Subscriber - skip loading state entirely
+                withAnimation(.easeOut(duration: 0.15)) {
                     canAddMore = true
                     currentDayEntryCount = 0
-                                    } else {
-                    let count = try await FirebaseManager.shared.countFoodEntries(for: Date())
+                    isCheckingLimit = false
+                }
+                return
+            }
+
+            // Free user - need to count entries (may take a moment)
+            do {
+                let count = try await FirebaseManager.shared.countFoodEntries(for: Date())
+                let limit = SubscriptionManager.freeDiaryEntriesPerDay
+                withAnimation(.easeOut(duration: 0.15)) {
                     currentDayEntryCount = count
-                    let limit = SubscriptionManager.freeDiaryEntriesPerDay
                     canAddMore = count < limit
-                                    }
+                    isCheckingLimit = false
+                }
             } catch {
                 // On error, allow adding (fail open)
-                canAddMore = true
-                            }
-            isCheckingLimit = false
+                withAnimation(.easeOut(duration: 0.15)) {
+                    canAddMore = true
+                    isCheckingLimit = false
+                }
+            }
         }
     }
 }
