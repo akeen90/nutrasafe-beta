@@ -1591,8 +1591,7 @@ class ProcessingScorer {
 
                 // Only include matches with confidence >= 60%
                 if confidence >= 0.6 {
-                    matchCount += 1
-                                        if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
+                    if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
                         detectedAdditives.append(additiveInfo)
 
                         // If E-number matched directly, add to eNumbers array

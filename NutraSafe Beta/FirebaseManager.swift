@@ -1341,6 +1341,9 @@ class FirebaseManager: ObservableObject {
             }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
+        // Use the parameter to avoid unused warning, or just ignore it
+        _ = barcode
+        
         // SQLite database has been deprecated and removed.
         // TODO: Implement Cloud/API barcode lookup if needed.
         return []
