@@ -1,208 +1,176 @@
 //
-//  AdditiveTrackerView.swift
+//  AdditiveInsightsRedesigned.swift
 //  NutraSafe Beta
 //
-//  Displays additive consumption tracking over time periods
+//  Redesigned additive insights matching premium onboarding aesthetic
+//  Design philosophy: Emotion-first, calm, trust-building, minimal repetition
 //
 
 import SwiftUI
+import UIKit
 
-// MARK: - Research Insight Model
-
-private struct ResearchInsight {
-    let title: String
-    let description: String
-    let icon: String
-    let color: Color
-}
-
-// MARK: - Main Additive Tracker Section
+// MARK: - Premium Additive Insights Section
 
 struct AdditiveTrackerSection: View {
     @ObservedObject var viewModel: AdditiveTrackerViewModel
     @State private var expandedAdditiveId: String?
     @State private var isExpanded = true
     @State private var showingSources = false
-
-    // Group additives by verdict
-    private var avoidAdditives: [AdditiveAggregate] {
-        viewModel.additiveAggregates.filter { $0.effectsVerdict.lowercased() == "avoid" }
-    }
-
-    private var cautionAdditives: [AdditiveAggregate] {
-        viewModel.additiveAggregates.filter { $0.effectsVerdict.lowercased() == "caution" }
-    }
-
-    private var neutralAdditives: [AdditiveAggregate] {
-        viewModel.additiveAggregates.filter { $0.effectsVerdict.lowercased() == "neutral" || $0.effectsVerdict.isEmpty }
-    }
-
-    // Calculate overall additive grade for the period
-    private var overallGrade: AdditiveGrade {
-        let avoid = avoidAdditives.count
-        let caution = cautionAdditives.count
-        let neutral = neutralAdditives.count
-        let total = avoid + caution + neutral
-
-        if total == 0 { return .none }
-
-        // Calculate score similar to the analyzer
-        var score = 100
-        score -= (avoid * 20) + (caution * 10) + (neutral * 2)
-        if total > 5 { score -= (total - 5) * 2 }
-        score = max(0, min(100, score))
-
-        return AdditiveGrade.from(score: score, hasAdditives: total > 0)
-    }
-
-    // Generate actionable insight based on the data
-    private var actionableInsight: (text: String, icon: String, color: Color)? {
-        let avoid = avoidAdditives.count
-        let caution = cautionAdditives.count
-        let total = viewModel.totalAdditiveCount
-
-        if total == 0 {
-            return ("Great job! No additives detected in your food log.", "checkmark.circle.fill", SemanticColors.positive)
-        }
-
-        if avoid > 2 {
-            // Find most common avoid additive
-            if let topAvoid = avoidAdditives.sorted(by: { $0.occurrenceCount > $1.occurrenceCount }).first {
-                return ("Consider reducing \(topAvoid.name) - appeared \(topAvoid.occurrenceCount) time\(topAvoid.occurrenceCount == 1 ? "" : "s")", "exclamationmark.triangle.fill", SemanticColors.caution)
-            }
-        }
-
-        if avoid == 0 && caution <= 2 {
-            return ("You're doing well! Mostly safe additives in your diet.", "hand.thumbsup.fill", SemanticColors.positive)
-        }
-
-        if caution > 3 {
-            return ("Try swapping some processed foods for whole foods to reduce additives.", "lightbulb.fill", palette.accent)
-        }
-
-        return nil
-    }
-
     @Environment(\.colorScheme) private var colorScheme
 
-    private var palette: AppPalette {
+    // User intent from onboarding (determines color palette)
+    @AppStorage("userIntent") private var userIntentRaw: String = "safer"
+    private var userIntent: UserIntent {
+        UserIntent(rawValue: userIntentRaw) ?? .safer
+    }
+
+    private var palette: OnboardingPalette {
+        OnboardingPalette.forIntent(userIntent)
+    }
+
+    private var appPalette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
     }
 
-    /// Dynamic header title based on selected time period
+    // Group additives by observation level
+    private var noteworthyAdditives: [AdditiveAggregate] {
+        viewModel.additiveAggregates.filter { $0.effectsVerdict.lowercased() == "avoid" }
+    }
+
+    private var moderateAdditives: [AdditiveAggregate] {
+        viewModel.additiveAggregates.filter { $0.effectsVerdict.lowercased() == "caution" }
+    }
+
+    private var safeAdditives: [AdditiveAggregate] {
+        viewModel.additiveAggregates.filter {
+            $0.effectsVerdict.lowercased() == "neutral" || $0.effectsVerdict.isEmpty
+        }
+    }
+
+    // Overall health signal
+    private var healthSignal: (grade: AdditiveGrade, message: String, color: Color) {
+        let avoid = noteworthyAdditives.count
+        let caution = moderateAdditives.count
+        let neutral = safeAdditives.count
+        let total = avoid + caution + neutral
+
+        if total == 0 {
+            return (.none, "No additives detected", SemanticColors.positive)
+        }
+
+        var score = 100 - (avoid * 20) - (caution * 10) - (neutral * 2)
+        if total > 5 { score -= (total - 5) * 2 }
+        score = max(0, min(100, score))
+
+        let grade = AdditiveGrade.from(score: score, hasAdditives: total > 0)
+
+        // Simple, direct messaging
+        let message: String = {
+            if avoid > 2 {
+                return "Worth noting what's in your food"
+            } else if avoid == 0 && caution <= 2 {
+                return "Your choices look good"
+            } else {
+                return "Balance is key"
+            }
+        }()
+
+        return (grade, message, grade.color)
+    }
+
+    // Dynamic header based on period
     private var headerTitle: String {
         switch viewModel.selectedPeriod {
-        case .day:
-            return "Additives today"
-        case .week:
-            return "Additives this week"
-        case .month:
-            return "Additives this month"
-        case .ninetyDays:
-            return "Additives over 90 days"
+        case .day: return "Today's additives"
+        case .week: return "This week's additives"
+        case .month: return "This month"
+        case .ninetyDays: return "Last 90 days"
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header - observational tone with dynamic title
+        VStack(alignment: .leading, spacing: 0) {
+            // Header - simple, clean
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     isExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 10) {
-                    // Signal icon instead of flask
-                    SignalIconContainer(color: palette.accent, size: 32)
+                HStack(spacing: 12) {
+                    // Simple circle icon matching onboarding style
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.primary.opacity(0.8), palette.accent.opacity(0.6)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Image(systemName: "chart.dots.scatter")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                        )
 
                     Text(headerTitle)
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
+                        .font(.system(size: 18, weight: .semibold, design: .serif))
+                        .foregroundColor(appPalette.textPrimary)
                         .animation(.none, value: viewModel.selectedPeriod)
 
                     Spacer()
 
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(palette.textTertiary)
+                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(palette.accent.opacity(0.6))
+                        .symbolRenderingMode(.hierarchical)
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.horizontal, 16)
 
             if isExpanded {
-                VStack(spacing: 16) {
-                    // Educational explanation (like Reactions section)
-                    whyTrackAdditivesCard
-
-                    // Time Period Picker
-                    timePeriodPicker
+                VStack(spacing: 20) {
+                    // Time period picker - elegant, minimal
+                    timePeriodSelector
+                        .padding(.horizontal, 20)
 
                     if viewModel.isLoading {
                         loadingView
                     } else if viewModel.hasData {
-                        // Summary Card with trends
+                        // Single summary - no repetition
                         summaryCard
+                            .padding(.horizontal, 20)
 
-                        // Research-backed insights
-                        researchInsightsSection
-
-                        // Additives grouped by observation category
-                        if !avoidAdditives.isEmpty {
-                            verdictSection(
-                                title: "Worth noting",
-                                subtitle: "Research suggests limiting these",
-                                color: .red,
-                                additives: avoidAdditives
-                            )
+                        // Single insight card - contextual, not preachy
+                        if let insight = singleRelevantInsight {
+                            insightCard(insight)
+                                .padding(.horizontal, 20)
                         }
 
-                        if !cautionAdditives.isEmpty {
-                            verdictSection(
-                                title: "In moderation",
-                                subtitle: "Generally fine in small amounts",
-                                color: SemanticColors.neutral,
-                                additives: cautionAdditives
-                            )
-                        }
+                        // Additive lists - grouped simply
+                        additivesList
+                            .padding(.horizontal, 20)
 
-                        if !neutralAdditives.isEmpty {
-                            verdictSection(
-                                title: "Generally safe",
-                                subtitle: "Approved by EFSA, FSA, and FDA",
-                                color: palette.accent,
-                                additives: neutralAdditives
-                            )
-                        }
-
-                        // Sources link
-                        Button {
-                            showingSources = true
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "doc.text.magnifyingglass")
-                                    .font(.system(size: 12))
-                                Text("View Sources (EFSA, FSA, FDA)")
-                                    .font(.system(size: 12, weight: .medium))
-                            }
-                            .foregroundColor(AppPalette.standard.accent)
-                            .padding(.top, 8)
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        // Minimal sources link
+                        sourcesLink
+                            .padding(.horizontal, 20)
                     } else {
-                        emptyStateView
+                        emptyState
+                            .padding(.horizontal, 20)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
             }
         }
-        .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.adaptiveCard)
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(UIColor.secondarySystemGroupedBackground))
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 12, x: 0, y: 4)
         )
         .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .onAppear {
             viewModel.loadData()
         }
@@ -211,803 +179,451 @@ struct AdditiveTrackerSection: View {
         }
     }
 
-    // MARK: - Why Track Additives (Educational)
+    // MARK: - Time Period Selector (Clean, minimal)
 
-    private var whyTrackAdditivesCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "lightbulb.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(SemanticColors.nutrient)
-                Text("Why track additives?")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-            }
-
-            Text("Your body processes hundreds of additives daily. While most are safe individually, the cumulative effect over time is less understood. Tracking helps you:")
-                .font(.system(size: 13, design: .rounded))
-                .foregroundColor(palette.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(alignment: .leading, spacing: 8) {
-                benefitRow(icon: "eye", text: "See patterns in what you're consuming")
-                benefitRow(icon: "chart.line.downtrend.xyaxis", text: "Reduce additives linked to health concerns")
-                benefitRow(icon: "figure.child", text: "Make informed choices for your family")
-                benefitRow(icon: "heart.text.square", text: "Connect symptoms to potential triggers")
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(SemanticColors.nutrient.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(SemanticColors.nutrient.opacity(0.2), lineWidth: 1)
-                )
-        )
-    }
-
-    private func benefitRow(icon: String, text: String) -> some View {
+    private var timePeriodSelector: some View {
         HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 11))
-                .foregroundColor(palette.accent)
-                .frame(width: 16)
-            Text(text)
-                .font(.system(size: 12, design: .rounded))
-                .foregroundColor(palette.textSecondary)
-        }
-    }
-
-    // MARK: - Research Insights Section
-
-    private var researchInsightsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "text.book.closed.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.purple)
-                Text("What the research says")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-            }
-
-            VStack(spacing: 10) {
-                ForEach(relevantResearchInsights, id: \.title) { insight in
-                    researchInsightRow(insight)
-                }
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(palette.tertiary.opacity(colorScheme == .dark ? 0.08 : 0.05))
-        )
-    }
-
-    private func researchInsightRow(_ insight: ResearchInsight) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: insight.icon)
-                .font(.system(size: 12))
-                .foregroundColor(insight.color)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(insight.title)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-                Text(insight.description)
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundColor(palette.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    // Research insight data based on user's actual additives
-    private var relevantResearchInsights: [ResearchInsight] {
-        var insights: [ResearchInsight] = []
-
-        // Check for Southampton Six colours (E102, E104, E110, E122, E124, E129)
-        let southamptonCodes = ["e102", "e104", "e110", "e122", "e124", "e129"]
-        let hasColours = viewModel.additiveAggregates.contains { add in
-            southamptonCodes.contains(add.code.lowercased()) ||
-            add.category.lowercased().contains("colour") ||
-            add.category.lowercased().contains("color")
-        }
-        if hasColours {
-            insights.append(ResearchInsight(
-                title: "Artificial colours & children",
-                description: "The Southampton Study found links between certain artificial colours and hyperactivity in children. The EU now requires warning labels on foods with these additives.",
-                icon: "figure.child",
-                color: SemanticColors.caution
-            ))
-        }
-
-        // Check for nitrates/nitrites (E249-E252)
-        let nitrateCodes = ["e249", "e250", "e251", "e252"]
-        let hasNitrates = viewModel.additiveAggregates.contains { add in
-            nitrateCodes.contains(add.code.lowercased()) ||
-            add.name.lowercased().contains("nitrate") ||
-            add.name.lowercased().contains("nitrite")
-        }
-        if hasNitrates {
-            insights.append(ResearchInsight(
-                title: "Nitrates in processed meat",
-                description: "WHO classifies processed meat as carcinogenic (Group 1). Nitrates form N-nitroso compounds linked to increased cancer risk. FSA recommends limiting to 70g daily.",
-                icon: "exclamationmark.triangle.fill",
-                color: .red
-            ))
-        }
-
-        // Check for titanium dioxide (E171)
-        let hasTitaniumDioxide = viewModel.additiveAggregates.contains { add in
-            add.code.lowercased() == "e171" ||
-            add.name.lowercased().contains("titanium dioxide")
-        }
-        if hasTitaniumDioxide {
-            insights.append(ResearchInsight(
-                title: "Titanium dioxide (E171)",
-                description: "Banned in the EU since 2022 after EFSA found it could no longer be considered safe. Still permitted in the UK. Consider alternatives.",
-                icon: "xmark.octagon.fill",
-                color: .red
-            ))
-        }
-
-        // Check for artificial sweeteners
-        let sweetenerCodes = ["e950", "e951", "e952", "e954", "e955", "e960", "e961", "e962"]
-        let hasSweeteners = viewModel.additiveAggregates.contains { add in
-            sweetenerCodes.contains(add.code.lowercased()) ||
-            add.category.lowercased().contains("sweetener")
-        }
-        if hasSweeteners {
-            insights.append(ResearchInsight(
-                title: "Artificial sweeteners",
-                description: "Research is ongoing. Some studies link high consumption to gut microbiome changes. WHO advises against using them for weight control.",
-                icon: "drop.fill",
-                color: SemanticColors.neutral
-            ))
-        }
-
-        // Check for sodium benzoate (E211)
-        let hasSodiumBenzoate = viewModel.additiveAggregates.contains { add in
-            add.code.lowercased() == "e211" ||
-            add.name.lowercased().contains("sodium benzoate")
-        }
-        if hasSodiumBenzoate {
-            insights.append(ResearchInsight(
-                title: "Sodium benzoate (E211)",
-                description: "Part of the Southampton Study mix linked to hyperactivity. Can form benzene when combined with vitamin C in acidic drinks.",
-                icon: "flask.fill",
-                color: SemanticColors.neutral
-            ))
-        }
-
-        // Default insight if no specific matches
-        if insights.isEmpty {
-            insights.append(ResearchInsight(
-                title: "Building your profile",
-                description: "Keep logging foods to see personalised insights based on the specific additives in your diet. We'll highlight research relevant to what you're eating.",
-                icon: "chart.bar.doc.horizontal",
-                color: palette.accent
-            ))
-        }
-
-        return Array(insights.prefix(3)) // Limit to 3 most relevant
-    }
-
-    // MARK: - Time Period Picker
-
-    private var timePeriodPicker: some View {
-        let additiveAccent = SemanticColors.additive
-
-        return HStack(spacing: 8) {
             ForEach(AdditiveTimePeriod.allCases, id: \.self) { period in
                 let isSelected = viewModel.selectedPeriod == period
 
                 Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         viewModel.selectPeriod(period)
                     }
                 } label: {
                     Text(period.rawValue)
-                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium, design: .rounded))
-                        .foregroundColor(isSelected ? additiveAccent : .secondary.opacity(0.7))
-                        .padding(.horizontal, 14)
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .regular, design: .default))
+                        .foregroundColor(isSelected ? .white : appPalette.textSecondary)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(
-                            ZStack {
-                                if isSelected {
-                                    // Soft gradient tint for selected
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [additiveAccent.opacity(0.12), additiveAccent.opacity(0.06)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(additiveAccent.opacity(0.25), lineWidth: 1)
-                                } else {
-                                    // Frosted neutral background
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(palette.tertiary.opacity(0.15))
-                                }
-                            }
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(isSelected ? palette.accent : Color.clear)
                         )
-                        .contentShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(isSelected ? Color.clear : appPalette.textTertiary.opacity(0.2), lineWidth: 1)
+                        )
                 }
-                .buttonStyle(AdditiveTabButtonStyle())
+                .buttonStyle(ScaleButtonStyle())
             }
         }
         .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(.ultraThinMaterial)
-                .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(appPalette.tertiary.opacity(colorScheme == .dark ? 0.12 : 0.08))
         )
     }
 
-    // MARK: - Summary Card
+    // MARK: - Summary Card (Single, clear message)
 
     private var summaryCard: some View {
         VStack(spacing: 16) {
-            // Grade + Stats row
             HStack(spacing: 16) {
-                // Grade circle with trend indicator
+                // Grade circle
                 ZStack {
                     Circle()
-                        .fill(overallGrade.color)
-                        .frame(width: 56, height: 56)
+                        .fill(
+                            LinearGradient(
+                                colors: [healthSignal.color, healthSignal.color.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 64, height: 64)
+                        .shadow(color: healthSignal.color.opacity(0.3), radius: 8, x: 0, y: 4)
 
-                    Text(overallGrade.rawValue)
-                        .font(.system(size: 26, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
+                    if healthSignal.grade == .none {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.white)
+                    } else {
+                        Text(healthSignal.grade.rawValue)
+                            .font(.system(size: 32, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                    }
                 }
 
-                // Stats
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(viewModel.totalAdditiveCount)")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(palette.textPrimary)
-                            Text("additives")
-                                .font(.system(size: 11, design: .rounded))
-                                .foregroundColor(palette.textTertiary)
-                        }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(healthSignal.message)
+                        .font(.system(size: 17, weight: .semibold, design: .serif))
+                        .foregroundColor(appPalette.textPrimary)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(viewModel.foodItemCount)")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(palette.textPrimary)
-                            Text("foods")
-                                .font(.system(size: 11, design: .rounded))
-                                .foregroundColor(palette.textTertiary)
-                        }
+                    if viewModel.totalAdditiveCount > 0 {
+                        HStack(spacing: 12) {
+                            statPill(value: "\(viewModel.totalAdditiveCount)", label: "total")
 
-                        // Per-food average
-                        if viewModel.foodItemCount > 0 {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(String(format: "%.1f", Double(viewModel.totalAdditiveCount) / Double(viewModel.foodItemCount)))
-                                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                                    .foregroundColor(palette.textPrimary)
-                                Text("per food")
-                                    .font(.system(size: 11, design: .rounded))
-                                    .foregroundColor(palette.textTertiary)
+                            if noteworthyAdditives.count > 0 {
+                                statPill(value: "\(noteworthyAdditives.count)", label: "worth noting", color: .red)
                             }
                         }
-
-                        Spacer()
-                    }
-
-                    // Risk breakdown pills
-                    HStack(spacing: 6) {
-                        if avoidAdditives.count > 0 {
-                            riskPill(count: avoidAdditives.count, label: "avoid", color: .red)
-                        }
-                        if cautionAdditives.count > 0 {
-                            riskPill(count: cautionAdditives.count, label: "caution", color: SemanticColors.neutral)
-                        }
-                        if neutralAdditives.count > 0 {
-                            riskPill(count: neutralAdditives.count, label: "safe", color: SemanticColors.positive)
-                        }
+                    } else {
+                        Text("No additives detected")
+                            .font(.system(size: 14))
+                            .foregroundColor(appPalette.textSecondary)
                     }
                 }
-            }
 
-            // Progress tip based on data
-            progressTipCard
-
-            // Actionable insight
-            if let insight = actionableInsight {
-                HStack(spacing: 10) {
-                    Image(systemName: insight.icon)
-                        .font(.system(size: 14))
-                        .foregroundColor(insight.color)
-
-                    Text(insight.text)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(palette.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Spacer()
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(insight.color.opacity(0.08))
-                )
+                Spacer()
             }
         }
-        .padding(16)
+        .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(palette.tertiary.opacity(colorScheme == .dark ? 0.1 : 0.06))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            appPalette.tertiary.opacity(colorScheme == .dark ? 0.15 : 0.06),
+                            appPalette.tertiary.opacity(colorScheme == .dark ? 0.08 : 0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
     }
 
-    // Risk pill helper
-    private func riskPill(count: Int, label: String, color: Color) -> some View {
-        HStack(spacing: 3) {
-            Text("\(count)")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+    private func statPill(value: String, label: String, color: Color? = nil) -> some View {
+        HStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
             Text(label)
-                .font(.system(size: 10, design: .rounded))
+                .font(.system(size: 12, design: .rounded))
         }
-        .foregroundColor(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .foregroundColor(color ?? appPalette.textSecondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
         .background(
             Capsule()
-                .fill(color.opacity(0.12))
+                .fill((color ?? appPalette.textTertiary).opacity(0.12))
         )
     }
 
-    // MARK: - Progress Tip Card
+    // MARK: - Single Relevant Insight (No repetition)
 
-    private var progressTipCard: some View {
-        let avoid = avoidAdditives.count
-        let caution = cautionAdditives.count
-        let total = viewModel.additiveAggregates.count
-        let perFood = viewModel.foodItemCount > 0 ? Double(viewModel.totalAdditiveCount) / Double(viewModel.foodItemCount) : 0
+    private var singleRelevantInsight: (title: String, message: String, icon: String, color: Color)? {
+        let avoid = noteworthyAdditives.count
+        let total = viewModel.totalAdditiveCount
 
-        // Generate contextual tip based on the data
-        let tip: (text: String, icon: String, color: Color) = {
-            if total == 0 {
-                return ("Keep logging to build your additive profile. The more you track, the more patterns we can show you.", "chart.bar.doc.horizontal", palette.accent)
+        // Only show ONE contextual insight, never multiple
+
+        // Priority 1: Check for specific concerning additives
+        if let titanium = viewModel.additiveAggregates.first(where: {
+            $0.code.lowercased() == "e171" || $0.name.lowercased().contains("titanium dioxide")
+        }) {
+            return (
+                "Titanium dioxide detected",
+                "Banned in the EU since 2022. Still permitted in UK foods.",
+                "info.circle.fill",
+                .orange
+            )
+        }
+
+        if noteworthyAdditives.contains(where: {
+            ["e249", "e250", "e251", "e252"].contains($0.code.lowercased())
+        }) {
+            return (
+                "Nitrates in your log",
+                "Found in processed meats. FSA advises limiting to 70g daily.",
+                "exclamationmark.triangle.fill",
+                .orange
+            )
+        }
+
+        // Priority 2: General patterns
+        if total == 0 {
+            return (
+                "Clean eating",
+                "You're choosing foods without added chemicals. Your body thanks you.",
+                "leaf.fill",
+                SemanticColors.positive
+            )
+        }
+
+        if avoid >= 3 {
+            return (
+                "Patterns emerging",
+                "Spotting these helps you make informed swaps over time.",
+                "sparkles",
+                palette.accent
+            )
+        }
+
+        if avoid == 0 && moderateAdditives.count <= 2 {
+            return (
+                "Balanced choices",
+                "Mostly safe additives in moderation.",
+                "scale.3d",
+                SemanticColors.positive
+            )
+        }
+
+        // Default: no insight needed
+        return nil
+    }
+
+    private func insightCard(_ insight: (title: String, message: String, icon: String, color: Color)) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: insight.icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(insight.color)
+                .frame(width: 40, height: 40)
+                .background(
+                    Circle()
+                        .fill(insight.color.opacity(0.12))
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(insight.title)
+                    .font(.system(size: 15, weight: .semibold, design: .serif))
+                    .foregroundColor(appPalette.textPrimary)
+
+                Text(insight.message)
+                    .font(.system(size: 14))
+                    .foregroundColor(appPalette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            if avoid == 0 && caution <= 1 {
-                return ("Excellent choices! Your food selections have very few concerning additives. Keep it up.", "star.fill", SemanticColors.positive)
-            }
-
-            if perFood > 5 {
-                return ("Your foods average \(String(format: "%.1f", perFood)) additives each. Choosing less processed options can reduce this significantly.", "arrow.down.circle", SemanticColors.neutral)
-            }
-
-            if avoid >= 3 {
-                let topAvoid = avoidAdditives.sorted { $0.occurrenceCount > $1.occurrenceCount }.first?.name ?? "these additives"
-                return ("You've consumed \(avoid) additives worth noting. Reducing \(topAvoid) would have the biggest impact.", "target", SemanticColors.caution)
-            }
-
-            if viewModel.selectedPeriod == .week || viewModel.selectedPeriod == .month {
-                return ("Tracking over \(viewModel.selectedPeriod.rawValue.lowercased()) helps spot patterns. Compare different periods to see your progress.", "calendar", palette.accent)
-            }
-
-            return ("You're building awareness of what's in your food. Knowledge is power when making healthier choices.", "brain.head.profile", palette.accent)
-        }()
-
-        return HStack(spacing: 10) {
-            Image(systemName: tip.icon)
-                .font(.system(size: 14))
-                .foregroundColor(tip.color)
-
-            Text(tip.text)
-                .font(.system(size: 12, design: .rounded))
-                .foregroundColor(palette.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
         }
-        .padding(12)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(palette.tertiary.opacity(0.08))
+            RoundedRectangle(cornerRadius: 14)
+                .fill(insight.color.opacity(colorScheme == .dark ? 0.08 : 0.05))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(tip.color.opacity(0.2), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(insight.color.opacity(0.15), lineWidth: 1)
                 )
         )
     }
 
-    // MARK: - Observation Section (formerly Verdict Section)
+    // MARK: - Additives List (Simple grouping)
 
-    private func verdictSection(title: String, subtitle: String, color: Color, additives: [AdditiveAggregate]) -> some View {
+    private var additivesList: some View {
+        VStack(spacing: 14) {
+            if !noteworthyAdditives.isEmpty {
+                additiveGroup(
+                    title: "Worth noting",
+                    additives: noteworthyAdditives,
+                    color: .red
+                )
+            }
+
+            if !moderateAdditives.isEmpty {
+                additiveGroup(
+                    title: "In moderation",
+                    additives: moderateAdditives,
+                    color: SemanticColors.neutral
+                )
+            }
+
+            if !safeAdditives.isEmpty {
+                additiveGroup(
+                    title: "Generally safe",
+                    additives: safeAdditives,
+                    color: palette.accent
+                )
+            }
+        }
+    }
+
+    private func additiveGroup(title: String, additives: [AdditiveAggregate], color: Color) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header with signal icon
-            HStack(spacing: 10) {
-                NutraSafeSignalIcon(color: color, size: 18)
+            // Simple header
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 6, height: 6)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
-                    Text(subtitle)
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundColor(palette.textTertiary)
-                }
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold, design: .serif))
+                    .foregroundColor(appPalette.textPrimary)
 
                 Spacer()
 
                 Text("\(additives.count)")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(color)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
                     .background(
                         Capsule()
                             .fill(color.opacity(0.12))
                     )
             }
 
-            // Additives list
+            // Additive rows
             VStack(spacing: 0) {
                 ForEach(additives) { additive in
-                    ExpandableAdditiveRow(
-                        additive: additive,
-                        isExpanded: expandedAdditiveId == additive.id,
-                        palette: palette,
-                        onTap: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                if expandedAdditiveId == additive.id {
-                                    expandedAdditiveId = nil
-                                } else {
-                                    expandedAdditiveId = additive.id
-                                }
-                            }
-                        }
-                    )
+                    additiveRow(additive, color: color)
 
                     if additive.id != additives.last?.id {
                         Divider()
-                            .padding(.leading, 20)
+                            .padding(.leading, 16)
                     }
                 }
             }
         }
-        .padding(16)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(palette.tertiary.opacity(colorScheme == .dark ? 0.08 : 0.05))
+            RoundedRectangle(cornerRadius: 14)
+                .fill(appPalette.tertiary.opacity(colorScheme == .dark ? 0.08 : 0.04))
         )
     }
 
-    // MARK: - Loading View
-
-    private var loadingView: some View {
-        HStack {
-            Spacer()
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle())
-            Spacer()
-        }
-        .padding(.vertical, 40)
-    }
-
-    // MARK: - Empty State
-
-    private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            NutraSafeSignalIcon(color: palette.textTertiary.opacity(0.5), size: 40)
-
-            Text("No additives detected")
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundColor(palette.textTertiary)
-
-            Text("Log foods with ingredients to see what's in them")
-                .font(.system(size: 13, design: .rounded))
-                .foregroundColor(palette.textTertiary.opacity(0.8))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
-    }
-}
-
-// MARK: - Expandable Additive Row
-
-private struct ExpandableAdditiveRow: View {
-    let additive: AdditiveAggregate
-    let isExpanded: Bool
-    let palette: AppPalette
-    let onTap: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Main row (always visible)
-            Button(action: onTap) {
-                HStack(spacing: 12) {
-                    // Status indicator dot
-                    Circle()
-                        .fill(additive.verdictColor)
-                        .frame(width: 8, height: 8)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        // Code and name
+    private func additiveRow(_ additive: AdditiveAggregate, color: Color) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                expandedAdditiveId = expandedAdditiveId == additive.id ? nil : additive.id
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                // Main row
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             if !additive.code.isEmpty {
                                 Text(additive.code)
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                    .foregroundColor(palette.accent)
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(color)
                             }
                             Text(additive.name)
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
-                                .foregroundColor(palette.textPrimary)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(appPalette.textPrimary)
                                 .lineLimit(1)
                         }
 
-                        // Category
-                        HStack(spacing: 4) {
-                            Text(additive.category)
-                                .font(.system(size: 12, design: .rounded))
-                                .foregroundColor(palette.textTertiary)
-
-                            if additive.childWarning {
-                                Text("·")
-                                    .foregroundColor(palette.textTertiary)
-                                NutraSafeSignalIcon(color: SemanticColors.neutral, size: 10)
-                                Text("Note for children")
-                                    .font(.system(size: 11, design: .rounded))
-                                    .foregroundColor(SemanticColors.neutral)
-                            }
-                        }
+                        Text(additive.category)
+                            .font(.system(size: 12))
+                            .foregroundColor(appPalette.textTertiary)
                     }
 
                     Spacer()
 
-                    // Occurrence count
                     Text("×\(additive.occurrenceCount)")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(appPalette.textSecondary)
 
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(palette.textTertiary)
+                    Image(systemName: expandedAdditiveId == additive.id ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(appPalette.textTertiary)
                 }
                 .padding(.vertical, 10)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PlainButtonStyle())
 
-            // Expanded details
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
+                // Expanded details - minimal, essential info only
+                if expandedAdditiveId == additive.id {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Divider()
 
-                    // What is it - using signal icon
-                    detailRow(
-                        color: .purple,
-                        title: "What is it?",
-                        content: additive.whatIsIt
-                    )
+                        detailRow(icon: "info.circle.fill", text: additive.whatIsIt, color: .purple)
+                        detailRow(icon: "leaf.fill", text: additive.whereIsItFrom, color: .teal)
 
-                    // Where is it from
-                    detailRow(
-                        color: .teal,
-                        title: "Origin",
-                        content: additive.whereIsItFrom
-                    )
-
-                    // Research notes - specific to additive
-                    detailRow(
-                        color: additive.verdictColor,
-                        title: "What research says",
-                        content: researchDescription
-                    )
-
-                    // Actionable tip - what can user do
-                    detailRow(
-                        color: SemanticColors.positive,
-                        title: "What you can do",
-                        content: actionableTip
-                    )
-
-                    // Foods containing this additive
-                    if !additive.foodItems.isEmpty {
-                        detailRow(
-                            color: palette.accent,
-                            title: "Found in your log",
-                            content: additive.foodItems.joined(separator: ", ")
-                        )
-                    }
-
-                    // Safety rating bar
-                    HStack(alignment: .center, spacing: 10) {
-                        NutraSafeSignalIcon(color: safetyColor, size: 14)
-                            .frame(width: 20)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Safety rating")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundColor(palette.textTertiary)
-
-                            HStack(spacing: 8) {
-                                Text("\(additive.healthScore)/100")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundColor(safetyColor)
-
-                                // Progress bar
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(palette.tertiary.opacity(0.15))
-                                            .frame(height: 4)
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(safetyColor)
-                                            .frame(width: geo.size.width * CGFloat(additive.healthScore) / 100, height: 4)
-                                    }
-                                }
-                                .frame(height: 4)
-                            }
+                        // Only show foods if helpful
+                        if !additive.foodItems.isEmpty && additive.foodItems.count <= 3 {
+                            detailRow(
+                                icon: "fork.knife",
+                                text: "In: \(additive.foodItems.prefix(3).joined(separator: ", "))",
+                                color: palette.accent
+                            )
                         }
                     }
+                    .padding(.bottom, 8)
                 }
-                .padding(.leading, 20)
-                .padding(.bottom, 10)
             }
         }
+        .buttonStyle(PlainButtonStyle())
     }
 
-    // Reusable detail row with signal icon
-    private func detailRow(color: Color, title: String, content: String) -> some View {
+    private func detailRow(icon: String, text: String, color: Color) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            NutraSafeSignalIcon(color: color, size: 14)
-                .frame(width: 20)
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(color)
+                .frame(width: 16)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(palette.textTertiary)
-                Text(content)
-                    .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(palette.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
+            Text(text)
+                .font(.system(size: 13))
+                .foregroundColor(appPalette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.leading, 4)
+    }
+
+    // MARK: - Loading & Empty States
+
+    private var loadingView: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: palette.accent))
+            Text("Reading your log...")
+                .font(.system(size: 14, design: .serif))
+                .foregroundColor(appPalette.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 14) {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [palette.tertiary.opacity(0.3), palette.tertiary.opacity(0.1)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 56, height: 56)
+                .overlay(
+                    Image(systemName: "chart.dots.scatter")
+                        .font(.system(size: 24))
+                        .foregroundColor(palette.tertiary)
+                )
+
+            Text("No data yet")
+                .font(.system(size: 16, weight: .semibold, design: .serif))
+                .foregroundColor(appPalette.textPrimary)
+
+            Text("Log foods to see what's inside")
+                .font(.system(size: 14))
+                .foregroundColor(appPalette.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+
+    // MARK: - Sources Link (Minimal, understated)
+
+    private var sourcesLink: some View {
+        Button {
+            showingSources = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 11))
+                Text("View sources")
+                    .font(.system(size: 12, weight: .medium))
             }
+            .foregroundColor(palette.accent.opacity(0.8))
         }
-    }
-
-    // Research-backed description for specific additives
-    private var researchDescription: String {
-        let code = additive.code.lowercased()
-        let name = additive.name.lowercased()
-
-        // Southampton Six - artificial colours linked to hyperactivity
-        if ["e102", "e104", "e110", "e122", "e124", "e129"].contains(code) {
-            return "Part of the 'Southampton Six' studied by UK researchers. The 2007 Lancet study found links to increased hyperactivity in children. EU now requires warning labels. Effects vary by individual."
-        }
-
-        // Titanium dioxide
-        if code == "e171" || name.contains("titanium dioxide") {
-            return "Banned in EU since 2022 after EFSA concluded genotoxicity concerns couldn't be ruled out. Still permitted in UK. May accumulate in the body after ingestion."
-        }
-
-        // Nitrates/Nitrites
-        if ["e249", "e250", "e251", "e252"].contains(code) || name.contains("nitrate") || name.contains("nitrite") {
-            return "WHO classifies processed meat as Group 1 carcinogen, partly due to nitrates forming N-nitroso compounds. FSA advises limiting processed meat to 70g/day."
-        }
-
-        // Sodium benzoate
-        if code == "e211" || name.contains("sodium benzoate") {
-            return "Included in Southampton Study mix linked to child hyperactivity. Can form benzene (a carcinogen) when combined with vitamin C in acidic conditions."
-        }
-
-        // Aspartame
-        if code == "e951" || name.contains("aspartame") {
-            return "One of the most studied additives ever. EFSA set ADI at 40mg/kg body weight. 2023 WHO review found possible carcinogenicity at very high doses."
-        }
-
-        // MSG
-        if code == "e621" || name.contains("msg") || name.contains("monosodium glutamate") {
-            return "Despite its reputation, extensive research shows MSG is safe for most people. Some individuals report sensitivity symptoms ('Chinese restaurant syndrome')."
-        }
-
-        // Carrageenan
-        if code == "e407" || name.contains("carrageenan") {
-            return "Some studies suggest degraded carrageenan may cause gut inflammation. Food-grade carrageenan is different but debate continues. EFSA recently re-evaluated."
-        }
-
-        // Generic based on verdict
-        switch additive.effectsVerdict.lowercased() {
-        case "avoid":
-            return "Research suggests some health concerns at typical consumption levels. EFSA and FSA have flagged this additive for review or recommend limiting intake."
-        case "caution":
-            return "Generally considered safe within limits. Some studies suggest caution for specific groups (children, pregnant women) or at high consumption levels."
-        default:
-            return "Extensively reviewed by EFSA, FSA, and FDA. No significant health concerns identified at permitted use levels."
-        }
-    }
-
-    // Actionable tip - what the user can actually do
-    private var actionableTip: String {
-        let code = additive.code.lowercased()
-        let name = additive.name.lowercased()
-        let category = additive.category.lowercased()
-        let count = additive.occurrenceCount
-
-        // High occurrence - general reduction advice
-        if count >= 5 {
-            return "This appeared \(count) times in your log. Consider varying your food choices to reduce repeated exposure to the same additives."
-        }
-
-        // Specific advice by additive type
-        if ["e102", "e104", "e110", "e122", "e124", "e129"].contains(code) {
-            return "Look for products labelled 'no artificial colours' or those using natural alternatives like beetroot, turmeric, or paprika extract."
-        }
-
-        if code == "e171" || name.contains("titanium dioxide") {
-            return "Common in white coatings on sweets and medicines. Many brands now offer titanium dioxide-free alternatives."
-        }
-
-        if ["e249", "e250", "e251", "e252"].contains(code) || name.contains("nitrate") || name.contains("nitrite") {
-            return "Choose uncured or nitrate-free bacon, ham, and sausages. These use alternatives like celery juice powder."
-        }
-
-        if category.contains("sweetener") {
-            return "If reducing artificial sweeteners, try gradually cutting back on sweetness overall. Your taste buds adapt within 2-3 weeks."
-        }
-
-        if category.contains("preservative") {
-            return "Fresh and frozen foods typically have fewer preservatives than long-shelf-life products. Check 'best before' dates as a guide."
-        }
-
-        if category.contains("colour") || category.contains("color") {
-            return "Natural alternatives exist for most food colours. Look for products that use fruit and vegetable extracts instead."
-        }
-
-        // Default based on verdict
-        switch additive.effectsVerdict.lowercased() {
-        case "avoid":
-            return "Check ingredient labels for alternatives. Many brands now offer versions without this additive."
-        case "caution":
-            return "No need to avoid completely, but balance with whole foods. Variety helps reduce cumulative exposure."
-        default:
-            return "This is considered safe. No action needed, but tracking helps you stay informed about what you're eating."
-        }
-    }
-
-    private var safetyColor: Color {
-        if additive.healthScore >= 70 {
-            return SemanticColors.positive
-        } else if additive.healthScore >= 40 {
-            return SemanticColors.neutral
-        } else {
-            return SemanticColors.caution
-        }
-    }
-}
-
-// MARK: - Additive Tab Button Style
-
-/// Subtle scale effect for additive time period buttons
-private struct AdditiveTabButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
 // MARK: - Preview
 
 #if DEBUG
-struct AdditiveTrackerSection_Previews: PreviewProvider {
+struct AdditiveTrackerSection_Redesigned_Previews: PreviewProvider {
     static var previews: some View {
         ScrollView {
             AdditiveTrackerSection(viewModel: AdditiveTrackerViewModel())
+                .preferredColorScheme(.light)
+
+            AdditiveTrackerSection(viewModel: AdditiveTrackerViewModel())
+                .preferredColorScheme(.dark)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(UIColor.systemGroupedBackground))
     }
 }
 #endif
