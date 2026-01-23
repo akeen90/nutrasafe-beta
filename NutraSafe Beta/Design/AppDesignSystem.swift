@@ -666,7 +666,6 @@ struct PaletteTintedBackgroundModifier: ViewModifier {
 
 struct AppAnimatedBackground: View {
     @Environment(\.colorScheme) private var colorScheme
-    @State private var animateGradient = false
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
@@ -674,15 +673,15 @@ struct AppAnimatedBackground: View {
 
     var body: some View {
         ZStack {
-            // Base gradient (onboarding-derived)
+            // Base gradient - static for scroll performance
             LinearGradient(
                 colors: [
                     palette.background,
                     palette.tertiary.opacity(0.15),
                     palette.background
                 ],
-                startPoint: animateGradient ? .topLeading : .bottomLeading,
-                endPoint: animateGradient ? .bottomTrailing : .topTrailing
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
 
             // Subtle accent in corner
@@ -702,14 +701,8 @@ struct AppAnimatedBackground: View {
             )
         }
         // PERFORMANCE: drawingGroup() flattens gradients to a single Metal texture
-        // This prevents expensive per-frame gradient recalculation during animation
         .drawingGroup()
         .ignoresSafeArea()
-        .onAppear {
-            withAnimation(DesignTokens.Animation.ambient) {
-                animateGradient = true
-            }
-        }
     }
 }
 

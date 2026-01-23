@@ -59,45 +59,43 @@ struct AuthenticationView: View {
 
 // MARK: - Pre-Auth Onboarding View
 // Wraps PremiumOnboardingView but shows BEFORE authentication
-// Has "Already a member" button in top-right
+// Has "Already joined" button in top-right using ZStack for stable z-ordering
 struct PreAuthOnboardingView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     let onComplete: () -> Void
     let onAlreadyMember: () -> Void
 
     var body: some View {
-        // The actual onboarding flow (but without permission screens - those come after sign-up)
-        PreAuthPremiumOnboardingView(onComplete: { _ in
-            onComplete()
-        })
-        .environmentObject(healthKitManager)
-        .safeAreaInset(edge: .top) {
-            // "Already a member?" button - positioned in safe area, doesn't overlap content
-            HStack {
-                Spacer()
-                Button(action: onAlreadyMember) {
-                    HStack(spacing: 6) {
-                        Text("Already a member?")
-                            .font(.system(size: 14, weight: .semibold))
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundColor(AppPalette.standard.accent)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(Color.white.opacity(0.95))
-                            .shadow(color: AppPalette.standard.accent.opacity(0.15), radius: 6, y: 2)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(AppPalette.standard.accent.opacity(0.3), lineWidth: 1)
-                    )
+        ZStack(alignment: .topTrailing) {
+            // The actual onboarding flow (but without permission screens - those come after sign-up)
+            PreAuthPremiumOnboardingView(onComplete: { _ in
+                onComplete()
+            })
+            .environmentObject(healthKitManager)
+
+            // "Already joined?" button - ZStack ensures stable rendering with animations
+            Button(action: onAlreadyMember) {
+                HStack(spacing: 6) {
+                    Text("Already joined?")
+                        .font(.system(size: 14, weight: .semibold))
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 11, weight: .semibold))
                 }
-                .padding(.trailing, 16)
+                .foregroundColor(AppPalette.standard.accent)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: Color.black.opacity(0.08), radius: 8, y: 3)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(AppPalette.standard.accent.opacity(0.25), lineWidth: 1)
+                )
             }
-            .padding(.top, 8)
+            .padding(.trailing, 20)
+            .padding(.top, 52) // Adjusted: closer to status bar
         }
     }
 }

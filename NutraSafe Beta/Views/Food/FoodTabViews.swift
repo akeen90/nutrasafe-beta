@@ -305,29 +305,53 @@ struct FoodReactionsView: View {
                 let filteredReactions = filteredTimelineReactions
 
                 if filteredReactions.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "clock.badge.questionmark")
-                            .font(.system(size: 50))
-                            .foregroundColor(.secondary.opacity(0.4))
+                    // Calm empty state with signal icon
+                    VStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [AppPalette.standard.accent.opacity(0.06), Color.clear],
+                                        center: .center,
+                                        startRadius: 0,
+                                        endRadius: 40
+                                    )
+                                )
+                                .frame(width: 80, height: 80)
 
-                        Text(selectedSymptomFilter == nil ? "No reactions logged yet" : "No \(selectedSymptomFilter!) reactions")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.secondary)
+                            NutraSafeSignalIcon(color: AppPalette.standard.accent.opacity(0.3), size: 36)
+                        }
+
+                        VStack(spacing: 6) {
+                            Text("Nothing here yet")
+                                .font(.system(size: 18, weight: .medium, design: .serif))
+                                .foregroundColor(.secondary)
+
+                            if let symptom = selectedSymptomFilter {
+                                Text("No \(symptom.lowercased()) entries to show")
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 60)
+                    .padding(.vertical, 48)
                 } else {
-                    // Count
-                    Text("\(filteredReactions.count) \(filteredReactions.count == 1 ? "reaction" : "reactions")")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
+                    // Softer count - only show when filtering
+                    if selectedSymptomFilter != nil {
+                        Text("Showing \(filteredReactions.count) \(filteredReactions.count == 1 ? "entry" : "entries")")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.secondary.opacity(0.7))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                    }
 
-                    // Reaction cards - Timeline specific layout
-                    ForEach(filteredReactions) { reaction in
-                        TimelineReactionRow(reaction: reaction)
-                            .environmentObject(reactionManager)
+                    // Reaction cards with spacing
+                    VStack(spacing: 14) {
+                        ForEach(filteredReactions) { reaction in
+                            TimelineReactionRow(reaction: reaction)
+                                .environmentObject(reactionManager)
+                        }
                     }
                     .padding(.horizontal, 16)
                 }
@@ -339,48 +363,64 @@ struct FoodReactionsView: View {
         }
     }
 
-    // MARK: - Symptom Filter Section
+    // MARK: - Symptom Filter Section (Calm Redesign)
+    // Removed clinical "Filter by Symptom" label - chips speak for themselves
     private var symptomFilterSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Filter by Symptom")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                // All entries option
+                symptomChip(symptom: nil, label: "All entries")
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    // All option
-                    symptomChip(symptom: nil, label: "All", icon: "list.bullet")
-
-                    // Unique symptoms from reactions
-                    ForEach(uniqueSymptoms, id: \.self) { symptom in
-                        symptomChip(symptom: symptom, label: symptom, icon: symptomIcon(for: symptom))
-                    }
+                // Unique symptoms from reactions
+                ForEach(uniqueSymptoms, id: \.self) { symptom in
+                    symptomChip(symptom: symptom, label: symptom)
                 }
             }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
         }
     }
 
-    private func symptomChip(symptom: String?, label: String, icon: String) -> some View {
+    private func symptomChip(symptom: String?, label: String) -> some View {
         let isSelected = selectedSymptomFilter == symptom
 
         return Button(action: {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.easeInOut(duration: 0.25)) {
                 selectedSymptomFilter = symptom
             }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }) {
             HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 12))
+                // Small signal dot - color indicates selection
+                Circle()
+                    .fill(isSelected ? Color.white : AppPalette.standard.accent.opacity(0.6))
+                    .frame(width: 6, height: 6)
+
                 Text(label)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
             }
             .foregroundColor(isSelected ? .white : .primary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? AppPalette.standard.accent : Color(.systemGray5))
+                Capsule()
+                    .fill(
+                        isSelected
+                            ? AnyShapeStyle(LinearGradient(colors: [AppPalette.standard.accent, AppPalette.standard.primary], startPoint: .leading, endPoint: .trailing))
+                            : AnyShapeStyle(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                isSelected ? Color.clear : AppPalette.standard.tertiary.opacity(0.2),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(
+                        color: isSelected ? AppPalette.standard.accent.opacity(0.25) : Color.black.opacity(0.03),
+                        radius: isSelected ? 8 : 4,
+                        y: isSelected ? 3 : 2
+                    )
             )
         }
         .buttonStyle(.plain)
@@ -402,20 +442,6 @@ struct FoodReactionsView: View {
             return reactionManager.reactions
         }
         return reactionManager.reactions.filter { $0.symptoms.contains(symptom) }
-    }
-
-    private func symptomIcon(for symptom: String) -> String {
-        // Map common symptoms to icons
-        switch symptom.lowercased() {
-        case "nausea": return "face.dashed"
-        case "bloating": return "stomach"
-        case "fatigue": return "bed.double.fill"
-        case "headache": return "brain.head.profile"
-        case "diarrhea": return "toilet.fill"
-        case "rash", "hives", "itching": return "allergens"
-        case "stomach pain": return "figure.walk.motion"
-        default: return "exclamationmark.circle"
-        }
     }
 
     private var foodBasedReactionsView: some View {
@@ -1207,8 +1233,8 @@ struct FoodReactionRow: View {
     }
 }
 
-// MARK: - Timeline Reaction Row
-/// Specialized row for the Timeline view - shows symptoms bold on top, food below, with date/time
+// MARK: - Timeline Reaction Row (Calm Redesign)
+/// Glassmorphic card design matching onboarding style
 struct TimelineReactionRow: View {
     let reaction: FoodReaction
     @Environment(\.colorScheme) private var colorScheme
@@ -1216,67 +1242,70 @@ struct TimelineReactionRow: View {
 
     var body: some View {
         Button(action: { showingDetail = true }) {
-            HStack(spacing: 14) {
-                // Date/Time column
-                VStack(alignment: .center, spacing: 2) {
-                    Text(formatDayMonth(reaction.timestamp.dateValue()))
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+            HStack(alignment: .top, spacing: 14) {
+                // Circular signal icon with radial glow
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [AppPalette.standard.accent.opacity(0.08), Color.clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 22
+                            )
+                        )
+                        .frame(width: 44, height: 44)
 
-                    Text(formatTime(reaction.timestamp.dateValue()))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                    Circle()
+                        .fill(AppPalette.standard.accent.opacity(0.1))
+                        .frame(width: 36, height: 36)
 
-                    Text(formatRelativeDay(reaction.timestamp.dateValue()))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(isToday(reaction.timestamp.dateValue()) ? AppPalette.standard.accent : .secondary)
+                    // Small severity dot
+                    Circle()
+                        .fill(severityColor(for: reaction.severity))
+                        .frame(width: 10, height: 10)
                 }
-                .frame(width: 55)
-
-                // Vertical divider
-                Rectangle()
-                    .fill(severityColor(for: reaction.severity).opacity(0.5))
-                    .frame(width: 3)
-                    .cornerRadius(2)
 
                 // Main content
-                VStack(alignment: .leading, spacing: 6) {
-                    // Symptoms - BOLD on top (this is what users remember)
+                VStack(alignment: .leading, spacing: 5) {
+                    // Symptoms with serif font for editorial feel
                     Text(reaction.symptoms.joined(separator: ", "))
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 17, weight: .medium, design: .serif))
                         .foregroundColor(.primary)
                         .lineLimit(2)
 
-                    // Food - below, not bold
-                    Text(reaction.foodName)
-                        .font(.system(size: 13))
+                    // Friendly date format
+                    Text(friendlyDateString)
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(.secondary)
-                        .lineLimit(1)
+
+                    // Food name
+                    if !reaction.foodName.isEmpty {
+                        Text(reaction.foodName)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer()
 
-                // Severity indicator
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(severityText(for: reaction.severity))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(severityColor(for: reaction.severity))
-
-                    Circle()
-                        .fill(severityColor(for: reaction.severity))
-                        .frame(width: 8, height: 8)
-                }
+                // Subtle chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.4))
+                    .padding(.top, 4)
             }
-            .padding(12)
+            .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.9))
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.ultraThinMaterial)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(severityColor(for: reaction.severity).opacity(0.2), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.15), lineWidth: 1)
                     )
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, y: 2)
             )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
         .fullScreenCover(isPresented: $showingDetail) {
@@ -1284,39 +1313,36 @@ struct TimelineReactionRow: View {
         }
     }
 
-    private func formatDayMonth(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        return formatter.string(from: date)
-    }
-
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: date)
-    }
-
-    private func formatRelativeDay(_ date: Date) -> String {
+    // Friendly date formatting - "Tuesday, morning" or "Yesterday, afternoon"
+    private var friendlyDateString: String {
+        let date = reaction.timestamp.dateValue()
         let calendar = Calendar.current
         let now = Date()
+        let hour = calendar.component(.hour, from: date)
 
-        if calendar.isDate(date, inSameDayAs: now) {
-            return "Today"
-        } else if calendar.isDate(date, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) {
-            return "Yesterday"
-        } else {
-            let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
-            if daysDiff < 7 {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE"
-                return formatter.string(from: date)
-            }
-            return ""
+        // Time of day
+        let timeOfDay: String
+        switch hour {
+        case 5..<12: timeOfDay = "morning"
+        case 12..<17: timeOfDay = "afternoon"
+        case 17..<21: timeOfDay = "evening"
+        default: timeOfDay = "night"
         }
-    }
 
-    private func isToday(_ date: Date) -> Bool {
-        Calendar.current.isDate(date, inSameDayAs: Date())
+        // Relative day
+        if calendar.isDateInToday(date) {
+            return "Today, \(timeOfDay)"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday, \(timeOfDay)"
+        } else if let daysAgo = calendar.dateComponents([.day], from: date, to: now).day, daysAgo < 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE"
+            return "\(formatter.string(from: date)), \(timeOfDay)"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "d MMM"
+            return "\(formatter.string(from: date)), \(timeOfDay)"
+        }
     }
 
     private func severityColor(for severity: ReactionSeverity) -> Color {
@@ -1324,14 +1350,6 @@ struct TimelineReactionRow: View {
         case .mild: return .yellow
         case .moderate: return .orange
         case .severe: return .red
-        }
-    }
-
-    private func severityText(for severity: ReactionSeverity) -> String {
-        switch severity {
-        case .mild: return "Mild"
-        case .moderate: return "Moderate"
-        case .severe: return "Severe"
         }
     }
 }

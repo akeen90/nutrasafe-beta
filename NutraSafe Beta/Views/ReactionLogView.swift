@@ -545,9 +545,9 @@ struct ReactionLogView: View {
         }
     }
 
-    // MARK: - Reaction Timeline View
+    // MARK: - Reaction Timeline View (Calm Redesign)
     private var reactionTimelineView: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             if manager.reactionLogs.isEmpty {
                 emptyStateView(
                     icon: "clock.badge.questionmark",
@@ -565,65 +565,82 @@ struct ReactionLogView: View {
                 let filteredLogs = filteredReactionLogs
 
                 if filteredLogs.isEmpty {
-                    // No reactions for selected symptom
-                    VStack(spacing: 12) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary.opacity(0.5))
-                        Text("No \(selectedSymptomFilter ?? "reactions") logged")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.secondary)
+                    // No reactions for selected symptom - calm empty state
+                    VStack(spacing: 16) {
+                        // Signal icon with subtle glow
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [palette.accent.opacity(0.06), Color.clear],
+                                        center: .center,
+                                        startRadius: 0,
+                                        endRadius: 40
+                                    )
+                                )
+                                .frame(width: 80, height: 80)
+
+                            NutraSafeSignalIcon(color: palette.accent.opacity(0.3), size: 36)
+                        }
+
+                        VStack(spacing: 6) {
+                            Text("Nothing here yet")
+                                .font(.system(size: 18, weight: .medium, design: .serif))
+                                .foregroundColor(palette.textSecondary)
+
+                            if let symptom = selectedSymptomFilter {
+                                Text("No \(symptom.lowercased()) entries to show")
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundColor(palette.textTertiary)
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                    .padding(.vertical, 48)
                 } else {
-                    // Show count
-                    Text("\(filteredLogs.count) \(filteredLogs.count == 1 ? "reaction" : "reactions")")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(palette.textSecondary)
+                    // Softer count display - observational tone
+                    if selectedSymptomFilter != nil {
+                        Text("Showing \(filteredLogs.count) \(filteredLogs.count == 1 ? "entry" : "entries")")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(palette.textTertiary)
+                    }
 
-                    ForEach(Array(filteredLogs.enumerated()), id: \.element.id) { index, entry in
-                        Button(action: {
-                            selectedEntry = entry
-                        }) {
-                            ReactionLogCard(entry: entry, isHero: index == 0)
+                    // Cards with gentle spacing
+                    VStack(spacing: 14) {
+                        ForEach(Array(filteredLogs.enumerated()), id: \.element.id) { index, entry in
+                            Button(action: {
+                                selectedEntry = entry
+                            }) {
+                                ReactionLogCard(entry: entry, isHero: index == 0)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
         }
     }
 
-    // MARK: - Symptom Filter Picker
+    // MARK: - Symptom Filter Picker (Calm Redesign)
+    // Removed clinical "Filter by Symptom" label - chips speak for themselves
     private var symptomFilterPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Filter by Symptom")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                // All entries option
+                symptomFilterChip(symptom: nil, label: "All entries")
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    // All Symptoms option
-                    symptomFilterChip(symptom: nil, label: "All", icon: "list.bullet")
-
-                    // Get unique symptoms from logged reactions (using cached values)
-                    ForEach(cachedUniqueSymptoms, id: \.self) { symptom in
-                        let reactionType = ReactionType.allCases.first { $0.rawValue == symptom }
-                        symptomFilterChip(
-                            symptom: symptom,
-                            label: symptom,
-                            icon: reactionType?.icon ?? "circle.fill"
-                        )
-                    }
+                // Unique symptoms from logged reactions (using cached values)
+                ForEach(cachedUniqueSymptoms, id: \.self) { symptom in
+                    symptomFilterChip(symptom: symptom, label: symptom)
                 }
-                .padding(.horizontal, 1)
             }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, 12)
     }
 
-    private func symptomFilterChip(symptom: String?, label: String, icon: String) -> some View {
+    private func symptomFilterChip(symptom: String?, label: String) -> some View {
         let isSelected = selectedSymptomFilter == symptom
 
         return Button(action: {
@@ -633,25 +650,35 @@ struct ReactionLogView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }) {
             HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 12))
+                // Small signal dot - color indicates selection
+                Circle()
+                    .fill(isSelected ? Color.white : palette.accent.opacity(0.6))
+                    .frame(width: 6, height: 6)
+
                 Text(label)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
             }
             .foregroundColor(isSelected ? .white : palette.textPrimary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .background(
                 Capsule()
                     .fill(
                         isSelected
                             ? AnyShapeStyle(LinearGradient(colors: [palette.accent, palette.primary], startPoint: .leading, endPoint: .trailing))
-                            : AnyShapeStyle(palette.tertiary.opacity(0.15))
+                            : AnyShapeStyle(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                isSelected ? Color.clear : palette.tertiary.opacity(0.2),
+                                lineWidth: 1
+                            )
                     )
                     .shadow(
-                        color: isSelected ? palette.accent.opacity(0.3) : Color.clear,
-                        radius: isSelected ? 6 : 0,
-                        y: 2
+                        color: isSelected ? palette.accent.opacity(0.25) : Color.black.opacity(0.03),
+                        radius: isSelected ? 8 : 4,
+                        y: isSelected ? 3 : 2
                     )
             )
         }
@@ -1049,7 +1076,8 @@ struct CommonFoodRow: View {
     }
 }
 
-// MARK: - Reaction Log Card
+// MARK: - Reaction Log Card (Calm Redesign)
+// Matches onboarding's observational, spacious design language
 
 struct ReactionLogCard: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -1061,86 +1089,140 @@ struct ReactionLogCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                // Reaction type icon - uses palette for hero
-                Image(systemName: reactionIcon)
-                    .font(isHero ? .title2 : .title3)
-                    .foregroundColor(isHero ? palette.accent : palette.textSecondary)
-                    .frame(width: isHero ? 40 : 32, height: isHero ? 40 : 32)
-                    .background(
-                        RoundedRectangle(cornerRadius: isHero ? DesignTokens.Radius.md : 8)
-                            .fill(palette.accent.opacity(isHero ? 0.15 : 0.08))
-                    )
+        VStack(alignment: .leading, spacing: isHero ? 16 : 14) {
+            HStack(alignment: .top, spacing: 14) {
+                // Circular signal icon - softer than square
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [palette.accent.opacity(isHero ? 0.12 : 0.08), Color.clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: isHero ? 28 : 22
+                            )
+                        )
+                        .frame(width: isHero ? 56 : 44, height: isHero ? 56 : 44)
 
-                VStack(alignment: .leading, spacing: 4) {
+                    Circle()
+                        .fill(palette.accent.opacity(isHero ? 0.15 : 0.1))
+                        .frame(width: isHero ? 44 : 36, height: isHero ? 44 : 36)
+
+                    Image(systemName: reactionIcon)
+                        .font(.system(size: isHero ? 20 : 16, weight: .medium))
+                        .foregroundColor(palette.accent)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    // Reaction type with serif font for editorial feel
                     Text(entry.reactionType)
-                        .font(isHero ? .system(size: 18, weight: .semibold) : .headline)
+                        .font(.system(size: isHero ? 20 : 17, weight: .medium, design: .serif))
                         .foregroundColor(palette.textPrimary)
 
-                    Text(entry.reactionDate, style: .date)
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
-                    +
-                    Text(" at ")
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
-                    +
-                    Text(entry.reactionDate, style: .time)
-                        .font(.caption)
+                    // Softer, friendlier date format
+                    Text(friendlyDateString)
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(palette.textSecondary)
                 }
 
                 Spacer()
 
+                // Subtle chevron - very muted
                 Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(palette.textTertiary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(palette.textTertiary.opacity(0.6))
             }
 
+            // Notes with gentler styling
             if let notes = entry.notes, !notes.isEmpty {
                 Text(notes)
-                    .font(.subheadline)
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundColor(palette.textSecondary)
+                    .lineSpacing(3)
                     .lineLimit(2)
+                    .padding(.leading, isHero ? 70 : 58) // Align with text above
             }
 
+            // Analysis info with softer presentation
             if let analysis = entry.triggerAnalysis {
-                HStack(spacing: 16) {
-                    Label("\(analysis.mealCount) meals analyzed", systemImage: "fork.knife")
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
+                HStack(spacing: 12) {
+                    // Small signal dots instead of icons
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(palette.textTertiary.opacity(0.5))
+                            .frame(width: 5, height: 5)
+                        Text("\(analysis.mealCount) meals reviewed")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(palette.textTertiary)
+                    }
 
-                    Label("\(analysis.topFoods.count) foods identified", systemImage: "list.bullet")
-                        .font(.caption)
-                        .foregroundColor(palette.accent)
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(palette.accent.opacity(0.7))
+                            .frame(width: 5, height: 5)
+                        Text("\(analysis.topFoods.count) foods noted")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(palette.textSecondary)
+                    }
                 }
+                .padding(.leading, isHero ? 70 : 58) // Align with text above
             }
         }
-        .padding(isHero ? 16 : 12)
+        .padding(isHero ? 20 : 16)
         .background(
-            RoundedRectangle(cornerRadius: isHero ? DesignTokens.Radius.lg : 10)
-                .fill(Color.nutraSafeCard)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                        .stroke(
+                            isHero ? palette.accent.opacity(0.15) : Color.white.opacity(colorScheme == .dark ? 0.08 : 0.15),
+                            lineWidth: 1
+                        )
+                )
                 .shadow(
-                    color: isHero ? palette.accent.opacity(0.15) : .black.opacity(0.05),
-                    radius: isHero ? 12 : 3,
-                    x: 0,
+                    color: Color.black.opacity(isHero ? 0.06 : 0.04),
+                    radius: isHero ? 12 : 6,
                     y: isHero ? 4 : 2
                 )
         )
-        .overlay(
-            isHero ?
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .stroke(palette.accent.opacity(0.2), lineWidth: 1)
-            : nil
-        )
+    }
+
+    // Friendly date formatting - "Tuesday morning" or "Yesterday afternoon"
+    private var friendlyDateString: String {
+        let calendar = Calendar.current
+        let now = Date()
+        let hour = calendar.component(.hour, from: entry.reactionDate)
+
+        // Time of day
+        let timeOfDay: String
+        switch hour {
+        case 5..<12: timeOfDay = "morning"
+        case 12..<17: timeOfDay = "afternoon"
+        case 17..<21: timeOfDay = "evening"
+        default: timeOfDay = "night"
+        }
+
+        // Relative day
+        if calendar.isDateInToday(entry.reactionDate) {
+            return "Today, \(timeOfDay)"
+        } else if calendar.isDateInYesterday(entry.reactionDate) {
+            return "Yesterday, \(timeOfDay)"
+        } else if let daysAgo = calendar.dateComponents([.day], from: entry.reactionDate, to: now).day, daysAgo < 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE"
+            return "\(formatter.string(from: entry.reactionDate)), \(timeOfDay)"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "d MMM"
+            return "\(formatter.string(from: entry.reactionDate)), \(timeOfDay)"
+        }
     }
 
     private var reactionIcon: String {
         if let type = ReactionType(rawValue: entry.reactionType) {
             return type.icon
         }
-        return "exclamationmark.circle"
+        return "circle.fill"
     }
 }
 
