@@ -8,6 +8,10 @@ class SettingsViewModel: ObservableObject {
     @Published var macroGoals: [MacroGoal]
     @Published var selectedDietType: DietType?
 
+    // Save status tracking for reliability
+    @Published var saveError: Error?
+    @Published var isSaving: Bool = false
+
     @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 2000
     @AppStorage("cachedExerciseGoal") private var cachedExerciseGoal: Int = 600
     @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
@@ -43,6 +47,7 @@ class SettingsViewModel: ObservableObject {
                 }
             }
         } catch {
+            // Load errors are non-fatal - we have cached values
         }
     }
 
@@ -50,37 +55,134 @@ class SettingsViewModel: ObservableObject {
         await MainActor.run {
             macroGoals = goals
             selectedDietType = dietType
+            isSaving = true
+            saveError = nil
             if let diet = dietType {
                 cachedDietType = diet.rawValue
             }
         }
-        try? await firebaseManager.saveMacroGoals(goals, dietType: dietType)
-        await MainActor.run {
-            NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+
+        do {
+            try await firebaseManager.saveMacroGoals(goals, dietType: dietType)
+            await MainActor.run {
+                isSaving = false
+                NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            }
+        } catch {
+            await MainActor.run {
+                isSaving = false
+                saveError = error
+            }
+            // Retry once on failure
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
+                try await firebaseManager.saveMacroGoals(goals, dietType: dietType)
+                await MainActor.run {
+                    saveError = nil
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
+            } catch {
+                // Second attempt failed - error already set
+            }
         }
     }
 
     func saveCaloricGoal(_ goal: Int, firebaseManager: FirebaseManager) async {
-        await MainActor.run { caloricGoal = goal; cachedCaloricGoal = goal }
-        try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
         await MainActor.run {
-            NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            caloricGoal = goal
+            cachedCaloricGoal = goal
+            isSaving = true
+            saveError = nil
+        }
+
+        do {
+            try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
+            await MainActor.run {
+                isSaving = false
+                NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            }
+        } catch {
+            await MainActor.run {
+                isSaving = false
+                saveError = error
+            }
+            // Retry once on failure
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
+                await MainActor.run {
+                    saveError = nil
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
+            } catch {
+                // Second attempt failed
+            }
         }
     }
 
     func saveExerciseGoal(_ goal: Int, firebaseManager: FirebaseManager) async {
-        await MainActor.run { exerciseGoal = goal; cachedExerciseGoal = goal }
-        try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, exerciseGoal: goal)
         await MainActor.run {
-            NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            exerciseGoal = goal
+            cachedExerciseGoal = goal
+            isSaving = true
+            saveError = nil
+        }
+
+        do {
+            try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, exerciseGoal: goal)
+            await MainActor.run {
+                isSaving = false
+                NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            }
+        } catch {
+            await MainActor.run {
+                isSaving = false
+                saveError = error
+            }
+            // Retry once on failure
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, exerciseGoal: goal)
+                await MainActor.run {
+                    saveError = nil
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
+            } catch {
+                // Second attempt failed
+            }
         }
     }
 
     func saveStepGoal(_ goal: Int, firebaseManager: FirebaseManager) async {
-        await MainActor.run { stepGoal = goal; cachedStepGoal = goal }
-        try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, stepGoal: goal)
         await MainActor.run {
-            NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            stepGoal = goal
+            cachedStepGoal = goal
+            isSaving = true
+            saveError = nil
+        }
+
+        do {
+            try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, stepGoal: goal)
+            await MainActor.run {
+                isSaving = false
+                NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            }
+        } catch {
+            await MainActor.run {
+                isSaving = false
+                saveError = error
+            }
+            // Retry once on failure
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, stepGoal: goal)
+                await MainActor.run {
+                    saveError = nil
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
+            } catch {
+                // Second attempt failed
+            }
         }
     }
 }

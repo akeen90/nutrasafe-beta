@@ -653,20 +653,28 @@ struct FastingTimerView: View {
 
         // Calculate remaining time
         let totalGoalSeconds = Double(fastingGoal) * 3600
-        let remainingSeconds = max(0, totalGoalSeconds - fastingDuration)
-        let remainingHours = Int(remainingSeconds / 3600)
-        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingTotalSeconds = max(0, totalGoalSeconds - fastingDuration)
+        let remainingHours = Int(remainingTotalSeconds / 3600)
+        let remainingMinutes = Int((remainingTotalSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingSecs = Int(remainingTotalSeconds.truncatingRemainder(dividingBy: 60))
+        let currentSecs = Int(fastingDuration.truncatingRemainder(dividingBy: 60))
 
         // Get current fasting phase
         let phaseInfo = FastingPhaseInfo.forHours(hours)
 
+        // Calculate end time for live countdown
+        let fastingEndTime = startTime.addingTimeInterval(totalGoalSeconds)
+
         let attributes = FastingActivityAttributes(fastingGoalHours: fastingGoal)
         let contentState = FastingActivityAttributes.ContentState(
             fastingStartTime: startTime,
+            fastingEndTime: fastingEndTime,
             currentHours: hours,
             currentMinutes: minutes,
+            currentSeconds: currentSecs,
             remainingHours: remainingHours,
             remainingMinutes: remainingMinutes,
+            remainingSeconds: remainingSecs,
             currentPhase: phaseInfo.name,
             phaseEmoji: phaseInfo.emoji
         )
@@ -697,22 +705,30 @@ struct FastingTimerView: View {
 
         let hours = Int(fastingDuration / 3600)
         let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
+        let seconds = Int(fastingDuration.truncatingRemainder(dividingBy: 60))
 
         // Calculate remaining time
         let totalGoalSeconds = Double(fastingGoal) * 3600
-        let remainingSeconds = max(0, totalGoalSeconds - fastingDuration)
-        let remainingHours = Int(remainingSeconds / 3600)
-        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingTotalSeconds = max(0, totalGoalSeconds - fastingDuration)
+        let remainingHours = Int(remainingTotalSeconds / 3600)
+        let remainingMinutes = Int((remainingTotalSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingSecs = Int(remainingTotalSeconds.truncatingRemainder(dividingBy: 60))
 
         // Get current fasting phase
         let phaseInfo = FastingPhaseInfo.forHours(hours)
 
+        // Calculate end time for live countdown
+        let fastingEndTime = startTime.addingTimeInterval(totalGoalSeconds)
+
         let contentState = FastingActivityAttributes.ContentState(
             fastingStartTime: startTime,
+            fastingEndTime: fastingEndTime,
             currentHours: hours,
             currentMinutes: minutes,
+            currentSeconds: seconds,
             remainingHours: remainingHours,
             remainingMinutes: remainingMinutes,
+            remainingSeconds: remainingSecs,
             currentPhase: phaseInfo.name,
             phaseEmoji: phaseInfo.emoji
         )

@@ -880,7 +880,7 @@ struct AddFoodSearchView: View {
             loadFavorites()
         }
     }
-    
+
     private func checkForEditingMode() {
         if let mode = UserDefaults.standard.string(forKey: "foodSearchMode"), mode == "editing" {
             isEditingMode = true
@@ -1025,10 +1025,14 @@ struct AddFoodSearchView: View {
             do {
                 let favorites = try await firebaseManager.getFavoriteFoods()
                 await MainActor.run {
-                    favoriteFoods = favorites
+                    // Use animation to prevent jarring "blink" when data loads
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        favoriteFoods = favorites
+                    }
                 }
             } catch {
-                            }
+                // Silently fail - favorites are optional
+            }
         }
     }
     
@@ -1387,7 +1391,7 @@ struct FoodDetailView: View {
             }
         }
     }
-    
+
     private func extractBrand(from name: String) -> String? {
         // Simple brand extraction - could be enhanced
         let components = name.components(separatedBy: " - ")

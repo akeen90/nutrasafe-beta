@@ -822,3 +822,19 @@ struct PrimaryButton: View {
         }
     }
 }
+
+// MARK: - UIApplication Keyboard Extension
+
+extension UIApplication {
+    /// Dismiss the keyboard by ending editing on the active window
+    func endEditing() {
+        sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+
+// MARK: - Global Keyboard Dismissal Helper
+
+/// Programmatically dismiss the keyboard from anywhere
+func dismissKeyboard() {
+    UIApplication.shared.endEditing()
+}

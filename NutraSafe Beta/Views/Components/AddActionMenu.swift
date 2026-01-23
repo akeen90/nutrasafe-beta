@@ -26,10 +26,10 @@ struct AddActionMenu: View {
     @State private var waterCount: Int = 0
     @AppStorage("dailyWaterGoal") private var dailyWaterGoal: Int = 8
 
-    // Animation states
-    @State private var showContent = false
-    @State private var primaryActionsVisible = false
-    @State private var quickActionsVisible = false
+    // Drag-to-dismiss state
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDragging = false
+    private let dismissThreshold: CGFloat = 120
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
@@ -57,10 +57,10 @@ struct AddActionMenu: View {
         .ignoresSafeArea()
         .allowsHitTesting(isPresented)
         .onChange(of: isPresented) { _, newValue in
-            if newValue {
-                animateIn()
-            } else {
-                resetAnimations()
+            if !newValue {
+                // Reset drag state when closing
+                dragOffset = 0
+                isDragging = false
             }
         }
     }
@@ -82,48 +82,89 @@ struct AddActionMenu: View {
                     startPoint: .bottom,
                     endPoint: .top
                 )
-                .opacity(showContent ? 1 : 0)
             }
         }
         .ignoresSafeArea()
-        .animation(.easeOut(duration: 0.3), value: isPresented)
-        .animation(.easeOut(duration: 0.4), value: showContent)
+        .animation(.easeOut(duration: 0.25), value: isPresented)
     }
 
     // MARK: - Command Panel Content
 
     private func commandPanelContent(geometry: GeometryProxy) -> some View {
-        VStack(spacing: 0) {
-            // Handle indicator
-            handleIndicator
+        Group {
+            if isPresented {
+                VStack(spacing: 0) {
+                    // Handle indicator - also serves as drag affordance
+                    handleIndicator
 
-            // No ScrollView - all content fits without scrolling
-            VStack(spacing: 12) {
-                // Section label
-                sectionHeader(title: "Quick Actions", icon: "bolt.fill")
-                    .opacity(primaryActionsVisible ? 1 : 0)
+                    // No ScrollView - all content fits without scrolling
+                    VStack(spacing: 12) {
+                        // Section label
+                        sectionHeader(title: "Quick Actions", icon: "bolt.fill")
 
-                // Primary action tiles - 2x2 grid
-                primaryActionsGrid
+                        // Primary action tiles - 2x2 grid
+                        primaryActionsGrid
 
-                // Subtle divider
-                dividerLine
+                        // Subtle divider
+                        dividerLine
 
-                // Section label for trackers
-                sectionHeader(title: "Quick Trackers", icon: "chart.line.uptrend.xyaxis")
-                    .opacity(quickActionsVisible ? 1 : 0)
+                        // Section label for trackers
+                        sectionHeader(title: "Quick Trackers", icon: "chart.line.uptrend.xyaxis")
 
-                // Secondary quick trackers
-                quickTrackersSection
+                        // Secondary quick trackers
+                        quickTrackersSection
+                    }
+                    .padding(.horizontal, DesignTokens.Spacing.screenEdge)
+                    .padding(.top, 4)
+                    .padding(.bottom, geometry.safeAreaInsets.bottom + 12)
+                }
+                .background(panelBackground)
+                // Apply drag offset for interactive dismissal
+                .offset(y: max(0, dragOffset))
+                // Reduce opacity as user drags down for visual feedback
+                .opacity(isDragging ? 1.0 - (dragOffset / (dismissThreshold * 3)) : 1.0)
+                // Drag gesture for swipe-to-dismiss
+                .gesture(
+                    DragGesture(minimumDistance: 10, coordinateSpace: .local)
+                        .onChanged { value in
+                            // Only allow downward drag
+                            if value.translation.height > 0 {
+                                isDragging = true
+                                // Apply resistance as user drags further
+                                let resistance: CGFloat = 0.6
+                                dragOffset = value.translation.height * resistance
+                            }
+                        }
+                        .onEnded { value in
+                            isDragging = false
+                            let velocity = value.predictedEndTranslation.height - value.translation.height
+
+                            // Dismiss if dragged past threshold or with enough velocity
+                            if dragOffset > dismissThreshold || velocity > 500 {
+                                // Let the transition handle the exit animation
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                                impactFeedback.impactOccurred()
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                    isPresented = false
+                                    dragOffset = 0
+                                }
+                            } else {
+                                // Snap back with spring
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                )
+                // GPU-accelerated transition for smooth entrance/exit
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .move(edge: .bottom).combined(with: .opacity)
+                    )
+                )
             }
-            .padding(.horizontal, DesignTokens.Spacing.screenEdge)
-            .padding(.top, 4)
-            .padding(.bottom, geometry.safeAreaInsets.bottom + 12)
         }
-        .background(
-            panelBackground
-        )
-        .offset(y: isPresented ? 0 : geometry.size.height)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isPresented)
     }
 
@@ -230,8 +271,8 @@ struct AddActionMenu: View {
                     iconGradient: [Color(red: 0.2, green: 0.6, blue: 0.9), Color(red: 0.3, green: 0.5, blue: 0.95)],
                     title: "Log Food",
                     subtitle: "Search or add",
-                    isVisible: primaryActionsVisible,
-                    delay: 0.05
+                    isVisible: true,
+                    delay: 0
                 ) {
                     dismissAndExecute(onSelectDiary)
                 }
@@ -241,8 +282,8 @@ struct AddActionMenu: View {
                     iconGradient: [Color(red: 0.95, green: 0.4, blue: 0.5), Color(red: 0.9, green: 0.3, blue: 0.45)],
                     title: "Barcode Scan",
                     subtitle: "Quick capture",
-                    isVisible: primaryActionsVisible,
-                    delay: 0.1
+                    isVisible: true,
+                    delay: 0
                 ) {
                     if let action = onSelectBarcodeScan {
                         dismissAndExecute(action)
@@ -259,8 +300,8 @@ struct AddActionMenu: View {
                     iconGradient: [Color(red: 0.95, green: 0.65, blue: 0.3), Color(red: 0.95, green: 0.5, blue: 0.25)],
                     title: "Use By",
                     subtitle: "Track freshness",
-                    isVisible: primaryActionsVisible,
-                    delay: 0.15
+                    isVisible: true,
+                    delay: 0
                 ) {
                     dismissAndExecute(onSelectUseBy)
                 }
@@ -270,8 +311,8 @@ struct AddActionMenu: View {
                     iconGradient: [Color(red: 0.0, green: 0.7, blue: 0.65), Color(red: 0.0, green: 0.6, blue: 0.55)],
                     title: "Meal Scan",
                     subtitle: "AI recognition",
-                    isVisible: primaryActionsVisible,
-                    delay: 0.2
+                    isVisible: true,
+                    delay: 0
                 ) {
                     if let action = onSelectMealScan {
                         dismissAndExecute(action)
@@ -289,8 +330,6 @@ struct AddActionMenu: View {
         VStack(spacing: 0) {
             // Water control - inline stepper style
             waterTrackerRow
-                .opacity(quickActionsVisible ? 1 : 0)
-                .animation(.easeOut(duration: 0.2).delay(0.25), value: quickActionsVisible)
 
             trackerDivider
 
@@ -300,8 +339,8 @@ struct AddActionMenu: View {
                 iconColor: Color(red: 0.95, green: 0.55, blue: 0.2),
                 title: "Weight",
                 subtitle: "Log weigh-in",
-                isVisible: quickActionsVisible,
-                delay: 0.3
+                isVisible: true,
+                delay: 0
             ) {
                 dismissAndExecute(onSelectWeighIn)
             }
@@ -314,8 +353,8 @@ struct AddActionMenu: View {
                 iconColor: Color(red: 0.9, green: 0.4, blue: 0.5),
                 title: "Log Reaction",
                 subtitle: "Track symptoms",
-                isVisible: quickActionsVisible,
-                delay: 0.35
+                isVisible: true,
+                delay: 0
             ) {
                 dismissAndExecute(onSelectReaction)
             }
@@ -443,26 +482,6 @@ struct AddActionMenu: View {
         .padding(.vertical, 8)
     }
 
-    // MARK: - Animation Functions
-
-    private func animateIn() {
-        withAnimation(.easeOut(duration: 0.3)) {
-            showContent = true
-        }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.1)) {
-            primaryActionsVisible = true
-        }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.2)) {
-            quickActionsVisible = true
-        }
-    }
-
-    private func resetAnimations() {
-        showContent = false
-        primaryActionsVisible = false
-        quickActionsVisible = false
-    }
-
     // MARK: - Water Functions
 
     private func loadWaterCount() {
@@ -522,7 +541,9 @@ struct AddActionMenu: View {
             isPresented = false
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        // Wait for dismiss animation to complete before executing action
+        // Spring animation needs more time than response value to fully settle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             action()
         }
     }

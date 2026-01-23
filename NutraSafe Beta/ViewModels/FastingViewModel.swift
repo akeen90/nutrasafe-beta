@@ -10,6 +10,7 @@ import SwiftUI
 import Combine
 import UserNotifications
 import ActivityKit
+import WidgetKit
 
 @MainActor
 class FastingViewModel: ObservableObject {
@@ -20,7 +21,11 @@ class FastingViewModel: ObservableObject {
     // MARK: - Live Activity
     private var currentLiveActivity: Any?
     @Published var allPlans: [FastingPlan] = []
-    @Published var activeSession: FastingSession?
+    @Published var activeSession: FastingSession? {
+        didSet {
+            syncWidgetData()
+        }
+    }
     @Published var analytics: FastingAnalytics?
 
     @Published var showError = false
@@ -705,7 +710,19 @@ class FastingViewModel: ObservableObject {
                 await self?.loadRecentSessions()
                 await self?.loadAnalytics()
             } catch {
-                // Silently handle save errors
+                // Retry once on auto-record failure
+                do {
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    _ = try await self?.firebaseManager.saveFastingSession(session)
+                    await self?.loadRecentSessions()
+                    await self?.loadAnalytics()
+                } catch {
+                    // Show error so user knows auto-record failed
+                    await MainActor.run {
+                        self?.error = error
+                        self?.showError = true
+                    }
+                }
             }
         }
     }
@@ -2177,28 +2194,38 @@ class FastingViewModel: ObservableObject {
             return
         }
 
-        let hours = Int(hoursIntoCurrentFast)
-        let minutes = Int((hoursIntoCurrentFast - Double(hours)) * 60)
+        let totalElapsedSeconds = hoursIntoCurrentFast * 3600
+        let hours = Int(totalElapsedSeconds / 3600)
+        let minutes = Int((totalElapsedSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let seconds = Int(totalElapsedSeconds.truncatingRemainder(dividingBy: 60))
+
         let totalGoalSeconds = Double(plan.durationHours) * 3600
-        let elapsedSeconds = hoursIntoCurrentFast * 3600
-        let remainingSeconds = max(0, totalGoalSeconds - elapsedSeconds)
-        let remainingHours = Int(remainingSeconds / 3600)
-        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingTotalSeconds = max(0, totalGoalSeconds - totalElapsedSeconds)
+        let remainingHours = Int(remainingTotalSeconds / 3600)
+        let remainingMinutes = Int((remainingTotalSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingSeconds = Int(remainingTotalSeconds.truncatingRemainder(dividingBy: 60))
 
         let phaseInfo = FastingPhaseInfo.forHours(hours)
 
+        // Calculate actual start and end times for live countdown
+        let fastingStartTime = Date().addingTimeInterval(-totalElapsedSeconds)
+        let fastingEndTime = fastingStartTime.addingTimeInterval(totalGoalSeconds)
+
         let attributes = FastingActivityAttributes(fastingGoalHours: plan.durationHours)
         let contentState = FastingActivityAttributes.ContentState(
-            fastingStartTime: Date().addingTimeInterval(-elapsedSeconds),
+            fastingStartTime: fastingStartTime,
+            fastingEndTime: fastingEndTime,
             currentHours: hours,
             currentMinutes: minutes,
+            currentSeconds: seconds,
             remainingHours: remainingHours,
             remainingMinutes: remainingMinutes,
+            remainingSeconds: remainingSeconds,
             currentPhase: phaseInfo.name,
             phaseEmoji: phaseInfo.emoji
         )
 
-        print("🔴 [LiveActivity] Requesting activity with goal: \(plan.durationHours)h, elapsed: \(hours)h \(minutes)m")
+        print("🔴 [LiveActivity] Requesting activity with goal: \(plan.durationHours)h, elapsed: \(hours)h \(minutes)m \(seconds)s")
 
         do {
             let content = ActivityContent(state: contentState, staleDate: nil)
@@ -2223,22 +2250,32 @@ class FastingViewModel: ObservableObject {
 
         guard let plan = activePlan else { return }
 
-        let hours = Int(hoursIntoCurrentFast)
-        let minutes = Int((hoursIntoCurrentFast - Double(hours)) * 60)
+        let totalElapsedSeconds = hoursIntoCurrentFast * 3600
+        let hours = Int(totalElapsedSeconds / 3600)
+        let minutes = Int((totalElapsedSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let seconds = Int(totalElapsedSeconds.truncatingRemainder(dividingBy: 60))
+
         let totalGoalSeconds = Double(plan.durationHours) * 3600
-        let elapsedSeconds = hoursIntoCurrentFast * 3600
-        let remainingSeconds = max(0, totalGoalSeconds - elapsedSeconds)
-        let remainingHours = Int(remainingSeconds / 3600)
-        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingTotalSeconds = max(0, totalGoalSeconds - totalElapsedSeconds)
+        let remainingHours = Int(remainingTotalSeconds / 3600)
+        let remainingMinutes = Int((remainingTotalSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+        let remainingSeconds = Int(remainingTotalSeconds.truncatingRemainder(dividingBy: 60))
 
         let phaseInfo = FastingPhaseInfo.forHours(hours)
 
+        // Calculate actual start and end times for live countdown
+        let fastingStartTime = Date().addingTimeInterval(-totalElapsedSeconds)
+        let fastingEndTime = fastingStartTime.addingTimeInterval(totalGoalSeconds)
+
         let contentState = FastingActivityAttributes.ContentState(
-            fastingStartTime: Date().addingTimeInterval(-elapsedSeconds),
+            fastingStartTime: fastingStartTime,
+            fastingEndTime: fastingEndTime,
             currentHours: hours,
             currentMinutes: minutes,
+            currentSeconds: seconds,
             remainingHours: remainingHours,
             remainingMinutes: remainingMinutes,
+            remainingSeconds: remainingSeconds,
             currentPhase: phaseInfo.name,
             phaseEmoji: phaseInfo.emoji
         )
@@ -2255,5 +2292,56 @@ class FastingViewModel: ObservableObject {
         await activity.end(nil, dismissalPolicy: .immediate)
         currentLiveActivity = nil
         print("🔴 [LiveActivity] Ended Live Activity")
+    }
+
+    // MARK: - Widget Data Sync
+
+    /// Syncs the current fasting session state to the widget via App Group UserDefaults
+    private func syncWidgetData() {
+        if let session = activeSession {
+            // Active session - update widget with session data
+            syncActiveSessionToWidget(session)
+        } else {
+            // No active session - clear widget data
+            clearWidgetData()
+        }
+    }
+
+    private func syncActiveSessionToWidget(_ session: FastingSession) {
+        let appGroupId = "group.com.nutrasafe.beta"
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return }
+
+        let data: [String: Any] = [
+            "isActive": true,
+            "startTime": session.startTime.timeIntervalSince1970,
+            "targetDurationHours": session.targetDurationHours,
+            "currentPhase": session.currentPhase.displayName,
+            "planName": activePlan?.name ?? "",
+            "lastUpdated": Date().timeIntervalSince1970
+        ]
+
+        if let encoded = try? JSONSerialization.data(withJSONObject: data) {
+            defaults.set(encoded, forKey: "fastingSessionData")
+            WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "FastingSmallStatusWidget")
+            WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "FastingMediumProgressWidget")
+            WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "FastingQuickActionWidget")
+        }
+    }
+
+    private func clearWidgetData() {
+        let appGroupId = "group.com.nutrasafe.beta"
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return }
+
+        let data: [String: Any] = [
+            "isActive": false,
+            "lastUpdated": Date().timeIntervalSince1970
+        ]
+
+        if let encoded = try? JSONSerialization.data(withJSONObject: data) {
+            defaults.set(encoded, forKey: "fastingSessionData")
+            WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "FastingSmallStatusWidget")
+            WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "FastingMediumProgressWidget")
+            WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "FastingQuickActionWidget")
+        }
     }
 }

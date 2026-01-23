@@ -190,6 +190,7 @@
 		228D242316D31225D242081F /* FastingViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingViewModel.swift; sourceTree = "<group>"; };
 		22C6BF8B3C55423CB194379A /* NutraSafe Beta/Configuration/AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Configuration/AppConfig.swift"; sourceTree = "<group>"; };
 		2748185AC3934123A2EE1CEC /* NutraSafe Beta/Managers/ReactionLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/ReactionLogManager.swift"; sourceTree = SOURCE_ROOT; };
+		27GRADEINFO001FILE /* NutraSafeGradeInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutraSafeGradeInfoView.swift; sourceTree = "<group>"; };
 		30B4E72CAAA222A7D0ACC1ED /* FastingMainView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingMainView.swift; sourceTree = "<group>"; };
 		33B4B31B7774BE3AE3988004 /* NutraSafeComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NutraSafeComponents.swift; path = "NutraSafe Beta/Design/NutraSafeComponents.swift"; sourceTree = SOURCE_ROOT; };
 		3406DEB9F89048699F964329 /* FastingInsightsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingInsightsView.swift; sourceTree = "<group>"; };
@@ -247,6 +248,7 @@
 		ABA33D752F23000A006E4834 /* NutraSafeWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NutraSafeWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABA33D762F23000A006E4834 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		ABA33D782F23000A006E4834 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		ABA33DDF2F23830A006E4834 /* NutraSafeWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NutraSafeWidgetsExtension.entitlements; sourceTree = "<group>"; };
 		ABB0AEF92EAC3F13009F044D /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe Beta.entitlements"; sourceTree = "<group>"; };
 		ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = NutraSafe.storekit; sourceTree = "<group>"; };
@@ -306,7 +308,6 @@
 		FEATTIPOVER001FILE /* NutraSafe Beta/Views/Components/FeatureTipOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/FeatureTipOverlay.swift"; sourceTree = SOURCE_ROOT; };
 		FEATTIPS001FILE /* NutraSafe Beta/Managers/FeatureTipsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/FeatureTipsManager.swift"; sourceTree = SOURCE_ROOT; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
-		27GRADEINFO001FILE /* NutraSafeGradeInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutraSafeGradeInfoView.swift; sourceTree = "<group>"; };
 		GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalsOnboardingScreens.swift; sourceTree = "<group>"; };
 		IMGCACHE001FILE /* Managers/ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ImageCacheManager.swift; sourceTree = "<group>"; };
 		INFERREDINGMGR001FILE /* InferredIngredientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientManager.swift; path = "NutraSafe Beta/Managers/InferredIngredientManager.swift"; sourceTree = SOURCE_ROOT; };
@@ -556,6 +557,7 @@
 		A1234567890123456789011998 = {
 			isa = PBXGroup;
 			children = (
+				ABA33DDF2F23830A006E4834 /* NutraSafeWidgetsExtension.entitlements */,
 				ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */,
 				A1234567890123456789012004 /* NutraSafe Beta */,
 				ABA33D7A2F23000A006E4834 /* NutraSafeWidgets */,
@@ -1160,6 +1162,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NutraSafeWidgetsExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
@@ -1192,6 +1195,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NutraSafeWidgetsExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
