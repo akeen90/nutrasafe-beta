@@ -83,10 +83,10 @@ class NutrientTrackingManager: ObservableObject {
     // MARK: - Cache Management
     // PERFORMANCE: Uses file-based storage for large data (nutrient frequencies and day activities)
     // UserDefaults is inappropriate for MB-sized data and can cause app launch delays
-
-    private func loadFromCache() {
+    
+    private func loadFromCache() async {
         guard !currentUserId.isEmpty else {
-                        return
+            return
         }
 
         // Load last updated date (small, stays in UserDefaults)
@@ -94,33 +94,45 @@ class NutrientTrackingManager: ObservableObject {
         if let lastUpdatedTimestamp = UserDefaults.standard.object(forKey: lastUpdatedKey) as? Double {
             lastUpdated = Date(timeIntervalSince1970: lastUpdatedTimestamp)
         }
-
-        // Load nutrient frequencies from file cache
-        if let frequenciesPath = cacheFilePath(for: "nutrient_frequencies"),
-           let frequenciesData = try? Data(contentsOf: frequenciesPath) {
-            do {
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .secondsSince1970
-                let frequencies = try decoder.decode([String: NutrientFrequency].self, from: frequenciesData)
-                nutrientFrequencies = frequencies
-                hasCachedData = !frequencies.isEmpty
-            } catch {
-                print("⚠️ [NutrientTrackingManager] Failed to decode frequencies cache: \(error.localizedDescription)")
+        
+        let frequenciesPath = cacheFilePath(for: "nutrient_frequencies")
+        let activitiesPath = cacheFilePath(for: "day_activities")
+        
+        // Offload file I/O to background thread
+        let (frequencies, activities) = await Task.detached(priority: .userInitiated) {
+            var loadedFrequencies: [String: NutrientFrequency] = [:]
+            var loadedActivities: [String: DayNutrientActivity] = [:]
+            
+            // Load nutrient frequencies from file cache
+            if let path = frequenciesPath,
+               let data = try? Data(contentsOf: path) {
+                do {
+                    let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .secondsSince1970
+                    loadedFrequencies = try decoder.decode([String: NutrientFrequency].self, from: data)
+                } catch {
+                    print("⚠️ [NutrientTrackingManager] Failed to decode frequencies cache: \(error.localizedDescription)")
+                }
             }
-        }
-
-        // Load day activities from file cache
-        if let activitiesPath = cacheFilePath(for: "day_activities"),
-           let activitiesData = try? Data(contentsOf: activitiesPath) {
-            do {
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .secondsSince1970
-                let activities = try decoder.decode([String: DayNutrientActivity].self, from: activitiesData)
-                dayActivities = activities
-            } catch {
-                print("⚠️ [NutrientTrackingManager] Failed to decode activities cache: \(error.localizedDescription)")
+            
+            // Load day activities from file cache
+            if let path = activitiesPath,
+               let data = try? Data(contentsOf: path) {
+                do {
+                    let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .secondsSince1970
+                    loadedActivities = try decoder.decode([String: DayNutrientActivity].self, from: data)
+                } catch {
+                    print("⚠️ [NutrientTrackingManager] Failed to decode activities cache: \(error.localizedDescription)")
+                }
             }
-        }
+            
+            return (loadedFrequencies, loadedActivities)
+        }.value
+        
+        self.nutrientFrequencies = frequencies
+        self.dayActivities = activities
+        self.hasCachedData = !frequencies.isEmpty
 
         // Initialize with all tracked nutrients if no cache
         if nutrientFrequencies.isEmpty {
@@ -135,7 +147,7 @@ class NutrientTrackingManager: ObservableObject {
 
     private func saveToCache() {
         guard !currentUserId.isEmpty else {
-                        return
+            return
         }
 
         // Save last updated date (small, stays in UserDefaults)
@@ -143,28 +155,36 @@ class NutrientTrackingManager: ObservableObject {
         if let lastUpdated = lastUpdated {
             UserDefaults.standard.set(lastUpdated.timeIntervalSince1970, forKey: lastUpdatedKey)
         }
-
-        // Save nutrient frequencies to file (can be MB-sized)
-        if let frequenciesPath = cacheFilePath(for: "nutrient_frequencies") {
-            do {
-                let encoder = JSONEncoder()
-                encoder.dateEncodingStrategy = .secondsSince1970
-                let frequenciesData = try encoder.encode(nutrientFrequencies)
-                try frequenciesData.write(to: frequenciesPath, options: .atomic)
-            } catch {
-                print("⚠️ [NutrientTrackingManager] Failed to save frequencies cache: \(error.localizedDescription)")
+        
+        let frequenciesPath = cacheFilePath(for: "nutrient_frequencies")
+        let activitiesPath = cacheFilePath(for: "day_activities")
+        let frequencies = nutrientFrequencies
+        let activities = dayActivities
+        
+        // Offload saving to background task
+        Task.detached(priority: .background) {
+            // Save nutrient frequencies to file (can be MB-sized)
+            if let path = frequenciesPath {
+                do {
+                    let encoder = JSONEncoder()
+                    encoder.dateEncodingStrategy = .secondsSince1970
+                    let data = try encoder.encode(frequencies)
+                    try data.write(to: path, options: .atomic)
+                } catch {
+                    print("⚠️ [NutrientTrackingManager] Failed to save frequencies cache: \(error.localizedDescription)")
+                }
             }
-        }
-
-        // Save day activities to file (can be MB-sized)
-        if let activitiesPath = cacheFilePath(for: "day_activities") {
-            do {
-                let encoder = JSONEncoder()
-                encoder.dateEncodingStrategy = .secondsSince1970
-                let activitiesData = try encoder.encode(dayActivities)
-                try activitiesData.write(to: activitiesPath, options: .atomic)
-            } catch {
-                print("⚠️ [NutrientTrackingManager] Failed to save activities cache: \(error.localizedDescription)")
+            
+            // Save day activities to file (can be MB-sized)
+            if let path = activitiesPath {
+                do {
+                    let encoder = JSONEncoder()
+                    encoder.dateEncodingStrategy = .secondsSince1970
+                    let data = try encoder.encode(activities)
+                    try data.write(to: path, options: .atomic)
+                } catch {
+                    print("⚠️ [NutrientTrackingManager] Failed to save activities cache: \(error.localizedDescription)")
+                }
             }
         }
 
@@ -175,16 +195,17 @@ class NutrientTrackingManager: ObservableObject {
 
     func startTracking(for userId: String) {
         guard !userId.isEmpty else {
-                        return
+            return
         }
 
         
         // Set user ID and load their cached data immediately
         currentUserId = userId
-        loadFromCache()
-
-        // Then refresh from server in background
+        
         Task {
+            await loadFromCache()
+
+            // Then refresh from server in background
             await loadUserData(userId: userId)
             await performInitialDiaryProcessing(userId: userId)
             setupRealtimeListeners(userId: userId)
@@ -221,7 +242,7 @@ class NutrientTrackingManager: ObservableObject {
         do {
             // PERFORMANCE: Fetch both collections in parallel with async let
             // This cuts network time roughly in half
-            let sixtyDaysAgo = Calendar.current.date(byAdding: .day, value: -60, to: Date())!
+            let sixtyDaysAgo = Calendar.current.date(byAdding: .day, value: -60, to: Date()) ?? Date()
 
             async let nutrientsTask = db.collection("users").document(userId)
                 .collection("nutrientTracking").getDocuments()
@@ -534,7 +555,7 @@ class NutrientTrackingManager: ObservableObject {
 
     private func recalculateAllFrequencies(userId: String) async {
         // Get last 30 days of activity
-        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
 
         // Filter activities to last 30 days
         let recentActivities = dayActivities.values.filter { activity in
@@ -818,7 +839,7 @@ class NutrientTrackingManager: ObservableObject {
         // Calculate stats for all nutrients based on last 30 days
         let calendar = Calendar.current
         let today = Date()
-        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: today)!
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: today) ?? today
 
         // Count total logged days in last 30 days
         let loggedDays = dayActivities.values.filter { activity in

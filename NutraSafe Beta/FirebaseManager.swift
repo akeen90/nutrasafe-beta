@@ -1341,12 +1341,9 @@ class FirebaseManager: ObservableObject {
             }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
-        // SQLite barcode search runs off main thread via actor
-        if let localResult = await SQLiteFoodDatabase.shared.searchByBarcode(barcode) {
-                        return [localResult]
-        }
-
-                return []
+        // SQLite database has been deprecated and removed.
+        // TODO: Implement Cloud/API barcode lookup if needed.
+        return []
     }
 
     func getReactions() async throws -> [FoodReaction] {

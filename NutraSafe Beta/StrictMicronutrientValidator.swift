@@ -316,79 +316,79 @@ class StrictMicronutrientValidator {
 
         // Vitamin C - must explicitly say "vitamin C" not just "ascorbic acid"
         patterns["vitamin_c"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*c\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\b(?:l-)?ascorbic\\s*acid\\s*\\(\\s*vitamin\\s*c\\s*\\)", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "vitamins?[:\\s]+[^,]*vitamin\\s*c", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "fortified\\s+with[^,]*vitamin\\s*c", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "added\\s+vitamin\\s*c", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*c\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\b(?:l-)?ascorbic\\s*acid\\s*\\(\\s*vitamin\\s*c\\s*\\)", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "vitamins?[:\\s]+[^,]*vitamin\\s*c", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "fortified\\s+with[^,]*vitamin\\s*c", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "added\\s+vitamin\\s*c", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // Vitamin D
         patterns["vitamin_d"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*d[23]?\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\bcholecalciferol\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\bergocalciferol\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "fortified\\s+with[^,]*vitamin\\s*d", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*d[23]?\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\bcholecalciferol\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\bergocalciferol\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "fortified\\s+with[^,]*vitamin\\s*d", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // Iron
         patterns["iron"] = [
-            try! NSRegularExpression(pattern: "\\biron\\b(?!\\s*oxide)", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\bferrous\\s*(?:sulfate|sulphate|fumarate|gluconate)\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "fortified\\s+with[^,]*iron", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\biron\\b(?!\\s*oxide)", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\bferrous\\s*(?:sulfate|sulphate|fumarate|gluconate)\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "fortified\\s+with[^,]*iron", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // Calcium
         patterns["calcium"] = [
-            try! NSRegularExpression(pattern: "\\bcalcium\\s*(?:carbonate|citrate|phosphate|lactate)\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "fortified\\s+with[^,]*calcium", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "added\\s+calcium", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bcalcium\\s*(?:carbonate|citrate|phosphate|lactate)\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "fortified\\s+with[^,]*calcium", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "added\\s+calcium", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // B Vitamins
         patterns["vitamin_b1"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*b1\\b|\\bthiamin(?:e)?\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*b1\\b|\\bthiamin(?:e)?\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
         patterns["vitamin_b2"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*b2\\b|\\briboflavin\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*b2\\b|\\briboflavin\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
         patterns["vitamin_b3"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*b3\\b|\\bniacin(?:amide)?\\b|\\bnicotinamide\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*b3\\b|\\bniacin(?:amide)?\\b|\\bnicotinamide\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
         patterns["vitamin_b6"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*b6\\b|\\bpyridoxine\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*b6\\b|\\bpyridoxine\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
         patterns["vitamin_b9"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*b9\\b|\\bfolic\\s*acid\\b|\\bfolate\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*b9\\b|\\bfolic\\s*acid\\b|\\bfolate\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
         patterns["vitamin_b12"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*b12\\b|\\bcyanocobalamin\\b|\\bmethylcobalamin\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*b12\\b|\\bcyanocobalamin\\b|\\bmethylcobalamin\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // Vitamin A
         patterns["vitamin_a"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*a\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\bretinyl\\s*(?:acetate|palmitate)\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\bbeta[\\s-]*carotene\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*a\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\bretinyl\\s*(?:acetate|palmitate)\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\bbeta[\\s-]*carotene\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // Vitamin E
         patterns["vitamin_e"] = [
-            try! NSRegularExpression(pattern: "\\bvitamin\\s*e\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\bd-alpha[\\s-]*tocopherol\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "\\btocopheryl\\s*acetate\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bvitamin\\s*e\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\bd-alpha[\\s-]*tocopherol\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "\\btocopheryl\\s*acetate\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // Zinc
         patterns["zinc"] = [
-            try! NSRegularExpression(pattern: "\\bzinc\\s*(?:oxide|citrate|gluconate|sulphate|sulfate)?\\b", options: .caseInsensitive),
-            try! NSRegularExpression(pattern: "fortified\\s+with[^,]*zinc", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\bzinc\\s*(?:oxide|citrate|gluconate|sulphate|sulfate)?\\b", options: .caseInsensitive),
+            try? NSRegularExpression(pattern: "fortified\\s+with[^,]*zinc", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         // Iodine
         patterns["iodine"] = [
-            try! NSRegularExpression(pattern: "\\biodine\\b|\\bpotassium\\s*iodide\\b", options: .caseInsensitive)
-        ]
+            try? NSRegularExpression(pattern: "\\biodine\\b|\\bpotassium\\s*iodide\\b", options: .caseInsensitive)
+        ].compactMap { $0 }
 
         return patterns
     }()
@@ -397,14 +397,14 @@ class StrictMicronutrientValidator {
 
     /// Phrases indicating ascorbic acid is used as antioxidant/preservative, NOT as vitamin
     private let ascorbicAcidAntioxidantPatterns: [NSRegularExpression] = [
-        try! NSRegularExpression(pattern: "ascorbic\\s*acid\\s*\\(\\s*antioxidant\\s*\\)", options: .caseInsensitive),
-        try! NSRegularExpression(pattern: "antioxidant[:\\s]+[^,]*ascorbic\\s*acid", options: .caseInsensitive),
-        try! NSRegularExpression(pattern: "antioxidants?[:\\s]+(?:e300|ascorbic)", options: .caseInsensitive),
-        try! NSRegularExpression(pattern: "e300(?:\\s*\\(ascorbic\\s*acid\\))?", options: .caseInsensitive),
-        try! NSRegularExpression(pattern: "preservative[:\\s]+[^,]*ascorbic", options: .caseInsensitive),
+        try? NSRegularExpression(pattern: "ascorbic\\s*acid\\s*\\(\\s*antioxidant\\s*\\)", options: .caseInsensitive),
+        try? NSRegularExpression(pattern: "antioxidant[:\\s]+[^,]*ascorbic\\s*acid", options: .caseInsensitive),
+        try? NSRegularExpression(pattern: "antioxidants?[:\\s]+(?:e300|ascorbic)", options: .caseInsensitive),
+        try? NSRegularExpression(pattern: "e300(?:\\s*\\(ascorbic\\s*acid\\))?", options: .caseInsensitive),
+        try? NSRegularExpression(pattern: "preservative[:\\s]+[^,]*ascorbic", options: .caseInsensitive),
         // Standalone ascorbic acid without vitamin context is assumed to be antioxidant
-        try! NSRegularExpression(pattern: "^[^v]*\\bascorbic\\s*acid\\b[^v]*$", options: .caseInsensitive)
-    ]
+        try? NSRegularExpression(pattern: "^[^v]*\\bascorbic\\s*acid\\b[^v]*$", options: .caseInsensitive)
+    ].compactMap { $0 }
 
     // MARK: - Main Validation Method
 

@@ -142,18 +142,34 @@ class ErrorHandler: ObservableObject {
 
     /// Present an error to the user
     func handle(_ error: Error, context: String = "") {
+        // Log to system logs
+        PrivacyLogger.error(context.isEmpty ? "Error occurred" : context, error: error, category: .general)
+
+        // Log to Crashlytics for remote tracking
+        #if canImport(FirebaseCrashlytics)
+        Crashlytics.crashlytics().record(error: error)
+        if !context.isEmpty {
+            Crashlytics.crashlytics().log(context)
+        }
+        #endif
+
         let nutraSafeError = mapToNutraSafeError(error)
         currentError = nutraSafeError
         showError = true
-
-            }
+    }
 
     /// Present a custom NutraSafe error
     func handle(_ error: NutraSafeError, context: String = "") {
+        // Log non-fatal errors
+        PrivacyLogger.error(context.isEmpty ? "NutraSafeError" : context, error: error, category: .general)
+        
+        #if canImport(FirebaseCrashlytics)
+        Crashlytics.crashlytics().record(error: error)
+        #endif
+
         currentError = error
         showError = true
-
-            }
+    }
 
     /// Clear the current error
     func clearError() {

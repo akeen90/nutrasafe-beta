@@ -72,10 +72,10 @@ class ProcessingScorer {
     // PERFORMANCE: Precompiled regex patterns (compiled once, reused thousands of times)
     // These patterns are compile-time verified as valid regex literals - they cannot fail
     // swiftlint:disable force_try
-    private static let gramPattern1 = try! NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*g"#, options: [])
-    private static let gramPattern2 = try! NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
-    private static let mlPattern1 = try! NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*ml"#, options: [])
-    private static let mlPattern2 = try! NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*ml\)"#, options: [])
+    private static let gramPattern1 = try? NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*g"#, options: [])
+    private static let gramPattern2 = try? NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
+    private static let mlPattern1 = try? NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*ml"#, options: [])
+    private static let mlPattern2 = try? NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*ml\)"#, options: [])
     private static let eNumberPattern = try! NSRegularExpression(pattern: "e\\d{3,4}", options: [])
     // swiftlint:enable force_try
 
@@ -443,7 +443,7 @@ class ProcessingScorer {
         guard let serving = servingDescription else { return 100.0 }
 
         // PERFORMANCE: Use precompiled regex patterns (80% faster than compiling on each call)
-        let gramPatterns = [Self.gramPattern1, Self.gramPattern2]
+        let gramPatterns = [Self.gramPattern1, Self.gramPattern2].compactMap { $0 }
         let servingRange = NSRange(location: 0, length: serving.count)
 
         // Try to extract grams first (direct match)
@@ -455,7 +455,7 @@ class ProcessingScorer {
         }
 
         // Try to extract ml and treat as grams (water density ~1g/ml)
-        let mlPatterns = [Self.mlPattern1, Self.mlPattern2]
+        let mlPatterns = [Self.mlPattern1, Self.mlPattern2].compactMap { $0 }
 
         for regex in mlPatterns {
             if let match = regex.firstMatch(in: serving, options: [], range: servingRange),
