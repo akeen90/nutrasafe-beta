@@ -1,3 +1,4 @@
+#if false
 //
 //  FastingAccessoryInlineWidget.swift
 //  NutraSafeWidgets
@@ -125,3 +126,5 @@ struct FastingAccessoryInlineWidget: Widget {
     )
     .previewContext(WidgetPreviewContext(family: .accessoryInline))
 }
+#endif
+

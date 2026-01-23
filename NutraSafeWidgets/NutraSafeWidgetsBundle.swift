@@ -12,6 +12,6 @@ import SwiftUI
 struct NutraSafeWidgetsBundle: WidgetBundle {
     var body: some Widget {
         FastingLiveActivity()
-        FastingAccessoryInlineWidget()
     }
 }
+

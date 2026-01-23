@@ -848,10 +848,15 @@ class AdditiveAnalyzer {
                 userSensitivities: userSensitivities
             )
 
-            // Build why flagged reasons - ALWAYS provide a clear reason
+            // Build why flagged reasons - prioritize meaningful information
             var whyFlagged: [String] = []
 
-            // Add specific warnings first
+            // Use risk summary from overrides (fun, informative descriptions)
+            if let riskSummary = override?.riskSummary, !riskSummary.isEmpty {
+                whyFlagged.append(riskSummary)
+            }
+
+            // Add specific warnings as additional context (not primary reason)
             if additive.hasChildWarning {
                 whyFlagged.append("Not recommended for children")
             }
@@ -859,26 +864,14 @@ class AdditiveAnalyzer {
                 whyFlagged.append("Contains sulphites (allergen)")
             }
 
-            // Add the risk summary from overrides (most accurate info)
-            if let riskSummary = override?.riskSummary, !riskSummary.isEmpty {
-                whyFlagged.append(riskSummary)
-            }
-
-            // If still no reason, add one based on risk level (ensure every additive has info)
+            // Only add generic fallback if we have absolutely no other info
             if whyFlagged.isEmpty {
-                switch riskLevel {
-                case .highRisk:
-                    whyFlagged.append("Studies suggest limiting intake of this additive")
-                case .moderateRisk:
-                    whyFlagged.append("Safe in small amounts, but worth being aware of")
-                case .lowRisk:
-                    whyFlagged.append("Generally considered safe for most people")
-                case .noRisk:
-                    if isVitaminOrMineral(additive) {
-                        whyFlagged.append("A vitamin or mineral - beneficial to health")
-                    } else {
-                        whyFlagged.append("Natural or well-studied with no known concerns")
-                    }
+                // Use effects summary from database if available
+                if !additive.effectsSummary.isEmpty {
+                    whyFlagged.append(additive.effectsSummary)
+                } else {
+                    // Last resort generic message
+                    whyFlagged.append("No detailed information available")
                 }
             }
 
@@ -996,19 +989,31 @@ class AdditiveAnalyzer {
         // Start with base 100
         var score = 100
 
-        // Heavy penalties for risk levels (more aggressive than before)
-        // High risk: -20 each (e.g., 3 high risk = -60 = score 40)
-        // Moderate: -10 each
-        // Low risk: -5 each
-        // Safe/vitamins: -1 each (still counts against perfect score)
-        let riskPenalty = (highRisk * 20) + (moderate * 10) + (low * 5) + (safe * 1)
+        // Heavy penalties for risk levels
+        // High risk: -20 each
+        // Moderate: -12 each
+        // Low risk: -6 each
+        // Safe/vitamins: -2 each (quantity matters even for "safe" additives)
+        let riskPenalty = (highRisk * 20) + (moderate * 12) + (low * 6) + (safe * 2)
         score -= riskPenalty
 
-        // Additional penalty for sheer quantity (more than 3 additives starts hurting)
-        // This ensures even "safe" additives lower the score when there are many
+        // AGGRESSIVE quantity penalty - even "safe" additives add up
+        // Penalty scales exponentially with quantity
+        // 1-3 additives: no extra penalty
+        // 4-6 additives: -5 each
+        // 7-10 additives: -8 each
+        // 11+ additives: -12 each
         if total > 3 {
-            let quantityPenalty = (total - 3) * 3  // -3 per additive over 3
-            score -= quantityPenalty
+            if total <= 6 {
+                let quantityPenalty = (total - 3) * 5
+                score -= quantityPenalty
+            } else if total <= 10 {
+                let quantityPenalty = (3 * 5) + ((total - 6) * 8)  // First 3 at -5, rest at -8
+                score -= quantityPenalty
+            } else {
+                let quantityPenalty = (3 * 5) + (4 * 8) + ((total - 10) * 12)  // Escalating penalty
+                score -= quantityPenalty
+            }
         }
 
         // Extra penalty if more than half are high/moderate risk

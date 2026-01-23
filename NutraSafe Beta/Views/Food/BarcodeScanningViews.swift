@@ -479,6 +479,7 @@ struct ModernBarcodeScanner: UIViewControllerRepresentable {
 class BarcodeOverlayView: UIView {
 
     // MARK: - Visual Layers
+    private let idleFrameLayer = CAShapeLayer()
     private let outlineLayer = CAShapeLayer()
     private let glowLayer = CAShapeLayer()
 
@@ -501,6 +502,7 @@ class BarcodeOverlayView: UIView {
     private let cornerRadius: CGFloat = 4.0  // Subtle corner rounding
     private let glowColor: UIColor = UIColor.white.withAlphaComponent(0.2)
     private let glowRadius: CGFloat = 4.0  // Subtler glow
+    private let idleFrameOpacity: Float = 0.6
     private let verifyingColor: UIColor = UIColor(red: 0, green: 0.6, blue: 0.55, alpha: 1) // App accent teal
     private let animationDuration: TimeInterval = 0.1
     private let hideDelay: TimeInterval = 0.06
@@ -517,6 +519,15 @@ class BarcodeOverlayView: UIView {
     }
 
     private func setupLayers() {
+        // Idle frame layer (always-visible aiming guide)
+        idleFrameLayer.fillColor = UIColor.clear.cgColor
+        idleFrameLayer.strokeColor = UIColor.white.cgColor
+        idleFrameLayer.lineWidth = strokeWidth
+        idleFrameLayer.lineCap = .round
+        idleFrameLayer.lineJoin = .round
+        idleFrameLayer.opacity = idleFrameOpacity
+        layer.addSublayer(idleFrameLayer)
+
         // Glow layer (subtle blur effect behind outline)
         glowLayer.fillColor = UIColor.clear.cgColor
         glowLayer.strokeColor = glowColor.cgColor
@@ -543,9 +554,15 @@ class BarcodeOverlayView: UIView {
         outlineLayer.actions = ["path": NSNull(), "opacity": NSNull(), "strokeColor": NSNull()]
         glowLayer.actions = ["path": NSNull(), "opacity": NSNull(), "strokeColor": NSNull(),
                             "shadowColor": NSNull(), "shadowOpacity": NSNull()]
+        idleFrameLayer.actions = ["path": NSNull(), "opacity": NSNull(), "strokeColor": NSNull()]
 
         isUserInteractionEnabled = false
         backgroundColor = .clear
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateIdleFramePath()
     }
 
     // MARK: - Corner Processing
@@ -720,6 +737,31 @@ class BarcodeOverlayView: UIView {
         return path
     }
 
+    private func updateIdleFramePath() {
+        guard bounds.width > 0 && bounds.height > 0 else { return }
+
+        let frameWidth = bounds.width * 0.78
+        let desiredHeight = frameWidth * 0.38
+        let maxHeight = bounds.height * 0.35
+        let frameHeight = min(desiredHeight, maxHeight)
+
+        let rect = CGRect(
+            x: (bounds.width - frameWidth) / 2,
+            y: (bounds.height - frameHeight) / 2,
+            width: frameWidth,
+            height: frameHeight
+        )
+
+        let corners = [
+            CGPoint(x: rect.minX, y: rect.minY),
+            CGPoint(x: rect.maxX, y: rect.minY),
+            CGPoint(x: rect.maxX, y: rect.maxY),
+            CGPoint(x: rect.minX, y: rect.maxY)
+        ]
+
+        idleFrameLayer.path = createPath(from: corners).cgPath
+    }
+
     // MARK: - Update Overlay
 
     /// Update the overlay with new corner positions
@@ -789,6 +831,7 @@ class BarcodeOverlayView: UIView {
 
         outlineLayer.opacity = 1.0
         glowLayer.opacity = 1.0
+        idleFrameLayer.opacity = 0.25
 
         CATransaction.commit()
     }
@@ -816,11 +859,13 @@ class BarcodeOverlayView: UIView {
 
             outlineLayer.opacity = 0
             glowLayer.opacity = 0
+            idleFrameLayer.opacity = idleFrameOpacity
 
             CATransaction.commit()
         } else {
             outlineLayer.opacity = 0
             glowLayer.opacity = 0
+            idleFrameLayer.opacity = idleFrameOpacity
         }
 
         // Reset smoothing when hidden
