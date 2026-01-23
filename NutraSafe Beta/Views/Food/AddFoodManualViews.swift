@@ -752,7 +752,8 @@ struct ManualFoodDetailEntryView: View {
                         if let brandName = foundIngredients?.brand, !brandName.isEmpty {
                             brand = brandName
                         }
-                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
+                        // Only set barcode if not already filled (e.g., from barcode scanner)
+                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty, barcode.isEmpty {
                             barcode = barcodeValue
                         }
                         // Apply serving size if found (use numeric field, not pack size string)
@@ -797,7 +798,8 @@ struct ManualFoodDetailEntryView: View {
                         if let brandName = foundIngredients?.brand, !brandName.isEmpty {
                             brand = brandName
                         }
-                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
+                        // Only set barcode if not already filled (e.g., from barcode scanner)
+                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty, barcode.isEmpty {
                             barcode = barcodeValue
                         }
                         // Apply serving size if found (use numeric field, not pack size string)
@@ -906,8 +908,8 @@ struct ManualFoodDetailEntryView: View {
             brand = brandName
         }
 
-        // Barcode
-        if let barcodeValue = response.barcode, !barcodeValue.isEmpty {
+        // Barcode - only set if not already filled (e.g., from barcode scanner)
+        if let barcodeValue = response.barcode, !barcodeValue.isEmpty, barcode.isEmpty {
             barcode = barcodeValue
         }
 

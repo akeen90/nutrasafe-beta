@@ -584,8 +584,11 @@ struct ContentView: View {
                 isPresented: $showingAddMenu,
                 onSelectDiary: {
                     previousTabBeforeAdd = selectedTab
+                    // Set option first, then present in next run loop to ensure state is settled
                     diaryAddInitialOption = .search
-                    showingDiaryAdd = true
+                    DispatchQueue.main.async {
+                        showingDiaryAdd = true
+                    }
                 },
                 onSelectUseBy: {
                     // Navigate directly to Use By tab instead of showing redundant sheet
@@ -601,8 +604,11 @@ struct ContentView: View {
                 },
                 onSelectBarcodeScan: {
                     previousTabBeforeAdd = selectedTab
+                    // Set option first, then present in next run loop to ensure state is settled
                     diaryAddInitialOption = .barcode
-                    showingDiaryAdd = true
+                    DispatchQueue.main.async {
+                        showingDiaryAdd = true
+                    }
                 },
                 onSelectMealScan: {
                     previousTabBeforeAdd = selectedTab
@@ -712,6 +718,8 @@ struct ContentView: View {
                     selectedTab = tab
                 }
             )
+            // Force view recreation when initial option changes (fixes barcode direct navigation)
+            .id(diaryAddInitialOption)
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
             .environmentObject(sharedFastingViewModelWrapper)

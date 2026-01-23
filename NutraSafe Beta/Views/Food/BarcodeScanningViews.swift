@@ -472,6 +472,399 @@ struct ModernBarcodeScanner: UIViewControllerRepresentable {
     }
 }
 
+// MARK: - Barcode Overlay View (Yuka-style visual feedback)
+class BarcodeOverlayView: UIView {
+
+    // MARK: - Visual Layers
+    private let outlineLayer = CAShapeLayer()
+    private let glowLayer = CAShapeLayer()
+
+    // MARK: - Smoothing State
+    private var smoothedCorners: [CGPoint] = []
+    private let smoothingFactor: CGFloat = 0.55  // Higher = smoother tracking (Yuka-style)
+
+    // Velocity-based adaptive smoothing
+    private var previousCorners: [CGPoint] = []
+    private var cornerVelocities: [CGPoint] = []
+
+    // MARK: - Animation State
+    private var isVisible = false
+    private var hideWorkItem: DispatchWorkItem?
+
+    // MARK: - Configuration (Yuka-style refined design)
+    private let strokeColor: UIColor = .white
+    private let strokeWidth: CGFloat = 2.5  // Thinner for cleaner look
+    private let cornerLength: CGFloat = 18.0  // Length of corner brackets
+    private let cornerRadius: CGFloat = 4.0  // Subtle corner rounding
+    private let glowColor: UIColor = UIColor.white.withAlphaComponent(0.2)
+    private let glowRadius: CGFloat = 4.0  // Subtler glow
+    private let verifyingColor: UIColor = UIColor(red: 0, green: 0.6, blue: 0.55, alpha: 1) // App accent teal
+    private let animationDuration: TimeInterval = 0.1
+    private let hideDelay: TimeInterval = 0.06
+
+    // MARK: - Initialization
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupLayers()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupLayers()
+    }
+
+    private func setupLayers() {
+        // Glow layer (subtle blur effect behind outline)
+        glowLayer.fillColor = UIColor.clear.cgColor
+        glowLayer.strokeColor = glowColor.cgColor
+        glowLayer.lineWidth = strokeWidth + glowRadius
+        glowLayer.lineCap = .round
+        glowLayer.lineJoin = .round
+        glowLayer.opacity = 0
+        glowLayer.shadowColor = UIColor.white.cgColor
+        glowLayer.shadowRadius = 3.0
+        glowLayer.shadowOpacity = 0.3
+        glowLayer.shadowOffset = .zero
+        layer.addSublayer(glowLayer)
+
+        // Main outline layer (crisp white brackets)
+        outlineLayer.fillColor = UIColor.clear.cgColor
+        outlineLayer.strokeColor = strokeColor.cgColor
+        outlineLayer.lineWidth = strokeWidth
+        outlineLayer.lineCap = .round
+        outlineLayer.lineJoin = .round
+        outlineLayer.opacity = 0
+        layer.addSublayer(outlineLayer)
+
+        // Disable implicit animations for smooth manual updates
+        outlineLayer.actions = ["path": NSNull(), "opacity": NSNull(), "strokeColor": NSNull()]
+        glowLayer.actions = ["path": NSNull(), "opacity": NSNull(), "strokeColor": NSNull(),
+                            "shadowColor": NSNull(), "shadowOpacity": NSNull()]
+
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+    }
+
+    // MARK: - Corner Processing
+
+    /// Transform AVMetadataObject corners to view coordinates
+    func transformCorners(from metadataObject: AVMetadataMachineReadableCodeObject,
+                          using previewLayer: AVCaptureVideoPreviewLayer) -> [CGPoint]? {
+        // Transform to video preview coordinates
+        guard let transformedObject = previewLayer.transformedMetadataObject(for: metadataObject)
+                as? AVMetadataMachineReadableCodeObject else {
+            return nil
+        }
+
+        // Extract corner points
+        let corners = transformedObject.corners
+        guard corners.count == 4 else { return nil }
+
+        // Validate corners are within reasonable bounds
+        guard isValidCorners(corners) else { return nil }
+
+        return corners
+    }
+
+    /// Validate corners are within view bounds and form a reasonable shape
+    private func isValidCorners(_ corners: [CGPoint]) -> Bool {
+        guard corners.count == 4 else { return false }
+
+        let viewBounds = bounds.insetBy(dx: -30, dy: -30) // Small tolerance
+
+        for corner in corners {
+            if !viewBounds.contains(corner) {
+                return false
+            }
+        }
+
+        // Check for reasonable quadrilateral (not degenerate)
+        // Calculate approximate area using shoelace formula
+        var area: CGFloat = 0
+        for i in 0..<4 {
+            let j = (i + 1) % 4
+            area += corners[i].x * corners[j].y
+            area -= corners[j].x * corners[i].y
+        }
+        area = abs(area) / 2.0
+
+        return area > 200 // Minimum area threshold (pixels squared)
+    }
+
+    /// Apply adaptive velocity-based smoothing for Yuka-style smooth tracking
+    private func smoothCorners(_ newCorners: [CGPoint]) -> [CGPoint] {
+        guard smoothedCorners.count == 4 else {
+            // First detection - initialize all state
+            smoothedCorners = newCorners
+            previousCorners = newCorners
+            cornerVelocities = Array(repeating: .zero, count: 4)
+            return newCorners
+        }
+
+        var result: [CGPoint] = []
+        var newVelocities: [CGPoint] = []
+
+        for i in 0..<4 {
+            // Calculate velocity (change since last frame)
+            let dx = newCorners[i].x - previousCorners[i].x
+            let dy = newCorners[i].y - previousCorners[i].y
+            let velocity = CGPoint(x: dx, y: dy)
+
+            // Adaptive smoothing: use less smoothing when moving fast (responsive)
+            // and more smoothing when slow or stationary (stable)
+            let speed = sqrt(dx * dx + dy * dy)
+            let adaptiveFactor: CGFloat
+            if speed < 2 {
+                // Slow movement - heavy smoothing for stability
+                adaptiveFactor = 0.25
+            } else if speed < 10 {
+                // Normal movement - standard smoothing
+                adaptiveFactor = smoothingFactor
+            } else {
+                // Fast movement - less smoothing for responsiveness
+                adaptiveFactor = min(0.75, smoothingFactor + 0.2)
+            }
+
+            // Smooth the velocity too for even smoother motion
+            let smoothedVelocityX = cornerVelocities[i].x * 0.6 + velocity.x * 0.4
+            let smoothedVelocityY = cornerVelocities[i].y * 0.6 + velocity.y * 0.4
+            newVelocities.append(CGPoint(x: smoothedVelocityX, y: smoothedVelocityY))
+
+            // Apply smoothed position with velocity prediction
+            let targetX = newCorners[i].x + smoothedVelocityX * 0.1
+            let targetY = newCorners[i].y + smoothedVelocityY * 0.1
+
+            let smoothedX = smoothedCorners[i].x + adaptiveFactor * (targetX - smoothedCorners[i].x)
+            let smoothedY = smoothedCorners[i].y + adaptiveFactor * (targetY - smoothedCorners[i].y)
+            result.append(CGPoint(x: smoothedX, y: smoothedY))
+        }
+
+        previousCorners = newCorners
+        cornerVelocities = newVelocities
+        smoothedCorners = result
+        return result
+    }
+
+    /// Reset smoothing state (call when barcode is lost)
+    func resetSmoothing() {
+        smoothedCorners = []
+        previousCorners = []
+        cornerVelocities = []
+    }
+
+    // MARK: - Path Creation
+
+    /// Create Yuka-style corner brackets from 4 corner points
+    /// Only draws L-shaped brackets at each corner instead of a full box
+    private func createPath(from corners: [CGPoint]) -> UIBezierPath {
+        guard corners.count == 4 else { return UIBezierPath() }
+
+        let path = UIBezierPath()
+
+        // Draw corner brackets at each of the 4 corners
+        for i in 0..<4 {
+            let current = corners[i]
+            let next = corners[(i + 1) % 4]
+            let prev = corners[(i + 3) % 4]
+
+            // Vectors from current corner to adjacent corners
+            let toNext = CGPoint(x: next.x - current.x, y: next.y - current.y)
+            let toPrev = CGPoint(x: prev.x - current.x, y: prev.y - current.y)
+
+            // Normalize vectors
+            let nextLen = sqrt(toNext.x * toNext.x + toNext.y * toNext.y)
+            let prevLen = sqrt(toPrev.x * toPrev.x + toPrev.y * toPrev.y)
+
+            guard nextLen > 0 && prevLen > 0 else { continue }
+
+            // Calculate bracket length (limited by edge length)
+            let bracketLength = min(cornerLength, nextLen * 0.35, prevLen * 0.35)
+
+            // Direction unit vectors
+            let nextDir = CGPoint(x: toNext.x / nextLen, y: toNext.y / nextLen)
+            let prevDir = CGPoint(x: toPrev.x / prevLen, y: toPrev.y / prevLen)
+
+            // End points of the bracket arms
+            let armEndNext = CGPoint(
+                x: current.x + nextDir.x * bracketLength,
+                y: current.y + nextDir.y * bracketLength
+            )
+            let armEndPrev = CGPoint(
+                x: current.x + prevDir.x * bracketLength,
+                y: current.y + prevDir.y * bracketLength
+            )
+
+            // Draw the L-shaped bracket with tiny rounded corner
+            // Start from one arm end, go to corner, then to other arm end
+            path.move(to: armEndPrev)
+
+            // Add subtle curve at the corner vertex
+            let curveOffset = min(cornerRadius, bracketLength * 0.2)
+            let curveStart = CGPoint(
+                x: current.x + prevDir.x * curveOffset,
+                y: current.y + prevDir.y * curveOffset
+            )
+            let curveEnd = CGPoint(
+                x: current.x + nextDir.x * curveOffset,
+                y: current.y + nextDir.y * curveOffset
+            )
+
+            path.addLine(to: curveStart)
+            path.addQuadCurve(to: curveEnd, controlPoint: current)
+            path.addLine(to: armEndNext)
+        }
+
+        return path
+    }
+
+    // MARK: - Update Overlay
+
+    /// Update the overlay with new corner positions
+    func updateOverlay(with corners: [CGPoint], verificationProgress: Float = 0) {
+        // Apply smoothing
+        let smoothed = smoothCorners(corners)
+
+        // Create path
+        let path = createPath(from: smoothed)
+
+        // Update layers without animation
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+
+        outlineLayer.path = path.cgPath
+        glowLayer.path = path.cgPath
+
+        // Adjust color based on verification progress (0 to 1)
+        if verificationProgress > 0.3 {
+            let progressColor = interpolateColor(
+                from: strokeColor,
+                to: verifyingColor,
+                progress: CGFloat(verificationProgress)
+            )
+            outlineLayer.strokeColor = progressColor.cgColor
+            glowLayer.strokeColor = progressColor.withAlphaComponent(0.3).cgColor
+        } else {
+            outlineLayer.strokeColor = strokeColor.cgColor
+            glowLayer.strokeColor = glowColor.cgColor
+        }
+
+        CATransaction.commit()
+
+        // Show if hidden
+        showOverlay()
+    }
+
+    private func interpolateColor(from: UIColor, to: UIColor, progress: CGFloat) -> UIColor {
+        var fromR: CGFloat = 0, fromG: CGFloat = 0, fromB: CGFloat = 0, fromA: CGFloat = 0
+        var toR: CGFloat = 0, toG: CGFloat = 0, toB: CGFloat = 0, toA: CGFloat = 0
+
+        from.getRed(&fromR, green: &fromG, blue: &fromB, alpha: &fromA)
+        to.getRed(&toR, green: &toG, blue: &toB, alpha: &toA)
+
+        let r = fromR + (toR - fromR) * progress
+        let g = fromG + (toG - fromG) * progress
+        let b = fromB + (toB - fromB) * progress
+        let a = fromA + (toA - fromA) * progress
+
+        return UIColor(red: r, green: g, blue: b, alpha: a)
+    }
+
+    // MARK: - Visibility Animations
+
+    private func showOverlay() {
+        // Cancel pending hide
+        hideWorkItem?.cancel()
+        hideWorkItem = nil
+
+        guard !isVisible else { return }
+        isVisible = true
+
+        // Animate in
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(animationDuration)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+
+        outlineLayer.opacity = 1.0
+        glowLayer.opacity = 1.0
+
+        CATransaction.commit()
+    }
+
+    func hideOverlay(animated: Bool = true) {
+        // Cancel any pending hide and schedule new one
+        hideWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.performHide(animated: animated)
+        }
+        hideWorkItem = workItem
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + hideDelay, execute: workItem)
+    }
+
+    private func performHide(animated: Bool) {
+        guard isVisible else { return }
+        isVisible = false
+
+        if animated {
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(animationDuration * 1.5)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeIn))
+
+            outlineLayer.opacity = 0
+            glowLayer.opacity = 0
+
+            CATransaction.commit()
+        } else {
+            outlineLayer.opacity = 0
+            glowLayer.opacity = 0
+        }
+
+        // Reset smoothing when hidden
+        resetSmoothing()
+    }
+
+    func hideImmediately() {
+        hideWorkItem?.cancel()
+        performHide(animated: false)
+    }
+
+    // MARK: - Success Animation
+
+    func flashSuccess() {
+        // Change to success color immediately
+        outlineLayer.strokeColor = verifyingColor.cgColor
+        glowLayer.strokeColor = verifyingColor.withAlphaComponent(0.4).cgColor
+
+        // Bright flash effect
+        let flashAnimation = CABasicAnimation(keyPath: "opacity")
+        flashAnimation.fromValue = 1.0
+        flashAnimation.toValue = 0.4
+        flashAnimation.duration = 0.08
+        flashAnimation.autoreverses = true
+        flashAnimation.repeatCount = 2
+
+        let scaleAnimation = CABasicAnimation(keyPath: "transform.scale")
+        scaleAnimation.fromValue = 1.0
+        scaleAnimation.toValue = 1.03
+        scaleAnimation.duration = 0.08
+        scaleAnimation.autoreverses = true
+        scaleAnimation.repeatCount = 2
+
+        let group = CAAnimationGroup()
+        group.animations = [flashAnimation, scaleAnimation]
+        group.duration = 0.32
+
+        outlineLayer.add(group, forKey: "successFlash")
+        glowLayer.add(group, forKey: "successFlash")
+
+        // Hide after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            self?.hideImmediately()
+        }
+    }
+}
+
 // MARK: - Camera-Based Barcode Scanner
 class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var onBarcodeScanned: ((String) -> Void)?
@@ -481,6 +874,9 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     private var lastScanTime: Date?
     private var isScanningPaused = false
     private var videoCaptureDevice: AVCaptureDevice?
+
+    // Barcode overlay for visual feedback
+    private var barcodeOverlay: BarcodeOverlayView?
 
     // Multi-frame verification for barcode accuracy
     private var candidateBarcode: String?
@@ -506,6 +902,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         previewLayer?.frame = view.layer.bounds
+        barcodeOverlay?.frame = view.bounds
     }
     
     // MARK: - Camera Setup
@@ -562,8 +959,14 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         self.videoCaptureDevice = videoCaptureDevice
 
         let captureSession = AVCaptureSession()
-        // Use 1280x720 preset - ideal for barcode scanning (faster processing, good quality)
-        if captureSession.canSetSessionPreset(.hd1280x720) {
+        // Use highest resolution available for maximum distance detection
+        // 4K allows detecting smaller barcodes from further away (Yuka-style)
+        // Falls back gracefully to lower resolutions on older devices
+        if captureSession.canSetSessionPreset(.hd4K3840x2160) {
+            captureSession.sessionPreset = .hd4K3840x2160
+        } else if captureSession.canSetSessionPreset(.hd1920x1080) {
+            captureSession.sessionPreset = .hd1920x1080
+        } else if captureSession.canSetSessionPreset(.hd1280x720) {
             captureSession.sessionPreset = .hd1280x720
         } else {
             captureSession.sessionPreset = .high
@@ -587,12 +990,13 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 videoCaptureDevice.focusMode = .continuousAutoFocus
             }
 
-            // Restrict autofocus to near range (closer objects like barcodes)
+            // Allow autofocus at ANY distance (near and far) for Yuka-style scanning
+            // Previously restricted to .near which prevented distance scanning
             if videoCaptureDevice.isAutoFocusRangeRestrictionSupported {
-                videoCaptureDevice.autoFocusRangeRestriction = .near
+                videoCaptureDevice.autoFocusRangeRestriction = .none
             }
 
-            // Enable smooth autofocus for better transitions
+            // Enable smooth autofocus for better transitions between distances
             if videoCaptureDevice.isSmoothAutoFocusSupported {
                 videoCaptureDevice.isSmoothAutoFocusEnabled = true
             }
@@ -607,14 +1011,14 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 videoCaptureDevice.exposureMode = .continuousAutoExposure
             }
 
-            // Apply 2x zoom for better close-up scanning on non-virtual devices
-            // Virtual devices handle zoom differently with their constituent cameras
+            // Use 1.5x zoom for balance between close-up and distance scanning
+            // Lower zoom = better distance scanning, but still helps with small barcodes
             if !videoCaptureDevice.isVirtualDevice {
-                let desiredZoom: CGFloat = 2.0
+                let desiredZoom: CGFloat = 1.5
                 let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
                 let actualZoom = min(desiredZoom, maxZoom)
                 videoCaptureDevice.videoZoomFactor = actualZoom
-                            }
+            }
 
             videoCaptureDevice.unlockForConfiguration()
 
@@ -651,11 +1055,21 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             
             self.captureSession = captureSession
             self.previewLayer = previewLayer
-            
-                        
+
+            // Setup barcode overlay for visual feedback
+            setupBarcodeOverlay()
+
         } catch {
             showCameraError("Camera setup failed: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Barcode Overlay Setup
+    private func setupBarcodeOverlay() {
+        let overlay = BarcodeOverlayView(frame: view.bounds)
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(overlay)
+        barcodeOverlay = overlay
     }
     
     // MARK: - Camera Controls
@@ -671,6 +1085,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
 
     func pauseScanning() {
         isScanningPaused = true
+        barcodeOverlay?.hideImmediately()
     }
 
     func resumeScanning() {
@@ -681,6 +1096,8 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         // Reset multi-frame verification
         candidateBarcode = nil
         consecutiveDetections = 0
+        // Reset overlay smoothing
+        barcodeOverlay?.resetSmoothing()
     }
     
     private func showCameraError(_ message: String) {
@@ -716,9 +1133,16 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         // Don't process barcodes if scanning is paused
         guard !isScanningPaused else { return }
 
-        if let metadataObject = metadataObjects.first {
-            guard let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject else { return }
-            guard let stringValue = readableObject.stringValue else { return }
+        if let metadataObject = metadataObjects.first,
+           let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject,
+           let stringValue = readableObject.stringValue,
+           let previewLayer = previewLayer {
+
+            // Update visual overlay with barcode corners
+            if let corners = barcodeOverlay?.transformCorners(from: readableObject, using: previewLayer) {
+                let progress = Float(consecutiveDetections) / Float(requiredConsecutiveDetections)
+                barcodeOverlay?.updateOverlay(with: corners, verificationProgress: progress)
+            }
 
             // Debounce repeated scans - prevent duplicate scans within 2 seconds of last ACCEPTED scan
             let now = Date()
@@ -732,10 +1156,19 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             if candidateBarcode == stringValue {
                 // Same barcode detected again - increment counter
                 consecutiveDetections += 1
-                
+
+                // Update overlay with verification progress
+                if let corners = barcodeOverlay?.transformCorners(from: readableObject, using: previewLayer) {
+                    let progress = Float(consecutiveDetections) / Float(requiredConsecutiveDetections)
+                    barcodeOverlay?.updateOverlay(with: corners, verificationProgress: progress)
+                }
+
                 if consecutiveDetections >= requiredConsecutiveDetections {
                     // Success! We have 3 consecutive identical reads
-                    
+
+                    // Flash success animation on overlay
+                    barcodeOverlay?.flashSuccess()
+
                     lastScannedBarcode = stringValue
                     lastScanTime = now
 
@@ -751,11 +1184,13 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 // Different barcode detected - reset and start new verification
                 candidateBarcode = stringValue
                 consecutiveDetections = 1
-                            }
+            }
         } else {
-            // No barcode detected in this frame - reset verification
+            // No barcode detected in this frame - hide overlay and reset verification
+            barcodeOverlay?.hideOverlay()
+
             if candidateBarcode != nil {
-                                candidateBarcode = nil
+                candidateBarcode = nil
                 consecutiveDetections = 0
             }
         }
