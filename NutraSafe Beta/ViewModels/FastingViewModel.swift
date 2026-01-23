@@ -2179,20 +2179,16 @@ class FastingViewModel: ObservableObject {
 
     @available(iOS 16.1, *)
     func startLiveActivity() async {
-        print("🔴 [LiveActivity] Starting Live Activity from ViewModel...")
-
         let authInfo = ActivityAuthorizationInfo()
-        print("🔴 [LiveActivity] Activities enabled: \(authInfo.areActivitiesEnabled)")
+        guard authInfo.areActivitiesEnabled else { return }
 
-        guard authInfo.areActivitiesEnabled else {
-            print("🔴 [LiveActivity] ERROR: Activities are NOT enabled!")
-            return
+        // End any existing activities first to avoid conflicts
+        for activity in Activity<FastingActivityAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
         }
+        currentLiveActivity = nil
 
-        guard let plan = activePlan else {
-            print("🔴 [LiveActivity] ERROR: No active plan!")
-            return
-        }
+        guard let plan = activePlan else { return }
 
         let totalElapsedSeconds = hoursIntoCurrentFast * 3600
         let hours = Int(totalElapsedSeconds / 3600)
@@ -2225,8 +2221,6 @@ class FastingViewModel: ObservableObject {
             phaseEmoji: phaseInfo.emoji
         )
 
-        print("🔴 [LiveActivity] Requesting activity with goal: \(plan.durationHours)h, elapsed: \(hours)h \(minutes)m \(seconds)s")
-
         do {
             let content = ActivityContent(state: contentState, staleDate: nil)
             let activity = try Activity.request(
@@ -2235,10 +2229,8 @@ class FastingViewModel: ObservableObject {
                 pushType: nil
             )
             currentLiveActivity = activity
-            print("🔴 [LiveActivity] SUCCESS! Activity ID: \(activity.id)")
         } catch {
             print("🔴 [LiveActivity] ERROR: \(error.localizedDescription)")
-            print("🔴 [LiveActivity] Full error: \(error)")
         }
     }
 
