@@ -380,6 +380,7 @@ struct FoodDetailViewFromSearch: View {
 
     // Redesigned additive analysis (Yuka-style)
     @State private var additiveAnalysis: AdditiveAnalysisResult? = nil
+    @State private var additiveDetectionResult: AdditiveDetectionResult? = nil
     @State private var expandedAdditiveId: UUID? = nil
 
     // Scroll proxy for jumping to sections
@@ -1156,6 +1157,7 @@ struct FoodDetailViewFromSearch: View {
         guard let ingredients = cachedIngredients, !ingredients.isEmpty else {
             await MainActor.run {
                 additiveAnalysis = nil
+                additiveDetectionResult = nil
             }
             return
         }
@@ -1170,13 +1172,17 @@ struct FoodDetailViewFromSearch: View {
             }
         })
 
-        let analysis = await AdditiveAnalyzer.shared.analyze(
-            ingredients: ingredients,
-            userSensitivities: sensitivities
-        )
+        // Run the shared additive analyzer to get both detection result and full analysis
+        let detectionResult = await withCheckedContinuation { continuation in
+            AdditiveWatchService.shared.analyzeIngredients(ingredients) { detection in
+                continuation.resume(returning: detection)
+            }
+        }
+        let analysis = AdditiveAnalyzer.shared.buildAnalysis(from: detectionResult, userSensitivities: sensitivities)
 
         await MainActor.run {
             additiveAnalysis = analysis
+            additiveDetectionResult = detectionResult
             // Invalidate cached unified score since it depends on additive analysis
             cachedNutraSafeGrade = nil
         }
@@ -1244,72 +1250,80 @@ struct FoodDetailViewFromSearch: View {
 
 
     private func getDetectedAdditives() -> [DetailedAdditive] {
-                let currentDBVersion = ProcessingScorer.shared.databaseVersion
-        let savedDBVersion = displayFood.additivesDatabaseVersion
-
-
-        // Re-analyze if:
-        // 1. No saved version (legacy data)
-        // 2. Saved version is different from current version
-        // 3. We have ingredients to analyze
-        guard let ingredients = displayFood.ingredients, !ingredients.isEmpty else {
-            // No ingredients to analyze - return empty list
-            return []
-        }
-
-        let needsReAnalysis = savedDBVersion == nil || savedDBVersion != currentDBVersion
-
-        if needsReAnalysis {
-            let ingredientsText = ingredients.joined(separator: ", ")
-            let freshAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
-
-
-            // Convert fresh analysis to DetailedAdditive format
-            return freshAdditives.map { additive in
+        // Prefer the latest detection result from the comprehensive additive analyzer
+        if let detection = additiveDetectionResult {
+            return detection.detectedAdditives.map { additiveInfo in
                 let riskLevel: String
-                if additive.effectsVerdict == .avoid {
-                    riskLevel = "High"
-                } else if additive.effectsVerdict == .caution {
-                    riskLevel = "Moderate"
-                } else {
-                    riskLevel = "Low"
+                switch additiveInfo.effectsVerdict {
+                case .avoid: riskLevel = "High"
+                case .caution: riskLevel = "Moderate"
+                default: riskLevel = "Low"
                 }
 
-                let overview = additive.overview.trimmingCharacters(in: .whitespacesAndNewlines)
-                let uses = additive.typicalUses.trimmingCharacters(in: .whitespacesAndNewlines)
+                let override = AdditiveOverrides.override(for: additiveInfo)
+                let displayName = override?.displayName ?? additiveInfo.name
 
-                let override = AdditiveOverrides.override(for: additive)
-
-                let displayName = override?.displayName ?? additive.name
-                var whatItIs = override?.whatItIs ?? (!overview.isEmpty ? overview : displayName)
-                if !uses.isEmpty && override?.whatItIs == nil {
-                    let cleanedUses = uses.trimmingCharacters(in: .punctuationCharacters)
-                    if !whatItIs.lowercased().contains(cleanedUses.lowercased()) {
-                        whatItIs += (whatItIs.isEmpty ? "" : ". ") + "Commonly used in \(cleanedUses)"
-                    }
+                var whatItIs = override?.whatItIs ?? additiveInfo.overview
+                if whatItIs.isEmpty {
+                    whatItIs = additiveInfo.consumerInfo ?? displayName
                 }
-                if !whatItIs.isEmpty && !whatItIs.hasSuffix(".") { whatItIs += "." }
+                if !whatItIs.isEmpty && !whatItIs.hasSuffix(".") {
+                    whatItIs += "."
+                }
 
-                let originSummary = override?.originSummary ?? (additive.whereItComesFrom ?? additive.origin.rawValue.capitalized)
-                let riskSummary = override?.riskSummary ?? (!additive.effectsSummary.isEmpty ? additive.effectsSummary : "No detailed information available for this additive.")
+                let originSummary = override?.originSummary
+                    ?? additiveInfo.whereItComesFrom
+                    ?? additiveInfo.origin.rawValue.capitalized
+                let riskSummary = override?.riskSummary
+                    ?? (!additiveInfo.effectsSummary.isEmpty ? additiveInfo.effectsSummary : "No detailed information available for this additive.")
 
                 return DetailedAdditive(
                     name: displayName,
-                    code: additive.eNumber,
+                    code: additiveInfo.eNumber,
                     whatItIs: whatItIs,
-                    origin: additive.origin.rawValue,
+                    origin: additiveInfo.origin.rawValue,
                     originSummary: originSummary,
-                    childWarning: additive.hasChildWarning,
+                    childWarning: additiveInfo.hasChildWarning,
                     riskLevel: riskLevel,
                     riskSummary: riskSummary,
-                    sources: additive.sources
+                    sources: additiveInfo.sources
                 )
             }
         }
 
-        // Use saved Firebase additive data if version is current
+        // Fallback: If we haven’t analyzed yet, try a quick synchronous pass
+        if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
+            if let detection = analyzeAdditivesSynchronously(ingredients: ingredients) {
+                additiveDetectionResult = detection
+                return detection.detectedAdditives.map { additiveInfo in
+                    let riskLevel: String
+                    switch additiveInfo.effectsVerdict {
+                    case .avoid: riskLevel = "High"
+                    case .caution: riskLevel = "Moderate"
+                    default: riskLevel = "Low"
+                    }
+
+                    let originSummary = additiveInfo.whereItComesFrom ?? additiveInfo.origin.rawValue.capitalized
+                    let riskSummary = !additiveInfo.effectsSummary.isEmpty ? additiveInfo.effectsSummary : "No detailed information available for this additive."
+
+                    return DetailedAdditive(
+                        name: additiveInfo.name,
+                        code: additiveInfo.eNumber,
+                        whatItIs: additiveInfo.consumerInfo ?? additiveInfo.overview,
+                        origin: additiveInfo.origin.rawValue,
+                        originSummary: originSummary,
+                        childWarning: additiveInfo.hasChildWarning,
+                        riskLevel: riskLevel,
+                        riskSummary: riskSummary,
+                        sources: additiveInfo.sources
+                    )
+                }
+            }
+        }
+
+        // As a last resort, use any additives already attached to the food
         if let firebaseAdditives = displayFood.additives, !firebaseAdditives.isEmpty {
-                        return firebaseAdditives.map { additive in
+            return firebaseAdditives.map { additive in
                 let riskLevel: String
                 if additive.effectsVerdict == "avoid" {
                     riskLevel = "High"
@@ -1319,7 +1333,6 @@ struct FoodDetailViewFromSearch: View {
                     riskLevel = "Low"
                 }
 
-                // Use consumer guide if available, otherwise use a default message
                 let displayName = additive.name
                 let whatItIs = additive.consumerGuide ?? displayName
                 let originSummary = additive.origin ?? "Origin not specified"
@@ -1339,64 +1352,19 @@ struct FoodDetailViewFromSearch: View {
             }
         }
 
-        // Fallback to local ingredient analysis if no Firebase data (PERFORMANCE: use cached ingredients)
-        guard let ingredients = cachedIngredients else { return [] }
-        let ingredientsText = ingredients.joined(separator: " ").lowercased()
-        
-        var detectedAdditives: [DetailedAdditive] = []
-        
-        // Comprehensive additive database with consumer-friendly descriptions
-        let additiveDatabase = [
-            // Artificial Colors - Common in candy like Nerds
-            ("brilliant blue fcf", "E133", "Artificial Color", "Synthetic", true, "Moderate", "Bright blue synthetic dye used to make foods look appealing. Made in laboratories from petroleum-based chemicals."),
-            ("sunset yellow fcf", "E110", "Artificial Color", "Synthetic", true, "High", "Orange-yellow synthetic dye linked to behavioral issues in children. Created from petroleum-based chemicals."),
-            ("allura red", "E129", "Artificial Color", "Synthetic", true, "High", "Bright red synthetic dye that may cause hyperactivity. Common in candies and processed foods."),
-            ("quinoline yellow", "E104", "Artificial Color", "Synthetic", true, "High", "Yellow synthetic dye that requires warning labels about potential effects on children's behavior."),
-            ("patent blue", "E131", "Artificial Color", "Synthetic", false, "Moderate", "Blue synthetic dye used for coloring. Less commonly associated with behavioral issues."),
-            
-            // Sugars and Syrups
-            ("corn syrup", nil, "Sweetener", "Processed", false, "Moderate", "Highly processed liquid sweetener made from corn starch. Provides sweetness and texture but offers no nutritional value."),
-            ("glucose syrup", nil, "Sweetener", "Processed", false, "Moderate", "Concentrated sugar syrup used for sweetness and to prevent crystallization. Highly processed with minimal nutrition."),
-            ("high fructose corn syrup", nil, "Sweetener", "Processed", false, "High", "Ultra-processed liquid sweetener linked to obesity and metabolic issues when consumed regularly."),
-            ("invert sugar", nil, "Sweetener", "Processed", false, "Moderate", "Processed sugar syrup that prevents crystallization. Used to maintain texture in candies and baked goods."),
-            ("dextrose", nil, "Sweetener", "Processed", false, "Low", "Simple sugar (glucose) that provides quick energy. Less processed than corn syrup but still adds empty calories."),
-            
-            // Preservatives and Acids
-            ("citric acid", "E330", "Preservative/Flavor", "Natural/Synthetic", false, "Low", "Adds tartness and preserves freshness. Can be natural (from citrus) or synthetic (from fermentation)."),
-            ("ascorbic acid", "E300", "Preservative/Antioxidant", "Natural/Synthetic", false, "Low", "Vitamin C used to prevent spoilage and maintain color. Generally safe and can provide nutritional benefits."),
-            ("malic acid", "E296", "Flavor Enhancer", "Natural/Synthetic", false, "Low", "Provides tart, sour taste. Naturally found in apples but often made synthetically for food use."),
-            ("sodium benzoate", "E211", "Preservative", "Synthetic", false, "Moderate", "Prevents mold and bacteria growth. Can form benzene (a carcinogen) when combined with vitamin C under certain conditions."),
-            
-            // Flavorings
-            ("natural flavoring", nil, "Flavoring", "Natural/Processed", false, "Low", "Flavor compounds derived from natural sources but often heavily processed. 'Natural' doesn't always mean healthier."),
-            ("artificial flavoring", nil, "Flavoring", "Synthetic", false, "Moderate", "Lab-created flavor compounds designed to mimic natural tastes. Safe in small amounts but adds no nutritional value."),
-            ("natural flavour", nil, "Flavoring", "Natural/Processed", false, "Low", "Flavor compounds derived from natural sources but often heavily processed. 'Natural' doesn't always mean healthier."),
-            ("artificial flavour", nil, "Flavoring", "Synthetic", false, "Moderate", "Lab-created flavor compounds designed to mimic natural tastes. Safe in small amounts but adds no nutritional value."),
-            
-            // Other Common Additives
-            ("carnauba wax", "E903", "Glazing Agent", "Natural", false, "Low", "Natural wax from palm leaves used to make candies shiny. Generally safe but provides no nutritional value."),
-            ("lecithin", "E322", "Emulsifier", "Natural", false, "Low", "Helps mix oil and water-based ingredients. Usually derived from soy or sunflower - generally considered safe."),
-            ("modified starch", nil, "Thickener", "Processed", false, "Low", "Chemically altered starch used to improve texture. Heavily processed but generally safe in food amounts.")
-        ]
-        
-        // Check each additive in the database against ingredients
-        for (additiveName, code, _, origin, childWarning, riskLevel, description) in additiveDatabase {
-            if ingredientsText.contains(additiveName.lowercased()) {
-                detectedAdditives.append(DetailedAdditive(
-                    name: additiveName.capitalized,
-                    code: code,
-                    whatItIs: description,
-                    origin: origin,
-                    originSummary: origin,
-                    childWarning: childWarning,
-                    riskLevel: riskLevel,
-                    riskSummary: description,
-                    sources: []
-                ))
-            }
+        return []
+    }
+
+    /// Synchronous helper to run additive detection when we need results immediately
+    private func analyzeAdditivesSynchronously(ingredients: [String]) -> AdditiveDetectionResult? {
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: AdditiveDetectionResult?
+        AdditiveWatchService.shared.analyzeIngredients(ingredients) { detection in
+            result = detection
+            semaphore.signal()
         }
-        
-        return detectedAdditives
+        _ = semaphore.wait(timeout: .now() + 3)
+        return result
     }
     
     private func getAmountOptions() -> [Double] {
@@ -2284,35 +2252,38 @@ struct FoodDetailViewFromSearch: View {
             servingDesc = "\(String(format: "%.0f", servingSize))g serving"
         }
 
-        // CRITICAL FIX: Analyze additives fresh from ingredients and save to diary
-        // displayFood.additives is often nil/empty - fresh detection happens in getDetectedAdditives() for display only
-        // This ensures detected additives are actually saved with the food entry
+        // CRITICAL FIX: Use comprehensive additive analyzer (same as tracker) for diary saves
         let additivesToSave: [NutritionAdditiveInfo]?
         if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
-            let ingredientsText = ingredients.joined(separator: ", ")
-            let freshAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
+            let detection = additiveDetectionResult ?? analyzeAdditivesSynchronously(ingredients: ingredients)
 
-            // Convert AdditiveInfo to NutritionAdditiveInfo for diary storage
-            additivesToSave = freshAdditives.map { additive in
-                // Calculate health score based on verdict and warnings
-                var healthScore = 70 // Base score
-                if additive.hasChildWarning { healthScore -= 20 }
-                if additive.hasPKUWarning { healthScore -= 15 }
-                if additive.hasPolyolsWarning { healthScore -= 10 }
-                if additive.effectsVerdict == .caution { healthScore -= 15 }
-                if additive.effectsVerdict == .avoid { healthScore -= 25 }
-                healthScore = max(0, min(100, healthScore))
+            if let detection = detection {
+                additivesToSave = detection.detectedAdditives.map { additive in
+                    var healthScore = 70
+                    if additive.hasChildWarning { healthScore -= 20 }
+                    if additive.hasPKUWarning { healthScore -= 15 }
+                    if additive.hasPolyolsWarning { healthScore -= 10 }
+                    if additive.hasSulphitesAllergenLabel { healthScore -= 5 }
+                    switch additive.effectsVerdict {
+                    case .caution: healthScore -= 15
+                    case .avoid: healthScore -= 25
+                    default: break
+                    }
+                    healthScore = max(0, min(100, healthScore))
 
-                return NutritionAdditiveInfo(
-                    code: additive.eNumber,
-                    name: additive.name,
-                    category: additive.group.displayName,
-                    healthScore: healthScore,
-                    childWarning: additive.hasChildWarning,
-                    effectsVerdict: additive.effectsVerdict.rawValue,
-                    consumerGuide: additive.consumerInfo,
-                    origin: additive.origin.rawValue
-                )
+                    return NutritionAdditiveInfo(
+                        code: additive.eNumber,
+                        name: additive.name,
+                        category: additive.category.displayName,
+                        healthScore: healthScore,
+                        childWarning: additive.hasChildWarning,
+                        effectsVerdict: additive.effectsVerdict.rawValue,
+                        consumerGuide: additive.consumerInfo ?? additive.effectsSummary,
+                        origin: additive.origin.rawValue
+                    )
+                }
+            } else {
+                additivesToSave = displayFood.additives
             }
         } else {
             // Fallback to displayFood.additives if no ingredients to analyze
