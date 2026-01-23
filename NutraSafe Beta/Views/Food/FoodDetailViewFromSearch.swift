@@ -382,6 +382,9 @@ struct FoodDetailViewFromSearch: View {
     @State private var additiveAnalysis: AdditiveAnalysisResult? = nil
     @State private var expandedAdditiveId: UUID? = nil
 
+    // Scroll proxy for jumping to sections
+    @State private var mainScrollProxy: ScrollViewProxy?
+
     private var buttonText: String {
         if diaryEntryId != nil || isEditingMode {
             return "Update"
@@ -1482,10 +1485,12 @@ struct FoodDetailViewFromSearch: View {
                 foodDetailBackground
                     .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 20) {
-                        // REDESIGN: Floating header with soft integration
-                        redesignedHeaderSection
+                ScrollViewReader { scrollProxy in
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 20) {
+                            // REDESIGN: Floating header with soft integration
+                            redesignedHeaderSection
+                                .id("topOfPage")
 
                         // REDESIGN: Primary action buttons - prominent and inviting
                         redesignedActionButtons
@@ -1637,6 +1642,7 @@ struct FoodDetailViewFromSearch: View {
                                 )
                             }
                         )
+                        .id("watchTabsSection")
 
                         // REDESIGN: Clean, readable ingredients
                         redesignedIngredientsSection
@@ -1654,7 +1660,39 @@ struct FoodDetailViewFromSearch: View {
                     .padding(.horizontal, DesignTokens.Spacing.screenEdge)
                 }
                 .scrollDismissesKeyboard(.interactively)
-            }
+                .onAppear {
+                    // Store the scroll proxy for use in badge tap
+                    mainScrollProxy = scrollProxy
+                }
+                // Reset to top instantly (no animation) when any sheet dismisses
+                .onChange(of: showingNutritionCamera) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingBarcodeCamera) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingPaywall) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingNutraSafeInfo) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingSugarInfo) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingVitaminCitations) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingAllergenCitations) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingAdditives) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+                .onChange(of: showingInferredIngredientsSheet) { _, newValue in
+                    if !newValue { scrollProxy.scrollTo("topOfPage", anchor: .top) }
+                }
+            } // End ScrollViewReader
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -2077,34 +2115,34 @@ struct FoodDetailViewFromSearch: View {
                 inferredIngredients: $inferredIngredients
             )
         }
+        } // End NavigationView
     }
 
+    private var nutritionFactsSection: some View {
+        NutritionFactsSectionView(
+            adjustedCalories: adjustedCalories,
+            quantityMultiplier: quantityMultiplier,
+            servingSizeText: isPerUnit ? servingUnit : "\(servingAmount)\(servingUnit)",
+            per100Calories: displayFood.calories,
+            adjustedProtein: adjustedProtein,
+            adjustedCarbs: adjustedCarbs,
+            adjustedFat: adjustedFat,
+            adjustedSatFat: adjustedSatFat,
+            adjustedFiber: adjustedFiber,
+            adjustedSugar: adjustedSugar,
+            adjustedSalt: adjustedSalt,
+            per100Protein: displayFood.protein,
+            per100Carbs: displayFood.carbs,
+            per100Fat: displayFood.fat,
+            per100SatFat: displayFood.saturatedFat ?? 0,
+            per100Fiber: displayFood.fiber,
+            per100Sugar: displayFood.sugar,
+            per100Salt: saltPer100g,
+            isPerUnit: isPerUnit,
+            servingUnitLabel: servingUnit
+        )
+    }
 
-private var nutritionFactsSection: some View {
-    NutritionFactsSectionView(
-        adjustedCalories: adjustedCalories,
-        quantityMultiplier: quantityMultiplier,
-        servingSizeText: isPerUnit ? servingUnit : "\(servingAmount)\(servingUnit)",
-        per100Calories: displayFood.calories,
-        adjustedProtein: adjustedProtein,
-        adjustedCarbs: adjustedCarbs,
-        adjustedFat: adjustedFat,
-        adjustedSatFat: adjustedSatFat,
-        adjustedFiber: adjustedFiber,
-        adjustedSugar: adjustedSugar,
-        adjustedSalt: adjustedSalt,
-        per100Protein: displayFood.protein,
-        per100Carbs: displayFood.carbs,
-        per100Fat: displayFood.fat,
-        per100SatFat: displayFood.saturatedFat ?? 0,
-        per100Fiber: displayFood.fiber,
-        per100Sugar: displayFood.sugar,
-        per100Salt: saltPer100g,
-        isPerUnit: isPerUnit,
-        servingUnitLabel: servingUnit
-    )
-}
-    
     private func nutritionRowModern(_ label: String, perServing: Double, per100g: Double, unit: String) -> some View {
         HStack(spacing: 8) {
             // Label
@@ -6062,9 +6100,10 @@ extension FoodDetailViewFromSearch {
                 analysis: additiveAnalysis,
                 hasIngredients: hasIngredients,
                 onTap: {
-                    // Scroll to additive section (switch to additives tab)
-                    withAnimation {
+                    // Scroll to additive section and switch to additives tab
+                    withAnimation(.easeInOut(duration: 0.3)) {
                         selectedWatchTab = .additives
+                        mainScrollProxy?.scrollTo("watchTabsSection", anchor: .top)
                     }
                 }
             )

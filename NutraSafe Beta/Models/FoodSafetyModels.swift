@@ -245,7 +245,9 @@ enum Allergen: String, CaseIterable, Identifiable, Codable {
             return [
                 "sulfite", "sulphite", "sulfur dioxide", "sulphur dioxide",
                 "e220", "e221", "e222", "e223", "e224", "e225", "e226", "e227", "e228",
-                "metabisulfite", "metabisulphite", "wine", "dried fruit"
+                "metabisulfite", "metabisulphite", "wine", "dried fruit",
+                // E150b and E150d are made using sulphite process
+                "e150b", "e150d", "caustic sulphite caramel", "sulphite ammonia caramel"
             ]
         case .msg:
             return [

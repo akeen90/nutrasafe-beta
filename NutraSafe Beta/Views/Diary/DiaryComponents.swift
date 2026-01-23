@@ -181,6 +181,9 @@ struct DiaryFoodRow: View {
     let onDelete: () -> Void
     @State private var showingFoodDetail = false
     @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
+    @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
 
     var body: some View {
         Button(action: {
@@ -278,6 +281,9 @@ struct DiaryFoodRow: View {
                 diaryQuantity: food.quantity,
                 fastingViewModel: fastingViewModelWrapper.viewModel
             )
+            .environmentObject(diaryDataManager)
+            .environmentObject(subscriptionManager)
+            .environmentObject(firebaseManager)
         }
     }
 }

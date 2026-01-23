@@ -662,20 +662,23 @@ struct NutraSafeInsightBanner: View {
 
 /// A ScrollView wrapper that automatically scrolls to top when the view appears.
 /// Use this to ensure users always start at the top when returning to a tab/page.
-struct ScrollViewWithTopReset<Content: View>: View {
+struct ScrollViewWithTopReset<Content: View, ResetTrigger: Equatable>: View {
     let axes: Axis.Set
     let showsIndicators: Bool
     let content: Content
+    let resetTrigger: ResetTrigger?
 
     @State private var scrollID = UUID()
 
     init(
         _ axes: Axis.Set = .vertical,
         showsIndicators: Bool = true,
+        resetOn: ResetTrigger? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.axes = axes
         self.showsIndicators = showsIndicators
+        self.resetTrigger = resetOn
         self.content = content()
     }
 
@@ -698,7 +701,25 @@ struct ScrollViewWithTopReset<Content: View>: View {
                     }
                 }
             }
+            .onChange(of: resetTrigger) { _, _ in
+                // Reset to top instantly when trigger changes
+                proxy.scrollTo("scrollTop", anchor: .top)
+            }
         }
+    }
+}
+
+// Convenience initializer without reset trigger (backwards compatible)
+extension ScrollViewWithTopReset where ResetTrigger == Bool {
+    init(
+        _ axes: Axis.Set = .vertical,
+        showsIndicators: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.axes = axes
+        self.showsIndicators = showsIndicators
+        self.resetTrigger = nil
+        self.content = content()
     }
 }
 

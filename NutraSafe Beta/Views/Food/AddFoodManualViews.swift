@@ -736,6 +736,7 @@ struct ManualFoodDetailEntryView: View {
             )
             .fullScreenCover(isPresented: $showingPaywall) {
                 PaywallView()
+                    .environmentObject(subscriptionManager)
             }
             .fullScreenCover(isPresented: $showingBarcodeScanner) {
                 BarcodeScannerSheetView(barcode: $barcode, isPresented: $showingBarcodeScanner)

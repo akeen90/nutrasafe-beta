@@ -226,42 +226,47 @@ struct DietManagementRedesigned: View {
             }
 
             // Calorie display with tap-to-edit
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                if isEditingCalories {
-                    TextField("", text: $calorieText)
-                        .keyboardType(.numberPad)
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundColor(palette.accent)
-                        .multilineTextAlignment(.leading)
-                        .frame(width: 120)
-                        .focused($calorieFieldFocused)
-                        .onSubmit {
-                            commitCalorieEdit()
-                        }
-                        .onChange(of: calorieFieldFocused) { _, focused in
-                            if !focused {
+            HStack(spacing: 12) {
+                // Calorie value and unit
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    if isEditingCalories {
+                        TextField("", text: $calorieText)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .foregroundColor(palette.accent)
+                            .multilineTextAlignment(.leading)
+                            .frame(width: 100)
+                            .focused($calorieFieldFocused)
+                            .onSubmit {
                                 commitCalorieEdit()
                             }
-                        }
-                } else {
-                    Text("\(calorieGoal)")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundColor(palette.accent)
-                        .onTapGesture {
-                            calorieText = "\(calorieGoal)"
-                            isEditingCalories = true
-                            calorieFieldFocused = true
-                        }
-                }
+                            .onChange(of: calorieFieldFocused) { _, focused in
+                                if !focused {
+                                    commitCalorieEdit()
+                                }
+                            }
+                    } else {
+                        Text("\(calorieGoal)")
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .foregroundColor(palette.accent)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .onTapGesture {
+                                calorieText = "\(calorieGoal)"
+                                isEditingCalories = true
+                                calorieFieldFocused = true
+                            }
+                    }
 
-                Text("kcal")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(palette.textSecondary)
+                    Text("kcal")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(palette.textSecondary)
+                }
 
                 Spacer()
 
-                // Adjustment buttons
-                HStack(spacing: 12) {
+                // Adjustment buttons - fixed width for alignment
+                HStack(spacing: 8) {
                     Button {
                         if calorieGoal > 1000 {
                             calorieGoal -= 50
@@ -273,6 +278,7 @@ struct DietManagementRedesigned: View {
                             .foregroundColor(calorieGoal > 1000 ? palette.secondary : palette.textTertiary.opacity(0.5))
                     }
                     .disabled(calorieGoal <= 1000)
+                    .frame(width: 32, height: 32)
 
                     Button {
                         if calorieGoal < 5000 {
@@ -285,6 +291,7 @@ struct DietManagementRedesigned: View {
                             .foregroundColor(calorieGoal < 5000 ? palette.accent : palette.textTertiary.opacity(0.5))
                     }
                     .disabled(calorieGoal >= 5000)
+                    .frame(width: 32, height: 32)
                 }
             }
 
@@ -1484,11 +1491,12 @@ struct BMRCalculatorRedesigned: View {
             Text(label)
                 .font(.system(size: 15))
                 .foregroundColor(palette.textSecondary)
-                .frame(width: 60, alignment: .leading)
+                .frame(width: 55, alignment: .leading)
 
             Spacer()
 
-            HStack(spacing: 10) {
+            // Controls with fixed widths for alignment
+            HStack(spacing: 8) {
                 Button {
                     onDecrease()
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1498,23 +1506,27 @@ struct BMRCalculatorRedesigned: View {
                         .foregroundColor(canDecrease ? palette.secondary : palette.textTertiary.opacity(0.3))
                 }
                 .disabled(!canDecrease)
+                .frame(width: 28, height: 28)
 
-                TextField("", text: text)
-                    .keyboardType(field == .weight ? .decimalPad : .numberPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 60)
-                    .padding(.vertical, 8)
-                    .background(palette.textTertiary.opacity(0.1))
-                    .cornerRadius(8)
-                    .focused($focusedField, equals: field)
-                    .onChange(of: text.wrappedValue) { _, newValue in
-                        updateValue(field: field, value: newValue)
-                    }
+                // Value + unit in fixed width container
+                HStack(spacing: 4) {
+                    TextField("", text: text)
+                        .keyboardType(field == .weight ? .decimalPad : .numberPad)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 55)
+                        .padding(.vertical, 8)
+                        .background(palette.textTertiary.opacity(0.1))
+                        .cornerRadius(8)
+                        .focused($focusedField, equals: field)
+                        .onChange(of: text.wrappedValue) { _, newValue in
+                            updateValue(field: field, value: newValue)
+                        }
 
-                Text(unit)
-                    .font(.system(size: 13))
-                    .foregroundColor(palette.textTertiary)
-                    .frame(width: 35, alignment: .leading)
+                    Text(unit)
+                        .font(.system(size: 13))
+                        .foregroundColor(palette.textTertiary)
+                        .frame(width: 38, alignment: .leading)
+                }
 
                 Button {
                     onIncrease()
@@ -1525,6 +1537,7 @@ struct BMRCalculatorRedesigned: View {
                         .foregroundColor(canIncrease ? palette.accent : palette.textTertiary.opacity(0.3))
                 }
                 .disabled(!canIncrease)
+                .frame(width: 28, height: 28)
             }
         }
     }

@@ -66,6 +66,7 @@ struct FastingMainViewRedesigned: View {
         )
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
+                .environmentObject(subscriptionManager)
         }
     }
 

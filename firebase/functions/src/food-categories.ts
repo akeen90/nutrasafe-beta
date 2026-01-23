@@ -138,9 +138,9 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     id: 'crisps_single',
     name: 'Crisps Packet',
     description: 'Single serve crisp packets',
-    defaultServingSize: 25,
+    defaultServingSize: 32.5,
     servingUnit: 'g',
-    servingDescription: 'per 25g bag',
+    servingDescription: 'per bag',
     keywords: ['crisps', 'walkers', 'mccoys', 'kettle chips', 'pringles', 'doritos', 'sensations', 'quavers', 'wotsits', 'monster munch', 'skips', 'frazzles', 'hula hoops']
   },
   {

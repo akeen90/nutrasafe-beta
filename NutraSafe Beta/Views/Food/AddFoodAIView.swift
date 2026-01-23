@@ -384,24 +384,13 @@ struct AddFoodAIView: View {
     }
     
     private func handleAIFoodSelection(_ selectedFoods: [FoodSearchResult]) {
-        if selectedFoods.count == 1 {
-            let food = selectedFoods[0]
-            // Check if it's likely a branded product (high confidence)
-            if let confidence = food.confidence, confidence > 0.8 {
-                // High confidence single item - likely branded product, go to detail page
-                selectedFoodForDetail = food
-            } else {
-                // Lower confidence single item - might be generic food, show combined meal view
-                combinedMealFoods = selectedFoods
-                showingCombinedMealView = true
-            }
-            recognizedFoods = [] // Clear AI scanner results
-        } else if selectedFoods.count > 1 {
-            // Multiple foods - show combined meal view for plate of food
-            combinedMealFoods = selectedFoods
-            showingCombinedMealView = true
-            recognizedFoods = [] // Clear AI scanner results
-        }
+        guard !selectedFoods.isEmpty else { return }
+
+        // Always use CombinedMealView to add foods (1 or more)
+        // The detail sheet (AIFoodDetailSheet) is only for viewing details via "Details" button
+        combinedMealFoods = selectedFoods
+        showingCombinedMealView = true
+        recognizedFoods = [] // Clear AI scanner results
     }
     
     private func analyzeImage(_ image: UIImage) {
@@ -1045,6 +1034,8 @@ struct CombinedMealView: View {
     @State private var showingSuccessAlert = false
     @State private var showingPaywall = false
     @State private var showingLimitError = false
+    @State private var isSaving = false  // Show saving progress
+    @State private var fetchedIngredients: [String: [String]] = [:]  // Cache fetched ingredients by food ID
 
     // PERFORMANCE: Cache nutrition totals to prevent redundant calculations on every render
     // Pattern from Clay's production app: move expensive operations to cached state
@@ -1148,16 +1139,24 @@ struct CombinedMealView: View {
                 // Save Button
                 Button(action: saveCombinedMeal) {
                     HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                        Text("Add All Foods to Diary")
+                        if isSaving {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                            Text("Saving...")
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Add All Foods to Diary")
+                        }
                     }
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(AppPalette.standard.accent)
+                    .background(isSaving ? AppPalette.standard.accent.opacity(0.7) : AppPalette.standard.accent)
                     .cornerRadius(12)
                 }
+                .disabled(isSaving)
                 .padding(.horizontal)
                 
                 Spacer()
@@ -1190,6 +1189,7 @@ struct CombinedMealView: View {
         )
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
+                .environmentObject(subscriptionManager)
         }
         .onAppear {
             // Initialize serving sizes
@@ -1212,12 +1212,40 @@ struct CombinedMealView: View {
     
     private func saveCombinedMeal() {
         Task {
+            await MainActor.run { isSaving = true }
+
             do {
                 let currentDate = Date()
                 let hasAccess = subscriptionManager.hasAccess
 
+                // Try to fetch ingredients for branded foods (best effort, don't block save on failure)
+                var ingredientsMap: [String: [String]] = [:]
+                for food in foods {
+                    // Only try for foods with brand names (more likely to find ingredients)
+                    if let brand = food.brand, !brand.isEmpty {
+                        do {
+                            let response = try await IngredientFinderService.shared.findIngredients(
+                                productName: food.name,
+                                brand: brand
+                            )
+                            if let ingredientsText = response.ingredients_text, !ingredientsText.isEmpty {
+                                // Parse ingredients text into array
+                                let ingredients = parseIngredients(ingredientsText)
+                                if !ingredients.isEmpty {
+                                    ingredientsMap[food.id] = ingredients
+                                }
+                            }
+                        } catch {
+                            // Ingredient fetching failed - continue without ingredients
+                            // This is expected for many foods, so we don't show an error
+                        }
+                    }
+                }
+
+                // Save all foods to diary
                 for food in foods {
                     let multiplier = servingSizes[food.id] ?? 1.0
+                    let ingredients = ingredientsMap[food.id]
 
                     let entry = FoodEntry(
                         userId: firebaseManager.currentUser?.uid ?? "anonymous",
@@ -1232,6 +1260,7 @@ struct CombinedMealView: View {
                         fiber: food.fiber * multiplier,
                         sugar: food.sugar * multiplier,
                         sodium: food.sodium * multiplier,
+                        ingredients: ingredients,
                         mealType: selectedMealType,
                         date: currentDate
                     )
@@ -1240,16 +1269,39 @@ struct CombinedMealView: View {
                 }
 
                 await MainActor.run {
+                    isSaving = false
                     showingSuccessAlert = true
                 }
             } catch is FirebaseManager.DiaryLimitError {
                 await MainActor.run {
+                    isSaving = false
                     showingLimitError = true
                 }
             } catch {
-                // Silently handle other save errors
+                await MainActor.run {
+                    isSaving = false
+                    // Still show success if foods were saved (ingredient fetching is optional)
+                    showingSuccessAlert = true
+                }
             }
         }
+    }
+
+    /// Parse ingredients text into an array of individual ingredients
+    private func parseIngredients(_ text: String) -> [String] {
+        // Ingredients are typically comma-separated, possibly with parentheses for sub-ingredients
+        // Example: "Sugar, Wheat Flour, Cocoa Butter, Milk Powder (Lactose, Milk Protein)"
+        let cleaned = text
+            .replacingOccurrences(of: "\n", with: ", ")
+            .replacingOccurrences(of: "  ", with: " ")
+
+        // Split by comma and clean up
+        let ingredients = cleaned
+            .components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        return ingredients
     }
 }
 

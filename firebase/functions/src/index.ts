@@ -75,3 +75,6 @@ export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, stopTescoBuild
 
 // AI Food Categorization - categorizes foods for intelligent serving size suggestions
 export { categorizeFoods, categorizeFoodsFromDatabase, getCategorizeStats, updateFoodCategory, getCategories, getFoodsForCategorization, getCategorizationProgress, resetCategorizationProgress, fixCustomCategoryServingSizes, fixFoodServingSizes } from './categorize-foods';
+
+// AI Data Validation - validates and cleans food data using AI knowledge
+export { validateFoodsFromDatabase, getValidationStats, getValidationProgress, resetValidationProgress, getFoodsForValidation, getMarkedForDeletion, deleteMarkedItems, unmarkForDeletion, clearMarkedForDeletion } from './validate-foods';

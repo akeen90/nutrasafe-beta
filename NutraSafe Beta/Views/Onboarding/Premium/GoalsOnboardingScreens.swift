@@ -399,14 +399,25 @@ struct FeatureBenefitsScreen: View {
             ))
         }
 
-        // Always add food reactions if any safety-related goal is selected
-        if state.selectedGoals.contains(.foodSafety) || state.selectedGoals.contains(.manageAllergies) || state.selectedGoals.contains(.eatHealthier) {
+        // Add additive history for health-conscious goals
+        if state.selectedGoals.contains(.foodSafety) || state.selectedGoals.contains(.eatHealthier) {
             // Check if we haven't already added too many
             if benefits.count < 4 {
                 benefits.append((
+                    icon: "clock.arrow.circlepath",
+                    title: "90-Day Additive History",
+                    description: "Track every additive you consume across all your foods. See your exposure over 90 days and identify which products contain the most additives—helping you make cleaner choices."
+                ))
+            }
+        }
+
+        // Add reaction tracking specifically for allergy management
+        if state.selectedGoals.contains(.manageAllergies) {
+            if benefits.count < 4 {
+                benefits.append((
                     icon: "waveform.path.ecg",
-                    title: "Reaction Tracking & Pattern Analysis",
-                    description: "Log symptoms after eating and we'll cross-reference with your 7-day meal history. Our pattern analysis spots recurring trigger foods across multiple reactions—giving you insights to share with your doctor."
+                    title: "Reaction Tracking & Patterns",
+                    description: "Log symptoms after eating and we'll cross-reference with your 7-day food history. Spot recurring trigger foods and share insights with your doctor."
                 ))
             }
         }
