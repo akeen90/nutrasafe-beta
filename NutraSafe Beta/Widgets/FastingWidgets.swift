@@ -1,5 +1,28 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
+
+// MARK: - Widget Data Model
+// Duplicated here because widgets run in their own extension target
+
+struct FastingWidgetData {
+    let sessionId: String?
+    let status: WidgetStatus
+    let elapsedTime: String?
+    let remainingTime: String?
+    let currentPhase: String?
+    let nextMilestone: String?
+    let motivationalText: String
+    let progressPercentage: Double?
+
+    enum WidgetStatus {
+        case idle
+        case active
+        case nearEnd
+        case overGoal
+        case skipped
+    }
+}
 
 // MARK: - Widget Palette (Onboarding-Derived)
 // Widgets have their own target, so we define colors inline matching onboarding.
@@ -11,9 +34,59 @@ struct WidgetPalette {
     static let secondary = Color(red: 0.15, green: 0.35, blue: 0.42)     // Darker teal
 }
 
+// MARK: - Shared Data Reader (App Group)
+
+struct SharedFastingDataReader {
+    private let appGroupId = "group.com.nutrasafe.beta"
+
+    struct SharedFastingData {
+        let isActive: Bool
+        let startTime: Date?
+        let targetDurationHours: Int?
+        let currentPhase: String?
+        let planName: String?
+        let lastUpdated: Date
+    }
+
+    func loadData() -> SharedFastingData? {
+        guard let defaults = UserDefaults(suiteName: appGroupId),
+              let data = defaults.data(forKey: "fastingSessionData"),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        let isActive = json["isActive"] as? Bool ?? false
+
+        var startTime: Date?
+        if let startTimeInterval = json["startTime"] as? TimeInterval {
+            startTime = Date(timeIntervalSince1970: startTimeInterval)
+        }
+
+        let targetDurationHours = json["targetDurationHours"] as? Int
+        let currentPhase = json["currentPhase"] as? String
+        let planName = json["planName"] as? String
+
+        var lastUpdated = Date()
+        if let lastUpdatedInterval = json["lastUpdated"] as? TimeInterval {
+            lastUpdated = Date(timeIntervalSince1970: lastUpdatedInterval)
+        }
+
+        return SharedFastingData(
+            isActive: isActive,
+            startTime: startTime,
+            targetDurationHours: targetDurationHours,
+            currentPhase: currentPhase,
+            planName: planName,
+            lastUpdated: lastUpdated
+        )
+    }
+}
+
 // MARK: - Widget Provider
 
 struct FastingWidgetProvider: TimelineProvider {
+    private let dataReader = SharedFastingDataReader()
+
     func placeholder(in context: Context) -> FastingWidgetEntry {
         FastingWidgetEntry(
             date: Date(),
@@ -31,57 +104,130 @@ struct FastingWidgetProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (FastingWidgetEntry) -> ()) {
-        let entry = FastingWidgetEntry(
-            date: Date(),
-            widgetData: FastingWidgetData(
-                sessionId: "preview",
-                status: .active,
-                elapsedTime: "6h 22m",
-                remainingTime: "9h 38m",
-                currentPhase: "Mild Ketosis",
-                nextMilestone: "Autophagy in 1h 38m",
-                motivationalText: "You're doing great — stay steady.",
-                progressPercentage: 0.65
-            )
-        )
+        let widgetData = computeWidgetData(for: Date())
+        let entry = FastingWidgetEntry(date: Date(), widgetData: widgetData)
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<FastingWidgetEntry>) -> ()) {
         var entries: [FastingWidgetEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
         let currentDate = Date()
-        for hourOffset in 0 ..< 24 {
-            let entryDate = Calendar.current.date(byAdding: .minute, value: hourOffset * 30, to: currentDate)!
 
-            // In a real app, you would fetch actual data here
-            let widgetData = getCurrentWidgetData()
-
-            let entry = FastingWidgetEntry(
-                date: entryDate,
-                widgetData: widgetData
-            )
+        // Generate entries every 5 minutes for the next 2 hours for smooth countdown
+        for minuteOffset in stride(from: 0, to: 120, by: 5) {
+            let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: currentDate)!
+            let widgetData = computeWidgetData(for: entryDate)
+            let entry = FastingWidgetEntry(date: entryDate, widgetData: widgetData)
             entries.append(entry)
         }
 
-        let timeline = Timeline(entries: entries, policy: .atEnd)
+        // Refresh after 5 minutes for live updates
+        let refreshDate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate)!
+        let timeline = Timeline(entries: entries, policy: .after(refreshDate))
         completion(timeline)
     }
 
-    private func getCurrentWidgetData() -> FastingWidgetData {
-        // This would typically fetch from UserDefaults, Core Data, or make an API call
-        // For now, return placeholder data
+    private func computeWidgetData(for date: Date) -> FastingWidgetData {
+        guard let sharedData = dataReader.loadData(),
+              sharedData.isActive,
+              let startTime = sharedData.startTime,
+              let targetHours = sharedData.targetDurationHours else {
+            // No active session
+            return FastingWidgetData(
+                sessionId: nil,
+                status: .idle,
+                elapsedTime: nil,
+                remainingTime: nil,
+                currentPhase: nil,
+                nextMilestone: nil,
+                motivationalText: "Tap to begin your next fast",
+                progressPercentage: nil
+            )
+        }
+
+        // Calculate elapsed time
+        let elapsedSeconds = date.timeIntervalSince(startTime)
+        let elapsedHours = elapsedSeconds / 3600
+        let targetSeconds = Double(targetHours) * 3600
+        let remainingSeconds = max(0, targetSeconds - elapsedSeconds)
+
+        // Format elapsed time
+        let elapsedH = Int(elapsedSeconds) / 3600
+        let elapsedM = (Int(elapsedSeconds) % 3600) / 60
+        let elapsedTimeString = "\(elapsedH)h \(elapsedM)m"
+
+        // Format remaining time
+        let remainingH = Int(remainingSeconds) / 3600
+        let remainingM = (Int(remainingSeconds) % 3600) / 60
+        let remainingTimeString = remainingSeconds > 0 ? "\(remainingH)h \(remainingM)m" : "0h 0m"
+
+        // Calculate progress percentage
+        let progress = min(1.0, elapsedSeconds / targetSeconds)
+
+        // Determine status
+        let status: FastingWidgetData.WidgetStatus
+        if elapsedHours >= Double(targetHours) {
+            status = .overGoal
+        } else if progress >= 0.9 {
+            status = .nearEnd
+        } else {
+            status = .active
+        }
+
+        // Determine phase and milestone based on elapsed hours
+        let (phase, milestone) = getPhaseInfo(elapsedHours: elapsedHours)
+
+        // Get motivational text
+        let motivationalText = getMotivationalText(status: status, progress: progress)
+
         return FastingWidgetData(
-            sessionId: nil,
-            status: .idle,
-            elapsedTime: nil,
-            remainingTime: nil,
-            currentPhase: nil,
-            nextMilestone: nil,
-            motivationalText: "Tap to begin your next fast",
-            progressPercentage: nil
+            sessionId: "active",
+            status: status,
+            elapsedTime: elapsedTimeString,
+            remainingTime: remainingTimeString,
+            currentPhase: sharedData.currentPhase ?? phase,
+            nextMilestone: milestone,
+            motivationalText: motivationalText,
+            progressPercentage: progress
         )
+    }
+
+    private func getPhaseInfo(elapsedHours: Double) -> (phase: String, milestone: String?) {
+        switch elapsedHours {
+        case 0..<4:
+            return ("Fed State", "Fat Burning in \(Int(4 - elapsedHours))h")
+        case 4..<8:
+            return ("Fat Burning", "Ketosis in \(Int(8 - elapsedHours))h")
+        case 8..<12:
+            return ("Mild Ketosis", "Deep Ketosis in \(Int(12 - elapsedHours))h")
+        case 12..<16:
+            return ("Deep Ketosis", "Autophagy in \(Int(16 - elapsedHours))h")
+        case 16..<24:
+            return ("Autophagy", "Deep Autophagy in \(Int(24 - elapsedHours))h")
+        default:
+            return ("Deep Autophagy", nil)
+        }
+    }
+
+    private func getMotivationalText(status: FastingWidgetData.WidgetStatus, progress: Double) -> String {
+        switch status {
+        case .overGoal:
+            return "Amazing! You exceeded your goal!"
+        case .nearEnd:
+            return "Almost there - stay strong!"
+        case .active:
+            if progress < 0.25 {
+                return "Great start - keep going!"
+            } else if progress < 0.5 {
+                return "You're doing great!"
+            } else if progress < 0.75 {
+                return "Halfway there - stay steady!"
+            } else {
+                return "So close - push through!"
+            }
+        case .idle, .skipped:
+            return "Tap to begin your next fast"
+        }
     }
 }
 
@@ -100,9 +246,18 @@ struct FastingSmallStatusWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: FastingWidgetProvider()) { entry in
             FastingSmallStatusWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.05, green: 0.12, blue: 0.14),
+                            Color(red: 0.08, green: 0.18, blue: 0.20)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
         }
-        .configurationDisplayName("Fasting Status")
+        .configurationDisplayName("NutraSafe Fasting")
         .description("Quick view of your current fasting status and progress.")
         .supportedFamilies([.systemSmall])
     }
@@ -112,43 +267,47 @@ struct FastingSmallStatusWidgetEntryView: View {
     var entry: FastingWidgetEntry
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Header - use palette accent instead of .blue
-            HStack {
-                Image(systemName: "timer")
-                    .font(.caption)
+        VStack(spacing: 0) {
+            // Header with NutraSafe branding
+            HStack(spacing: 6) {
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(WidgetPalette.accent)
 
-                Text("Fasting")
-                    .font(.caption)
-                    .fontWeight(.medium)
+                Text("NUTRASAFE")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(1.2)
+                    .foregroundColor(.white.opacity(0.6))
 
                 Spacer()
             }
+            .padding(.bottom, 6)
+
+            // Fasting label
+            HStack {
+                Text("Fasting")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            .padding(.bottom, 10)
 
             // Main content based on status
             if entry.widgetData.status == .idle {
-                IdleStateView()
+                SmallIdleStateView()
             } else if entry.widgetData.status == .active {
-                ActiveStateView(widgetData: entry.widgetData)
+                SmallActiveStateView(widgetData: entry.widgetData)
             } else if entry.widgetData.status == .nearEnd {
-                NearEndStateView(widgetData: entry.widgetData)
+                SmallNearEndStateView(widgetData: entry.widgetData)
             } else if entry.widgetData.status == .overGoal {
-                OverGoalStateView(widgetData: entry.widgetData)
+                SmallOverGoalStateView(widgetData: entry.widgetData)
             } else if entry.widgetData.status == .skipped {
-                SkippedStateView()
+                SmallSkippedStateView()
             }
 
-            Spacer()
-
-            // Motivational text
-            Text(entry.widgetData.motivationalText)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
+            Spacer(minLength: 0)
         }
-        .padding()
+        .padding(14)
     }
 }
 
@@ -160,9 +319,18 @@ struct FastingMediumProgressWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: FastingWidgetProvider()) { entry in
             FastingMediumProgressWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.05, green: 0.12, blue: 0.14),
+                            Color(red: 0.08, green: 0.18, blue: 0.20)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
         }
-        .configurationDisplayName("Fasting Progress")
+        .configurationDisplayName("NutraSafe Fasting")
         .description("Detailed view of your fasting progress with timeline.")
         .supportedFamilies([.systemMedium])
     }
@@ -172,126 +340,161 @@ struct FastingMediumProgressWidgetEntryView: View {
     var entry: FastingWidgetEntry
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Left side - Progress ring with palette gradient
-            VStack(spacing: 8) {
-                if let progress = entry.widgetData.progressPercentage {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 6)
-                            .frame(width: 60, height: 60)
+        VStack(spacing: 0) {
+            // Header with NutraSafe branding
+            HStack(spacing: 6) {
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(WidgetPalette.accent)
 
-                        Circle()
-                            .trim(from: 0, to: CGFloat(progress))
-                            .stroke(
-                                AngularGradient(
-                                    gradient: Gradient(colors: [WidgetPalette.accent, WidgetPalette.primary]),
-                                    center: .center
-                                ),
-                                style: StrokeStyle(lineWidth: 6, lineCap: .round)
-                            )
-                            .rotationEffect(.degrees(-90))
-                            .frame(width: 60, height: 60)
+                Text("NUTRASAFE")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(1.2)
+                    .foregroundColor(.white.opacity(0.6))
 
-                        VStack(spacing: 0) {
-                            if let elapsed = entry.widgetData.elapsedTime {
-                                Text(elapsed)
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .lineLimit(1)
-                            }
+                Text("•")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.3))
 
-                            if let phase = entry.widgetData.currentPhase {
-                                Text(phase)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            }
-                        }
-                    }
-                } else {
-                    Image(systemName: "timer")
-                        .font(.largeTitle)
-                        .foregroundColor(WidgetPalette.accent)
-                        .frame(width: 60, height: 60)
-                }
-            }
-
-            // Right side - Details
-            VStack(alignment: .leading, spacing: 8) {
-                if entry.widgetData.status == .idle {
-                    Text("Ready to Start")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-
-                    Text("Tap to begin your next fast")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    HStack {
-                        Text(entry.widgetData.status == .overGoal ? "Goal Achieved!" : "Fasting Active")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        if entry.widgetData.status == .nearEnd {
-                            Image(systemName: "flag.checkered")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                    }
-
-                    if let elapsed = entry.widgetData.elapsedTime,
-                       let remaining = entry.widgetData.remainingTime {
-                        HStack(spacing: 16) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Elapsed")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text(elapsed)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Remaining")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text(remaining)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-                        }
-                    }
-
-                    if let milestone = entry.widgetData.nextMilestone {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.forward.circle")
-                                .font(.caption2)
-                                .foregroundColor(WidgetPalette.accent)
-
-                            Text(milestone)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                }
+                Text("Fasting")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.8))
 
                 Spacer()
 
-                Text(entry.widgetData.motivationalText)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(2)
+                if entry.widgetData.status == .active || entry.widgetData.status == .nearEnd {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(WidgetPalette.accent)
+                            .frame(width: 6, height: 6)
+                        Text("Active")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(WidgetPalette.accent)
+                    }
+                }
             }
+            .padding(.bottom, 12)
 
-            Spacer()
+            HStack(spacing: 16) {
+                // Left side - Progress ring
+                if entry.widgetData.status != .idle {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 8)
+                            .frame(width: 72, height: 72)
+
+                        Circle()
+                            .trim(from: 0, to: CGFloat(entry.widgetData.progressPercentage ?? 0))
+                            .stroke(
+                                LinearGradient(
+                                    colors: [WidgetPalette.accent, WidgetPalette.accent.opacity(0.6)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .frame(width: 72, height: 72)
+
+                        VStack(spacing: 2) {
+                            Text(entry.widgetData.elapsedTime ?? "--:--")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .monospacedDigit()
+
+                            Text("elapsed")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(.white.opacity(0.5))
+                                .textCase(.uppercase)
+                        }
+                    }
+                } else {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 8)
+                            .frame(width: 72, height: 72)
+
+                        Image(systemName: "timer")
+                            .font(.system(size: 28, weight: .light))
+                            .foregroundColor(WidgetPalette.accent)
+                    }
+                }
+
+                // Right side - Details
+                VStack(alignment: .leading, spacing: 8) {
+                    if entry.widgetData.status == .idle {
+                        Text("Ready to Fast")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        Text("Tap to begin your next session")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.6))
+
+                        Spacer(minLength: 0)
+
+                        Text(entry.widgetData.motivationalText)
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.5))
+                            .italic()
+                            .lineLimit(2)
+                    } else {
+                        // Status title
+                        HStack(spacing: 6) {
+                            if entry.widgetData.status == .overGoal {
+                                Image(systemName: "trophy.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.yellow)
+                                Text("Goal Achieved!")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.yellow)
+                            } else if entry.widgetData.status == .nearEnd {
+                                Image(systemName: "flag.checkered")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.orange)
+                                Text("Almost There!")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            } else if let phase = entry.widgetData.currentPhase {
+                                Text(phase)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+
+                        // Time remaining
+                        if let remaining = entry.widgetData.remainingTime {
+                            HStack(spacing: 4) {
+                                Image(systemName: "hourglass")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.white.opacity(0.5))
+                                Text("\(remaining) remaining")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                        }
+
+                        Spacer(minLength: 0)
+
+                        // Next milestone
+                        if let milestone = entry.widgetData.nextMilestone {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(WidgetPalette.accent)
+                                Text(milestone)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
         }
-        .padding()
+        .padding(16)
     }
 }
 
@@ -303,9 +506,18 @@ struct FastingQuickActionWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: FastingWidgetProvider()) { entry in
             FastingQuickActionWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.05, green: 0.12, blue: 0.14),
+                            Color(red: 0.08, green: 0.18, blue: 0.20)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
         }
-        .configurationDisplayName("Fasting Actions")
+        .configurationDisplayName("NutraSafe Fasting Actions")
         .description("Quick actions to control your fasting sessions.")
         .supportedFamilies([.systemMedium])
     }
@@ -315,259 +527,310 @@ struct FastingQuickActionWidgetEntryView: View {
     var entry: FastingWidgetEntry
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Header - use palette accent
-            HStack {
-                Image(systemName: "timer")
-                    .font(.caption)
+        VStack(spacing: 12) {
+            // Header with NutraSafe branding
+            HStack(spacing: 6) {
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(WidgetPalette.accent)
 
-                Text("Fasting Actions")
-                    .font(.caption)
-                    .fontWeight(.medium)
+                Text("NUTRASAFE")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(1.2)
+                    .foregroundColor(.white.opacity(0.6))
+
+                Text("•")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.3))
+
+                Text("Fasting")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.8))
 
                 Spacer()
             }
 
             if entry.widgetData.status == .idle {
-                // Start fasting action - palette accent instead of .blue
+                // Start fasting action
                 Button(intent: StartFastingIntent()) {
-                    HStack {
-                        Image(systemName: "play.fill")
-                            .font(.title2)
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(WidgetPalette.accent.opacity(0.2))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(WidgetPalette.accent)
+                        }
 
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text("Start Fasting")
-                                .font(.headline)
-                                .fontWeight(.semibold)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
 
                             Text("Begin your next session")
-                                .font(.caption)
-                                .foregroundColor(.white.opacity(0.8))
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.6))
                         }
 
                         Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.4))
                     }
-                    .padding()
+                    .padding(14)
                     .background(
-                        LinearGradient(
-                            colors: [WidgetPalette.accent, WidgetPalette.primary],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(WidgetPalette.accent.opacity(0.3), lineWidth: 1)
+                            )
                     )
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
                 }
                 .buttonStyle(.plain)
             } else {
-                // Active session actions
+                // Active session - show status and actions
                 HStack(spacing: 12) {
-                    // End Fast Action
-                    Button(intent: EndFastingIntent()) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "stop.fill")
-                                .font(.title3)
-
-                            Text("End")
-                                .font(.caption)
-                                .fontWeight(.medium)
+                    // Status info
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let elapsed = entry.widgetData.elapsedTime {
+                            Text(elapsed)
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .monospacedDigit()
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.red.opacity(0.1))
-                        .foregroundColor(.red)
-                        .cornerRadius(10)
-                    }
-                    .buttonStyle(.plain)
 
-                    // Edit Times Action
-                    Button(intent: EditFastingTimesIntent()) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "pencil")
-                                .font(.title3)
-
-                            Text("Edit")
-                                .font(.caption)
-                                .fontWeight(.medium)
+                        if let phase = entry.widgetData.currentPhase {
+                            HStack(spacing: 4) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(WidgetPalette.accent)
+                                Text(phase)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.orange.opacity(0.1))
-                        .foregroundColor(.orange)
-                        .cornerRadius(10)
-                    }
-                    .buttonStyle(.plain)
-
-                    // Skip Today Action
-                    Button(intent: SkipFastingIntent()) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "forward.fill")
-                                .font(.title3)
-
-                            Text("Skip")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.gray.opacity(0.1))
-                        .foregroundColor(.primary)
-                        .cornerRadius(10)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            // Current status
-            if entry.widgetData.status != .idle {
-                HStack {
-                    if let elapsed = entry.widgetData.elapsedTime {
-                        Label(elapsed, systemImage: "clock")
-                            .font(.caption)
                     }
 
                     Spacer()
 
-                    if let phase = entry.widgetData.currentPhase {
-                        Label(phase, systemImage: "sparkles")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    // Action buttons
+                    HStack(spacing: 8) {
+                        Button(intent: EndFastingIntent()) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "stop.fill")
+                                    .font(.system(size: 16))
+                                Text("End")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .frame(width: 52, height: 52)
+                            .background(Color.red.opacity(0.15))
+                            .foregroundColor(.red)
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(intent: EditFastingTimesIntent()) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 16))
+                                Text("Edit")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .frame(width: 52, height: 52)
+                            .background(Color.orange.opacity(0.15))
+                            .foregroundColor(.orange)
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(intent: SkipFastingIntent()) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "forward.fill")
+                                    .font(.system(size: 16))
+                                Text("Skip")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .frame(width: 52, height: 52)
+                            .background(Color.white.opacity(0.08))
+                            .foregroundColor(.white.opacity(0.8))
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.top, 4)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.white.opacity(0.05))
+                )
             }
         }
-        .padding()
+        .padding(16)
     }
 }
 
-// MARK: - Widget Views Components
+// MARK: - Small Widget State Views
 
-struct IdleStateView: View {
+struct SmallIdleStateView: View {
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "timer")
-                .font(.title2)
-                .foregroundColor(WidgetPalette.accent)
+        VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.1), lineWidth: 4)
+                    .frame(width: 56, height: 56)
 
-            Text("Ready")
-                .font(.headline)
-                .fontWeight(.semibold)
+                Image(systemName: "timer")
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundColor(WidgetPalette.accent)
+            }
 
-            Text("Tap to start")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            VStack(spacing: 3) {
+                Text("Ready")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Text("Tap to start")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.5))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-struct ActiveStateView: View {
+struct SmallActiveStateView: View {
     let widgetData: FastingWidgetData
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack {
+            // Progress ring with time
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.1), lineWidth: 5)
+                    .frame(width: 56, height: 56)
+
+                Circle()
+                    .trim(from: 0, to: CGFloat(widgetData.progressPercentage ?? 0))
+                    .stroke(WidgetPalette.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 56, height: 56)
+
                 Text(widgetData.elapsedTime ?? "--:--")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
                     .monospacedDigit()
+            }
 
-                Spacer()
-
+            // Phase & remaining
+            VStack(spacing: 3) {
                 if let phase = widgetData.currentPhase {
                     Text(phase)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
                         .lineLimit(1)
                 }
-            }
 
-            if let remaining = widgetData.remainingTime {
-                HStack {
-                    Text("Remaining:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Text(remaining)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .monospacedDigit()
+                if let remaining = widgetData.remainingTime {
+                    Text("\(remaining) left")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.5))
                 }
             }
         }
     }
 }
 
-struct NearEndStateView: View {
+struct SmallNearEndStateView: View {
     let widgetData: FastingWidgetData
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack {
+            ZStack {
+                Circle()
+                    .stroke(Color.orange.opacity(0.3), lineWidth: 5)
+                    .frame(width: 56, height: 56)
+
+                Circle()
+                    .trim(from: 0, to: CGFloat(widgetData.progressPercentage ?? 0.95))
+                    .stroke(Color.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 56, height: 56)
+
                 Image(systemName: "flag.checkered")
-                    .font(.title2)
+                    .font(.system(size: 18))
                     .foregroundColor(.orange)
-
-                Spacer()
-
-                Text(widgetData.elapsedTime ?? "--:--")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .monospacedDigit()
             }
 
-            Text("Almost there!")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.orange)
+            VStack(spacing: 3) {
+                Text(widgetData.elapsedTime ?? "--:--")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .monospacedDigit()
+
+                Text("Almost there!")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.orange)
+            }
         }
     }
 }
 
-struct OverGoalStateView: View {
+struct SmallOverGoalStateView: View {
     let widgetData: FastingWidgetData
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack {
+            ZStack {
+                Circle()
+                    .fill(WidgetPalette.accent.opacity(0.15))
+                    .frame(width: 56, height: 56)
+
                 Image(systemName: "trophy.fill")
-                    .font(.title2)
-                    .foregroundColor(WidgetPalette.accent)
-
-                Spacer()
-
-                Text(widgetData.elapsedTime ?? "--:--")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .monospacedDigit()
+                    .font(.system(size: 22))
+                    .foregroundColor(.yellow)
             }
 
-            Text("Goal achieved!")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(WidgetPalette.accent)
+            VStack(spacing: 3) {
+                Text(widgetData.elapsedTime ?? "--:--")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .monospacedDigit()
+
+                Text("Goal achieved!")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(WidgetPalette.accent)
+            }
         }
     }
 }
 
-struct SkippedStateView: View {
+struct SmallSkippedStateView: View {
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "forward.fill")
-                .font(.title2)
-                .foregroundColor(.gray)
+        VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.05))
+                    .frame(width: 56, height: 56)
 
-            Text("Skipped Today")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.gray)
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white.opacity(0.4))
+            }
 
-            Text("Reset tomorrow")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            VStack(spacing: 3) {
+                Text("Skipped")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.6))
+
+                Text("Reset tomorrow")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.4))
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

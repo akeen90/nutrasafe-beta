@@ -14,10 +14,13 @@ import SwiftUI
 struct FastingActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var fastingStartTime: Date
-        var currentHours: Int
+        var fastingEndTime: Date  // When the goal is reached (for countdown timer)
+        var currentHours: Int     // For progress ring calculation
         var currentMinutes: Int
+        var currentSeconds: Int
         var remainingHours: Int
         var remainingMinutes: Int
+        var remainingSeconds: Int
         var currentPhase: String
         var phaseEmoji: String
     }

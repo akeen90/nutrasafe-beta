@@ -13,10 +13,13 @@ import SwiftUI
 struct FastingActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var fastingStartTime: Date
+        var fastingEndTime: Date
         var currentHours: Int
         var currentMinutes: Int
+        var currentSeconds: Int
         var remainingHours: Int
         var remainingMinutes: Int
+        var remainingSeconds: Int
         var currentPhase: String
         var phaseEmoji: String
     }
@@ -24,175 +27,404 @@ struct FastingActivityAttributes: ActivityAttributes {
     var fastingGoalHours: Int
 }
 
-// MARK: - Design Constants
-private enum LiveActivityDesign {
-    // Warm, muted palette matching app onboarding
-    static let accentGradient = LinearGradient(
-        colors: [
-            Color(red: 0.95, green: 0.65, blue: 0.45),  // Warm peach
-            Color(red: 0.90, green: 0.50, blue: 0.40)   // Soft coral
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+// MARK: - Fasting Phase Calculator
+private struct FastingPhase {
+    let name: String
+    let emoji: String
 
-    static let accent = Color(red: 0.95, green: 0.60, blue: 0.42)
-    static let accentLight = Color(red: 0.95, green: 0.75, blue: 0.60)
-    static let textMuted = Color.white.opacity(0.55)
-    static let textSecondary = Color.white.opacity(0.75)
+    static func calculate(from startTime: Date) -> FastingPhase {
+        let elapsed = Date().timeIntervalSince(startTime)
+        let hours = Int(elapsed / 3600)
+
+        switch hours {
+        case 0..<4:
+            return FastingPhase(name: "Post-meal", emoji: "🍽️")
+        case 4..<8:
+            return FastingPhase(name: "Fuel switch", emoji: "🔄")
+        case 8..<12:
+            return FastingPhase(name: "Fat burning", emoji: "💪")
+        case 12..<16:
+            return FastingPhase(name: "Ketosis", emoji: "🔥")
+        case 16..<20:
+            return FastingPhase(name: "Autophagy", emoji: "✨")
+        default:
+            return FastingPhase(name: "Deep fast", emoji: "🧘")
+        }
+    }
+}
+
+// MARK: - Design System
+private enum Design {
+    static let teal = Color(red: 0.0, green: 0.78, blue: 0.73)
+    static let tealLight = Color(red: 0.4, green: 0.9, blue: 0.85)
+
+    static let ringTrack = Color.white.opacity(0.15)
+    static let textPrimary = Color.white
+    static let textSecondary = Color.white.opacity(0.7)
+    static let textMuted = Color.white.opacity(0.45)
 }
 
 // MARK: - Fasting Live Activity Widget
 struct FastingLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FastingActivityAttributes.self) { context in
-            // Lock screen / banner UI - Elegant horizontal layout
-            HStack(spacing: 0) {
-                // Left - Elapsed time with subtle ring
-                HStack(spacing: 14) {
-                    // Progress ring
-                    ZStack {
-                        Circle()
-                            .stroke(Color.white.opacity(0.15), lineWidth: 3)
-                        Circle()
-                            .trim(from: 0, to: min(CGFloat(context.state.currentHours) / CGFloat(context.attributes.fastingGoalHours), 1.0))
-                            .stroke(
-                                LiveActivityDesign.accentGradient,
-                                style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                            )
-                            .rotationEffect(.degrees(-90))
+            // Lock Screen UI
+            LockScreenView(context: context)
+                .activityBackgroundTint(Color.black.opacity(0.8))
+                .activitySystemActionForegroundColor(.white)
 
-                        Text(context.state.phaseEmoji)
-                            .font(.system(size: 16))
+        } dynamicIsland: { context in
+            DynamicIsland {
+                // Expanded - Leading
+                DynamicIslandExpandedRegion(.leading) {
+                    ExpandedLeading(context: context)
+                }
+
+                // Expanded - Trailing
+                DynamicIslandExpandedRegion(.trailing) {
+                    ExpandedTrailing(context: context)
+                }
+
+                // Expanded - Center
+                DynamicIslandExpandedRegion(.center) {
+                    ExpandedCenter(context: context)
+                }
+
+                // Expanded - Bottom
+                DynamicIslandExpandedRegion(.bottom) {
+                    ExpandedBottom(context: context)
+                }
+
+            } compactLeading: {
+                CompactLeading(context: context)
+            } compactTrailing: {
+                CompactTrailing(context: context)
+            } minimal: {
+                MinimalView(context: context)
+            }
+        }
+    }
+}
+
+// MARK: - Expanded Views
+
+private struct ExpandedLeading: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    var body: some View {
+        EmptyView()
+    }
+}
+
+private struct ExpandedTrailing: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    var body: some View {
+        EmptyView()
+    }
+}
+
+private struct ExpandedCenter: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    var body: some View {
+        VStack(spacing: 8) {
+            // Title row
+            HStack(spacing: 6) {
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Design.teal)
+                Text("NutraSafe - Fasting")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(Design.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.7)
+                    .allowsTightening(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack {
+                Spacer()
+
+                VStack(alignment: .center, spacing: 4) {
+                    Text("REMAINING")
+                        .font(.system(size: 10, weight: .bold))
+                        .kerning(0.5)
+                        .foregroundColor(Design.textMuted)
+                        .multilineTextAlignment(.center)
+
+                    if context.state.fastingEndTime > Date() {
+                        Text(timerInterval: Date()...context.state.fastingEndTime, countsDown: true)
+                            .font(.system(size: 18, weight: .bold, design: .monospaced))
+                            .foregroundColor(Design.teal)
+                            .monospacedDigit()
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("Done!")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.green)
+                            .multilineTextAlignment(.center)
                     }
-                    .frame(width: 42, height: 42)
+                }
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Elapsed")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(LiveActivityDesign.textMuted)
-                        Text("\(context.state.currentHours)h \(context.state.currentMinutes)m")
-                            .font(.system(size: 22, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+private struct ExpandedBottom: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    private var phase: FastingPhase {
+        FastingPhase.calculate(from: context.state.fastingStartTime)
+    }
+
+    private var progress: Double {
+        let elapsed = Date().timeIntervalSince(context.state.fastingStartTime)
+        let goal = Double(context.attributes.fastingGoalHours) * 3600
+        return min(max(elapsed / goal, 0.02), 1.0)
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // Phase text only (ring is in center)
+            HStack(spacing: 4) {
+                Text(phase.emoji)
+                    .font(.system(size: 11))
+                Text(phase.name)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(Design.textSecondary)
+                    .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.8).allowsTightening(true)
+            }
+
+            // Progress bar (full width)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Design.ringTrack)
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Design.teal, Design.tealLight],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(geo.size.width * CGFloat(progress), 4))
+                }
+            }
+            .frame(height: 3)
+            .clipped()
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+    }
+}
+
+// MARK: - Compact Views
+
+private struct CompactLeading: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "leaf.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Design.teal)
+            Text(context.state.fastingStartTime, style: .timer)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundColor(.white)
+                .monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.6).allowsTightening(true)
+        }
+    }
+}
+
+private struct CompactTrailing: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if context.state.fastingEndTime > Date() {
+                Image(systemName: "hourglass")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Design.teal)
+                Text(timerInterval: Date()...context.state.fastingEndTime, countsDown: true)
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundColor(Design.teal)
+                    .monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.6).allowsTightening(true)
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.green)
+            }
+        }
+    }
+}
+
+// MARK: - Minimal View
+
+private struct MinimalView: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    private var progress: Double {
+        let elapsed = Date().timeIntervalSince(context.state.fastingStartTime)
+        let goal = Double(context.attributes.fastingGoalHours) * 3600
+        return min(max(elapsed / goal, 0.02), 1.0)
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Capsule()
+                .fill(Design.ringTrack)
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [Design.teal, Design.tealLight],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: max(22 * CGFloat(progress), 4))
+        }
+        .frame(width: 22, height: 3)
+    }
+}
+
+// MARK: - Lock Screen View
+
+private struct LockScreenView: View {
+    let context: ActivityViewContext<FastingActivityAttributes>
+
+    private var progress: Double {
+        let elapsed = Date().timeIntervalSince(context.state.fastingStartTime)
+        let goal = Double(context.attributes.fastingGoalHours) * 3600
+        return min(max(elapsed / goal, 0.02), 1.0)
+    }
+
+    private var phase: FastingPhase {
+        FastingPhase.calculate(from: context.state.fastingStartTime)
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Header
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "leaf.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Design.teal)
+                    Text("NutraSafe - Fasting")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Design.textSecondary)
+                        .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.8).allowsTightening(true)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Text(phase.emoji)
+                        .font(.system(size: 11))
+                    Text(phase.name)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Design.textSecondary)
+                        .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.8).allowsTightening(true)
+                }
+            }
+
+            // Main timers
+            HStack {
+                // Elapsed
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("ELAPSED")
+                        .font(.system(size: 9, weight: .bold))
+                        .kerning(0.5)
+                        .foregroundColor(Design.textMuted)
+                        .lineLimit(1).minimumScaleFactor(0.8).allowsTightening(true)
+
+                    HStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .stroke(Design.ringTrack, lineWidth: 3)
+                            Circle()
+                                .trim(from: 0, to: CGFloat(progress))
+                                .stroke(Design.teal, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                        .frame(width: 34, height: 34)
+
+                        Text(context.state.fastingStartTime, style: .timer)
+                            .font(.system(size: 17, weight: .bold, design: .monospaced))
+                            .foregroundColor(Design.textPrimary)
+                            .monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.6).allowsTightening(true)
                     }
                 }
 
                 Spacer()
 
-                // Right - Remaining time
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text("Remaining")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(LiveActivityDesign.textMuted)
+                // Remaining
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("REMAINING")
+                        .font(.system(size: 9, weight: .bold))
+                        .kerning(0.5)
+                        .foregroundColor(Design.textMuted)
+                        .lineLimit(1).minimumScaleFactor(0.8).allowsTightening(true)
 
-                    if context.state.remainingHours <= 0 && context.state.remainingMinutes <= 0 {
-                        Text("Complete")
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
-                            .foregroundColor(.green)
-                    } else {
-                        Text("\(context.state.remainingHours)h \(context.state.remainingMinutes)m")
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
-                            .foregroundColor(LiveActivityDesign.accent)
-                    }
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .activityBackgroundTint(Color.black)
-            .activitySystemActionForegroundColor(Color.white)
+                    HStack(spacing: 8) {
+                        if context.state.fastingEndTime > Date() {
+                            Text(timerInterval: Date()...context.state.fastingEndTime, countsDown: true)
+                                .font(.system(size: 17, weight: .bold, design: .monospaced))
+                                .foregroundColor(Design.teal)
+                                .monospacedDigit()
+                                .lineLimit(1).minimumScaleFactor(0.6).allowsTightening(true)
+                        } else {
+                            Text("DONE!")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.green)
+                                .lineLimit(1).minimumScaleFactor(0.8).allowsTightening(true)
+                        }
 
-        } dynamicIsland: { context in
-            DynamicIsland {
-                // Expanded UI - Leading
-                DynamicIslandExpandedRegion(.leading) {
-                    HStack(spacing: 10) {
-                        // Mini progress ring
                         ZStack {
                             Circle()
-                                .stroke(Color.white.opacity(0.15), lineWidth: 2.5)
+                                .stroke(Design.ringTrack, lineWidth: 3)
                             Circle()
-                                .trim(from: 0, to: min(CGFloat(context.state.currentHours) / CGFloat(context.attributes.fastingGoalHours), 1.0))
-                                .stroke(LiveActivityDesign.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                                .trim(from: 0, to: CGFloat(1.0 - progress))
+                                .stroke(Design.teal, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                                 .rotationEffect(.degrees(-90))
                         }
-                        .frame(width: 28, height: 28)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Elapsed")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(LiveActivityDesign.textMuted)
-                            Text("\(context.state.currentHours)h \(context.state.currentMinutes)m")
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundColor(.white)
-                                .fixedSize()
-                        }
+                        .frame(width: 34, height: 34)
                     }
-                }
-
-                // Expanded UI - Trailing
-                DynamicIslandExpandedRegion(.trailing) {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Remaining")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(LiveActivityDesign.textMuted)
-                        Text("\(context.state.remainingHours)h \(context.state.remainingMinutes)m")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundColor(LiveActivityDesign.accent)
-                            .fixedSize()
-                    }
-                }
-
-                // Expanded UI - Bottom (centered phase)
-                DynamicIslandExpandedRegion(.bottom) {
-                    HStack(spacing: 6) {
-                        Text(context.state.phaseEmoji)
-                            .font(.system(size: 14))
-                        Text(context.state.currentPhase)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(LiveActivityDesign.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
-                }
-
-            } compactLeading: {
-                HStack(spacing: 5) {
-                    // Tiny progress indicator
-                    ZStack {
-                        Circle()
-                            .stroke(Color.white.opacity(0.2), lineWidth: 2)
-                        Circle()
-                            .trim(from: 0, to: min(CGFloat(context.state.currentHours) / CGFloat(context.attributes.fastingGoalHours), 1.0))
-                            .stroke(LiveActivityDesign.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                    }
-                    .frame(width: 12, height: 12)
-
-                    Text("\(context.state.currentHours)h")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
-                }
-
-            } compactTrailing: {
-                Text("\(context.state.remainingHours)h")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(LiveActivityDesign.accent)
-
-            } minimal: {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 2)
-                    Circle()
-                        .trim(from: 0, to: min(CGFloat(context.state.currentHours) / CGFloat(context.attributes.fastingGoalHours), 1.0))
-                        .stroke(LiveActivityDesign.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
                 }
             }
-            .contentMargins(.leading, 32, for: .expanded)
-            .contentMargins(.trailing, 32, for: .expanded)
-            .contentMargins(.top, 14, for: .expanded)
-            .contentMargins(.bottom, 14, for: .expanded)
+
+            // Progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Design.ringTrack)
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Design.teal, Design.tealLight],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(geo.size.width * CGFloat(progress), 4))
+                }
+            }
+            .frame(height: 3)
+            .clipped()
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
@@ -205,38 +437,20 @@ extension FastingActivityAttributes {
 
 extension FastingActivityAttributes.ContentState {
     fileprivate static var earlyFast: FastingActivityAttributes.ContentState {
-        FastingActivityAttributes.ContentState(
-            fastingStartTime: Date().addingTimeInterval(-4 * 3600),
-            currentHours: 4,
-            currentMinutes: 30,
-            remainingHours: 11,
-            remainingMinutes: 30,
-            currentPhase: "Fuel switching",
-            phaseEmoji: "🔄"
-        )
-    }
-
-    fileprivate static var midFast: FastingActivityAttributes.ContentState {
-        FastingActivityAttributes.ContentState(
-            fastingStartTime: Date().addingTimeInterval(-12 * 3600),
-            currentHours: 12,
-            currentMinutes: 15,
-            remainingHours: 3,
-            remainingMinutes: 45,
-            currentPhase: "Mild ketosis",
-            phaseEmoji: "🔥"
-        )
-    }
-
-    fileprivate static var goalReached: FastingActivityAttributes.ContentState {
-        FastingActivityAttributes.ContentState(
-            fastingStartTime: Date().addingTimeInterval(-16 * 3600),
-            currentHours: 16,
-            currentMinutes: 30,
-            remainingHours: 0,
-            remainingMinutes: 0,
-            currentPhase: "Autophagy",
-            phaseEmoji: "✨"
+        let startTime = Date().addingTimeInterval(-29 * 60)
+        let endTime = startTime.addingTimeInterval(16 * 3600)
+        return FastingActivityAttributes.ContentState(
+            fastingStartTime: startTime,
+            fastingEndTime: endTime,
+            currentHours: 0,
+            currentMinutes: 29,
+            currentSeconds: 0,
+            remainingHours: 15,
+            remainingMinutes: 31,
+            remainingSeconds: 0,
+            currentPhase: "Post-meal",
+            phaseEmoji: "🍽️"
         )
     }
 }
+
