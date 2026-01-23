@@ -294,10 +294,34 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
     // MARK: - Firebase Category-Based Portions
 
+    /// Normalizes Firestore category serving data to a safe, generic range
+    /// - Returns: Tuple of (size, unit) if data is usable, otherwise nil
+    private var normalizedFirebaseServing: (size: Double, unit: String)? {
+        guard let rawSize = suggestedServingSize, rawSize > 0 else { return nil }
+
+        // Reject obvious fallback values (default 100g/ml with no real description)
+        let rawDescription = (suggestedServingDescription ?? "").lowercased()
+        let looksLikeDefault = rawSize == 100 && (rawDescription.isEmpty || rawDescription.contains("100"))
+        if looksLikeDefault { return nil }
+
+        // Only trust ml or g units, default to grams
+        let unit = (suggestedServingUnit ?? "g").lowercased() == "ml" ? "ml" : "g"
+
+        // Clamp to sensible ranges so bad AI guesses don't create absurd presets
+        let minSize = unit == "ml" ? 25.0 : 5.0
+        let maxSize = unit == "ml" ? 1200.0 : 600.0
+        let clamped = min(max(rawSize, minSize), maxSize)
+
+        // Round to the nearest 5 for cleaner UI
+        let rounded = (clamped / 5).rounded() * 5
+
+        return (rounded, unit)
+    }
+
     /// Returns true if this food has Firebase category data with suggested serving size
     var hasFirebaseCategoryPortions: Bool {
         guard let category = foodCategory, !category.isEmpty,
-              let servingSize = suggestedServingSize, servingSize > 0 else {
+              normalizedFirebaseServing != nil else {
             return false
         }
         return true
@@ -306,78 +330,67 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// Generates portion options based on Firebase category data (from AI categorization)
     /// These are more accurate than local detection since they're determined by Gemini AI
     var firebaseCategoryPortions: [PortionOption] {
-        guard let servingSize = suggestedServingSize, servingSize > 0 else { return [] }
+        guard let serving = normalizedFirebaseServing else { return [] }
 
-        let unit = suggestedServingUnit ?? "g"
-        let description = suggestedServingDescription ?? "1 serving"
+        let baseSize = serving.size
+        let unit = serving.unit
+        let displayUnit = unit
         let caloriesPer100 = calories
-        let isLiquid = unit == "ml"
 
-        // Generate smart portion options based on the default serving size
-        // Create 4 options: half, 1x, 1.5x, and 2x the suggested serving
-
-        // Format the portion name with the unit
-        func formatPortion(_ grams: Double, _ label: String) -> String {
-            let rounded = Int(grams)
-            return "\(label) (\(rounded)\(unit))"
+        func roundToNearest5(_ value: Double) -> Double {
+            return (value / 5).rounded() * 5
         }
 
-        // Calculate calories for a given portion size
         func caloriesFor(_ grams: Double) -> Double {
             return caloriesPer100 * (grams / 100)
         }
 
-        // Clean up the description for display (remove "per " prefix if present)
-        let cleanDesc = description.hasPrefix("per ") ? String(description.dropFirst(4)) : description
-
-        // For very small servings (like aromatics: 3g), use different multipliers
-        if servingSize < 15 {
-            return [
-                PortionOption(name: formatPortion(servingSize, "1 \(cleanDesc)"), calories: caloriesFor(servingSize), serving_g: servingSize),
-                PortionOption(name: formatPortion(servingSize * 2, "2x"), calories: caloriesFor(servingSize * 2), serving_g: servingSize * 2),
-                PortionOption(name: formatPortion(servingSize * 3, "3x"), calories: caloriesFor(servingSize * 3), serving_g: servingSize * 3),
-                PortionOption(name: formatPortion(servingSize * 4, "4x"), calories: caloriesFor(servingSize * 4), serving_g: servingSize * 4)
-            ]
-        }
-
-        // For liquid portions, use appropriate multipliers and always include 200ml
-        if isLiquid {
-            let one = servingSize
+        // Build a portion option while deduplicating similar sizes
+        func buildOptions(_ sizes: [(Double, String)]) -> [PortionOption] {
+            var seenSizes = Set<Int>()
             var options: [PortionOption] = []
 
-            // Always include 200ml glass option for drinks (common serving size)
-            let has200 = (one == 200)
-            if !has200 {
-                options.append(PortionOption(name: "200ml Glass", calories: caloriesFor(200), serving_g: 200))
-            }
-
-            // Add the suggested serving
-            options.append(PortionOption(name: formatPortion(one, "1 \(cleanDesc)"), calories: caloriesFor(one), serving_g: one))
-
-            // Add a larger option if serving is small
-            if one < 300 {
-                let larger = (one * 1.5).rounded()
-                if larger != 200 { // Don't duplicate 200ml
-                    options.append(PortionOption(name: formatPortion(larger, "Large"), calories: caloriesFor(larger), serving_g: larger))
+            for (size, label) in sizes {
+                let rounded = max(5.0, roundToNearest5(size))
+                let roundedInt = Int(rounded)
+                if seenSizes.insert(roundedInt).inserted {
+                    options.append(
+                        PortionOption(
+                            name: "\(label) (\(roundedInt)\(displayUnit))",
+                            calories: caloriesFor(rounded),
+                            serving_g: rounded
+                        )
+                    )
                 }
             }
 
-            // Sort by size (smallest first)
             return options.sorted { $0.serving_g < $1.serving_g }
         }
 
-        // For solid portions
-        let half = (servingSize * 0.5).rounded()
-        let one = servingSize
-        let oneHalf = (servingSize * 1.5).rounded()
-        let double = servingSize * 2
+        // Liquids: lean on common glass sizes and avoid product-specific labels
+        if unit == "ml" {
+            var sizes: [(Double, String)] = [(baseSize, "Standard")]
 
-        return [
-            PortionOption(name: formatPortion(half, "Half"), calories: caloriesFor(half), serving_g: half),
-            PortionOption(name: formatPortion(one, "1 \(cleanDesc)"), calories: caloriesFor(one), serving_g: one),
-            PortionOption(name: formatPortion(oneHalf, "1.5x"), calories: caloriesFor(oneHalf), serving_g: oneHalf),
-            PortionOption(name: formatPortion(double, "2x"), calories: caloriesFor(double), serving_g: double)
+            // Always offer a 200ml option for sanity
+            sizes.append((200, "200ml"))
+
+            // Offer a larger size for small servings
+            if baseSize < 350 {
+                sizes.append((baseSize * 1.5, "Large"))
+            }
+
+            return buildOptions(sizes)
+        }
+
+        // Solids: generic small/standard/large/double around the category default
+        let sizes: [(Double, String)] = [
+            (baseSize * 0.5, "Small"),
+            (baseSize, "Standard"),
+            (baseSize * 1.5, "Large"),
+            (baseSize * 2.0, "Double")
         ]
+
+        return buildOptions(sizes)
     }
 
     // MARK: - Auto-detected Food Category for Smart Portion Presets
@@ -1008,6 +1021,39 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return false  // Small serving size indicates powder form
         }
 
+        // Quick label checks for explicit per-100 units
+        let servingLower = servingDescription?.lowercased() ?? ""
+        if servingLower.contains("per 100ml") { return true }
+        if servingLower.contains("per 100g") { return false }
+
+        // Early solid override for bar/biscuit/snack form factors with realistic bar sizes
+        let barKeywords = ["bar", "flapjack", "brownie", "cookie", "biscuit", "slice", "protein bar", "cereal bar", "snack bar", "square"]
+        if barKeywords.contains(where: { nameLower.contains($0) || servingLower.contains($0) }) {
+            if let servingG = servingSizeG, servingG > 0 && servingG < 80 {
+                return false
+            }
+            // Even without serving size, bar keywords are strong solid signals
+            return false
+        }
+
+        // Ingredient-first token signals
+        if let firstIngredient = ingredients?.first?.lowercased() {
+            let liquidFirst = ["water", "spring water", "carbonated water", "filtered water", "fruit juice", "orange juice", "apple juice", "skimmed milk", "semi-skimmed milk", "whole milk"]
+            if liquidFirst.contains(where: { firstIngredient.hasPrefix($0) }) {
+                return true
+            }
+            let solidFirst = ["oats", "wheat", "flour", "sugar", "cocoa", "cocoa butter", "vegetable oil", "rapeseed", "palm", "sunflower", "butter", "corn", "rice"]
+            if solidFirst.contains(where: { firstIngredient.hasPrefix($0) }) {
+                return false
+            }
+        }
+
+        // Package-size liquid cues with powder guard
+        let liquidPackageSizes = ["200ml", "250ml", "330ml", "500ml", "750ml", "1000ml", "1l", "1 l", "1 litre", "1 liter"]
+        if liquidPackageSizes.contains(where: { nameLower.contains($0) || servingLower.contains($0) }) && !powderIndicators.contains(where: { nameLower.contains($0) }) {
+            return true
+        }
+
         // THEN: Check for explicit drink indicators (ready-to-drink liquids)
         // This ensures "Chocolate Milkshake", "Mars Milk Drink" etc are correctly treated as liquids
         // IMPORTANT: Use word boundary matching for short words to avoid false positives
@@ -1074,7 +1120,6 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     }
 
     /// Formats a serving size with appropriate unit (ml for drinks, g for solids)
-    /// This ensures drinks show as "330ml" instead of "330g"
     func formattedServingSize(_ grams: Double) -> String {
         if isLiquidCategory {
             // Use ml for drinks
@@ -1222,6 +1267,8 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// - Parameter query: The user's search query
     /// - Returns: Array of portion options appropriate for this food/query combination
     func portionsForQuery(_ query: String) -> [PortionOption] {
+        let confidence = servingConfidence(forQuery: query)
+
         // 1. Database portions always take priority
         if let dbPortions = portions, !dbPortions.isEmpty {
             return dbPortions
@@ -1232,17 +1279,17 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             let unit = isLiquidCategory ? "ml" : "g"
             let caloriesForServing = calories * (servingG / 100)
 
-            // For drinks, also offer a 200ml option (common glass size)
+            // For drinks, also offer a 200ml option (common baseline)
             if isLiquidCategory && servingG != 200 {
                 let calories200 = calories * 2 // 200ml
                 var options = [
-                    PortionOption(name: "1 serving (\(Int(servingG))ml)", calories: caloriesForServing, serving_g: servingG)
+                    PortionOption(name: "1 serving (\(Int(servingG))\(unit))", calories: caloriesForServing, serving_g: servingG)
                 ]
                 // Add 200ml as second option if serving is larger, or first if smaller
                 if servingG > 200 {
-                    options.insert(PortionOption(name: "200ml Glass", calories: calories200, serving_g: 200), at: 0)
+                    options.insert(PortionOption(name: "200ml", calories: calories200, serving_g: 200), at: 0)
                 } else {
-                    options.append(PortionOption(name: "200ml Glass", calories: calories200, serving_g: 200))
+                    options.append(PortionOption(name: "200ml", calories: calories200, serving_g: 200))
                 }
                 return options
             }
@@ -1252,10 +1299,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             ]
         }
 
-        // 3. Firebase category-based portions (from AI categorization)
-        // Only used when serving size is default 100g
-        if hasFirebaseCategoryPortions {
-            return firebaseCategoryPortions
+        // 3. If classification says use safe output, do not suggest presets (custom only)
+        if confidence.usesSafeOutput {
+            return []
         }
 
         // 4. Per-unit items don't need presets
@@ -1275,6 +1321,14 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return presetPortions
         }
 
+        // 7. Firebase category-based portions (only when confident and detectable)
+        if hasFirebaseCategoryPortions {
+            let options = firebaseCategoryPortions
+            if !options.isEmpty {
+                return options
+            }
+        }
+
         // No presets - user can use custom amount
         return []
     }
@@ -1290,25 +1344,25 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         switch detectedCategory {
         case .softDrink:
             return [
-                PortionOption(name: "200ml Glass", calories: caloriesPer100 * 2, serving_g: 200),
+                PortionOption(name: "200ml", calories: caloriesPer100 * 2, serving_g: 200),
                 PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
-                PortionOption(name: "330ml Can", calories: caloriesPer100 * 3.3, serving_g: 330),
-                PortionOption(name: "500ml Bottle", calories: caloriesPer100 * 5, serving_g: 500)
+                PortionOption(name: "330ml", calories: caloriesPer100 * 3.3, serving_g: 330),
+                PortionOption(name: "500ml", calories: caloriesPer100 * 5, serving_g: 500)
             ]
         case .cordial:
             // Cordials are concentrated - show undiluted serving sizes
             // Typical dilution is 1:4 or 1:5 (e.g., 50ml cordial makes 250ml drink)
             return [
-                PortionOption(name: "25ml (makes 1 glass)", calories: caloriesPer100 * 0.25, serving_g: 25),
-                PortionOption(name: "40ml (makes 200ml)", calories: caloriesPer100 * 0.40, serving_g: 40),
-                PortionOption(name: "50ml (makes 250ml)", calories: caloriesPer100 * 0.50, serving_g: 50),
-                PortionOption(name: "75ml (makes 375ml)", calories: caloriesPer100 * 0.75, serving_g: 75)
+                PortionOption(name: "25ml", calories: caloriesPer100 * 0.25, serving_g: 25),
+                PortionOption(name: "40ml", calories: caloriesPer100 * 0.40, serving_g: 40),
+                PortionOption(name: "50ml", calories: caloriesPer100 * 0.50, serving_g: 50),
+                PortionOption(name: "75ml", calories: caloriesPer100 * 0.75, serving_g: 75)
             ]
         case .juice:
             return [
-                PortionOption(name: "150ml Glass", calories: caloriesPer100 * 1.5, serving_g: 150),
+                PortionOption(name: "150ml", calories: caloriesPer100 * 1.5, serving_g: 150),
                 PortionOption(name: "200ml", calories: caloriesPer100 * 2, serving_g: 200),
-                PortionOption(name: "250ml Carton", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
                 PortionOption(name: "330ml", calories: caloriesPer100 * 3.3, serving_g: 330)
             ]
         case .hotDrink:
@@ -1319,17 +1373,17 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             ]
         case .water:
             return [
-                PortionOption(name: "250ml Glass", calories: caloriesPer100 * 2.5, serving_g: 250),
-                PortionOption(name: "500ml Bottle", calories: caloriesPer100 * 5, serving_g: 500),
+                PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "500ml", calories: caloriesPer100 * 5, serving_g: 500),
                 PortionOption(name: "750ml", calories: caloriesPer100 * 7.5, serving_g: 750),
-                PortionOption(name: "1L Bottle", calories: caloriesPer100 * 10, serving_g: 1000)
+                PortionOption(name: "1L", calories: caloriesPer100 * 10, serving_g: 1000)
             ]
         case .alcoholicDrink:
             return [
-                PortionOption(name: "125ml Glass", calories: caloriesPer100 * 1.25, serving_g: 125),
-                PortionOption(name: "175ml Glass", calories: caloriesPer100 * 1.75, serving_g: 175),
-                PortionOption(name: "250ml Glass", calories: caloriesPer100 * 2.5, serving_g: 250),
-                PortionOption(name: "330ml Bottle", calories: caloriesPer100 * 3.3, serving_g: 330)
+                PortionOption(name: "125ml", calories: caloriesPer100 * 1.25, serving_g: 125),
+                PortionOption(name: "175ml", calories: caloriesPer100 * 1.75, serving_g: 175),
+                PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "330ml", calories: caloriesPer100 * 3.3, serving_g: 330)
             ]
         case .spirit:
             return [
@@ -1468,9 +1522,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case .milk:
             return [
                 PortionOption(name: "Splash (30ml)", calories: caloriesPer100 * 0.3, serving_g: 30),
-                PortionOption(name: "Small glass (150ml)", calories: caloriesPer100 * 1.5, serving_g: 150),
-                PortionOption(name: "Glass (244ml)", calories: caloriesPer100 * 2.44, serving_g: 244),
-                PortionOption(name: "Half pint (284ml)", calories: caloriesPer100 * 2.84, serving_g: 284)
+                PortionOption(name: "Small (150ml)", calories: caloriesPer100 * 1.5, serving_g: 150),
+                PortionOption(name: "Standard (244ml)", calories: caloriesPer100 * 2.44, serving_g: 244),
+                PortionOption(name: "Large (284ml)", calories: caloriesPer100 * 2.84, serving_g: 284)
             ]
         case .yogurt:
             return [
@@ -1555,6 +1609,8 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// - Parameter query: The user's search query
     /// - Returns: true if any portion options are available (may be safe defaults)
     func hasAnyPortionOptions(forQuery query: String) -> Bool {
+        let confidence = servingConfidence(forQuery: query)
+
         // Database portions always available
         if hasPortionOptions { return true }
         // Per-unit items have no portions
@@ -1565,8 +1621,19 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
             return false
         }
-        // Otherwise, we always have some options (either category presets or safe defaults)
-        return true
+        // If confidence says use safe output, no presets
+        if confidence.usesSafeOutput {
+            return false
+        }
+        // Real serving size (non-100) means we can show that option
+        if let servingG = servingSizeG, servingG > 0 && servingG != 100 {
+            return true
+        }
+        // Category presets available
+        if detectedCategory != .other { return true }
+        // Firebase category portions (if available)
+        if hasFirebaseCategoryPortions { return true }
+        return false
     }
 }
 

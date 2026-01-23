@@ -25,6 +25,10 @@ struct FoodDetailServingView: View {
     @Binding var gramsAmount: String
 
     @Environment(\.colorScheme) var colorScheme
+    
+    private var portionUnitLabel: String {
+        food.isLiquidCategory ? "ml" : "g"
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -166,7 +170,7 @@ struct FoodDetailServingView: View {
                     Text(portion.name)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
-                    Text("\(Int(portion.serving_g))\(food.isLiquidCategory ? "ml" : "g") • \(Int(portionCalories)) kcal")
+                    Text("\(Int(portion.serving_g))\(portionUnitLabel) • \(Int(portionCalories)) kcal")
                         .font(.system(size: 12))
                         .foregroundColor(palette.textSecondary)
                 }
@@ -217,7 +221,7 @@ struct FoodDetailServingView: View {
                                     RoundedRectangle(cornerRadius: 6)
                                         .fill(palette.tertiary.opacity(0.1))
                                 )
-                            Text(food.isLiquidCategory ? "ml" : "g")
+                            Text(portionUnitLabel)
                                 .font(.system(size: 12))
                                 .foregroundColor(palette.textSecondary)
                         }
