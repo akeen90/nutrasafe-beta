@@ -1346,9 +1346,6 @@ struct LogReactionSheet: View {
                 .padding(20)
             }
             .scrollDismissesKeyboard(.interactively)
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
             .background(AppAnimatedBackground())
             .navigationTitle("Log Reaction")
             .navigationBarTitleDisplayMode(.inline)

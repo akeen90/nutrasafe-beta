@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import UIKit
 
 struct CreateMealView: View {
     @Binding var selectedTab: TabItem
@@ -242,9 +241,6 @@ struct CreateMealView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
             .background(Color(.systemGroupedBackground))
             .navigationTitle(isEditing ? "Edit Meal" : "Create Meal")
             .navigationBarTitleDisplayMode(.inline)
@@ -575,9 +571,6 @@ struct AddFoodToMealView: View {
                 }
             }
             .background(AppAnimatedBackground())
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
             .navigationTitle("Add Food")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
