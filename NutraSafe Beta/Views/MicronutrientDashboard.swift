@@ -164,7 +164,7 @@ struct MicronutrientDashboard: View {
             hasLoadedData = true
             isLoading = false
                     }
-        .trackScreen("Micronutrient Dashboard")
+        .trackScreen("Vitamins & Minerals")
     }
 
     // MARK: - Header Section
@@ -174,7 +174,7 @@ struct MicronutrientDashboard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
-                        Text("Micronutrients")
+                        Text("Vitamins & Minerals")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
 

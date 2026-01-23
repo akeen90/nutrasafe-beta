@@ -3544,7 +3544,7 @@ struct MicronutrientDisplayView: View {
             }
             .scrollContentBackground(.hidden)
             .background(AppAnimatedBackground().ignoresSafeArea())
-            .navigationTitle("Micronutrient Display")
+            .navigationTitle("Vitamins & Minerals Display")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

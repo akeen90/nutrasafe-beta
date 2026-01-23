@@ -46,7 +46,7 @@ struct MicronutrientTimelineView: View {
                 nutrientSummaries = await trackingManager.getAllNutrientSummaries()
             }
         }
-        .trackScreen("Micronutrient Timeline")
+        .trackScreen("Vitamins & Minerals Timeline")
     }
 
     // MARK: - Balance History Chart

@@ -4766,11 +4766,11 @@ struct FoodDetailViewFromSearch: View {
                         .font(.system(size: 40))
                         .foregroundColor(AppPalette.standard.accent.opacity(0.5))
 
-                    Text("No Micronutrient Data")
+                    Text("No Vitamins & Minerals Data")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
 
-                    Text("Micronutrient information not available for this food")
+                    Text("Vitamins & minerals information not available for this food")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
