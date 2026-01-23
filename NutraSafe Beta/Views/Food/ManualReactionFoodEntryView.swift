@@ -27,6 +27,7 @@ struct ManualReactionFoodEntryView: View {
                 TextField("milk, sugar, cocoa", text: $ingredientsText)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Add Manually")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarItems(

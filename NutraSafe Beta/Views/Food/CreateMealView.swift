@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct CreateMealView: View {
     @Binding var selectedTab: TabItem
@@ -239,6 +240,10 @@ struct CreateMealView: View {
                         .fill(Color.clear)
                         .frame(height: 100)
                 }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle(isEditing ? "Edit Meal" : "Create Meal")
@@ -475,6 +480,7 @@ struct AddFoodToMealView: View {
     @State private var isSearching = false
     @State private var selectedFood: FoodSearchResult?
     @State private var searchTask: Task<Void, Never>?
+    @FocusState private var isSearchFieldFocused: Bool
 
     @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
 
@@ -490,6 +496,7 @@ struct AddFoodToMealView: View {
                         .textFieldStyle(PlainTextFieldStyle())
                         .autocorrectionDisabled(true)
                         .textInputAutocapitalization(.never)
+                        .focused($isSearchFieldFocused)
                         .onChange(of: searchText) { _, newValue in
                             searchDebouncer.debounce {
                                 performSearch(query: newValue)
@@ -509,6 +516,10 @@ struct AddFoodToMealView: View {
                 .padding(14)
                 .background(Color(.systemGray6))
                 .cornerRadius(12)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isSearchFieldFocused = true
+                }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
 
@@ -564,6 +575,9 @@ struct AddFoodToMealView: View {
                 }
             }
             .background(AppAnimatedBackground())
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .navigationTitle("Add Food")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

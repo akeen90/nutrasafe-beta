@@ -8,6 +8,7 @@
 
 import SwiftUI
 import PhotosUI
+import UIKit
 
 // MARK: - Main Log Weight View
 
@@ -156,6 +157,10 @@ struct LogWeightView: View {
                     }
                     .padding(.horizontal, DesignTokens.Spacing.screenEdge)
                 }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
 
             // Upload overlay

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseFirestore
+import UIKit
 
 struct ReactionLogView: View {
     @StateObject private var manager = ReactionLogManager.shared
@@ -1344,6 +1345,10 @@ struct LogReactionSheet: View {
                 }
                 .padding(20)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .background(AppAnimatedBackground())
             .navigationTitle("Log Reaction")
             .navigationBarTitleDisplayMode(.inline)
@@ -1824,6 +1829,10 @@ struct LogReactionSheet: View {
                 .padding(14)
                 .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
                 .cornerRadius(12)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isDatabaseSearchFocused = true
+                }
 
                 // Barcode scan button
                 Button(action: {

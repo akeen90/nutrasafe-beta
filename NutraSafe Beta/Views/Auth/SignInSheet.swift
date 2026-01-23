@@ -59,6 +59,7 @@ struct SignInSheet: View {
                     .disabled(isBusy || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.count < 6)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Sign In")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -617,6 +617,7 @@ struct AddFoodSearchView: View {
     @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
     @State private var editingFoodName = ""
     @State private var originalMealType = ""
+    @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -653,6 +654,7 @@ struct AddFoodSearchView: View {
                             .font(.system(size: 16))
                             .autocorrectionDisabled(true)
                             .textInputAutocapitalization(.never)
+                            .focused($isSearchFieldFocused)
                             .onChange(of: searchText) { _, newValue in
                                 // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
                                 searchDebouncer.debounce {
@@ -693,6 +695,10 @@ struct AddFoodSearchView: View {
                                     .stroke(Color.white.opacity(0.3), lineWidth: 1)
                             )
                     )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isSearchFieldFocused = true
+                    }
                 }
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.top, 12)
