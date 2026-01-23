@@ -496,16 +496,7 @@ struct AdditiveScoreCard: View {
             .buttonStyle(PlainButtonStyle())
             .padding(.top, 4)
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color.white)
-                .shadow(
-                    color: DesignTokens.Shadow.subtle.color,
-                    radius: DesignTokens.Shadow.subtle.radius,
-                    y: DesignTokens.Shadow.subtle.y
-                )
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
         .fullScreenCover(isPresented: $showingSources) {
             SourcesAndCitationsView()
         }
@@ -567,10 +558,19 @@ struct AdditiveRiskGroup: View {
                             additive: additive,
                             isExpanded: expandedId == additive.id,
                             onTap: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    if expandedId == additive.id {
+                                if expandedId == additive.id {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
                                         expandedId = nil
-                                    } else {
+                                    }
+                                } else {
+                                    // Collapse previous instantly to avoid double-animate jump
+                                    var tx = Transaction()
+                                    tx.disablesAnimations = true
+                                    withTransaction(tx) {
+                                        expandedId = nil
+                                    }
+                                    // Animate opening the new row
+                                    withAnimation(.easeInOut(duration: 0.2)) {
                                         expandedId = additive.id
                                     }
                                 }
