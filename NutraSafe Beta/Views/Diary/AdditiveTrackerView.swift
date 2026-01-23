@@ -461,72 +461,55 @@ struct AdditiveTrackerSection: View {
     // MARK: - Summary Card
 
     private var summaryCard: some View {
-        VStack(spacing: 16) {
-            // Grade + Stats row
+        VStack(spacing: 14) {
+            // Stats row (no harsh iconography)
             HStack(spacing: 16) {
-                // Grade circle with trend indicator
-                ZStack {
-                    Circle()
-                        .fill(overallGrade.color)
-                        .frame(width: 56, height: 56)
-
-                    Text(overallGrade.rawValue)
-                        .font(.system(size: 26, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(viewModel.totalAdditiveCount)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
+                    Text("additives")
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundColor(palette.textTertiary)
                 }
 
-                // Stats
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(viewModel.totalAdditiveCount)")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(palette.textPrimary)
-                            Text("additives")
-                                .font(.system(size: 11, design: .rounded))
-                                .foregroundColor(palette.textTertiary)
-                        }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(viewModel.foodItemCount)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
+                    Text("foods")
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundColor(palette.textTertiary)
+                }
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(viewModel.foodItemCount)")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(palette.textPrimary)
-                            Text("foods")
-                                .font(.system(size: 11, design: .rounded))
-                                .foregroundColor(palette.textTertiary)
-                        }
-
-                        // Per-food average
-                        if viewModel.foodItemCount > 0 {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(String(format: "%.1f", Double(viewModel.totalAdditiveCount) / Double(viewModel.foodItemCount)))
-                                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                                    .foregroundColor(palette.textPrimary)
-                                Text("per food")
-                                    .font(.system(size: 11, design: .rounded))
-                                    .foregroundColor(palette.textTertiary)
-                            }
-                        }
-
-                        Spacer()
+                if viewModel.foodItemCount > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String(format: "%.1f", Double(viewModel.totalAdditiveCount) / Double(viewModel.foodItemCount)))
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(palette.textPrimary)
+                        Text("per food")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundColor(palette.textTertiary)
                     }
+                }
 
-                    // Risk breakdown pills
-                    HStack(spacing: 6) {
-                        if avoidAdditives.count > 0 {
-                            riskPill(count: avoidAdditives.count, label: "avoid", color: .red)
-                        }
-                        if cautionAdditives.count > 0 {
-                            riskPill(count: cautionAdditives.count, label: "caution", color: SemanticColors.neutral)
-                        }
-                        if neutralAdditives.count > 0 {
-                            riskPill(count: neutralAdditives.count, label: "safe", color: SemanticColors.positive)
-                        }
-                    }
+                Spacer()
+            }
+
+            // Risk breakdown pills
+            HStack(spacing: 6) {
+                if avoidAdditives.count > 0 {
+                    riskPill(count: avoidAdditives.count, label: "avoid", color: .red)
+                }
+                if cautionAdditives.count > 0 {
+                    riskPill(count: cautionAdditives.count, label: "caution", color: SemanticColors.neutral)
+                }
+                if neutralAdditives.count > 0 {
+                    riskPill(count: neutralAdditives.count, label: "safe", color: SemanticColors.positive)
                 }
             }
 
-            // Contextual message based on period + counts
+            // Contextual message based on period + counts (single statement)
             let status = additiveStatusMessage()
             HStack(spacing: 8) {
                 Image(systemName: status.icon)
@@ -548,30 +531,6 @@ struct AdditiveTrackerSection: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(status.color.opacity(0.08))
             )
-
-            // Progress tip based on data
-            progressTipCard
-
-            // Actionable insight
-            if let insight = actionableInsight {
-                HStack(spacing: 10) {
-                    Image(systemName: insight.icon)
-                        .font(.system(size: 14))
-                        .foregroundColor(insight.color)
-
-                    Text(insight.text)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(palette.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Spacer()
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(insight.color.opacity(0.08))
-                )
-            }
         }
         .padding(16)
         .background(
@@ -610,13 +569,13 @@ struct AdditiveTrackerSection: View {
         let thresholds: (avoidHigh: Int, perFoodHigh: Double, perFoodElevated: Double) = {
             switch viewModel.selectedPeriod {
             case .day:
-                return (avoidHigh: 1, perFoodHigh: 5.0, perFoodElevated: 3.5)
+                return (avoidHigh: 2, perFoodHigh: 6.0, perFoodElevated: 4.0)
             case .week:
-                return (avoidHigh: 2, perFoodHigh: 4.5, perFoodElevated: 3.0)
+                return (avoidHigh: 3, perFoodHigh: 5.0, perFoodElevated: 3.5)
             case .month:
-                return (avoidHigh: 4, perFoodHigh: 4.0, perFoodElevated: 2.7)
+                return (avoidHigh: 6, perFoodHigh: 4.0, perFoodElevated: 2.8)
             case .ninetyDays:
-                return (avoidHigh: 6, perFoodHigh: 3.5, perFoodElevated: 2.5)
+                return (avoidHigh: 10, perFoodHigh: 3.5, perFoodElevated: 2.5)
             }
         }()
 
@@ -626,7 +585,7 @@ struct AdditiveTrackerSection: View {
             let concernText = topConcern != nil ? " Consider swapping out \(topConcern!) where possible." : ""
             return (
                 title: "Higher additive load",
-                detail: "This period has more additives per food than usual.\(concernText)",
+                detail: "This \(viewModel.selectedPeriod.rawValue.lowercased()) has more additives per food than usual.\(concernText)",
                 icon: "exclamationmark.triangle.fill",
                 color: SemanticColors.caution
             )
