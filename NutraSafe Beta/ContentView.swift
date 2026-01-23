@@ -441,6 +441,8 @@ struct ContentView: View {
     @State private var showingReactionLog = false
     @State private var showingWeightAdd = false
     @State private var showingMealScan = false
+    @State private var showingBarcodeScan = false
+    @State private var prefilledBarcodeForManual: String? = nil
     @State private var useBySelectedFood: FoodSearchResult? = nil
     @State private var previousTabBeforeAdd: TabItem = .diary
 
@@ -604,11 +606,7 @@ struct ContentView: View {
                 },
                 onSelectBarcodeScan: {
                     previousTabBeforeAdd = selectedTab
-                    // Set option first, then present in next run loop to ensure state is settled
-                    diaryAddInitialOption = .barcode
-                    DispatchQueue.main.async {
-                        showingDiaryAdd = true
-                    }
+                    showingBarcodeScan = true
                 },
                 onSelectMealScan: {
                     previousTabBeforeAdd = selectedTab
@@ -706,20 +704,23 @@ struct ContentView: View {
                 selectedTab: $selectedTab,
                 isPresented: $showingDiaryAdd,
                 initialOption: diaryAddInitialOption,
+                prefilledBarcode: prefilledBarcodeForManual,
                 onDismiss: {
                     showingDiaryAdd = false
                     diaryAddInitialOption = nil
+                    prefilledBarcodeForManual = nil
                 },
                 onComplete: { tab in
                     // Dismiss keyboard before closing fullscreen and switching tabs
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     showingDiaryAdd = false
                     diaryAddInitialOption = nil
+                    prefilledBarcodeForManual = nil
                     selectedTab = tab
                 }
             )
-            // Force view recreation when initial option changes (fixes barcode direct navigation)
-            .id(diaryAddInitialOption)
+            // Force view recreation when initial option or prefilled barcode changes
+            .id("\(String(describing: diaryAddInitialOption))-\(prefilledBarcodeForManual ?? "")")
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
             .environmentObject(sharedFastingViewModelWrapper)
@@ -765,6 +766,34 @@ struct ContentView: View {
             .environmentObject(sharedFastingViewModelWrapper)
             .onDisappear {
                 showingMealScan = false
+            }
+        }
+        .fullScreenCover(isPresented: $showingBarcodeScan) {
+            NavigationView {
+                AddFoodBarcodeView(selectedTab: $selectedTab, onSwitchToManual: { barcode in
+                    // Store barcode, close scanner, and open AddFoodMainView with manual entry
+                    prefilledBarcodeForManual = barcode
+                    showingBarcodeScan = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        diaryAddInitialOption = .manual
+                        showingDiaryAdd = true
+                    }
+                })
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            showingBarcodeScan = false
+                        }
+                    }
+                }
+            }
+            .environmentObject(diaryDataManager)
+            .environmentObject(subscriptionManager)
+            .environmentObject(firebaseManager)
+            .environmentObject(sharedFastingViewModelWrapper)
+            .onDisappear {
+                showingBarcodeScan = false
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
@@ -5264,11 +5293,12 @@ struct AddFoodMainView: View {
     @State private var currentDayEntryCount = 0
     @State private var showingPaywall = false
 
-    init(selectedTab: Binding<TabItem>, isPresented: Binding<Bool>, initialOption: AddOption? = nil, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+    init(selectedTab: Binding<TabItem>, isPresented: Binding<Bool>, initialOption: AddOption? = nil, prefilledBarcode: String? = nil, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self._selectedTab = selectedTab
         self._isPresented = isPresented
         // Initialize selectedAddOption directly from initialOption to avoid race condition
         self._selectedAddOption = State(initialValue: initialOption ?? .search)
+        self._prefilledBarcode = State(initialValue: prefilledBarcode)
         self.onDismiss = onDismiss
         self.onComplete = onComplete
     }
