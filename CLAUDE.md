@@ -109,9 +109,9 @@ Remember: Security first, features second. Never compromise on API key safety.
 
 When you encounter old/duplicate code, add it here for future cleanup:
 
-### SettingsView.swift
-- **`MacroManagementView`** (line ~2662): Old diet management view, replaced by `DietManagementRedesigned`
-- **`BMRCalculatorSheet`** (line ~3384): Old BMR calculator, replaced by `BMRCalculatorRedesigned` in DietManagementRedesign.swift
+### Cleaned Up (January 2026)
+- ✅ `FastingMainViewLegacy` and 30+ supporting views (~3,870 lines) - removed from FastingMainView.swift
+- ✅ `MacroManagementView`, `BMRCalculatorSheet`, and supporting views (~1,350 lines) - removed from SettingsView.swift
 
 ### Guidelines
 - Always use redesigned views (`*Redesigned`) over old versions
