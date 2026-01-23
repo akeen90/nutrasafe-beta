@@ -69,8 +69,11 @@ struct AddFoodBarcodeView: View {
                     }
                     .foregroundColor(AppPalette.standard.accent)
                     .padding(.bottom, 20)
+
+                    Spacer()
                 }
-                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.adaptiveCard)
 
             } else if scanFailed {
                 // Scan failed state - show error and retry button
