@@ -210,7 +210,7 @@ struct DesignTokens {
         static let standard: SwiftUI.Animation = .easeOut(duration: 0.3)
         static let slow: SwiftUI.Animation = .easeInOut(duration: 0.5)
         static let breathing: SwiftUI.Animation = .easeInOut(duration: 2.5).repeatForever(autoreverses: true)
-        static let ambient: SwiftUI.Animation = .easeInOut(duration: 8).repeatForever(autoreverses: true)
+        static let ambient: SwiftUI.Animation = .easeInOut(duration: 3) // Removed repeatForever for scroll performance
     }
 
     // MARK: - Typography (From Onboarding)

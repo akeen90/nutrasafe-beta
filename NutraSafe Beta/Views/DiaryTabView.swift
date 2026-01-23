@@ -2023,16 +2023,8 @@ struct CategoricalNutrientTrackingView: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .fill(
                                         foodCount > 0
-                                            ? LinearGradient(
-                                                colors: [SemanticColors.nutrient.opacity(0.8), SemanticColors.nutrient],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
-                                            : LinearGradient(
-                                                colors: [palette.tertiary.opacity(0.2), palette.tertiary.opacity(0.2)],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
+                                            ? SemanticColors.nutrient // PERF: Use solid color instead of gradient
+                                            : palette.tertiary.opacity(0.2)
                                     )
                                     .frame(height: 28)
                                     .overlay(

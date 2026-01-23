@@ -2572,16 +2572,17 @@ struct MacroBarRow: View {
                 .foregroundColor(.secondary)
                 .frame(width: 55, alignment: .leading)
 
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(.systemGray5))
-                        .frame(height: 8)
+            // PERF: Replaced GeometryReader with percentage-based layout
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(.systemGray5))
+                    .frame(height: 8)
 
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(color)
-                        .frame(width: geometry.size.width * CGFloat(percent) / 100, height: 8)
-                }
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(color)
+                    .frame(height: 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .scaleEffect(x: CGFloat(min(max(percent, 0), 100)) / 100, y: 1, anchor: .leading)
             }
             .frame(height: 8)
 
@@ -3140,6 +3141,7 @@ struct SimpleWeightChart: View {
         .padding(.vertical, 20)
         .background(Color(.systemGray6).opacity(0.3))
         .cornerRadius(12)
+        .drawingGroup() // PERF: Flatten paths to Metal texture for scroll performance
     }
 }
 
