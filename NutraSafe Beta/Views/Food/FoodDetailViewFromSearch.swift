@@ -4443,6 +4443,8 @@ struct FoodDetailViewFromSearch: View {
             HStack(spacing: 0) {
                 ForEach(WatchTab.allCases, id: \.self) { tab in
                     Button(action: {
+                        // Only animate if actually changing tabs
+                        guard selectedWatchTab != tab else { return }
                         withAnimation(.easeOut(duration: 0.2)) {
                             selectedWatchTab = tab
                         }
