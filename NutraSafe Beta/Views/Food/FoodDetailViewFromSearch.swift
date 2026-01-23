@@ -1319,11 +1319,22 @@ struct FoodDetailViewFromSearch: View {
                     riskLevel = "Low"
                 }
 
-                // Use consumer guide if available, otherwise use a default message
-                let displayName = additive.name
-                let whatItIs = additive.consumerGuide ?? displayName
-                let originSummary = additive.origin ?? "Origin not specified"
-                let riskSummary = additive.consumerGuide ?? "No detailed information available for this additive."
+                // Convert NutritionAdditiveInfo to AdditiveInfo for override lookup
+                let additiveForOverride = AdditiveInfo(
+                    eNumbers: [additive.code],
+                    name: additive.name,
+                    group: .other,
+                    category: .other,
+                    origin: .synthetic
+                )
+
+                let override = AdditiveOverrides.override(for: additiveForOverride)
+
+                // Use override descriptions if available, otherwise fall back to consumerGuide
+                let displayName = override?.displayName ?? additive.name
+                let whatItIs = override?.whatItIs ?? (additive.consumerGuide ?? displayName)
+                let originSummary = override?.originSummary ?? (additive.origin ?? "Origin not specified")
+                let riskSummary = override?.riskSummary ?? (additive.consumerGuide ?? "No detailed information available for this additive.")
 
                 return DetailedAdditive(
                     name: displayName,
