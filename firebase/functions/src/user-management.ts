@@ -529,3 +529,139 @@ export const bulkAddToMailchimp = functions.https.onCall(async (data, context) =
     totalProcessed: emails.length
   };
 });
+
+// Set premium override for a user (ADMIN ONLY)
+// This grants/revokes premium access without requiring a subscription
+export const setPremiumOverride = functions.https.onCall(async (data, context) => {
+  // Verify admin access
+  await requireAdmin(context);
+
+  const { userId, email, enabled } = data;
+
+  // Must provide either userId or email
+  if (!userId && !email) {
+    throw new functions.https.HttpsError('invalid-argument', 'User ID or email is required');
+  }
+
+  if (typeof enabled !== 'boolean') {
+    throw new functions.https.HttpsError('invalid-argument', 'enabled must be a boolean');
+  }
+
+  console.log(`Admin ${context.auth?.uid} setting premium override for ${userId || email}: ${enabled}`);
+
+  const db = admin.firestore();
+
+  try {
+    let targetUserId = userId;
+
+    // If email provided instead of userId, find the user
+    if (!targetUserId && email) {
+      // First try to find user by email in Firebase Auth
+      try {
+        const userRecord = await admin.auth().getUserByEmail(email);
+        targetUserId = userRecord.uid;
+        console.log(`Found user by email: ${email} -> ${targetUserId}`);
+      } catch (authError) {
+        // If not found in Auth, search Firestore users collection
+        const usersSnapshot = await db.collection('users')
+          .where('email', '==', email.toLowerCase())
+          .limit(1)
+          .get();
+
+        if (!usersSnapshot.empty) {
+          targetUserId = usersSnapshot.docs[0].id;
+          console.log(`Found user by email in Firestore: ${email} -> ${targetUserId}`);
+        } else {
+          throw new functions.https.HttpsError('not-found', `User not found with email: ${email}`);
+        }
+      }
+    }
+
+    // Set the premium override in the user's settings
+    const settingsRef = db.collection('users').doc(targetUserId)
+      .collection('settings').doc('preferences');
+
+    await settingsRef.set({
+      premiumOverride: enabled,
+      premiumOverrideSetAt: admin.firestore.FieldValue.serverTimestamp(),
+      premiumOverrideSetBy: context.auth?.uid || 'system'
+    }, { merge: true });
+
+    console.log(`Premium override ${enabled ? 'enabled' : 'disabled'} for user ${targetUserId}`);
+
+    return {
+      success: true,
+      message: `Premium override ${enabled ? 'enabled' : 'disabled'} for user`,
+      userId: targetUserId,
+      enabled
+    };
+
+  } catch (error: any) {
+    console.error('Error setting premium override:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', 'Failed to set premium override');
+  }
+});
+
+// Get premium override status for a user (ADMIN ONLY)
+export const getPremiumOverrideStatus = functions.https.onCall(async (data, context) => {
+  // Verify admin access
+  await requireAdmin(context);
+
+  const { userId, email } = data;
+
+  if (!userId && !email) {
+    throw new functions.https.HttpsError('invalid-argument', 'User ID or email is required');
+  }
+
+  const db = admin.firestore();
+
+  try {
+    let targetUserId = userId;
+
+    // If email provided, find the user
+    if (!targetUserId && email) {
+      try {
+        const userRecord = await admin.auth().getUserByEmail(email);
+        targetUserId = userRecord.uid;
+      } catch (authError) {
+        const usersSnapshot = await db.collection('users')
+          .where('email', '==', email.toLowerCase())
+          .limit(1)
+          .get();
+
+        if (!usersSnapshot.empty) {
+          targetUserId = usersSnapshot.docs[0].id;
+        } else {
+          throw new functions.https.HttpsError('not-found', `User not found with email: ${email}`);
+        }
+      }
+    }
+
+    // Get the premium override status
+    const settingsDoc = await db.collection('users').doc(targetUserId)
+      .collection('settings').doc('preferences')
+      .get();
+
+    const premiumOverride = settingsDoc.exists ? (settingsDoc.data()?.premiumOverride || false) : false;
+
+    return {
+      success: true,
+      userFound: true,
+      userId: targetUserId,
+      hasPremiumOverride: premiumOverride,
+      premiumOverride,
+      setAt: settingsDoc.data()?.premiumOverrideSetAt?.toDate?.()?.toISOString() || null,
+      setBy: settingsDoc.data()?.premiumOverrideSetBy || null
+    };
+
+  } catch (error: any) {
+    console.error('Error getting premium override status:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', 'Failed to get premium override status');
+  }
+});

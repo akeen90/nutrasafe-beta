@@ -1,0 +1,6 @@
+# NutraSafe Batch Image Processor Dependencies
+algoliasearch>=3.0.0
+requests>=2.28.0
+rembg>=2.0.50
+Pillow>=10.0.0
+firebase-admin>=6.0.0

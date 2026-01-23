@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchTescoAndUpdate = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
+exports.adminSaveFood = exports.searchTescoAndUpdate = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
 const functions = require("firebase-functions");
 const functionsV2 = require("firebase-functions/v2");
 const params_1 = require("firebase-functions/params");
@@ -955,6 +955,150 @@ exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], t
     catch (error) {
         console.error('Error searching Tesco:', error);
         res.status(500).json({ success: false, error: 'Failed to search Tesco', details: String(error) });
+    }
+});
+/**
+ * Admin Save Food - General purpose food update function for admin tools
+ * Handles both Firestore-backed and Algolia-only indices
+ */
+exports.adminSaveFood = functions
+    .runWith({ secrets: [algoliaAdminKey], timeoutSeconds: 60 })
+    .https.onRequest(async (req, res) => {
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(200).send();
+        return;
+    }
+    if (req.method !== 'POST') {
+        res.status(405).json({ success: false, error: 'Method not allowed' });
+        return;
+    }
+    try {
+        const { foodId, indexName, updates } = req.body;
+        if (!foodId) {
+            res.status(400).json({ success: false, error: 'foodId is required' });
+            return;
+        }
+        if (!indexName) {
+            res.status(400).json({ success: false, error: 'indexName is required' });
+            return;
+        }
+        console.log(`📝 Admin saving food: ${foodId} in index: ${indexName}`);
+        // Build the update object with flattened nutrition
+        const updateObj = {
+            updatedAt: new Date().toISOString(),
+        };
+        if (updates) {
+            // Basic fields
+            if (updates.foodName !== undefined) {
+                updateObj.name = updates.foodName;
+                updateObj.foodName = updates.foodName;
+            }
+            if (updates.brandName !== undefined) {
+                updateObj.brand = updates.brandName;
+                updateObj.brandName = updates.brandName;
+            }
+            if (updates.barcode !== undefined) {
+                updateObj.barcode = updates.barcode;
+            }
+            if (updates.category !== undefined) {
+                updateObj.category = updates.category;
+            }
+            if (updates.servingSize !== undefined) {
+                updateObj.servingDescription = updates.servingSize;
+                updateObj.servingSize = updates.servingSize;
+            }
+            if (updates.servingSizeG !== undefined) {
+                updateObj.servingSizeG = updates.servingSizeG;
+            }
+            if (updates.servingUnit !== undefined) {
+                updateObj.servingUnit = updates.servingUnit;
+            }
+            if (updates.ingredients !== undefined) {
+                updateObj.ingredients = updates.ingredients;
+                updateObj.extractedIngredients = updates.ingredients;
+            }
+            // Flatten nutrition data
+            if (updates.nutrition) {
+                const n = updates.nutrition;
+                if (n.calories !== undefined && n.calories !== null)
+                    updateObj.calories = n.calories;
+                if (n.protein !== undefined && n.protein !== null)
+                    updateObj.protein = n.protein;
+                if (n.carbs !== undefined && n.carbs !== null) {
+                    updateObj.carbs = n.carbs;
+                    updateObj.carbohydrates = n.carbs;
+                }
+                if (n.fat !== undefined && n.fat !== null)
+                    updateObj.fat = n.fat;
+                if (n.fiber !== undefined && n.fiber !== null) {
+                    updateObj.fiber = n.fiber;
+                    updateObj.fibre = n.fiber;
+                }
+                if (n.sugar !== undefined && n.sugar !== null) {
+                    updateObj.sugar = n.sugar;
+                    updateObj.sugars = n.sugar;
+                }
+                if (n.salt !== undefined && n.salt !== null)
+                    updateObj.salt = n.salt;
+                if (n.sodium !== undefined && n.sodium !== null)
+                    updateObj.sodium = n.sodium;
+                if (n.saturatedFat !== undefined && n.saturatedFat !== null) {
+                    updateObj.saturatedFat = n.saturatedFat;
+                    updateObj.saturates = n.saturatedFat;
+                }
+            }
+        }
+        console.log('Update object:', JSON.stringify(updateObj, null, 2));
+        // Get Algolia admin key
+        const algoliaKey = algoliaAdminKey.value()?.trim();
+        if (!algoliaKey) {
+            res.status(500).json({ success: false, error: 'Algolia API key not configured' });
+            return;
+        }
+        const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaKey);
+        // Check if this is an Algolia-only index or has Firestore backing
+        const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+        if (firestoreCollection) {
+            // Has Firestore backing - update Firestore (will auto-sync to Algolia via triggers)
+            console.log(`📂 Updating Firestore: ${firestoreCollection}/${foodId}`);
+            const firestoreUpdate = {
+                ...updateObj,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+            await admin.firestore()
+                .collection(firestoreCollection)
+                .doc(foodId)
+                .update(firestoreUpdate);
+            console.log(`✅ Firestore updated: ${firestoreCollection}/${foodId}`);
+        }
+        else {
+            // Algolia-only index - update directly in Algolia
+            console.log(`🔍 Updating Algolia directly: ${indexName}/${foodId}`);
+            await client.partialUpdateObject({
+                indexName: indexName,
+                objectID: foodId,
+                attributesToUpdate: updateObj,
+                createIfNotExists: false,
+            });
+            console.log(`✅ Algolia updated: ${indexName}/${foodId}`);
+        }
+        res.json({
+            success: true,
+            message: `Food ${foodId} updated successfully`,
+            index: indexName,
+            firestoreBacked: !!firestoreCollection,
+        });
+    }
+    catch (error) {
+        console.error('Error saving food:', error);
+        res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
     }
 });
 //# sourceMappingURL=food-management.js.map

@@ -14,9 +14,9 @@ export { fastSearchFoods } from './fast-search';
 export { searchFoodsWeb } from './search-foods-web';
 export { getFoodDetails } from './food-details';
 export { searchFoodsByCollection } from './search-foods-by-collection';
-export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, moveFoodBetweenCollections, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes, searchTescoAndUpdate } from './food-management';
+export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, moveFoodBetweenCollections, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes, searchTescoAndUpdate, adminSaveFood } from './food-management';
 export { getOverviewStats, getAnalyticsData } from './analytics';
-export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp } from './user-management';
+export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp, setPremiumOverride, getPremiumOverrideStatus } from './user-management';
 export { getContextualNutritionScore } from './contextual-nutrition';
 export { analyzeAdditivesEnhanced } from './additive-analyzer-enhanced';
 export { extractIngredientsWithAI } from './intelligent-ingredient-extractor';
@@ -78,3 +78,6 @@ export { categorizeFoods, categorizeFoodsFromDatabase, getCategorizeStats, updat
 
 // AI Data Validation - validates and cleans food data using AI knowledge
 export { validateFoodsFromDatabase, getValidationStats, getValidationProgress, resetValidationProgress, getFoodsForValidation, getMarkedForDeletion, deleteMarkedItems, unmarkForDeletion, clearMarkedForDeletion } from './validate-foods';
+
+// Food image upload and processing
+export { uploadFoodImage, batchUploadFoodImages } from './upload-food-image';

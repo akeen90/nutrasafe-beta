@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* AG Grid customizations */
+.ag-theme-alpine {
+  --ag-header-height: 40px;
+  --ag-header-foreground-color: #374151;
+  --ag-header-background-color: #f9fafb;
+  --ag-row-hover-color: #f3f4f6;
+  --ag-selected-row-background-color: #eff6ff;
+  --ag-range-selection-border-color: #3b82f6;
+  --ag-input-focus-border-color: #3b82f6;
+}
+
+.ag-theme-alpine .ag-header-cell {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.ag-theme-alpine .ag-cell {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.ag-theme-alpine .ag-cell-edit-input {
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+/* Custom cell styles */
+.ag-theme-alpine .ag-cell.font-medium {
+  font-weight: 500;
+}
+
+.ag-theme-alpine .ag-cell.font-mono {
+  font-family: 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', monospace;
+}
+
+/* Numeric columns right-align */
+.ag-theme-alpine .ag-cell[col-id="calories"],
+.ag-theme-alpine .ag-cell[col-id="protein"],
+.ag-theme-alpine .ag-cell[col-id="carbs"],
+.ag-theme-alpine .ag-cell[col-id="fat"],
+.ag-theme-alpine .ag-cell[col-id="fiber"],
+.ag-theme-alpine .ag-cell[col-id="sugar"],
+.ag-theme-alpine .ag-cell[col-id="sodium"],
+.ag-theme-alpine .ag-cell[col-id="_confidenceScore"] {
+  justify-content: flex-end;
+}
+
+/* Row states */
+.ag-theme-alpine .ag-row.bg-red-50 {
+  background-color: #fef2f2 !important;
+}
+
+.ag-theme-alpine .ag-row.bg-yellow-50 {
+  background-color: #fefce8 !important;
+}
+
+.ag-theme-alpine .ag-row.bg-red-100 {
+  background-color: #fee2e2 !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Button hover states */
+button:not(:disabled):hover {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Tooltip styling */
+[title] {
+  position: relative;
+}
+
+/* Loading animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Badge hover effects */
+.hover\:shadow-sm:hover {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}

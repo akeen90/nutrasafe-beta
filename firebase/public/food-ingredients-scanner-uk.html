@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Ingredients Scanner App UK — See What's In Your Food</title>
+    <meta name="description" content="Scan any barcode to see the full ingredients list. Unlike calorie apps, NutraSafe shows you exactly what's in your food - every ingredient, additive, and E-number.">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/food-ingredients-scanner-uk">
+
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="food ingredients scanner, app that shows ingredients, ingredients list app UK, what's in my food app, food label scanner UK, see food ingredients app, barcode ingredients scanner">
+    <meta name="author" content="Aaron Keen">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/food-ingredients-scanner-uk">
+    <meta property="og:title" content="Food Ingredients Scanner App UK — See What's In Your Food">
+    <meta property="og:description" content="Scan any barcode to see the full ingredients list. See every ingredient, additive, and E-number.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/ingredients-view.png">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Food Ingredients Scanner App UK — See What's In Your Food">
+    <meta name="twitter:description" content="Scan any barcode to see the full ingredients list. See every ingredient, additive, and E-number.">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/ingredients-view.png">
+
+    <meta name="theme-color" content="#3d7a7a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32-new.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-new.png">
+
+    <!-- Cookie Consent - Loads Google Analytics conditionally -->
+    <script src="/cookie-consent.js" defer></script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Is there an app that shows food ingredients?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, NutraSafe shows the complete ingredients list for every product you scan. Unlike calorie counting apps like MyFitnessPal which only show nutrition numbers, NutraSafe displays every ingredient including additives, preservatives, E-numbers, and allergens. Simply scan any UK product barcode to see exactly what's in your food."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Why doesn't MyFitnessPal show ingredients?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "MyFitnessPal is designed primarily for calorie and macro tracking, not ingredient transparency. It only shows nutrition numbers (calories, protein, carbs, fat) because its database is crowd-sourced and users typically only enter calorie data. If you want to see what's actually in your food, you need an ingredients-focused app like NutraSafe."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I scan a barcode to see ingredients?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, with NutraSafe you can scan any UK product barcode to instantly see the full ingredients list. The app shows ingredients in order (highest to lowest), highlights additives and E-numbers with safety ratings, and flags potential allergens. It works with products from Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, and other UK supermarkets."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "What's the difference between a calorie app and an ingredients app?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Calorie apps like MyFitnessPal show you nutrition numbers: calories, protein, carbs, fat. They don't show what's actually in the food. Ingredients apps like NutraSafe show you the full ingredients list so you can see exactly what you're eating - preservatives, additives, E-numbers, allergens, and more. NutraSafe does both: full ingredients AND nutrition tracking."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is the food ingredients scanner free?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, scanning products to see ingredients is completely free with NutraSafe. You can scan unlimited barcodes and view full ingredients lists, additive safety ratings, and allergen warnings at no cost. Premium (£2.99/month) adds unlimited food diary logging and advanced pattern tracking."
+                }
+            }
+        ]
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.nutrasafe.co.uk/"},
+            {"@type": "ListItem", "position": 2, "name": "Food Ingredients Scanner", "item": "https://www.nutrasafe.co.uk/food-ingredients-scanner-uk"}
+        ]
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "NutraSafe",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "iOS",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "GBP"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "127"
+        }
+    }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --teal: #3d7a7a;
+            --teal-dark: #2d5a5a;
+            --teal-light: #5a9a9a;
+            --coral: #d4a574;
+            --sage: #7ab3a0;
+            --text-dark: #1a1a1a;
+            --text-medium: #4a4a4a;
+            --text-light: #7a7a7a;
+            --bg-start: #dce4ec;
+            --bg-end: #f5f3ef;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(255, 255, 255, 0.9);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
+            color: var(--text-dark);
+            background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        header {
+            background: rgba(220, 228, 236, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 40px rgba(0, 0, 0, 0.05);
+        }
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(61, 122, 122, 0.2);
+        }
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-medium);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--teal); }
+        .nav-cta {
+            padding: 0.75rem 1.75rem;
+            background: var(--teal);
+            color: white !important;
+            border-radius: 100px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .nav-cta:hover {
+            background: var(--teal-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(61, 122, 122, 0.3);
+        }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .hero {
+            padding: 80px 2rem 60px;
+            text-align: center;
+        }
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            color: var(--text-dark);
+        }
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 8px 30px rgba(61, 122, 122, 0.25);
+            transition: all 0.4s ease;
+        }
+        .hero-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(61, 122, 122, 0.35);
+        }
+
+        .content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 2rem 80px;
+        }
+        h2 {
+            font-size: 2rem;
+            margin: 3rem 0 1.5rem;
+            color: var(--text-dark);
+        }
+        h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.2rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        p {
+            color: var(--text-medium);
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+        ul, ol {
+            margin: 1rem 0 1.5rem 1.5rem;
+            color: var(--text-medium);
+        }
+        li {
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+        }
+        strong {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .highlight-box {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-left: 4px solid var(--coral);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .highlight-box p {
+            margin-bottom: 0;
+            color: var(--text-dark);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 1rem 1.25rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .comparison-table th {
+            background: var(--teal);
+            color: white;
+            font-weight: 600;
+        }
+        .comparison-table tr:last-child td { border-bottom: none; }
+        .comparison-table tr:hover { background: rgba(61, 122, 122, 0.03); }
+        .check { color: #22c55e; font-weight: bold; }
+        .cross { color: #ef4444; font-weight: bold; }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .feature-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 2rem;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            border-color: var(--teal-light);
+        }
+        .feature-card h3 {
+            color: var(--teal);
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+        .feature-card p {
+            margin-bottom: 0;
+        }
+
+        .cta-section {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 3rem;
+            border-radius: 24px;
+            text-align: center;
+            margin: 3rem 0;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .cta-section h2 {
+            color: var(--text-dark);
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+        .cta-section p {
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            font-style: italic;
+        }
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 8px 30px rgba(61, 122, 122, 0.25);
+            transition: all 0.4s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(61, 122, 122, 0.35);
+        }
+
+        .faq-section { margin: 3rem 0; }
+        .faq-item {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 1.5rem 0;
+        }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-question {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin-bottom: 0.75rem;
+        }
+        .faq-answer { color: var(--text-medium); }
+        .faq-answer p { margin-bottom: 0; }
+
+        footer {
+            background: linear-gradient(180deg, transparent 0%, rgba(61, 122, 122, 0.05) 100%);
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .footer-brand .logo { margin-bottom: 1rem; }
+        .footer-brand p {
+            color: var(--text-light);
+            line-height: 1.7;
+            font-size: 0.9rem;
+        }
+        .footer-section h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+            color: var(--text-dark);
+        }
+        .footer-section ul { list-style: none; margin: 0; padding: 0; }
+        .footer-section a {
+            color: var(--text-light);
+            text-decoration: none;
+            display: block;
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .footer-section a:hover { color: var(--teal); }
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.25rem; }
+            h2 { font-size: 1.75rem; }
+            .footer-content { grid-template-columns: 1fr; text-align: center; }
+            .cta-section { padding: 2rem; }
+            .comparison-table { font-size: 0.9rem; }
+            .comparison-table th, .comparison-table td { padding: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/resources">Resources</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>See What's Actually In Your Food</h1>
+            <p>The only UK food app that shows you the complete ingredients list — not just calories.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="hero-cta">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download Free
+            </a>
+        </div>
+    </section>
+
+    <div class="content">
+        <h2>Why Can't I See Ingredients in My Calorie App?</h2>
+
+        <p>If you use MyFitnessPal, Lose It, or similar calorie counting apps, you've probably noticed something missing: <strong>they don't show you what's actually in your food</strong>.</p>
+
+        <p>These apps only display nutrition numbers — calories, protein, carbs, fat. But they never tell you:</p>
+        <ul>
+            <li>What preservatives and additives are in the food</li>
+            <li>Which E-numbers are present</li>
+            <li>Whether there are artificial sweeteners or colours</li>
+            <li>The full list of ingredients you're consuming</li>
+        </ul>
+
+        <div class="highlight-box">
+            <p><strong>The problem:</strong> You might be tracking calories perfectly, but have no idea you're eating a dozen additives, emulsifiers, and artificial ingredients every meal.</p>
+        </div>
+
+        <h2>NutraSafe: Calories AND Ingredients</h2>
+
+        <p>NutraSafe is the only UK food app that shows you both the nutrition numbers AND the complete ingredients list for every product you scan.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>NutraSafe</th>
+                    <th>MyFitnessPal</th>
+                    <th>Lose It</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Calories & Macros</strong></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Full Ingredients List</strong></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="cross">✗</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Additive/E-Number Info</strong></td>
+                    <td><span class="check">✓</span> with safety ratings</td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="cross">✗</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Allergen Warnings</strong></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="cross">✗</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Vitamin Tracking</strong></td>
+                    <td><span class="check">✓</span> All vitamins</td>
+                    <td>Limited (Premium only)</td>
+                    <td>Limited</td>
+                </tr>
+                <tr>
+                    <td><strong>UK Food Database</strong></td>
+                    <td><span class="check">✓</span> UK supermarkets</td>
+                    <td>US-focused</td>
+                    <td>US-focused</td>
+                </tr>
+                <tr>
+                    <td><strong>Price</strong></td>
+                    <td>Free / £2.99/mo</td>
+                    <td>Free / £15.99/mo</td>
+                    <td>Free / £29.99/yr</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>What You See When You Scan</h2>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Complete Ingredients</h3>
+                <p>Every ingredient listed in order from highest to lowest quantity, exactly as shown on the label.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Additive Safety Ratings</h3>
+                <p>E-numbers and additives highlighted with safety ratings so you know which ones to watch out for.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Allergen Alerts</h3>
+                <p>Set your allergens and get instant warnings when products contain ingredients you need to avoid.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Full Nutrition Data</h3>
+                <p>Calories, macros, vitamins, and minerals — everything you need to track your diet properly.</p>
+            </div>
+        </div>
+
+        <h2>Perfect For</h2>
+
+        <ul>
+            <li><strong>Food intolerance tracking:</strong> See exactly what's in each food to identify trigger ingredients</li>
+            <li><strong>Clean eating:</strong> Avoid ultra-processed foods by checking ingredient lists before buying</li>
+            <li><strong>Allergen management:</strong> Spot allergens instantly with personalised alerts</li>
+            <li><strong>Additive awareness:</strong> Know what E-numbers and preservatives you're consuming</li>
+            <li><strong>Health-conscious shopping:</strong> Make informed decisions at the supermarket</li>
+        </ul>
+
+        <h2>Frequently Asked Questions</h2>
+
+        <div class="faq-section">
+            <div class="faq-item">
+                <div class="faq-question">Is there an app that shows food ingredients?</div>
+                <div class="faq-answer">
+                    <p>Yes, NutraSafe shows the complete ingredients list for every product you scan. Unlike calorie counting apps like MyFitnessPal which only show nutrition numbers, NutraSafe displays every ingredient including additives, preservatives, E-numbers, and allergens.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Why doesn't MyFitnessPal show ingredients?</div>
+                <div class="faq-answer">
+                    <p>MyFitnessPal is designed for calorie and macro tracking, not ingredient transparency. Its database is crowd-sourced and users typically only enter calorie data. If you want to see what's actually in your food, you need an ingredients-focused app like NutraSafe.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Can I scan a barcode to see ingredients?</div>
+                <div class="faq-answer">
+                    <p>Yes, with NutraSafe you can scan any UK product barcode to instantly see the full ingredients list. It works with products from Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, and other UK supermarkets.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Is the food ingredients scanner free?</div>
+                <div class="faq-answer">
+                    <p>Yes, scanning products to see ingredients is completely free. You can scan unlimited barcodes and view full ingredients lists, additive safety ratings, and allergen warnings at no cost. Premium (£2.99/month) adds unlimited food diary logging.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>Know What You're Eating</h2>
+            <p>Download NutraSafe free and start scanning</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download Free on App Store
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <div class="logo-icon">
+                        <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
+                    </div>
+                    <span>NutraSafe</span>
+                </a>
+                <p>See what's in your food. Track vitamins, scan additives, and identify trigger foods.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Features</h4>
+                <ul>
+                    <li><a href="/food-scanner">Food Scanner</a></li>
+                    <li><a href="/food-tracker">Food Diary</a></li>
+                    <li><a href="/vitamin-tracker-app">Vitamin Tracker</a></li>
+                    <li><a href="/food-additives">Additive Scanner</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Compare</h4>
+                <ul>
+                    <li><a href="/nutrasafe-vs-myfitnesspal">vs MyFitnessPal</a></li>
+                    <li><a href="/nutrasafe-vs-yuka">vs Yuka</a></li>
+                    <li><a href="/food-intolerance-tracker-uk">Intolerance Tracker</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="/faq">FAQ</a></li>
+                    <li><a href="/support">Contact</a></li>
+                    <li><a href="/privacy-policy">Privacy</a></li>
+                    <li><a href="/terms-of-service">Terms</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 NutraSafe. Made in the UK.</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "name": "nutrasafe-admin-v2",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "cp index.src.html index.html && tsc && vite build && cp dist/index.html . && rm -rf assets && cp -r dist/assets .",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
+    "@tanstack/react-query": "^5.17.0",
+    "ag-grid-community": "^31.0.0",
+    "ag-grid-react": "^31.0.0",
+    "algoliasearch": "^4.22.0",
+    "clsx": "^2.1.0",
+    "firebase": "^10.7.0",
+    "fuse.js": "^7.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0"
+  }
+}

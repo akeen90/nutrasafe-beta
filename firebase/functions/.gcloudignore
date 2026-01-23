@@ -1,0 +1,60 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore.
+
+# Batch image processor (Python script - not part of Cloud Functions)
+batch-image-processor/
+
+# Source files (only deploy compiled lib/)
+src/
+
+# Node modules are installed fresh during deployment
+node_modules/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+
+# Git
+.git/
+.gitignore
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large data files not needed at runtime
+*.csv
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
+# Standalone utility scripts
+*.cjs
+check-*.js
+audit-*.js
+browse-*.js
+bulk-*.js
+configure-*.js
+consolidate-*.js
+delete-*.js
+efficient-*.js
+test-*.js
+query-*.js
+move-*.js
+run-*.js
+sync-*.js
+update-*.js
+verify-*.js

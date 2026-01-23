@@ -5450,6 +5450,34 @@
                     <h4>Mailchimp Sync Result</h4>
                     <div class="mailchimp-result" id="mailchimp-result"></div>
                 </div>
+
+                <!-- Premium Override Section -->
+                <div class="premium-override-section" style="margin-top: 32px; padding: 24px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; border: 1px solid #f59e0b;">
+                    <h3 style="margin: 0 0 8px 0; color: #92400e; display: flex; align-items: center; gap: 8px;">
+                        <span>👑</span> Premium Override
+                    </h3>
+                    <p style="margin: 0 0 16px 0; color: #78350f; font-size: 14px;">
+                        Grant or revoke premium access for specific users without requiring a subscription.
+                    </p>
+
+                    <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 4px;">User Email</label>
+                            <input type="email" id="premium-override-email" class="search-input" placeholder="user@example.com" style="width: 100%; padding: 10px 12px; border: 1px solid #d97706; border-radius: 8px;">
+                        </div>
+                        <button class="btn" onclick="app.checkPremiumStatus()" style="background: #f59e0b; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">
+                            🔍 Check Status
+                        </button>
+                        <button class="btn" onclick="app.grantPremium()" style="background: #10b981; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">
+                            ✅ Grant Premium
+                        </button>
+                        <button class="btn" onclick="app.revokePremium()" style="background: #ef4444; color: white; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">
+                            ❌ Revoke Premium
+                        </button>
+                    </div>
+
+                    <div id="premium-override-result" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+                </div>
             </div>
         </div>
 
@@ -12985,6 +13013,119 @@
                         syncBtn.disabled = false;
                         syncBtn.innerHTML = '📧 Sync to Mailchimp';
                     }
+                }
+            },
+
+            // =========================================
+            // PREMIUM OVERRIDE FUNCTIONS
+            // =========================================
+
+            showPremiumResult(message, isSuccess) {
+                const resultDiv = document.getElementById('premium-override-result');
+                if (resultDiv) {
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.background = isSuccess ? '#d1fae5' : '#fee2e2';
+                    resultDiv.style.color = isSuccess ? '#065f46' : '#991b1b';
+                    resultDiv.style.border = `1px solid ${isSuccess ? '#10b981' : '#ef4444'}`;
+                    resultDiv.innerHTML = message;
+                }
+            },
+
+            async checkPremiumStatus() {
+                const emailInput = document.getElementById('premium-override-email');
+                const email = emailInput?.value?.trim();
+
+                if (!email) {
+                    this.showToast('Please enter an email address', 'warning');
+                    return;
+                }
+
+                try {
+                    const getPremiumOverrideStatus = firebase.functions().httpsCallable('getPremiumOverrideStatus');
+                    const result = await getPremiumOverrideStatus({ email });
+
+                    if (result.data.success) {
+                        const data = result.data;
+                        let statusHtml = `<strong>${this.escapeHtml(email)}</strong><br>`;
+
+                        if (!data.userFound) {
+                            statusHtml += `<span style="color: #b45309;">⚠️ User not found in database</span>`;
+                        } else {
+                            statusHtml += `<span>User ID: ${data.userId}</span><br>`;
+                            if (data.hasPremiumOverride) {
+                                statusHtml += `<span style="color: #059669;">✅ Premium override is <strong>ACTIVE</strong></span>`;
+                            } else {
+                                statusHtml += `<span style="color: #6b7280;">⭕ No premium override (standard subscription rules apply)</span>`;
+                            }
+                        }
+
+                        this.showPremiumResult(statusHtml, true);
+                    } else {
+                        throw new Error(result.data.error || 'Failed to check status');
+                    }
+                } catch (error) {
+                    console.error('Check premium status error:', error);
+                    this.showPremiumResult(`❌ Error: ${error.message}`, false);
+                }
+            },
+
+            async grantPremium() {
+                const emailInput = document.getElementById('premium-override-email');
+                const email = emailInput?.value?.trim();
+
+                if (!email) {
+                    this.showToast('Please enter an email address', 'warning');
+                    return;
+                }
+
+                if (!confirm(`Grant premium access to ${email}?\n\nThis user will have full premium features without a subscription.`)) {
+                    return;
+                }
+
+                try {
+                    const setPremiumOverride = firebase.functions().httpsCallable('setPremiumOverride');
+                    const result = await setPremiumOverride({ email, enabled: true });
+
+                    if (result.data.success) {
+                        this.showPremiumResult(`✅ Premium access <strong>GRANTED</strong> to ${this.escapeHtml(email)}`, true);
+                        this.showToast('Premium access granted!', 'success');
+                    } else {
+                        throw new Error(result.data.error || 'Failed to grant premium');
+                    }
+                } catch (error) {
+                    console.error('Grant premium error:', error);
+                    this.showPremiumResult(`❌ Error: ${error.message}`, false);
+                    this.showToast('Failed to grant premium: ' + error.message, 'error');
+                }
+            },
+
+            async revokePremium() {
+                const emailInput = document.getElementById('premium-override-email');
+                const email = emailInput?.value?.trim();
+
+                if (!email) {
+                    this.showToast('Please enter an email address', 'warning');
+                    return;
+                }
+
+                if (!confirm(`Revoke premium access from ${email}?\n\nThis user will return to standard subscription rules.`)) {
+                    return;
+                }
+
+                try {
+                    const setPremiumOverride = firebase.functions().httpsCallable('setPremiumOverride');
+                    const result = await setPremiumOverride({ email, enabled: false });
+
+                    if (result.data.success) {
+                        this.showPremiumResult(`❌ Premium access <strong>REVOKED</strong> from ${this.escapeHtml(email)}`, true);
+                        this.showToast('Premium access revoked', 'success');
+                    } else {
+                        throw new Error(result.data.error || 'Failed to revoke premium');
+                    }
+                } catch (error) {
+                    console.error('Revoke premium error:', error);
+                    this.showPremiumResult(`❌ Error: ${error.message}`, false);
+                    this.showToast('Failed to revoke premium: ' + error.message, 'error');
                 }
             },
 

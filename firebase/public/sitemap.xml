@@ -2,31 +2,31 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 
-    <!-- Homepage - Food Reactions & Additive Scanner -->
+    <!-- Homepage - Food Scanner & Vitamin Tracker -->
     <url>
         <loc>https://www.nutrasafe.co.uk/</loc>
-        <lastmod>2025-01-06</lastmod>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
         <image:image>
-            <image:loc>https://www.nutrasafe.co.uk/app-icon.png</image:loc>
-            <image:title>NutraSafe - Food Reactions &amp; Allergy App UK</image:title>
-            <image:caption>Track food reactions, scan additives, check E-numbers and monitor vitamins</image:caption>
+            <image:loc>https://www.nutrasafe.co.uk/app-icon-2026.png</image:loc>
+            <image:title>NutraSafe - Food Scanner &amp; Vitamin Tracker UK</image:title>
+            <image:caption>Scan food additives, track vitamins and minerals, log food reactions</image:caption>
         </image:image>
         <image:image>
             <image:loc>https://www.nutrasafe.co.uk/nutrition-dashboard.png</image:loc>
             <image:title>NutraSafe Nutrition Dashboard</image:title>
-            <image:caption>Daily food diary and macro tracking</image:caption>
+            <image:caption>Daily food diary with vitamin and mineral tracking</image:caption>
         </image:image>
         <image:image>
             <image:loc>https://www.nutrasafe.co.uk/allergy-alerts.png</image:loc>
             <image:title>Food Reaction Tracker</image:title>
-            <image:caption>Track food reactions and identify allergens</image:caption>
+            <image:caption>Track food reactions and identify trigger foods</image:caption>
         </image:image>
         <image:image>
             <image:loc>https://www.nutrasafe.co.uk/ingredients-view.png</image:loc>
-            <image:title>Ingredient &amp; Additive Scanner</image:title>
-            <image:caption>Check E-numbers and food additives</image:caption>
+            <image:title>E-Number &amp; Additive Scanner</image:title>
+            <image:caption>Check E-numbers and food additives instantly</image:caption>
         </image:image>
         <image:image>
             <image:loc>https://www.nutrasafe.co.uk/use-by-screen.png</image:loc>
@@ -35,236 +35,264 @@
         </image:image>
     </url>
 
-    <!-- Privacy Policy -->
-    <url>
-        <loc>https://www.nutrasafe.co.uk/privacy-policy.html</loc>
-        <lastmod>2025-01-06</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.5</priority>
-    </url>
-
-    <!-- Terms of Service -->
-    <url>
-        <loc>https://www.nutrasafe.co.uk/terms-of-service.html</loc>
-        <lastmod>2025-01-06</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.5</priority>
-    </url>
-
-    <!-- Support Page -->
-    <url>
-        <loc>https://www.nutrasafe.co.uk/support.html</loc>
-        <lastmod>2025-01-06</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-
     <!-- Primary SEO Landing Pages -->
     <url>
-        <loc>https://www.nutrasafe.co.uk/food-scanner.html</loc>
-        <lastmod>2025-01-15</lastmod>
+        <loc>https://www.nutrasafe.co.uk/food-scanner</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.95</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/food-tracker.html</loc>
-        <lastmod>2025-01-15</lastmod>
+        <loc>https://www.nutrasafe.co.uk/food-tracker</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.95</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/food-additives.html</loc>
-        <lastmod>2025-01-15</lastmod>
+        <loc>https://www.nutrasafe.co.uk/food-additives</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.95</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/faq.html</loc>
-        <lastmod>2025-01-15</lastmod>
+        <loc>https://www.nutrasafe.co.uk/e-numbers</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.95</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/faq</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- New Featured Snippet Pages -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/vitamin-tracker-app</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.95</priority>
+    </url>
+
+    <!-- Comparison Pages -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/nutrasafe-vs-myfitnesspal</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/calorie-counter-nutrition-guide.html</loc>
-        <lastmod>2025-01-17</lastmod>
+        <loc>https://www.nutrasafe.co.uk/nutrasafe-vs-yuka</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Calorie & Macro Tools -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/calorie-counter-uk</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.95</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/calorie-counter-nutrition-guide</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.95</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/tdee-bmr-calculator</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.95</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/macro-tracker-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.95</priority>
     </url>
 
     <!-- Keyword Landing Pages -->
     <url>
-        <loc>https://www.nutrasafe.co.uk/food-additive-scanner-uk.html</loc>
-        <lastmod>2025-01-06</lastmod>
+        <loc>https://www.nutrasafe.co.uk/food-additive-scanner-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/food-intolerance-tracker-uk.html</loc>
-        <lastmod>2025-01-06</lastmod>
+        <loc>https://www.nutrasafe.co.uk/food-intolerance-tracker-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/intermittent-fasting-app-uk.html</loc>
-        <lastmod>2025-01-06</lastmod>
+        <loc>https://www.nutrasafe.co.uk/food-ingredients-scanner-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/food-expiry-tracker-uk.html</loc>
-        <lastmod>2025-01-06</lastmod>
+        <loc>https://www.nutrasafe.co.uk/intermittent-fasting-app-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/best-food-scanner-app-uk.html</loc>
-        <lastmod>2025-01-15</lastmod>
+        <loc>https://www.nutrasafe.co.uk/food-expiry-tracker-uk</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/best-food-scanner-app-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.85</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/e-numbers.html</loc>
-        <lastmod>2025-01-14</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.9</priority>
-    </url>
-
-    <url>
-        <loc>https://www.nutrasafe.co.uk/best-food-scanner-apps-uk-2025.html</loc>
-        <lastmod>2025-01-14</lastmod>
+        <loc>https://www.nutrasafe.co.uk/best-food-scanner-apps-uk-2025</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.85</priority>
-    </url>
-
-    <!-- Resources Section -->
-    <url>
-        <loc>https://www.nutrasafe.co.uk/resources.html</loc>
-        <lastmod>2025-01-06</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-
-    <url>
-        <loc>https://www.nutrasafe.co.uk/resources/what-are-e-numbers-uk.html</loc>
-        <lastmod>2025-01-06</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.8</priority>
-    </url>
-
-    <url>
-        <loc>https://www.nutrasafe.co.uk/resources/how-to-track-micronutrients.html</loc>
-        <lastmod>2025-01-15</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.8</priority>
-    </url>
-
-    <url>
-        <loc>https://www.nutrasafe.co.uk/resources/intermittent-fasting-schedules-uk.html</loc>
-        <lastmod>2025-01-15</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.8</priority>
-    </url>
-
-    <!-- Calorie & Macro Tools -->
-    <url>
-        <loc>https://www.nutrasafe.co.uk/calorie-counter-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.95</priority>
-    </url>
-
-    <url>
-        <loc>https://www.nutrasafe.co.uk/tdee-bmr-calculator.html</loc>
-        <lastmod>2025-01-20</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.95</priority>
-    </url>
-
-    <url>
-        <loc>https://www.nutrasafe.co.uk/macro-tracker-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.95</priority>
     </url>
 
     <!-- Diet Guides -->
     <url>
-        <loc>https://www.nutrasafe.co.uk/low-carb-diet-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
+        <loc>https://www.nutrasafe.co.uk/low-carb-diet-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/keto-diet-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
+        <loc>https://www.nutrasafe.co.uk/keto-diet-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/carnivore-diet-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
+        <loc>https://www.nutrasafe.co.uk/carnivore-diet-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/hunter-gatherer-diet-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
+        <loc>https://www.nutrasafe.co.uk/hunter-gatherer-diet-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/paleo-diet-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
+        <loc>https://www.nutrasafe.co.uk/paleo-diet-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/high-protein-diet-uk.html</loc>
-        <lastmod>2025-01-20</lastmod>
+        <loc>https://www.nutrasafe.co.uk/high-protein-diet-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <!-- Diet Comparison Pages -->
     <url>
-        <loc>https://www.nutrasafe.co.uk/keto-vs-low-carb.html</loc>
-        <lastmod>2025-01-21</lastmod>
+        <loc>https://www.nutrasafe.co.uk/keto-vs-low-carb</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/calorie-counting-vs-macro-tracking.html</loc>
-        <lastmod>2025-01-21</lastmod>
+        <loc>https://www.nutrasafe.co.uk/calorie-counting-vs-macro-tracking</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
     <url>
-        <loc>https://www.nutrasafe.co.uk/best-diet-for-weight-loss-uk.html</loc>
-        <lastmod>2025-01-21</lastmod>
+        <loc>https://www.nutrasafe.co.uk/best-diet-for-weight-loss-uk</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
+    </url>
+
+    <!-- Resources Section -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/resources</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/resources/what-are-e-numbers-uk</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/resources/how-to-track-micronutrients</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/resources/intermittent-fasting-schedules-uk</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Legal & Support -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/privacy-policy</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/terms-of-service</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/support</loc>
+        <lastmod>2026-01-23</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
     </url>
 
     <!-- HTML Sitemap -->
     <url>
-        <loc>https://www.nutrasafe.co.uk/sitemap.html</loc>
-        <lastmod>2025-01-20</lastmod>
+        <loc>https://www.nutrasafe.co.uk/sitemap</loc>
+        <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.4</priority>
     </url>

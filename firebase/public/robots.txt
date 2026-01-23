@@ -1,17 +1,60 @@
 # Robots.txt for NutraSafe
 # https://www.nutrasafe.co.uk/robots.txt
 
+# Allow all crawlers full access to important pages
 User-agent: *
+Allow: /
+
+# Block admin and development pages
+Disallow: /admin/
+Disallow: /admin-*.html
+Disallow: /debug.html
+Disallow: /test.html
+Disallow: /cleanse.html
+Disallow: /dashboard.html
+Disallow: /working-admin.html
+Disallow: /*-backup.html
+Disallow: /ai-admin-*.html
+Disallow: /nutrasafe-admin-*.html
+
+# Block query strings to save crawl budget
+Disallow: /*?*
+
+# Googlebot-specific directives (faster crawling allowed)
+User-agent: Googlebot
 Allow: /
 Disallow: /admin/
 Disallow: /admin-*.html
 Disallow: /debug.html
 Disallow: /test.html
 Disallow: /cleanse.html
+Disallow: /dashboard.html
+Disallow: /*-backup.html
+
+# Bingbot-specific directives
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+Disallow: /admin/
 Disallow: /admin-*.html
+Disallow: /debug.html
+Disallow: /test.html
+
+# Block known bad bots to save server resources
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Crawl-delay: 10
 
 # Sitemap location
 Sitemap: https://www.nutrasafe.co.uk/sitemap.xml
 
-# Crawl delay (optional, 1 second)
-Crawl-delay: 1
+# Host directive (preferred domain)
+Host: https://www.nutrasafe.co.uk

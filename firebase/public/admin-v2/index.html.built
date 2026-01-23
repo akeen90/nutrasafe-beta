@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NutraSafe Food Database Manager</title>
+    <meta name="description" content="Professional food database management tool for NutraSafe - manage 10 Algolia indices with Excel-like editing" />
+
+    <!-- Preconnect to Algolia -->
+    <link rel="preconnect" href="https://WK0TIF84M2-dsn.algolia.net" crossorigin />
+
+    <!-- AG Grid CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community@31.0.0/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community@31.0.0/styles/ag-theme-alpine.css" />
+
+    <style>
+      /* Loading spinner */
+      .app-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #f8fafc;
+      }
+      .app-loading .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #328bff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .app-loading p {
+        margin-top: 16px;
+        color: #64748b;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+      }
+    </style>
+    <script type="module" crossorigin src="/admin-v2/assets/index-CKgSYZym.js"></script>
+    <link rel="stylesheet" crossorigin href="/admin-v2/assets/index-DfxOVO55.css">
+  </head>
+  <body>
+    <div id="root">
+      <div class="app-loading">
+        <div class="spinner"></div>
+        <p>Loading Food Database Manager...</p>
+      </div>
+    </div>
+  </body>
+</html>

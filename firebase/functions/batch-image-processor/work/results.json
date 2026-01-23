@@ -1,0 +1,33 @@
+{
+  "success": [
+    {
+      "barcode": "5000159470476",
+      "objectID": "barcode_5000159470476",
+      "sourceIndex": "verified_foods",
+      "name": "Mars Bar",
+      "status": "cleaned",
+      "offImageUrl": "https://images.openfoodfacts.org/images/products/500/015/947/0476/front_en.11.400.jpg",
+      "localCleanedPath": "/Users/aaronkeen/Documents/My Apps/NutraSafe/firebase/functions/batch-image-processor/work/cleaned/86ef9505eb30.png"
+    },
+    {
+      "barcode": "5000159484527",
+      "objectID": "4eWESNJFT8fSoBtlXG8R",
+      "sourceIndex": "verified_foods",
+      "name": "Mars Chocolate Bar",
+      "status": "cleaned",
+      "offImageUrl": "https://images.openfoodfacts.org/images/products/500/015/948/4527/front_en.18.400.jpg",
+      "localCleanedPath": "/Users/aaronkeen/Documents/My Apps/NutraSafe/firebase/functions/batch-image-processor/work/cleaned/826fd8843bb8.png"
+    },
+    {
+      "barcode": "5013668434969",
+      "objectID": "xYfklmPr2lv1pD9mF7YZ",
+      "sourceIndex": "foods",
+      "name": "Lsv",
+      "status": "cleaned",
+      "offImageUrl": "https://images.openfoodfacts.org/images/products/501/366/843/4969/front_en.9.400.jpg",
+      "localCleanedPath": "/Users/aaronkeen/Documents/My Apps/NutraSafe/firebase/functions/batch-image-processor/work/cleaned/0bf08860b72f.png"
+    }
+  ],
+  "no_image": [],
+  "failed": []
+}
