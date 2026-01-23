@@ -60,9 +60,18 @@ struct AdditiveTrackerSection: View {
         let avoid = avoidAdditives.count
         let caution = cautionAdditives.count
         let total = viewModel.totalAdditiveCount
+        let grade = overallGrade
 
         if total == 0 {
             return ("Great job! No additives detected in your food log.", "checkmark.circle.fill", SemanticColors.positive)
+        }
+
+        if grade == .poor || grade == .belowAverage {
+            let topAvoid = avoidAdditives.sorted(by: { $0.occurrenceCount > $1.occurrenceCount }).first?.name
+            if let top = topAvoid {
+                return ("High additive load. Reducing \(top) would have the biggest impact.", "exclamationmark.triangle.fill", SemanticColors.caution)
+            }
+            return ("High additive load. Focus on reducing additive-heavy foods this period.", "exclamationmark.triangle.fill", SemanticColors.caution)
         }
 
         if avoid > 2 {
@@ -72,7 +81,7 @@ struct AdditiveTrackerSection: View {
             }
         }
 
-        if avoid == 0 && caution <= 2 {
+        if avoid == 0 && caution <= 2 && grade != .belowAverage && grade != .poor {
             return ("You're doing well! Mostly safe additives in your diet.", "hand.thumbsup.fill", SemanticColors.positive)
         }
 
@@ -579,17 +588,16 @@ struct AdditiveTrackerSection: View {
                 return ("Keep logging to build your additive profile. The more you track, the more patterns we can show you.", "chart.bar.doc.horizontal", palette.accent)
             }
 
-            if avoid == 0 && caution <= 1 {
+            if overallGrade == .poor || overallGrade == .belowAverage || avoid >= 3 || perFood > 6 {
+                return ("Additives are high this period. Swap some processed items for whole foods to bring this down.", "exclamationmark.triangle.fill", SemanticColors.caution)
+            }
+
+            if avoid == 0 && caution <= 1 && overallGrade != .belowAverage {
                 return ("Excellent choices! Your food selections have very few concerning additives. Keep it up.", "star.fill", SemanticColors.positive)
             }
 
             if perFood > 5 {
                 return ("Your foods average \(String(format: "%.1f", perFood)) additives each. Choosing less processed options can reduce this significantly.", "arrow.down.circle", SemanticColors.neutral)
-            }
-
-            if avoid >= 3 {
-                let topAvoid = avoidAdditives.sorted { $0.occurrenceCount > $1.occurrenceCount }.first?.name ?? "these additives"
-                return ("You've consumed \(avoid) additives worth noting. Reducing \(topAvoid) would have the biggest impact.", "target", SemanticColors.caution)
             }
 
             if viewModel.selectedPeriod == .week || viewModel.selectedPeriod == .month {
