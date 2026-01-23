@@ -526,29 +526,6 @@ struct AdditiveTrackerSection: View {
                 }
             }
 
-            // Contextual message based on period + counts
-            let status = additiveStatusMessage()
-            HStack(spacing: 8) {
-                Image(systemName: status.icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(status.color)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(status.title)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
-                    Text(status.detail)
-                        .font(.system(size: 12, design: .rounded))
-                        .foregroundColor(palette.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(status.color.opacity(0.08))
-            )
-
             // Progress tip based on data
             progressTipCard
 
@@ -598,59 +575,6 @@ struct AdditiveTrackerSection: View {
     }
 
     // MARK: - Progress Tip Card
-    /// Generates a friendly, context-aware message based on the selected period and additive counts
-    private func additiveStatusMessage() -> (title: String, detail: String, icon: String, color: Color) {
-        let avoid = avoidAdditives.count
-        let caution = cautionAdditives.count
-        let total = viewModel.totalAdditiveCount
-        let foods = max(viewModel.foodItemCount, 1)
-        let perFood = Double(total) / Double(foods)
-
-        // Period-aware thresholds (tighter for shorter periods)
-        let thresholds: (avoidHigh: Int, perFoodHigh: Double, perFoodElevated: Double) = {
-            switch viewModel.selectedPeriod {
-            case .day:
-                return (avoidHigh: 1, perFoodHigh: 5.0, perFoodElevated: 3.5)
-            case .week:
-                return (avoidHigh: 2, perFoodHigh: 4.5, perFoodElevated: 3.0)
-            case .month:
-                return (avoidHigh: 4, perFoodHigh: 4.0, perFoodElevated: 2.7)
-            case .ninetyDays:
-                return (avoidHigh: 6, perFoodHigh: 3.5, perFoodElevated: 2.5)
-            }
-        }()
-
-        // High-load message
-        if avoid >= thresholds.avoidHigh || perFood >= thresholds.perFoodHigh {
-            let topConcern = avoidAdditives.sorted { $0.occurrenceCount > $1.occurrenceCount }.first?.name
-            let concernText = topConcern != nil ? " Consider swapping out \(topConcern!) where possible." : ""
-            return (
-                title: "Higher additive load",
-                detail: "This period has more additives per food than usual.\(concernText)",
-                icon: "exclamationmark.triangle.fill",
-                color: SemanticColors.caution
-            )
-        }
-
-        // Elevated but not high
-        if caution > 0 || perFood >= thresholds.perFoodElevated {
-            return (
-                title: "Some additives present",
-                detail: "Small swaps toward less processed options can bring this down.",
-                icon: "info.circle.fill",
-                color: SemanticColors.neutral
-            )
-        }
-
-        // Low / positive
-        let recent = min(viewModel.foodItemCount, 10)
-        return (
-            title: "You're doing well",
-            detail: "Last \(recent) foods had few concerning additives. Keep choosing whole-food options.",
-            icon: "checkmark.circle.fill",
-            color: SemanticColors.positive
-        )
-    }
 
     private var progressTipCard: some View {
         let avoid = avoidAdditives.count
