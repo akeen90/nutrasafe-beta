@@ -9,12 +9,16 @@ import Foundation
 import SwiftUI
 import Combine
 import UserNotifications
+import ActivityKit
 
 @MainActor
 class FastingViewModel: ObservableObject {
     // MARK: - Published Properties
 
     @Published var activePlan: FastingPlan?
+
+    // MARK: - Live Activity
+    private var currentLiveActivity: Any?
     @Published var allPlans: [FastingPlan] = []
     @Published var activeSession: FastingSession?
     @Published var analytics: FastingAnalytics?
@@ -911,16 +915,20 @@ class FastingViewModel: ObservableObject {
                             for: updatedPlan,
                             startingAt: Date()
                         )
-                                            }
-
-                                    } else {
-                                    }
+                    }
+                } else {
+                }
             } catch {
-                            }
+            }
+
+            // Start Live Activity for Dynamic Island
+            if #available(iOS 16.1, *) {
+                await startLiveActivity()
+            }
         } catch {
             self.error = error
             self.showError = true
-                    }
+        }
     }
 
     /// Deactivate the regime for the active plan
@@ -990,13 +998,18 @@ class FastingViewModel: ObservableObject {
 
             // Cancel notifications for this plan
             await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
-            
+
+            // End Live Activity
+            if #available(iOS 16.1, *) {
+                await endLiveActivity()
+            }
+
             await loadRecentSessions()
             await loadAnalytics()
-                                } catch {
+        } catch {
             self.error = error
             self.showError = true
-                    }
+        }
     }
 
     /// Current regime state (inactive, fasting, or eating)
@@ -2143,5 +2156,104 @@ class FastingViewModel: ObservableObject {
         )
 
         return vm
+    }
+
+    // MARK: - Live Activity Support
+
+    @available(iOS 16.1, *)
+    func startLiveActivity() async {
+        print("🔴 [LiveActivity] Starting Live Activity from ViewModel...")
+
+        let authInfo = ActivityAuthorizationInfo()
+        print("🔴 [LiveActivity] Activities enabled: \(authInfo.areActivitiesEnabled)")
+
+        guard authInfo.areActivitiesEnabled else {
+            print("🔴 [LiveActivity] ERROR: Activities are NOT enabled!")
+            return
+        }
+
+        guard let plan = activePlan else {
+            print("🔴 [LiveActivity] ERROR: No active plan!")
+            return
+        }
+
+        let hours = Int(hoursIntoCurrentFast)
+        let minutes = Int((hoursIntoCurrentFast - Double(hours)) * 60)
+        let totalGoalSeconds = Double(plan.durationHours) * 3600
+        let elapsedSeconds = hoursIntoCurrentFast * 3600
+        let remainingSeconds = max(0, totalGoalSeconds - elapsedSeconds)
+        let remainingHours = Int(remainingSeconds / 3600)
+        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        let phaseInfo = FastingPhaseInfo.forHours(hours)
+
+        let attributes = FastingActivityAttributes(fastingGoalHours: plan.durationHours)
+        let contentState = FastingActivityAttributes.ContentState(
+            fastingStartTime: Date().addingTimeInterval(-elapsedSeconds),
+            currentHours: hours,
+            currentMinutes: minutes,
+            remainingHours: remainingHours,
+            remainingMinutes: remainingMinutes,
+            currentPhase: phaseInfo.name,
+            phaseEmoji: phaseInfo.emoji
+        )
+
+        print("🔴 [LiveActivity] Requesting activity with goal: \(plan.durationHours)h, elapsed: \(hours)h \(minutes)m")
+
+        do {
+            let content = ActivityContent(state: contentState, staleDate: nil)
+            let activity = try Activity.request(
+                attributes: attributes,
+                content: content,
+                pushType: nil
+            )
+            currentLiveActivity = activity
+            print("🔴 [LiveActivity] SUCCESS! Activity ID: \(activity.id)")
+        } catch {
+            print("🔴 [LiveActivity] ERROR: \(error.localizedDescription)")
+            print("🔴 [LiveActivity] Full error: \(error)")
+        }
+    }
+
+    @available(iOS 16.1, *)
+    func updateLiveActivity() async {
+        guard let activity = currentLiveActivity as? Activity<FastingActivityAttributes> else {
+            return
+        }
+
+        guard let plan = activePlan else { return }
+
+        let hours = Int(hoursIntoCurrentFast)
+        let minutes = Int((hoursIntoCurrentFast - Double(hours)) * 60)
+        let totalGoalSeconds = Double(plan.durationHours) * 3600
+        let elapsedSeconds = hoursIntoCurrentFast * 3600
+        let remainingSeconds = max(0, totalGoalSeconds - elapsedSeconds)
+        let remainingHours = Int(remainingSeconds / 3600)
+        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        let phaseInfo = FastingPhaseInfo.forHours(hours)
+
+        let contentState = FastingActivityAttributes.ContentState(
+            fastingStartTime: Date().addingTimeInterval(-elapsedSeconds),
+            currentHours: hours,
+            currentMinutes: minutes,
+            remainingHours: remainingHours,
+            remainingMinutes: remainingMinutes,
+            currentPhase: phaseInfo.name,
+            phaseEmoji: phaseInfo.emoji
+        )
+
+        let content = ActivityContent(state: contentState, staleDate: nil)
+        await activity.update(content)
+    }
+
+    @available(iOS 16.1, *)
+    func endLiveActivity() async {
+        guard let activity = currentLiveActivity as? Activity<FastingActivityAttributes> else {
+            return
+        }
+        await activity.end(nil, dismissalPolicy: .immediate)
+        currentLiveActivity = nil
+        print("🔴 [LiveActivity] Ended Live Activity")
     }
 }

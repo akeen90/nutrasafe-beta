@@ -84,7 +84,7 @@ class ProcessingScorer {
 
     private init() {}
 
-    // MARK: - NutraSafe Processing Grade™
+    // MARK: - NutraSafe Processing Grade™ (Legacy - kept for backwards compatibility)
     struct NutraSafeProcessingGradeResult: Codable, Equatable {
         let processing_intensity: Double
         let nutrient_integrity: Double
@@ -92,6 +92,322 @@ class ProcessingScorer {
         let grade: String
         let label: String
         let explanation: String
+    }
+
+    // MARK: - NutraSafe Unified Score (New - combines processing, additive risk, and nutrients)
+
+    /// Unified NutraSafe Score that combines processing intensity, additive risk, and nutrient quality
+    /// into a single A-F grade. This replaces the separate Processing Grade and Additive Grade.
+    struct NutraSafeUnifiedScoreResult: Codable, Equatable {
+        // Component scores (1.0-5.0 scale, lower is better)
+        let processingComponent: Double      // Ingredient complexity, industrial processing, sugar
+        let additiveRiskComponent: Double    // Risk-weighted additive analysis
+        let nutrientDeficitComponent: Double // Inverse of nutrient integrity
+
+        // Final computed values
+        let finalIndex: Double
+        let grade: String
+        let label: String
+
+        // Breakdown details for info sheet
+        let ingredientCount: Int
+        let additiveCount: Int
+        let highRiskAdditiveCount: Int
+        let moderateRiskAdditiveCount: Int
+        let sugarPer100g: Double
+        let hasSugarWarning: Bool            // True if sugar > 15g/100g
+
+        // User-facing explanation
+        let explanation: String
+
+        // For debugging/transparency
+        let processingFactors: [String]
+        let additiveFactors: [String]
+        let nutrientFactors: [String]
+    }
+
+    /// Compute the unified NutraSafe Score for a food item
+    /// Formula: (Processing × 0.50) + (AdditiveRisk × 0.35) + (NutrientDeficit × 0.15)
+    func computeUnifiedNutraSafeScore(
+        for food: FoodSearchResult,
+        additiveAnalysis: AdditiveAnalysisResult? = nil
+    ) -> NutraSafeUnifiedScoreResult {
+        // CRITICAL: Cannot grade products without ingredient information
+        let hasIngredients = food.ingredients != nil && !(food.ingredients?.isEmpty ?? true)
+
+        if !hasIngredients {
+            return NutraSafeUnifiedScoreResult(
+                processingComponent: 0.0,
+                additiveRiskComponent: 0.0,
+                nutrientDeficitComponent: 0.0,
+                finalIndex: 0.0,
+                grade: "?",
+                label: "Unable to grade",
+                ingredientCount: 0,
+                additiveCount: 0,
+                highRiskAdditiveCount: 0,
+                moderateRiskAdditiveCount: 0,
+                sugarPer100g: food.sugar,
+                hasSugarWarning: food.sugar > 15,
+                explanation: "Insufficient data: No ingredient information available. Add ingredients to get a NutraSafe Score.",
+                processingFactors: [],
+                additiveFactors: [],
+                nutrientFactors: []
+            )
+        }
+
+        // === PROCESSING COMPONENT (50%) ===
+        // Measures: ingredient complexity, industrial processing, sugar extremes, empty calories
+        // NOTE: Does NOT include additive count - that's now in the dedicated additive component
+
+        let ingredientsText = (food.ingredients?.joined(separator: ", ") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let analysisText = (ingredientsText.isEmpty ? food.name : "\(food.name) \(ingredientsText)")
+        let lowerText = analysisText.lowercased()
+        let lowerName = food.name.lowercased()
+
+        let totalIngredientCount = (food.ingredients ?? []).filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }.count
+
+        let isReadyMeal = detectReadyMeal(name: lowerName, ingredientCount: totalIngredientCount)
+
+        // Ingredient complexity weight
+        let ingredientComplexityWeight: Double = {
+            if totalIngredientCount >= 15 { return 1.5 }
+            else if totalIngredientCount >= 10 { return 1.0 }
+            else if totalIngredientCount >= 6 { return 0.5 }
+            else { return 0.0 }
+        }()
+
+        // Processed cooking ingredients
+        let processedCookingWeight = detectProcessedCookingIngredients(in: lowerText)
+
+        // Industrial process weight
+        let industrialProcessWeight: Double = {
+            var weight = 0.0
+            let industrialKeywords = [
+                "powder", "powdered", "protein powder", "isolate", "extruded",
+                "blend", "blended", "shake", "smoothie", "instant mix", "meal replacement", "bar"
+            ]
+            if industrialKeywords.contains(where: { lowerText.contains($0) }) {
+                weight += 0.5
+            }
+            if isReadyMeal {
+                weight += 1.0
+            }
+            return min(weight, 1.5)
+        }()
+
+        // Beverage detection and sugar analysis
+        let isBeverageProduct = isBeverage(food: food)
+
+        let extremeSugarWeight: Double = {
+            if isBeverageProduct {
+                let sugarPerServing = calculateSugarPerServing(food: food)
+                if sugarPerServing >= 30 { return 2.0 }
+                else if sugarPerServing >= 20 { return 1.5 }
+                else if sugarPerServing >= 10 { return 1.0 }
+                else if sugarPerServing >= 5 { return 0.5 }
+                else { return 0.0 }
+            } else {
+                let sugar = food.sugar
+                if sugar >= 70 { return 2.0 }
+                else if sugar >= 50 { return 1.5 }
+                else if sugar >= 30 { return 0.5 }
+                else { return 0.0 }
+            }
+        }()
+
+        let emptyCalorieWeight: Double = isEmptyCalorie(food: food) ? 1.5 : 0.0
+
+        // Processing component: WITHOUT additive count (moved to dedicated component)
+        let processingComponent = clamp(
+            1.0 + ingredientComplexityWeight + industrialProcessWeight +
+            extremeSugarWeight + emptyCalorieWeight + processedCookingWeight,
+            min: 1.0, max: 5.0
+        )
+
+        var processingFactors: [String] = []
+        if ingredientComplexityWeight > 0 { processingFactors.append("\(totalIngredientCount) ingredients") }
+        if industrialProcessWeight > 0 { processingFactors.append("Industrial processing") }
+        if extremeSugarWeight > 0 { processingFactors.append(isBeverageProduct ? "High sugar per serving" : "High sugar density") }
+        if emptyCalorieWeight > 0 { processingFactors.append("Empty calories") }
+        if processedCookingWeight > 0 { processingFactors.append("Processed cooking ingredients") }
+
+        // === ADDITIVE RISK COMPONENT (35%) ===
+        // Uses AdditiveAnalyzer score (0-100) transformed to 1.0-5.0 scale
+        // Score 100 (perfect/no additives) → 1.0, Score 0 (many high risk) → 5.0
+
+        // Use provided analysis, or estimate based on additive count if not available
+        // Views should pre-compute this for accurate results
+        let additiveResult: AdditiveAnalysisResult
+        if let provided = additiveAnalysis {
+            additiveResult = provided
+        } else {
+            // Estimate based on raw additive count (simple heuristic)
+            // This avoids main thread blocking - views should pass pre-computed analysis
+            let additiveCount = food.additives?.count ?? 0
+            let estimatedScore: Int
+            if additiveCount == 0 {
+                estimatedScore = 100
+            } else if additiveCount <= 2 {
+                estimatedScore = 85
+            } else if additiveCount <= 5 {
+                estimatedScore = 65
+            } else if additiveCount <= 8 {
+                estimatedScore = 45
+            } else {
+                estimatedScore = 25
+            }
+            additiveResult = AdditiveAnalysisResult(
+                score: estimatedScore,
+                grade: AdditiveGrade.from(score: estimatedScore),
+                totalCount: additiveCount,
+                highRiskCount: 0, moderateRiskCount: 0, lowRiskCount: additiveCount, safeCount: 0,
+                personalAlerts: [], groupedAdditives: [:]
+            )
+        }
+
+        // Transform 0-100 score to 1.0-5.0 scale (inverted: 100→1.0, 0→5.0)
+        let additiveRiskComponent = clamp(
+            5.0 - (Double(additiveResult.score) / 100.0 * 4.0),
+            min: 1.0, max: 5.0
+        )
+
+        var additiveFactors: [String] = []
+        if additiveResult.highRiskCount > 0 { additiveFactors.append("\(additiveResult.highRiskCount) high-risk") }
+        if additiveResult.moderateRiskCount > 0 { additiveFactors.append("\(additiveResult.moderateRiskCount) moderate-risk") }
+        if additiveResult.lowRiskCount > 0 { additiveFactors.append("\(additiveResult.lowRiskCount) low-risk") }
+        if additiveResult.safeCount > 0 { additiveFactors.append("\(additiveResult.safeCount) safe") }
+
+        // === NUTRIENT DEFICIT COMPONENT (15%) ===
+        // Same as existing nutrient integrity, but expressed as deficit (6 - integrity)
+
+        let isWholeUnprocessedFood = (
+            additiveResult.totalCount == 0 &&
+            totalIngredientCount <= 1 &&
+            industrialProcessWeight == 0.0 &&
+            processedCookingWeight == 0.0 &&
+            !isReadyMeal
+        )
+
+        let base: Double = 2.0
+        let macroBalance: Double = (food.protein > 10 && food.fiber > 2 && food.sugar < 10) ? 1.0 : 0.0
+        let fortifiedCount = countFortifiedMicronutrients(food.micronutrientProfile)
+
+        let fortificationBonus: Double
+        if isWholeUnprocessedFood {
+            fortificationBonus = 2.0
+        } else {
+            fortificationBonus = fortifiedCount >= 10 ? 1.0 : 0.0
+        }
+
+        let sugarPenalty: Double = (food.sugar > 15) ? 1.0 : 0.0
+        let fibreBonus: Double = (food.fiber > 3) ? 0.5 : 0.0
+
+        let nutrientIntegrity = clamp(base + macroBalance + fortificationBonus - sugarPenalty + fibreBonus, min: 1.0, max: 5.0)
+        let nutrientDeficitComponent = 6.0 - nutrientIntegrity
+
+        var nutrientFactors: [String] = []
+        if macroBalance > 0 { nutrientFactors.append("Good protein/fiber balance") }
+        if fortificationBonus > 0 { nutrientFactors.append(isWholeUnprocessedFood ? "Whole food nutrients" : "Fortified") }
+        if sugarPenalty > 0 { nutrientFactors.append("High sugar penalty") }
+        if fibreBonus > 0 { nutrientFactors.append("Good fiber content") }
+
+        // === FINAL UNIFIED INDEX ===
+        // Formula: (Processing × 0.50) + (AdditiveRisk × 0.35) + (NutrientDeficit × 0.15)
+        let finalIndex = (processingComponent * 0.50) + (additiveRiskComponent * 0.35) + (nutrientDeficitComponent * 0.15)
+
+        // Grade thresholds (slightly adjusted for new formula)
+        let (grade, label): (String, String) = {
+            switch finalIndex {
+            case 1.0...1.6: return ("A", "Minimal processing")
+            case 1.7...2.4: return ("B", "Light processing")
+            case 2.5...3.2: return ("C", "Moderate processing")
+            case 3.3...4.0: return ("D", "Notable processing")
+            case 4.1...4.6: return ("E", "High processing")
+            default:        return ("F", "Extensive processing")
+            }
+        }()
+
+        // Build explanation
+        let explanation = buildUnifiedScoreExplanation(
+            foodName: food.name,
+            grade: grade,
+            processingComponent: processingComponent,
+            additiveRiskComponent: additiveRiskComponent,
+            nutrientDeficitComponent: nutrientDeficitComponent,
+            processingFactors: processingFactors,
+            additiveFactors: additiveFactors,
+            nutrientFactors: nutrientFactors,
+            isWholeUnprocessedFood: isWholeUnprocessedFood
+        )
+
+        return NutraSafeUnifiedScoreResult(
+            processingComponent: processingComponent,
+            additiveRiskComponent: additiveRiskComponent,
+            nutrientDeficitComponent: nutrientDeficitComponent,
+            finalIndex: finalIndex,
+            grade: grade,
+            label: label,
+            ingredientCount: totalIngredientCount,
+            additiveCount: additiveResult.totalCount,
+            highRiskAdditiveCount: additiveResult.highRiskCount,
+            moderateRiskAdditiveCount: additiveResult.moderateRiskCount,
+            sugarPer100g: food.sugar,
+            hasSugarWarning: food.sugar > 15,
+            explanation: explanation,
+            processingFactors: processingFactors,
+            additiveFactors: additiveFactors,
+            nutrientFactors: nutrientFactors
+        )
+    }
+
+    /// Build user-facing explanation for unified score
+    private func buildUnifiedScoreExplanation(
+        foodName: String,
+        grade: String,
+        processingComponent: Double,
+        additiveRiskComponent: Double,
+        nutrientDeficitComponent: Double,
+        processingFactors: [String],
+        additiveFactors: [String],
+        nutrientFactors: [String],
+        isWholeUnprocessedFood: Bool
+    ) -> String {
+        var explanation = ""
+
+        if isWholeUnprocessedFood {
+            explanation = "\(foodName) appears to be a whole, unprocessed food with no detected additives. "
+        } else {
+            let processingDesc: String
+            switch processingComponent {
+            case 1.0...1.5: processingDesc = "minimal processing indicators"
+            case 1.6...2.5: processingDesc = "some processing indicators"
+            case 2.6...3.5: processingDesc = "notable processing indicators"
+            default: processingDesc = "significant processing indicators"
+            }
+
+            let additiveDesc: String
+            switch additiveRiskComponent {
+            case 1.0...1.5: additiveDesc = "no concerning additives"
+            case 1.6...2.5: additiveDesc = "mostly low-risk additives"
+            case 2.6...3.5: additiveDesc = "some additives worth noting"
+            default: additiveDesc = "several additives to be aware of"
+            }
+
+            explanation = "\(foodName) shows \(processingDesc) and \(additiveDesc). "
+        }
+
+        // Add specific factors if present
+        if !processingFactors.isEmpty {
+            explanation += "Processing: \(processingFactors.joined(separator: ", ")). "
+        }
+        if !additiveFactors.isEmpty {
+            explanation += "Additives: \(additiveFactors.joined(separator: ", ")). "
+        }
+
+        return explanation.trimmingCharacters(in: .whitespaces)
     }
 
     // MARK: - Beverage Detection & Sugar Analysis Helper Functions
@@ -1159,6 +1475,17 @@ class ProcessingScorer {
 
     private func normalizeIngredientText(_ text: String) -> String {
         var normalized = text.lowercased()
+
+        // CRITICAL FIX: Convert bare numeric codes to E-numbers
+        // Many ingredient lists use "(330, 331)" instead of "(E330, E331)"
+        // This regex finds 3-4 digit numbers that appear in additive contexts
+        // e.g., "Colours (171, 102, 129)" → "Colours (e171, e102, e129)"
+        // e.g., "Food acids (330, 331)" → "Food acids (e330, e331)"
+        // e.g., "Thickeners (1400, 1422)" → "Thickeners (e1400, e1422)"
+        if let regex = try? NSRegularExpression(pattern: "(?<=[(,\\.\\s])([0-9]{3,4})(?=[),\\.\\s])", options: []) {
+            let range = NSRange(normalized.startIndex..., in: normalized)
+            normalized = regex.stringByReplacingMatches(in: normalized, options: [], range: range, withTemplate: "e$1")
+        }
 
         // Add spaces around punctuation to create word boundaries
         // This helps detect "Colour: paprika extract" as "paprika extract"

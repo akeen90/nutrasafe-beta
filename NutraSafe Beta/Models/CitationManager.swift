@@ -444,3 +444,6 @@ class CitationManager {
         }
     }
 }
+
+// Type alias for views that reference research citations
+typealias ResearchCitation = CitationManager.Citation

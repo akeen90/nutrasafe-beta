@@ -341,14 +341,8 @@ struct FoodSearchResultRowEnhanced: View {
                             .lineLimit(1)
                     }
 
-                    // Mini additive badge - show if we have additive data
-                    if let additiveCount = food.additives?.count, additiveCount > 0, let grade = food.processingGrade {
-                        AdditiveMiniGradeBadge(
-                            grade: AdditiveGrade(rawValue: grade) ?? .C,
-                            watchCount: additiveCount,
-                            hasPersonalAlert: false
-                        )
-                    }
+                    // Note: NutraSafe unified score is shown on food detail view
+                    // Search results keep focus on calories and quick-add
                 }
 
                 Spacer(minLength: 8)

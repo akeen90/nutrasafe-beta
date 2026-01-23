@@ -632,31 +632,46 @@ struct FastingTimerView: View {
     // MARK: - Live Activities (Dynamic Island)
     @available(iOS 16.1, *)
     private func startLiveActivity() async {
+        print("🔴 [LiveActivity] Starting Live Activity...")
 
         let authInfo = ActivityAuthorizationInfo()
-
-        #if targetEnvironment(simulator)
-                        #else
-                #endif
+        print("🔴 [LiveActivity] Activities enabled: \(authInfo.areActivitiesEnabled)")
+        print("🔴 [LiveActivity] Frequent push enabled: \(authInfo.frequentPushesEnabled)")
 
         guard authInfo.areActivitiesEnabled else {
-                                    return
+            print("🔴 [LiveActivity] ERROR: Activities are NOT enabled!")
+            return
         }
 
         guard let startTime = fastingStartTime else {
-                        return
+            print("🔴 [LiveActivity] ERROR: No fasting start time!")
+            return
         }
 
         let hours = Int(fastingDuration / 3600)
         let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
 
-                        
+        // Calculate remaining time
+        let totalGoalSeconds = Double(fastingGoal) * 3600
+        let remainingSeconds = max(0, totalGoalSeconds - fastingDuration)
+        let remainingHours = Int(remainingSeconds / 3600)
+        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        // Get current fasting phase
+        let phaseInfo = FastingPhaseInfo.forHours(hours)
+
         let attributes = FastingActivityAttributes(fastingGoalHours: fastingGoal)
         let contentState = FastingActivityAttributes.ContentState(
             fastingStartTime: startTime,
             currentHours: hours,
-            currentMinutes: minutes
+            currentMinutes: minutes,
+            remainingHours: remainingHours,
+            remainingMinutes: remainingMinutes,
+            currentPhase: phaseInfo.name,
+            phaseEmoji: phaseInfo.emoji
         )
+
+        print("🔴 [LiveActivity] Requesting activity with goal: \(fastingGoal)h")
 
         do {
             let content = ActivityContent(state: contentState, staleDate: nil)
@@ -666,25 +681,40 @@ struct FastingTimerView: View {
                 pushType: nil
             )
             currentActivity = activity
+            print("🔴 [LiveActivity] SUCCESS! Activity ID: \(activity.id)")
         } catch {
-            // Silently handle Live Activity errors
+            print("🔴 [LiveActivity] ERROR: \(error.localizedDescription)")
+            print("🔴 [LiveActivity] Full error: \(error)")
         }
     }
 
     @available(iOS 16.1, *)
     private func updateLiveActivity() async {
         guard let activity = currentActivity as? Activity<FastingActivityAttributes> else {
-                        return
+            return
         }
         guard let startTime = fastingStartTime else { return }
 
         let hours = Int(fastingDuration / 3600)
         let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
 
+        // Calculate remaining time
+        let totalGoalSeconds = Double(fastingGoal) * 3600
+        let remainingSeconds = max(0, totalGoalSeconds - fastingDuration)
+        let remainingHours = Int(remainingSeconds / 3600)
+        let remainingMinutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        // Get current fasting phase
+        let phaseInfo = FastingPhaseInfo.forHours(hours)
+
         let contentState = FastingActivityAttributes.ContentState(
             fastingStartTime: startTime,
             currentHours: hours,
-            currentMinutes: minutes
+            currentMinutes: minutes,
+            remainingHours: remainingHours,
+            remainingMinutes: remainingMinutes,
+            currentPhase: phaseInfo.name,
+            phaseEmoji: phaseInfo.emoji
         )
 
         let content = ActivityContent(state: contentState, staleDate: nil)

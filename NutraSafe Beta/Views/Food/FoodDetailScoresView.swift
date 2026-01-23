@@ -12,7 +12,7 @@ import SwiftUI
 
 struct FoodDetailScoresView: View {
     // Score data
-    let nutraSafeGrade: ProcessingScorer.NutraSafeProcessingGradeResult?
+    let nutraSafeGrade: ProcessingScorer.NutraSafeUnifiedScoreResult?
     let sugarScore: SugarContentScore
     let hasIngredients: Bool
     let isPerUnit: Bool
@@ -28,11 +28,11 @@ struct FoodDetailScoresView: View {
 
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                // Processing score card
+                // NutraSafe unified score card
                 if let ns = gradeToShow {
                     Button(action: { showingNutraSafeInfo = true }) {
                         scoreCard(
-                            title: "Processing",
+                            title: "NutraSafe",
                             grade: ns.grade,
                             label: ns.label,
                             color: scoreColor(for: ns.grade)
@@ -108,9 +108,9 @@ struct FoodDetailScoresView: View {
     private func scoreColor(for grade: String) -> Color {
         switch grade.uppercased() {
         case "A+", "A": return SemanticColors.positive
-        case "B": return SemanticColors.nutrient
-        case "C", "D": return SemanticColors.neutral
-        case "F": return SemanticColors.caution
+        case "B": return .mint
+        case "C": return .orange
+        case "D", "E", "F": return SemanticColors.caution
         default: return palette.textTertiary
         }
     }

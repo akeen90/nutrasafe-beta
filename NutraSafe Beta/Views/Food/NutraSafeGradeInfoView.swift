@@ -2,14 +2,14 @@
 //  NutraSafeGradeInfoView.swift
 //  NutraSafe Beta
 //
-//  Consumer-friendly explanation sheet for NutraSafe Processing Grade
+//  Consumer-friendly explanation sheet for NutraSafe Unified Score
 //  Redesigned to match onboarding's calm, observational aesthetic
 //
 
 import SwiftUI
 
 struct NutraSafeGradeInfoView: View {
-    let result: ProcessingScorer.NutraSafeProcessingGradeResult
+    let result: ProcessingScorer.NutraSafeUnifiedScoreResult
     let food: FoodSearchResult
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -28,25 +28,29 @@ struct NutraSafeGradeInfoView: View {
         }
     }
 
-    private var gradeDescription: String {
-        switch result.grade.uppercased() {
-        case "A", "A+": return "Closest to natural"
-        case "B": return "Lightly processed"
-        case "C": return "Moderately processed"
-        case "D": return "Heavily processed"
-        case "E", "F": return "Extensively processed"
-        default: return result.label
-        }
-    }
-
     private var tips: [String] {
         var out: [String] = []
         if food.protein < 7 { out.append("Pairing with eggs, yogurt, lean meat, or legumes can boost protein.") }
         if food.fiber < 3 { out.append("Adding whole grains, fruit, veg, or nuts brings more fibre.") }
-        if food.sugar > 10 { out.append("Lower-sugar versions or smaller portions may be worth exploring.") }
-        if (food.ingredients?.count ?? 0) > 15 { out.append("Shorter ingredient lists often mean gentler processing.") }
-        if (food.additives?.count ?? 0) > 0 { out.append("Some versions have fewer additives worth considering.") }
+        if result.hasSugarWarning { out.append("Lower-sugar versions or smaller portions may be worth exploring.") }
+        if result.ingredientCount > 15 { out.append("Shorter ingredient lists often mean gentler processing.") }
+        if result.additiveCount > 0 { out.append("Some versions have fewer additives worth considering.") }
         return out.isEmpty ? ["Enjoy in balanced portions alongside whole foods."] : out
+    }
+
+    // Component score color (1.0 = best/green, 5.0 = worst/red)
+    private func componentColor(for value: Double) -> Color {
+        switch value {
+        case ...1.6: return SemanticColors.positive
+        case 1.61...2.4: return .mint
+        case 2.41...3.2: return .orange
+        default: return SemanticColors.caution
+        }
+    }
+
+    // Format component score for display
+    private func formatScore(_ value: Double) -> String {
+        String(format: "%.1f", value)
     }
 
     var body: some View {
@@ -78,11 +82,11 @@ struct NutraSafeGradeInfoView: View {
                         }
 
                         VStack(spacing: 6) {
-                            Text(gradeDescription)
+                            Text(result.label)
                                 .font(.system(size: 22, weight: .medium, design: .serif))
                                 .foregroundColor(.primary)
 
-                            Text("Processing Grade")
+                            Text("NutraSafe Score")
                                 .font(.system(size: 15, weight: .regular))
                                 .foregroundColor(.secondary)
                         }
@@ -99,40 +103,134 @@ struct NutraSafeGradeInfoView: View {
                             )
                     )
 
+                    // Sugar warning indicator
+                    if result.hasSugarWarning {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+
+                            Text("High sugar: \(Int(result.sugarPer100g))g per 100g")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+                        }
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.orange.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    }
+
                     // What this means - InfoCard style
                     GradeInfoCard(
                         icon: "info.circle.fill",
                         iconColor: palette.accent,
                         title: "What this means",
-                        content: result.label
+                        content: result.explanation
                     )
 
-                    // How we calculate - InfoBullet style
+                    // Score breakdown - Three components
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("How we work it out")
+                        Text("Score breakdown")
                             .font(.system(size: 18, weight: .semibold, design: .serif))
                             .foregroundColor(.primary)
                             .padding(.horizontal, 4)
 
-                        GradeInfoBullet(
+                        // Processing component (50%)
+                        ScoreComponentCard(
+                            icon: "gearshape.2.fill",
+                            color: componentColor(for: result.processingComponent),
+                            title: "Processing",
+                            weight: "50%",
+                            score: formatScore(result.processingComponent),
+                            factors: result.processingFactors,
+                            palette: palette
+                        )
+
+                        // Additive risk component (35%)
+                        ScoreComponentCard(
                             icon: "flask.fill",
-                            color: SemanticColors.additive,
-                            title: "Processing intensity",
-                            description: "Additives, industrial processes, and ingredient complexity"
+                            color: componentColor(for: result.additiveRiskComponent),
+                            title: "Additive safety",
+                            weight: "35%",
+                            score: formatScore(result.additiveRiskComponent),
+                            factors: result.additiveFactors,
+                            palette: palette
                         )
 
-                        GradeInfoBullet(
+                        // Nutrient deficit component (15%)
+                        ScoreComponentCard(
                             icon: "leaf.fill",
-                            color: SemanticColors.nutrient,
-                            title: "Nutrient integrity",
-                            description: "Balance of protein, fibre, sugar, and micronutrients"
+                            color: componentColor(for: result.nutrientDeficitComponent),
+                            title: "Nutrient quality",
+                            weight: "15%",
+                            score: formatScore(result.nutrientDeficitComponent),
+                            factors: result.nutrientFactors,
+                            palette: palette
                         )
+                    }
 
-                        GradeInfoBullet(
-                            icon: "chart.bar.fill",
-                            color: palette.accent,
-                            title: "Combined score",
-                            description: "We bring these together into a simple A–F grade"
+                    // Final score calculation
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Final calculation")
+                            .font(.system(size: 18, weight: .semibold, design: .serif))
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 4)
+
+                        VStack(spacing: 8) {
+                            HStack {
+                                Text("Processing")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(formatScore(result.processingComponent)) × 0.50 = \(formatScore(result.processingComponent * 0.50))")
+                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                    .foregroundColor(.primary)
+                            }
+
+                            HStack {
+                                Text("Additives")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(formatScore(result.additiveRiskComponent)) × 0.35 = \(formatScore(result.additiveRiskComponent * 0.35))")
+                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                    .foregroundColor(.primary)
+                            }
+
+                            HStack {
+                                Text("Nutrients")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(formatScore(result.nutrientDeficitComponent)) × 0.15 = \(formatScore(result.nutrientDeficitComponent * 0.15))")
+                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                    .foregroundColor(.primary)
+                            }
+
+                            Divider()
+                                .padding(.vertical, 4)
+
+                            HStack {
+                                Text("Final index")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text(formatScore(result.finalIndex))
+                                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                    .foregroundColor(color(for: result.grade))
+                            }
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(palette.tertiary.opacity(0.08))
                         )
                     }
 
@@ -144,43 +242,30 @@ struct NutraSafeGradeInfoView: View {
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 4)
 
-                            ForEach(tips, id: \.self) { tip in
-                                HStack(alignment: .top, spacing: 12) {
-                                    Image(systemName: "lightbulb.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.orange)
-                                        .frame(width: 24)
+                            VStack(spacing: 0) {
+                                ForEach(tips, id: \.self) { tip in
+                                    HStack(alignment: .top, spacing: 12) {
+                                        Image(systemName: "lightbulb.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.orange)
+                                            .frame(width: 24)
 
-                                    Text(tip)
-                                        .font(.system(size: 15, weight: .regular))
-                                        .foregroundColor(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
+                                        Text(tip)
+                                            .font(.system(size: 15, weight: .regular))
+                                            .foregroundColor(.secondary)
+                                            .fixedSize(horizontal: false, vertical: true)
+
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 12)
                                 }
                             }
-                            .padding(16)
+                            .padding(.horizontal, 16)
                             .background(
                                 RoundedRectangle(cornerRadius: 16)
                                     .fill(.ultraThinMaterial)
                             )
                         }
-                    }
-
-                    // Detailed explanation
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("The details")
-                            .font(.system(size: 18, weight: .semibold, design: .serif))
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 4)
-
-                        Text(result.explanation)
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(.secondary)
-                            .lineSpacing(4)
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(palette.tertiary.opacity(0.08))
-                            )
                     }
 
                     // Research sources
@@ -194,7 +279,7 @@ struct NutraSafeGradeInfoView: View {
                             GradeCitationCard(citation: citation, palette: palette)
                         }
 
-                        Text("Based on internationally recognised food processing classification standards.")
+                        Text("Based on internationally recognised food processing and additive safety research.")
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 4)
@@ -255,42 +340,73 @@ private struct GradeInfoCard: View {
     }
 }
 
-private struct GradeInfoBullet: View {
+private struct ScoreComponentCard: View {
     let icon: String
     let color: Color
     let title: String
-    let description: String
+    let weight: String
+    let score: String
+    let factors: [String]
+    let palette: AppPalette
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundColor(.white)
-                .frame(width: 40, height: 40)
-                .background(
-                    LinearGradient(
-                        colors: [color, color.opacity(0.7)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with icon, title, weight and score
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(.white)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        LinearGradient(
+                            colors: [color, color.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .cornerRadius(10)
+                    .cornerRadius(10)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
 
-                Text(description)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(weight)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text(score)
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(color)
+            }
+
+            // Factors list
+            if !factors.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(factors, id: \.self) { factor in
+                        HStack(alignment: .top, spacing: 8) {
+                            Circle()
+                                .fill(palette.tertiary.opacity(0.5))
+                                .frame(width: 5, height: 5)
+                                .padding(.top, 6)
+
+                            Text(factor)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(.ultraThinMaterial)
         )
     }

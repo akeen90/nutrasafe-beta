@@ -17,6 +17,7 @@
 		24D3ACC266DD4F91AE1F1045B7BE8F34 /* BarcodeScanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D2ABE73E734F6F8D147178AE588182 /* BarcodeScanningViews.swift */; };
 		25DFD742946D899129F72798 /* NutraSafe Beta/Views/Diary/DiaryMetricCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE66DFC8777762545539ED47 /* NutraSafe Beta/Views/Diary/DiaryMetricCards.swift */; };
 		26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */; };
+		27GRADEINFO001BUILD /* NutraSafeGradeInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27GRADEINFO001FILE /* NutraSafeGradeInfoView.swift */; };
 		2826897CF17548B7F1D72811 /* FoodDetailNutritionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5CAC64039C124DB4C5EAF5 /* FoodDetailNutritionCard.swift */; };
 		28291D8E59C24DBEEC0CB4B3 /* SearchNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EF393E4B5FC384966969A5 /* SearchNormalization.swift */; };
 		2B7CC4E96CFBEE795ABD9951 /* NutraSafeTipRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5F369E2FD255D512AAE952A /* NutraSafeTipRow.swift */; };
@@ -305,6 +306,7 @@
 		FEATTIPOVER001FILE /* NutraSafe Beta/Views/Components/FeatureTipOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/FeatureTipOverlay.swift"; sourceTree = SOURCE_ROOT; };
 		FEATTIPS001FILE /* NutraSafe Beta/Managers/FeatureTipsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/FeatureTipsManager.swift"; sourceTree = SOURCE_ROOT; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
+		27GRADEINFO001FILE /* NutraSafeGradeInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutraSafeGradeInfoView.swift; sourceTree = "<group>"; };
 		GOALSONBOARD001FILE /* GoalsOnboardingScreens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalsOnboardingScreens.swift; sourceTree = "<group>"; };
 		IMGCACHE001FILE /* Managers/ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ImageCacheManager.swift; sourceTree = "<group>"; };
 		INFERREDINGMGR001FILE /* InferredIngredientManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InferredIngredientManager.swift; path = "NutraSafe Beta/Managers/InferredIngredientManager.swift"; sourceTree = SOURCE_ROOT; };
@@ -380,6 +382,7 @@
 				35D2ABE73E734F6F8D147178AE588182 /* BarcodeScanningViews.swift */,
 				CREATEMEALVIEW001FILE /* CreateMealView.swift */,
 				FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */,
+				27GRADEINFO001FILE /* NutraSafeGradeInfoView.swift */,
 				EF86AB54327E46EA98DD76AB /* FoodManagementViews.swift */,
 				F424654E4CD941D1B3565C0B /* FoodSearchViews.swift */,
 				B1E4A63C54154D289C990AE1BEA07BB8 /* FoodTabViews.swift */,
@@ -833,6 +836,7 @@
 				IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */,
 				ALGOLIA001BUILD /* Managers/AlgoliaSearchManager.swift in Sources */,
 				26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */,
+				27GRADEINFO001BUILD /* NutraSafeGradeInfoView.swift in Sources */,
 				99C873C9DCA241B8B3F6C5CA /* FoodSearchViews.swift in Sources */,
 				5499F48301DC4732BB15091B /* FoodManagementViews.swift in Sources */,
 				F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */,
@@ -1170,7 +1174,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nutrasafe.beta.NutraSafeWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1202,7 +1206,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nutrasafe.beta.NutraSafeWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

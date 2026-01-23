@@ -155,14 +155,6 @@ struct NutraSafeBetaApp: App {
     }
 }
 
-// MARK: - Widget Bundle for Live Activities
-@available(iOS 16.1, *)
-struct FastingWidgets: WidgetBundle {
-    var body: some Widget {
-        FastingLiveActivity()
-    }
-}
-
 struct MainAppView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var healthKitManager: HealthKitManager

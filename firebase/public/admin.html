@@ -4512,6 +4512,11 @@
             border-color: #bfdbfe;
         }
 
+        .cat-stat-card.error {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border-color: #fecaca;
+        }
+
         .cat-stat-card .stat-icon {
             font-size: 28px;
             margin-bottom: 8px;
@@ -4892,6 +4897,7 @@
                     <button class="nav-tab" data-view="email-marketing">Email Marketing</button>
                     <button class="nav-tab" data-view="tesco-builder">Database Builder</button>
                     <button class="nav-tab" data-view="ai-categories">AI Categories</button>
+                    <button class="nav-tab" data-view="ai-validation">AI Validation</button>
                 </nav>
                 <div class="user-info">
                     <span id="user-email" class="user-email"></span>
@@ -5740,6 +5746,180 @@
                 </div>
             </div>
         </div>
+
+        <!-- AI Validation View -->
+        <div id="ai-validation-view" class="view">
+            <div class="categories-container">
+                <div class="categories-header">
+                    <h2>🔍 AI Data Validation</h2>
+                    <p>Use AI to validate and clean food data - fix spelling, formatting, identify discontinued products</p>
+                </div>
+
+                <!-- Validation Stats Cards -->
+                <div class="categories-stats">
+                    <div class="cat-stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="val-stat-total">-</div>
+                        <div class="stat-label">Total Foods</div>
+                    </div>
+                    <div class="cat-stat-card success">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-value" id="val-stat-validated">-</div>
+                        <div class="stat-label">Validated</div>
+                    </div>
+                    <div class="cat-stat-card warning">
+                        <div class="stat-icon">❓</div>
+                        <div class="stat-value" id="val-stat-unvalidated">-</div>
+                        <div class="stat-label">Unvalidated</div>
+                    </div>
+                    <div class="cat-stat-card error">
+                        <div class="stat-icon">🗑️</div>
+                        <div class="stat-value" id="val-stat-deletion">-</div>
+                        <div class="stat-label">Marked Delete</div>
+                    </div>
+                </div>
+
+                <!-- Collection Selector -->
+                <div class="categories-controls">
+                    <div class="control-group">
+                        <label>Collection:</label>
+                        <select id="val-collection-select" onchange="app.onValidationCollectionChange()">
+                            <option value="uk_foods_cleaned" selected>UK Foods Cleaned (55k)</option>
+                            <option value="foods">All Foods (26k)</option>
+                            <option value="tescoProducts">Tesco Products (9k)</option>
+                            <option value="verifiedFoods">Verified Foods</option>
+                            <option value="generic_database">Generic Database</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Batch Size:</label>
+                        <select id="val-batch-size">
+                            <option value="all" selected>All (Full Scan)</option>
+                            <option value="10">10 foods</option>
+                            <option value="25">25 foods</option>
+                            <option value="50">50 foods</option>
+                            <option value="100">100 foods</option>
+                            <option value="500">500 foods</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="font-size: 12px; color: #6b7280; margin-top: 8px;">
+                    <strong>AI Validation will:</strong>
+                    <ul style="margin: 8px 0 0 16px; padding: 0;">
+                        <li>Fix product name spelling and formatting</li>
+                        <li>Fix brand name capitalisation</li>
+                        <li>Clean ingredients (UK spelling, remove dirty data)</li>
+                        <li>Identify non-UK/discontinued products (e.g., Coke Light)</li>
+                        <li>Flag wildly incorrect calories for deletion</li>
+                        <li>Fix serving sizes where known</li>
+                    </ul>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="categories-actions">
+                    <button class="btn btn-secondary" id="val-pull-btn" onclick="app.pullFoodsForValidation()">
+                        📥 Pull Data
+                    </button>
+                    <button class="btn btn-primary btn-large" id="val-start-btn" onclick="app.startValidation()" disabled>
+                        🔍 Start AI Validation
+                    </button>
+                    <button class="btn btn-danger" id="val-stop-btn" onclick="app.stopValidation()" style="display: none;">
+                        ⏹️ Stop
+                    </button>
+                    <button class="btn btn-secondary" id="val-reset-btn" onclick="app.resetValidation()" style="display: none;">
+                        🔄 Start Fresh
+                    </button>
+                    <button class="btn btn-secondary" onclick="app.refreshValidationStats()">
+                        🔄 Refresh Stats
+                    </button>
+                </div>
+
+                <!-- Data Preview Section -->
+                <div class="categories-preview" id="val-preview-section" style="display: none;">
+                    <div class="preview-header">
+                        <h3>📋 Foods to Validate</h3>
+                        <span id="val-preview-count" class="preview-count">0 foods loaded</span>
+                    </div>
+                    <div class="preview-list" id="val-preview-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="categories-progress" id="val-progress-section" style="display: none;">
+                    <div class="progress-header">
+                        <span id="val-status-badge" class="status-badge status-idle">Processing</span>
+                        <span id="val-progress-text">Processing 0 / 0 foods...</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="val-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 13px; color: #6b7280;">
+                        <span id="val-updates-count">0 updated</span> |
+                        <span id="val-deletions-count">0 marked for deletion</span>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="categories-results" id="val-results-section" style="display: none;">
+                    <h3>Validation Results</h3>
+                    <div class="results-summary" id="val-results-summary"></div>
+                    <div class="results-list" id="val-results-list"></div>
+                </div>
+
+                <!-- Marked for Deletion Section -->
+                <div class="categories-distribution" id="val-deletion-section">
+                    <div class="preview-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3>🗑️ Marked for Deletion</h3>
+                        <div>
+                            <button class="btn btn-secondary btn-sm" onclick="app.refreshMarkedForDeletion()">🔄 Refresh</button>
+                            <button class="btn btn-danger btn-sm" id="val-delete-all-btn" onclick="app.deleteAllMarked()" style="display: none;">
+                                🗑️ Delete All
+                            </button>
+                            <button class="btn btn-secondary btn-sm" id="val-clear-list-btn" onclick="app.clearDeletionList()" style="display: none;">
+                                ❌ Clear List
+                            </button>
+                        </div>
+                    </div>
+                    <div id="val-deletion-list" class="preview-list" style="max-height: 400px; overflow-y: auto;">
+                        <p class="empty-state">No items marked for deletion yet. Run validation to identify problematic products.</p>
+                    </div>
+                </div>
+
+                <!-- Validation Info -->
+                <div class="categories-reference">
+                    <h3>ℹ️ What Gets Validated</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 12px;">
+                        <div class="info-card" style="background: #f0fdf4; border-left: 3px solid #22c55e; padding: 12px;">
+                            <strong style="color: #15803d;">✏️ Auto-Fixed</strong>
+                            <ul style="margin: 8px 0 0 16px; font-size: 13px; color: #166534;">
+                                <li>Spelling errors in names</li>
+                                <li>UK spelling in ingredients</li>
+                                <li>Brand capitalisation</li>
+                                <li>Dirty data removal</li>
+                            </ul>
+                        </div>
+                        <div class="info-card" style="background: #fef2f2; border-left: 3px solid #ef4444; padding: 12px;">
+                            <strong style="color: #b91c1c;">🗑️ Marked for Delete</strong>
+                            <ul style="margin: 8px 0 0 16px; font-size: 13px; color: #991b1b;">
+                                <li>Non-UK products (Coke Light, etc.)</li>
+                                <li>Discontinued products</li>
+                                <li>Wildly wrong calories</li>
+                                <li>Corrupted/garbled entries</li>
+                            </ul>
+                        </div>
+                        <div class="info-card" style="background: #fefce8; border-left: 3px solid #eab308; padding: 12px;">
+                            <strong style="color: #a16207;">📋 Needs Review</strong>
+                            <ul style="margin: 8px 0 0 16px; font-size: 13px; color: #92400e;">
+                                <li>Uncertain corrections</li>
+                                <li>Multiple issues found</li>
+                                <li>Low confidence changes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Edit Food Modal -->
@@ -6562,6 +6742,9 @@
                 } else if (view === 'ai-categories') {
                     // Initialize AI Categories view
                     this.initCategoriesView();
+                } else if (view === 'ai-validation') {
+                    // Initialize AI Validation view
+                    this.initValidationView();
                 }
             },
 
@@ -14410,6 +14593,563 @@
                     await this.loadCategories();
                 }
                 await this.refreshCategoryStats();
+            },
+
+            // =============================================
+            // AI DATA VALIDATION FUNCTIONS
+            // =============================================
+
+            validationStopped: false,
+            validationProgress: null,
+            pulledValidationFoods: [],
+
+            // Stop validation
+            stopValidation() {
+                this.validationStopped = true;
+                document.getElementById('val-stop-btn').textContent = '⏳ Stopping...';
+                document.getElementById('val-stop-btn').disabled = true;
+            },
+
+            // Reset validation progress
+            async resetValidation() {
+                const collection = document.getElementById('val-collection-select').value;
+                if (!confirm(`Reset validation progress for ${collection}? This will start from the beginning.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/resetValidationProgress`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ collection })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        this.showToast('Progress reset. Click Start to begin fresh.', 'success');
+                        document.getElementById('val-reset-btn').style.display = 'none';
+                        document.getElementById('val-start-btn').textContent = '🔍 Start AI Validation';
+                        this.validationProgress = null;
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    this.showToast('Failed to reset progress: ' + error.message, 'error');
+                }
+            },
+
+            // Check for existing validation progress
+            async checkValidationProgress(collection) {
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/getValidationProgress?collection=${collection}`);
+                    const data = await response.json();
+
+                    if (data.success && data.hasProgress && data.progress.status !== 'complete') {
+                        this.validationProgress = data.progress;
+                        return data.progress;
+                    }
+                    this.validationProgress = null;
+                    return null;
+                } catch (error) {
+                    console.error('Failed to check progress:', error);
+                    return null;
+                }
+            },
+
+            // Pull foods for validation preview
+            async pullFoodsForValidation() {
+                const collection = document.getElementById('val-collection-select').value;
+                const batchSizeValue = document.getElementById('val-batch-size').value;
+                const previewLimit = 50;
+
+                const pullBtn = document.getElementById('val-pull-btn');
+                const startBtn = document.getElementById('val-start-btn');
+                const previewSection = document.getElementById('val-preview-section');
+                const previewList = document.getElementById('val-preview-list');
+                const previewCount = document.getElementById('val-preview-count');
+
+                pullBtn.disabled = true;
+                pullBtn.textContent = '⏳ Loading...';
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/getFoodsForValidation?collection=${collection}&limit=${previewLimit}`);
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to get foods');
+                    }
+
+                    const totalFoods = data.total;
+
+                    if (totalFoods === 0) {
+                        previewSection.style.display = 'block';
+                        previewList.innerHTML = '<div class="preview-item"><span class="food-name">⚠️ No foods found in this collection</span></div>';
+                        previewCount.textContent = '0 foods';
+                        startBtn.disabled = true;
+                        this.showToast('No foods in this collection', 'warning');
+                        return;
+                    }
+
+                    this.pulledValidationFoods = {
+                        collection: collection,
+                        count: totalFoods,
+                        batchSize: batchSizeValue
+                    };
+
+                    previewSection.style.display = 'block';
+                    previewCount.textContent = `${totalFoods.toLocaleString()} total foods`;
+
+                    let html = `
+                        <div class="preview-item" style="background: #dbeafe; padding: 12px 16px; border-left: 3px solid #3b82f6;">
+                            <span style="font-size: 13px; color: #1e40af;">
+                                📊 <strong>${totalFoods.toLocaleString()}</strong> foods in <strong>${collection}</strong> |
+                                Mode: <strong>${batchSizeValue === 'all' ? 'Full Scan' : batchSizeValue + ' per batch'}</strong>
+                            </span>
+                        </div>
+                    `;
+
+                    data.foods.forEach((food, index) => {
+                        const statusBadge = food.lastValidated === 'Validated'
+                            ? `<span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 10px; font-size: 11px;">✅ Validated</span>`
+                            : `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-size: 11px;">Not validated</span>`;
+
+                        const caloriesBadge = food.calories
+                            ? `<span style="color: #6b7280; font-size: 11px;">${food.calories} kcal</span>`
+                            : '';
+
+                        html += `
+                            <div class="preview-item">
+                                <span style="color: #9ca3af; font-size: 12px; min-width: 30px;">${index + 1}.</span>
+                                <span class="food-name">${this.escapeHtml(food.foodName)}</span>
+                                ${food.brandName ? `<span class="brand-name">${this.escapeHtml(food.brandName)}</span>` : ''}
+                                ${caloriesBadge}
+                                ${statusBadge}
+                            </div>
+                        `;
+                    });
+
+                    if (totalFoods > previewLimit) {
+                        html += `
+                            <div class="preview-item" style="background: #f3f4f6; justify-content: center;">
+                                <span style="color: #6b7280; font-size: 13px;">... and ${(totalFoods - previewLimit).toLocaleString()} more foods</span>
+                            </div>
+                        `;
+                    }
+
+                    previewList.innerHTML = html;
+
+                    // Check for existing progress
+                    const progress = await this.checkValidationProgress(collection);
+                    const resetBtn = document.getElementById('val-reset-btn');
+
+                    if (progress && progress.totalProcessed > 0) {
+                        const percent = Math.round((progress.totalProcessed / progress.totalFoods) * 100);
+                        startBtn.textContent = `▶️ Resume (${percent}% done)`;
+                        resetBtn.style.display = 'inline-block';
+
+                        const progressInfo = document.createElement('div');
+                        progressInfo.className = 'preview-item';
+                        progressInfo.style.cssText = 'background: #fef3c7; padding: 12px 16px; border-left: 3px solid #f59e0b;';
+                        progressInfo.innerHTML = `
+                            <span style="font-size: 13px; color: #92400e;">
+                                ⏸️ <strong>Previous progress found:</strong> ${progress.totalProcessed.toLocaleString()} / ${progress.totalFoods.toLocaleString()} foods (${percent}%)
+                                | ${progress.updatedCount || 0} updated, ${progress.markedForDeletionCount || 0} marked for deletion
+                            </span>
+                        `;
+                        previewList.insertBefore(progressInfo, previewList.firstChild);
+
+                        this.showToast(`Found existing progress: ${percent}% complete. Click Resume to continue.`, 'info');
+                    } else {
+                        startBtn.textContent = '🔍 Start AI Validation';
+                        resetBtn.style.display = 'none';
+                    }
+
+                    startBtn.disabled = false;
+                    this.showToast(`Loaded ${totalFoods.toLocaleString()} foods ready to validate`, 'success');
+
+                } catch (error) {
+                    console.error('Failed to pull foods:', error);
+                    this.showToast('Failed to pull data: ' + error.message, 'error');
+                    previewSection.style.display = 'none';
+                    startBtn.disabled = true;
+                } finally {
+                    pullBtn.disabled = false;
+                    pullBtn.textContent = '📥 Pull Data';
+                }
+            },
+
+            // Refresh validation statistics
+            async refreshValidationStats() {
+                const collection = document.getElementById('val-collection-select').value;
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/getValidationStats?collection=${collection}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const stats = data.stats;
+                        document.getElementById('val-stat-total').textContent = stats.total.toLocaleString();
+                        document.getElementById('val-stat-validated').textContent = stats.validated.toLocaleString();
+                        document.getElementById('val-stat-unvalidated').textContent = stats.unvalidated.toLocaleString();
+                        document.getElementById('val-stat-deletion').textContent = stats.markedForDeletion.toLocaleString();
+                    }
+                } catch (error) {
+                    console.error('Failed to load stats:', error);
+                    this.showToast('Failed to load statistics: ' + error.message, 'error');
+                }
+
+                // Also refresh marked for deletion list
+                await this.refreshMarkedForDeletion();
+            },
+
+            // Start AI validation
+            async startValidation() {
+                await this.runValidation(true);
+            },
+
+            // Run validation
+            async runValidation(saveResults = true) {
+                const collection = document.getElementById('val-collection-select').value;
+                const batchSizeValue = document.getElementById('val-batch-size').value;
+                const isFullScan = batchSizeValue === 'all';
+                const batchSize = isFullScan ? 500 : parseInt(batchSizeValue);
+                const totalFoods = this.pulledValidationFoods?.count || 0;
+
+                const progressSection = document.getElementById('val-progress-section');
+                const resultsSection = document.getElementById('val-results-section');
+                const startBtn = document.getElementById('val-start-btn');
+                const stopBtn = document.getElementById('val-stop-btn');
+
+                this.validationStopped = false;
+                stopBtn.style.display = 'inline-block';
+                stopBtn.disabled = false;
+                stopBtn.textContent = '⏹️ Stop';
+
+                startBtn.disabled = true;
+                startBtn.textContent = '⏳ Processing...';
+
+                progressSection.style.display = 'block';
+                resultsSection.style.display = 'none';
+
+                let totalProcessed = 0;
+                let totalUpdated = 0;
+                let totalMarkedForDeletion = 0;
+                let allResults = [];
+                let hasMore = true;
+                let batchCount = 0;
+
+                try {
+                    while (hasMore && !this.validationStopped) {
+                        batchCount++;
+                        const currentBatch = isFullScan ? 500 : batchSize;
+
+                        const response = await fetch(`${CONFIG.API_BASE}/validateFoodsFromDatabase`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                collection,
+                                limit: currentBatch,
+                                saveResults,
+                                resume: true
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (!data.success) {
+                            throw new Error(data.error || 'Validation failed');
+                        }
+
+                        totalProcessed = data.totalProcessed;
+                        totalUpdated = data.updatedCount || 0;
+                        totalMarkedForDeletion = data.markedForDeletionCount || 0;
+                        hasMore = data.hasMore && isFullScan;
+
+                        if (data.results) {
+                            allResults = [...allResults, ...data.results].slice(-100);
+                        }
+
+                        // Update progress UI
+                        const percent = data.percentComplete || Math.round((totalProcessed / totalFoods) * 100);
+                        document.getElementById('val-progress-bar').style.width = `${percent}%`;
+                        document.getElementById('val-progress-text').textContent =
+                            `Processing ${totalProcessed.toLocaleString()} / ${totalFoods.toLocaleString()} foods... (${percent}%)`;
+                        document.getElementById('val-status-badge').textContent = `Batch ${batchCount}`;
+                        document.getElementById('val-updates-count').textContent = `${totalUpdated.toLocaleString()} updated`;
+                        document.getElementById('val-deletions-count').textContent = `${totalMarkedForDeletion.toLocaleString()} marked for deletion`;
+
+                        // Delay between batches
+                        if (hasMore && !this.validationStopped) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+
+                        // Break for single batch mode
+                        if (!isFullScan) break;
+                    }
+
+                    // Show completion status
+                    if (this.validationStopped) {
+                        document.getElementById('val-status-badge').textContent = 'Paused';
+                        document.getElementById('val-status-badge').classList.add('status-warning');
+                        this.showToast(`Validation paused at ${totalProcessed.toLocaleString()} foods. Progress saved.`, 'info');
+                    } else if (!hasMore) {
+                        document.getElementById('val-status-badge').textContent = 'Complete';
+                        document.getElementById('val-status-badge').classList.add('status-success');
+                        this.showToast(`Validation complete! ${totalUpdated} updated, ${totalMarkedForDeletion} marked for deletion.`, 'success');
+                    }
+
+                    // Show results
+                    this.renderValidationResults({
+                        processed: totalProcessed,
+                        updatedCount: totalUpdated,
+                        markedForDeletionCount: totalMarkedForDeletion,
+                        results: allResults
+                    }, saveResults);
+                    resultsSection.style.display = 'block';
+
+                    // Refresh stats and deletion list
+                    await this.refreshValidationStats();
+
+                } catch (error) {
+                    console.error('Validation error:', error);
+                    this.showToast('Validation error: ' + error.message, 'error');
+                    document.getElementById('val-status-badge').textContent = 'Error';
+                    document.getElementById('val-status-badge').classList.add('status-error');
+                } finally {
+                    startBtn.disabled = false;
+                    startBtn.textContent = '🔍 Start AI Validation';
+                    stopBtn.style.display = 'none';
+                    stopBtn.disabled = false;
+                    stopBtn.textContent = '⏹️ Stop';
+                }
+            },
+
+            // Render validation results
+            renderValidationResults(data, saved) {
+                const summaryEl = document.getElementById('val-results-summary');
+                const listEl = document.getElementById('val-results-list');
+
+                summaryEl.innerHTML = `
+                    <strong>${data.processed.toLocaleString()} foods validated</strong>
+                    ${saved ? ' and changes saved to database' : ' (preview only)'}
+                    <br>
+                    <span style="color: #22c55e;">✏️ ${data.updatedCount || 0} updated</span> |
+                    <span style="color: #ef4444;">🗑️ ${data.markedForDeletionCount || 0} marked for deletion</span>
+                `;
+
+                if (!data.results || data.results.length === 0) {
+                    listEl.innerHTML = '<p class="empty-state">No detailed results to display</p>';
+                    return;
+                }
+
+                listEl.innerHTML = data.results.map(result => {
+                    const actionBadge = {
+                        'update': '<span class="category-badge" style="background: #dcfce7; color: #15803d;">Updated</span>',
+                        'delete': '<span class="category-badge" style="background: #fee2e2; color: #b91c1c;">Delete</span>',
+                        'review': '<span class="category-badge" style="background: #fef3c7; color: #92400e;">Review</span>',
+                        'none': '<span class="category-badge" style="background: #f3f4f6; color: #6b7280;">No Change</span>'
+                    }[result.action] || '';
+
+                    const changes = result.changes && result.changes.length > 0
+                        ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;">${result.changes.join(', ')}</div>`
+                        : '';
+
+                    const deleteReason = result.deleteReason
+                        ? `<div style="font-size: 12px; color: #b91c1c; margin-top: 4px;">Reason: ${result.deleteReason}</div>`
+                        : '';
+
+                    return `
+                        <div class="result-item" style="flex-direction: column; align-items: flex-start;">
+                            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                                <span class="food-name">${this.escapeHtml(result.originalFood?.foodName || 'Unknown')}</span>
+                                ${result.originalFood?.brandName ? `<span class="brand-name">${this.escapeHtml(result.originalFood.brandName)}</span>` : ''}
+                                ${actionBadge}
+                                <span class="confidence-badge ${result.confidence}">${result.confidence}</span>
+                            </div>
+                            ${changes}
+                            ${deleteReason}
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            // Handle validation collection change
+            async onValidationCollectionChange() {
+                document.getElementById('val-preview-section').style.display = 'none';
+                document.getElementById('val-start-btn').disabled = true;
+                this.pulledValidationFoods = [];
+
+                await this.refreshValidationStats();
+            },
+
+            // Initialize validation view
+            async initValidationView() {
+                await this.refreshValidationStats();
+            },
+
+            // Refresh marked for deletion list
+            async refreshMarkedForDeletion() {
+                const collection = document.getElementById('val-collection-select').value;
+                const listEl = document.getElementById('val-deletion-list');
+                const deleteAllBtn = document.getElementById('val-delete-all-btn');
+                const clearListBtn = document.getElementById('val-clear-list-btn');
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/getMarkedForDeletion?collection=${collection}`);
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error);
+                    }
+
+                    if (!data.items || data.items.length === 0) {
+                        listEl.innerHTML = '<p class="empty-state">No items marked for deletion yet. Run validation to identify problematic products.</p>';
+                        deleteAllBtn.style.display = 'none';
+                        clearListBtn.style.display = 'none';
+                        return;
+                    }
+
+                    deleteAllBtn.style.display = 'inline-block';
+                    clearListBtn.style.display = 'inline-block';
+
+                    listEl.innerHTML = data.items.map(item => `
+                        <div class="preview-item" style="flex-direction: column; align-items: flex-start; padding: 12px;" data-item-id="${item.id}">
+                            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                                <input type="checkbox" class="deletion-checkbox" data-id="${item.id}" checked>
+                                <span class="food-name" style="flex: 1;">${this.escapeHtml(item.foodName)}</span>
+                                ${item.brandName ? `<span class="brand-name">${this.escapeHtml(item.brandName)}</span>` : ''}
+                                <span class="confidence-badge ${item.confidence}">${item.confidence}</span>
+                            </div>
+                            <div style="font-size: 12px; color: #b91c1c; margin-top: 4px; padding-left: 24px;">
+                                ${this.escapeHtml(item.reason)}
+                            </div>
+                            <div style="margin-top: 8px; padding-left: 24px;">
+                                <button class="btn btn-danger btn-sm" onclick="app.deleteSingleItem('${item.id}')">🗑️ Delete</button>
+                                <button class="btn btn-secondary btn-sm" onclick="app.unmarkSingleItem('${item.id}')">✓ Keep</button>
+                            </div>
+                        </div>
+                    `).join('');
+
+                } catch (error) {
+                    console.error('Failed to load marked items:', error);
+                    listEl.innerHTML = '<p class="empty-state">Error loading marked items.</p>';
+                }
+            },
+
+            // Delete all marked items
+            async deleteAllMarked() {
+                const collection = document.getElementById('val-collection-select').value;
+                const checkboxes = document.querySelectorAll('.deletion-checkbox:checked');
+                const itemIds = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+                if (itemIds.length === 0) {
+                    this.showToast('No items selected for deletion', 'warning');
+                    return;
+                }
+
+                if (!confirm(`Are you sure you want to permanently delete ${itemIds.length} items from ${collection}? This cannot be undone.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/deleteMarkedItems`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ collection, itemIds })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.showToast(`Deleted ${data.deleted} items from ${collection}`, 'success');
+                        await this.refreshValidationStats();
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    this.showToast('Failed to delete items: ' + error.message, 'error');
+                }
+            },
+
+            // Delete single item
+            async deleteSingleItem(itemId) {
+                const collection = document.getElementById('val-collection-select').value;
+
+                if (!confirm('Are you sure you want to permanently delete this item?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/deleteMarkedItems`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ collection, itemIds: [itemId] })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.showToast('Item deleted', 'success');
+                        await this.refreshValidationStats();
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    this.showToast('Failed to delete item: ' + error.message, 'error');
+                }
+            },
+
+            // Unmark single item (keep in database)
+            async unmarkSingleItem(itemId) {
+                const collection = document.getElementById('val-collection-select').value;
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/unmarkForDeletion`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ collection, itemIds: [itemId] })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.showToast('Item removed from deletion list', 'success');
+                        await this.refreshMarkedForDeletion();
+                        await this.refreshValidationStats();
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    this.showToast('Failed to unmark item: ' + error.message, 'error');
+                }
+            },
+
+            // Clear entire deletion list
+            async clearDeletionList() {
+                const collection = document.getElementById('val-collection-select').value;
+
+                if (!confirm('Are you sure you want to clear the entire deletion list? Items will remain in the database.')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${CONFIG.API_BASE}/clearMarkedForDeletion`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ collection })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.showToast('Deletion list cleared', 'success');
+                        await this.refreshValidationStats();
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    this.showToast('Failed to clear list: ' + error.message, 'error');
+                }
             }
         };
 

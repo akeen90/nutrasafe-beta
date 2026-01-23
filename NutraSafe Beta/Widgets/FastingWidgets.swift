@@ -613,9 +613,10 @@ struct SkipFastingIntent: AppIntent {
     }
 }
 
-// MARK: - Widget Configuration
+// MARK: - Widget Configuration (Home Screen Widgets - Future Feature)
+// Note: These home screen widgets require the NutraSafeWidgets extension target.
+// Currently only the Live Activity is implemented in the widget extension.
 
-@main
 struct FastingWidgetBundle: WidgetBundle {
     var body: some Widget {
         FastingSmallStatusWidget()

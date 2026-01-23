@@ -366,8 +366,8 @@ struct FoodDetailViewFromSearch: View {
     // PERFORMANCE: Cache nutrition score to prevent 40+ calls to analyseAdditives on every render
     @State private var cachedNutritionScore: NutritionProcessingScore? = nil
 
-    // PERFORMANCE: Cache NutraSafe processing grade to avoid recompute
-    @State private var cachedNutraSafeGrade: ProcessingScorer.NutraSafeProcessingGradeResult? = nil
+    // PERFORMANCE: Cache NutraSafe unified score to avoid recompute
+    @State private var cachedNutraSafeGrade: ProcessingScorer.NutraSafeUnifiedScoreResult? = nil
 
     // PERFORMANCE: Flag to ensure initialization only happens once
     @State private var hasInitialized = false
@@ -772,14 +772,18 @@ struct FoodDetailViewFromSearch: View {
         )
     }
 
-    private var nutraSafeGrade: ProcessingScorer.NutraSafeProcessingGradeResult {
+    private var nutraSafeGrade: ProcessingScorer.NutraSafeUnifiedScoreResult {
         // PERFORMANCE: Return cached grade if available
         if let cached = cachedNutraSafeGrade {
             return cached
         }
 
-        // Compute the NutraSafe processing grade
-        let result = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
+        // Compute the NutraSafe unified score (processing + additives + nutrients)
+        // Pass in the pre-computed additive analysis for accurate risk assessment
+        let result = ProcessingScorer.shared.computeUnifiedNutraSafeScore(
+            for: displayFood,
+            additiveAnalysis: additiveAnalysis
+        )
 
         // Cache the result for performance
         DispatchQueue.main.async {
@@ -1173,6 +1177,8 @@ struct FoodDetailViewFromSearch: View {
 
         await MainActor.run {
             additiveAnalysis = analysis
+            // Invalidate cached unified score since it depends on additive analysis
+            cachedNutraSafeGrade = nil
         }
     }
 
@@ -4302,7 +4308,7 @@ struct FoodDetailViewFromSearch: View {
     }
 
     struct FoodScoresSectionView: View {
-        let ns: ProcessingScorer.NutraSafeProcessingGradeResult?
+        let ns: ProcessingScorer.NutraSafeUnifiedScoreResult?
         let sugarScore: SugarContentScore?
         @Binding var showingInfo: Bool
         @Binding var showingSugarInfo: Bool
@@ -4316,9 +4322,9 @@ struct FoodDetailViewFromSearch: View {
         private func gradeColor(for grade: String) -> Color {
             switch grade {
             case "A+", "A": return SemanticColors.positive
-            case "B": return SemanticColors.nutrient
-            case "C", "D": return SemanticColors.neutral
-            case "F": return SemanticColors.caution
+            case "B": return .mint
+            case "C": return .orange
+            case "D", "E", "F": return SemanticColors.caution
             default: return Color.secondary
             }
         }
@@ -4340,7 +4346,7 @@ struct FoodDetailViewFromSearch: View {
                         // Onboarding-style grade card - calm and informational
                         Button(action: { showingInfo = true }) {
                             VStack(spacing: 8) {
-                                Text("PROCESSING")
+                                Text("NUTRASAFE SCORE")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.secondary)
                                     .tracking(0.5)
@@ -4443,11 +4449,9 @@ struct FoodDetailViewFromSearch: View {
             HStack(spacing: 0) {
                 ForEach(WatchTab.allCases, id: \.self) { tab in
                     Button(action: {
-                        // Only animate if actually changing tabs
+                        // Only change if actually changing tabs - no animation to prevent expand effect
                         guard selectedWatchTab != tab else { return }
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            selectedWatchTab = tab
-                        }
+                        selectedWatchTab = tab
                     }) {
                         HStack(spacing: 8) {
                             // Smaller icon in colored circle
@@ -4487,21 +4491,35 @@ struct FoodDetailViewFromSearch: View {
             Divider()
                 .padding(.horizontal, 16)
 
-            // Tab Content - Wrapped in ScrollView to prevent overflow
+            // Tab Content - Using ZStack with opacity to prevent scroll/animation issues
             ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(spacing: 0) {
-                        switch selectedWatchTab {
-                        case .additives:
-                            additivesContent
-                        case .allergies:
-                            allergensContent
-                        case .vitamins:
-                            vitaminsContent(scrollProxy: proxy)
-                        }
+                ZStack(alignment: .top) {
+                    // Additives content
+                    ScrollView {
+                        additivesContent
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 12)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
+                    .opacity(selectedWatchTab == .additives ? 1 : 0)
+                    .allowsHitTesting(selectedWatchTab == .additives)
+
+                    // Allergies content
+                    ScrollView {
+                        allergensContent
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 12)
+                    }
+                    .opacity(selectedWatchTab == .allergies ? 1 : 0)
+                    .allowsHitTesting(selectedWatchTab == .allergies)
+
+                    // Vitamins content
+                    ScrollView {
+                        vitaminsContent(scrollProxy: proxy)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 12)
+                    }
+                    .opacity(selectedWatchTab == .vitamins ? 1 : 0)
+                    .allowsHitTesting(selectedWatchTab == .vitamins)
                 }
                 .frame(maxHeight: 400) // Limit height to prevent tab overlap
             }
@@ -6096,21 +6114,8 @@ extension FoodDetailViewFromSearch {
             if !detectedUserAllergens.isEmpty {
                 redesignedAllergenBanner
             }
-
-            // Additive Safety Badge (Yuka-style) - shows at-a-glance safety grade
-            AdditiveSafetyBadge(
-                analysis: additiveAnalysis,
-                hasIngredients: hasIngredients,
-                onTap: {
-                    // Scroll to additive section and switch to additives tab
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        selectedWatchTab = .additives
-                        mainScrollProxy?.scrollTo("watchTabsSection", anchor: .top)
-                    }
-                }
-            )
-            .padding(.top, 8)
-            .padding(.horizontal, DesignTokens.Spacing.sm)
+            // Note: Additive analysis is now part of the unified NutraSafe Score
+            // Detailed breakdown available in the score info sheet
         }
         .padding(.top, 4)
         .padding(.horizontal, DesignTokens.Spacing.sm)
@@ -6374,158 +6379,6 @@ struct ScrollDismissModifier: ViewModifier {
             content.scrollDismissesKeyboard(.interactively)
         } else {
             content
-        }
-    }
-}
-
-// MARK: - NutraSafe Grade Info View (inline fallback)
-struct NutraSafeGradeInfoView: View {
-    let result: ProcessingScorer.NutraSafeProcessingGradeResult
-    let food: FoodSearchResult
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var palette: AppPalette {
-        AppPalette.forCurrentUser(colorScheme: colorScheme)
-    }
-
-    private func color(for grade: String) -> Color {
-        switch grade.uppercased() {
-        case "A", "A+": return .green
-        case "B": return .mint
-        case "C": return .orange
-        case "D", "E", "F": return .red
-        default: return .gray
-        }
-    }
-
-    private var tips: [String] {
-        var out: [String] = []
-        if food.protein < 7 { out.append("Boost protein: add eggs, yogurt, lean meat, or legumes.") }
-        if food.fiber < 3 { out.append("Add fiber: include whole grains, fruit, veg, or nuts.") }
-        if food.sugar > 10 { out.append("Choose lower-sugar options or reduce sweet add-ons.") }
-        if (food.ingredients?.count ?? 0) > 15 { out.append("Simplify: shorter ingredient lists often mean gentler processing.") }
-        if (food.additives?.count ?? 0) > 0 { out.append("Prefer versions with fewer additives when possible.") }
-        return out.isEmpty ? ["Enjoy in balanced portions and pair with whole foods."] : out
-    }
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    HStack(alignment: .center, spacing: 12) {
-                        Text(result.grade)
-                            .font(.system(size: 34, weight: .black, design: .rounded))
-                            .foregroundColor(color(for: result.grade))
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(result.label)
-                                .font(.headline)
-                            Text("NutraSafe Processing Grade")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(color(for: result.grade).opacity(0.08))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(color(for: result.grade).opacity(0.2), lineWidth: 1)
-                            )
-                    )
-
-                    Group {
-                        Text("What this means")
-                            .font(.headline)
-                        Text(result.label)
-                            .font(.callout)
-                            .foregroundColor(.primary)
-                    }
-
-                    Group {
-                        Text("How we calculate it")
-                            .font(.headline)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("• Processing intensity: additives, industrial processes, and ingredient complexity.")
-                            Text("• Nutrient integrity: balance of protein, fiber, sugar, and micronutrients.")
-                            Text("• We combine these into a simple A–F grade for clarity.")
-                        }
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                    }
-
-                    Group {
-                        Text("Tips to improve similar foods")
-                            .font(.headline)
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(tips, id: \.self) { tip in
-                                Text("• \(tip)")
-                            }
-                        }
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                    }
-
-                    Group {
-                        Text("Details")
-                            .font(.headline)
-                        Text(result.explanation)
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-
-                    // Citations Section
-                    Group {
-                        Text("Research Sources")
-                            .font(.headline)
-                            .padding(.top, 8)
-
-                        Text("Food processing classification based on the NOVA system and nutritional science research:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.bottom, 8)
-
-                        ForEach(CitationManager.shared.citations(for: .foodProcessing)) { citation in
-                            Button(action: {
-                                if let url = URL(string: citation.url) {
-                                    UIApplication.shared.open(url)
-                                }
-                            }) {
-                                HStack(alignment: .top, spacing: 8) {
-                                    Image(systemName: "doc.text.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(AppPalette.standard.accent)
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(citation.organization)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundColor(.primary)
-                                        Text(citation.title)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(2)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "arrow.up.right.square")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(AppPalette.standard.accent)
-                                }
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(palette.tertiary.opacity(0.15))
-                                .cornerRadius(10)
-                            }
-                        }
-                    }
-                }
-                .padding(20)
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
         }
     }
 }

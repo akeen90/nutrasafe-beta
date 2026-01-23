@@ -507,7 +507,6 @@ struct AdditiveRiskGroup: View {
     @Binding var expandedId: UUID?
     var startCollapsed: Bool = false
 
-    @State private var isExpanded: Bool = true
     @Environment(\.colorScheme) var colorScheme
 
     private var palette: AppPalette {
@@ -516,44 +515,37 @@ struct AdditiveRiskGroup: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Section header (tappable to collapse)
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(riskLevel.color)
-                                .frame(width: 10, height: 10)
+            // Section header - always expanded, no collapse functionality to avoid animation issues
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(riskLevel.color)
+                            .frame(width: 10, height: 10)
 
-                            Text(title)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(palette.textPrimary)
+                        Text(title)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(palette.textPrimary)
 
-                            Text("(\(additives.count))")
-                                .font(.system(size: 13))
-                                .foregroundColor(palette.textTertiary)
-                        }
-
-                        Text(subtitle)
-                            .font(.system(size: 12))
-                            .foregroundColor(palette.textSecondary)
+                        Text("(\(additives.count))")
+                            .font(.system(size: 13))
+                            .foregroundColor(palette.textTertiary)
                     }
 
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(palette.textTertiary)
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(palette.textSecondary)
                 }
-            }
-            .buttonStyle(PlainButtonStyle())
 
-            // Additive rows
-            if isExpanded {
+                Spacer()
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(palette.textTertiary)
+            }
+
+            // Additive rows - always visible
+            if true {
                 VStack(spacing: 0) {
                     ForEach(additives) { additive in
                         RedesignedAdditiveRow(
@@ -581,9 +573,6 @@ struct AdditiveRiskGroup: View {
                         .fill(palette.tertiary.opacity(0.05))
                 )
             }
-        }
-        .onAppear {
-            isExpanded = !startCollapsed
         }
     }
 }

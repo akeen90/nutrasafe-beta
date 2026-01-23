@@ -904,7 +904,17 @@ class AdditiveWatchService {
     
     // Local helpers for fallback matching
     private func normalizeIngredientTextLocal(_ text: String) -> String {
-        let lower = text.lowercased()
+        var lower = text.lowercased()
+
+        // CRITICAL FIX: Convert bare numeric codes to E-numbers BEFORE stripping punctuation
+        // Many ingredient lists use "(330, 331)" instead of "(E330, E331)"
+        // e.g., "Colours (171, 102, 129)" → "Colours (e171, e102, e129)"
+        // e.g., "Food acids (330, 331)" → "Food acids (e330, e331)"
+        if let regex = try? NSRegularExpression(pattern: "(?<=[(,\\.\\s])([0-9]{3,4})(?=[),\\.\\s])", options: []) {
+            let range = NSRange(lower.startIndex..., in: lower)
+            lower = regex.stringByReplacingMatches(in: lower, options: [], range: range, withTemplate: "e$1")
+        }
+
         let cleaned = lower.replacingOccurrences(of: "[\\n\\r\\t]", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "[\\(\\)\\[\\]\\{\\};:\\\\|/\\\\\\\\]", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "[,\\.\\u{00B7}]", with: " ", options: .regularExpression)

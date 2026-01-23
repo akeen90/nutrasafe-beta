@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FoodScoresSectionView: View {
-    let ns: ProcessingScorer.NutraSafeProcessingGradeResult?
+    let ns: ProcessingScorer.NutraSafeUnifiedScoreResult?
     let sugarScore: SugarContentScore?
     @Binding var showingInfo: Bool
     @Binding var showingSugarInfo: Bool
@@ -9,9 +9,9 @@ struct FoodScoresSectionView: View {
     private func color(for grade: String) -> Color {
         switch grade {
         case "A+", "A": return .green
-        case "B": return .yellow
-        case "C", "D": return .orange
-        case "F": return .red
+        case "B": return .mint
+        case "C": return .orange
+        case "D", "E", "F": return .red
         default: return .gray
         }
     }
@@ -21,7 +21,7 @@ struct FoodScoresSectionView: View {
             if let ns = ns {
                 Button(action: { showingInfo = true }) {
                     VStack(spacing: 6) {
-                        Text("NUTRASAFE GRADE")
+                        Text("NUTRASAFE SCORE")
                             .font(.system(size: 10, weight: .semibold, design: .rounded))
                             .foregroundColor(.secondary)
                             .tracking(0.5)

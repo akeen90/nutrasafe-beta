@@ -26,6 +26,62 @@ interface FoodToValidate {
   protein?: number;
   carbs?: number;
   fat?: number;
+  barcode?: string;
+}
+
+/**
+ * Check if barcode is from UK/Ireland (valid for UK database)
+ * UK: 50xxxxx
+ * Ireland: 539xxxx
+ * Also accept EAN-13 that start with these
+ */
+function isUKOrIrishBarcode(barcode?: string): boolean {
+  if (!barcode) return false;
+  const cleaned = barcode.replace(/\D/g, '');
+  if (cleaned.length < 3) return false;
+
+  // UK barcodes start with 50
+  if (cleaned.startsWith('50')) return true;
+
+  // Irish barcodes start with 539
+  if (cleaned.startsWith('539')) return true;
+
+  // Some UK retailer barcodes (internal codes)
+  // Tesco, Sainsbury's, etc. often use 0 prefix internal codes
+  if (cleaned.startsWith('0') && cleaned.length >= 8) return true;
+
+  return false;
+}
+
+/**
+ * Get barcode country info for AI context
+ */
+function getBarcodeCountry(barcode?: string): string {
+  if (!barcode) return 'No barcode';
+  const cleaned = barcode.replace(/\D/g, '');
+  if (cleaned.length < 3) return 'Invalid barcode';
+
+  const prefix = cleaned.substring(0, 3);
+  const prefix2 = cleaned.substring(0, 2);
+
+  // Common prefixes
+  if (prefix2 === '50') return 'UK';
+  if (prefix === '539') return 'Ireland';
+  if (prefix2 >= '00' && prefix2 <= '09') return 'USA/Canada';
+  if (prefix2 >= '30' && prefix2 <= '37') return 'France';
+  if (prefix === '400' || prefix === '401' || prefix === '402' || prefix === '403' || prefix === '404' || prefix === '440') return 'Germany';
+  if (prefix2 === '84') return 'Spain';
+  if (prefix2 === '80' || prefix2 === '81' || prefix2 === '82' || prefix2 === '83') return 'Italy';
+  if (prefix === '871') return 'Netherlands';
+  if (prefix === '560') return 'Portugal';
+  if (prefix2 === '45' || prefix2 === '49') return 'Japan';
+  if (prefix === '690' || prefix === '691' || prefix === '692' || prefix === '693' || prefix === '694' || prefix === '695') return 'China';
+  if (prefix === '880') return 'South Korea';
+  if (prefix === '890') return 'India';
+  if (prefix2 === '93') return 'Australia';
+  if (prefix2 === '94') return 'New Zealand';
+
+  return 'Unknown country';
 }
 
 interface ValidationResult {
@@ -116,6 +172,10 @@ function buildValidationPrompt(foods: FoodToValidate[]): string {
   const foodList = foods.map((food, index) => {
     const parts = [`${index + 1}. Name: "${food.foodName}"`];
     if (food.brandName) parts.push(`Brand: "${food.brandName}"`);
+    if (food.barcode) {
+      const country = getBarcodeCountry(food.barcode);
+      parts.push(`Barcode: ${food.barcode} (${country})`);
+    }
     if (food.ingredients) {
       const ingredientsStr = Array.isArray(food.ingredients)
         ? food.ingredients.join(', ')
@@ -158,11 +218,13 @@ VALIDATION TASKS:
    - Use parentheses for sub-ingredients: "Chocolate (Cocoa Mass, Sugar, Cocoa Butter)"
 
 4. **IDENTIFY PRODUCTS TO DELETE** (mark action: "delete"):
-   - Non-UK products that shouldn't be in UK database (e.g., "Coke Light" - US product, UK uses "Diet Coke")
-   - Products with foreign language names that aren't sold in UK
+   - IMPORTANT: If a product has a UK barcode (starting with 50) or Irish barcode (539), do NOT mark for deletion - it's valid for UK database even if the name sounds foreign
+   - Non-UK products WITHOUT UK/Irish barcodes that shouldn't be in UK database (e.g., "Coke Light" with US barcode)
+   - Products with foreign language names that aren't sold in UK AND don't have UK barcodes
    - Discontinued products you know are no longer available
    - Duplicate/corrupted entries with garbled names
    - Products with nonsensical or incomplete data
+   - NEVER delete products with UK (50) or Irish (539) barcodes - they may be legitimate imports
 
 5. **CALORIE VALIDATION**:
    - Check if calories are plausible for the food type
@@ -333,7 +395,7 @@ async function callGeminiForValidation(foods: FoodToValidate[], apiKey: string):
 }
 
 /**
- * Process validation results
+ * Process validation results with barcode protection
  */
 function processResults(foods: FoodToValidate[], geminiResults: any[]): ValidationResult[] {
   return foods.map((food, index) => {
@@ -349,6 +411,20 @@ function processResults(foods: FoodToValidate[], geminiResults: any[]): Validati
       ? (Array.isArray(food.ingredients) ? food.ingredients.join(', ') : String(food.ingredients))
       : undefined;
 
+    // Server-side barcode protection: NEVER delete items with UK/Irish barcodes
+    let finalAction = result.action || 'none';
+    let finalDeleteReason = result.deleteReason;
+    const changes = [...(result.changes || [])];
+    const issues = [...(result.issues || [])];
+
+    if (finalAction === 'delete' && isUKOrIrishBarcode(food.barcode)) {
+      // Override deletion - this is a valid UK product
+      finalAction = 'none';
+      finalDeleteReason = undefined;
+      issues.push(`Protected: Has UK/Irish barcode (${food.barcode})`);
+      console.log(`Protected from deletion: "${food.foodName}" has UK/Irish barcode ${food.barcode}`);
+    }
+
     return {
       id: food.id,
       originalFood: {
@@ -359,10 +435,10 @@ function processResults(foods: FoodToValidate[], geminiResults: any[]): Validati
         servingSize: food.servingSize
       },
       validatedFood: result.validatedFood || {},
-      changes: result.changes || [],
-      issues: result.issues || [],
-      action: result.action || 'none',
-      deleteReason: result.deleteReason,
+      changes,
+      issues,
+      action: finalAction as 'update' | 'delete' | 'review' | 'none',
+      deleteReason: finalDeleteReason,
       confidence: result.confidence || 'low'
     };
   });
@@ -462,7 +538,8 @@ export const validateFoodsFromDatabase = functions
             servingUnit: data.servingUnit || data.serving_unit || 'g',
             protein: data.protein,
             carbs: data.carbs || data.carbohydrates,
-            fat: data.fat || data.fats
+            fat: data.fat || data.fats,
+            barcode: data.barcode || data.ean || data.upc
           };
         });
 
