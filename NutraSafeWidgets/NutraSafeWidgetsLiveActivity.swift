@@ -383,12 +383,20 @@ private struct LockScreenView: View {
                                 .font(.system(size: 17, weight: .bold, design: .monospaced))
                                 .foregroundColor(Design.teal)
                                 .monospacedDigit()
-                                .lineLimit(1).minimumScaleFactor(0.6).allowsTightening(true)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                                .allowsTightening(true)
+                                .layoutPriority(2)
+                                .frame(minWidth: 88, alignment: .trailing)
                         } else {
                             Text("DONE!")
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(.green)
-                                .lineLimit(1).minimumScaleFactor(0.8).allowsTightening(true)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .allowsTightening(true)
+                                .layoutPriority(2)
+                                .frame(minWidth: 88, alignment: .trailing)
                         }
 
                         ZStack {
