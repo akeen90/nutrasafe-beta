@@ -786,14 +786,6 @@ class AdditiveAnalyzer {
 
     private init() {}
 
-    /// Build analysis from a raw detection result (exposed for reuse)
-    func buildAnalysis(
-        from detectionResult: AdditiveDetectionResult,
-        userSensitivities: Set<String> = []
-    ) -> AdditiveAnalysisResult {
-        return processDetectionResult(detectionResult, userSensitivities: userSensitivities)
-    }
-
     /// Analyze ingredients asynchronously and return complete analysis result
     func analyze(
         ingredients: [String],
