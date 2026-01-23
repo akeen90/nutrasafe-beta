@@ -2635,6 +2635,10 @@ struct DietManagementTabContent: View {
         Task {
             // Save diet type along with macro goals to Firebase
             try? await firebaseManager.saveMacroGoals(macroGoals, dietType: selectedDietType)
+            // Notify diary view to update immediately
+            await MainActor.run {
+                NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            }
         }
     }
 }
