@@ -2274,7 +2274,7 @@ struct FoodDetailViewFromSearch: View {
                     return NutritionAdditiveInfo(
                         code: additive.eNumber,
                         name: additive.name,
-                        category: additive.category.rawValue,
+                        category: additive.category.displayName,
                         healthScore: healthScore,
                         childWarning: additive.hasChildWarning,
                         effectsVerdict: additive.effectsVerdict.rawValue,
