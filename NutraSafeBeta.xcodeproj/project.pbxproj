@@ -83,6 +83,7 @@
 		AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AC2E72DF080058DCD3 /* FirebaseStorage */; };
 		AB6974AC2F1E3A7100F4D7DE /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = AB6974AB2F1E3A7100F4D7DE /* FirebaseAnalytics */; };
 		AB6A8F070FF14DC49BA4BC80 /* NutraSafe Beta/Utils/ReactionPDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */; };
+		AB7C5AF12F242770001E7365 /* FastingAccessoryInlineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7C5AF02F242770001E7365 /* FastingAccessoryInlineWidget.swift */; };
 		AB9A79F62ECA773F00F7354A /* FastingSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */; };
 		ABA33D772F23000A006E4834 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABA33D762F23000A006E4834 /* WidgetKit.framework */; };
 		ABA33D792F23000A006E4834 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABA33D782F23000A006E4834 /* SwiftUI.framework */; };
@@ -244,6 +245,7 @@
 		AB1BF6482ED3B3E6004EA968 /* FastingActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingActionSheet.swift; sourceTree = "<group>"; };
 		AB1BF64B2ED3B400004EA968 /* StaleSessionRecoverySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleSessionRecoverySheet.swift; sourceTree = "<group>"; };
 		AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe BetaDebug.entitlements"; sourceTree = "<group>"; };
+		AB7C5AF02F242770001E7365 /* FastingAccessoryInlineWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingAccessoryInlineWidget.swift; sourceTree = "<group>"; };
 		AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingSourcesView.swift; sourceTree = "<group>"; };
 		ABA33D752F23000A006E4834 /* NutraSafeWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NutraSafeWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABA33D762F23000A006E4834 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -395,6 +397,7 @@
 				6B65061DE906BF3F74DFED9F /* FoodDetailWatchTabsView.swift */,
 				90ACAE8BE5C254A22D04F05D /* InferredIngredientsSheet.swift */,
 				CAEE86912A424375B407BE0B /* AdditiveRedesignedViews.swift */,
+				AB7C5AF02F242770001E7365 /* FastingAccessoryInlineWidget.swift */,
 			);
 			path = Food;
 			sourceTree = "<group>";
@@ -832,6 +835,7 @@
 				SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */,
 				FEATTIPS001BUILD /* NutraSafe Beta/Managers/FeatureTipsManager.swift in Sources */,
 				MIGRMGR001BUILD /* NutraSafe Beta/Managers/MigrationManager.swift in Sources */,
+				AB7C5AF12F242770001E7365 /* FastingAccessoryInlineWidget.swift in Sources */,
 				FEATTIPOVER001BUILD /* NutraSafe Beta/Views/Components/FeatureTipOverlay.swift in Sources */,
 				PREMWRAP001BUILD /* NutraSafe Beta/Views/Components/PremiumFeatureWrapper.swift in Sources */,
 				FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */,
