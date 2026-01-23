@@ -10,52 +10,59 @@ import SwiftUI
 
 // MARK: - Additive Grade System
 
-/// Letter grades for additive safety (A-F scale like Yuka)
+/// Additive rating system - honest about additive presence
+/// Uses symbols/numbers to avoid conflict with NutraSafe nutrition grade (A+ to F)
 enum AdditiveGrade: String, CaseIterable {
-    case A = "A"
-    case B = "B"
-    case C = "C"
-    case D = "D"
-    case F = "F"
+    case none = "✓"      // No additives - the only "good" outcome
+    case average = "~"   // Has additives but low risk (tilde = "approximately okay")
+    case belowAverage = "!"  // Has concerning additives (warning)
+    case poor = "✕"      // Has high-risk additives (X mark)
 
     var label: String {
         switch self {
-        case .A: return "Excellent"
-        case .B: return "Good"
-        case .C: return "Moderate"
-        case .D: return "Poor"
-        case .F: return "Avoid"
+        case .none: return "No Additives"
+        case .average: return "Average"
+        case .belowAverage: return "Below Average"
+        case .poor: return "Poor"
         }
     }
 
     var color: Color {
         switch self {
-        case .A: return Color(red: 0.2, green: 0.75, blue: 0.4)   // Bright green
-        case .B: return Color(red: 0.5, green: 0.8, blue: 0.3)    // Light green
-        case .C: return Color(red: 0.95, green: 0.75, blue: 0.2)  // Yellow
-        case .D: return Color(red: 0.95, green: 0.5, blue: 0.2)   // Orange
-        case .F: return Color(red: 0.9, green: 0.25, blue: 0.2)   // Red
+        case .none: return Color(red: 0.2, green: 0.75, blue: 0.4)      // Green - genuinely good
+        case .average: return Color(red: 0.95, green: 0.75, blue: 0.2)  // Yellow - has additives
+        case .belowAverage: return Color(red: 0.95, green: 0.5, blue: 0.2)   // Orange
+        case .poor: return Color(red: 0.9, green: 0.25, blue: 0.2)      // Red
         }
     }
 
     var shortDescription: String {
         switch self {
-        case .A: return "Minimal or no additives"
-        case .B: return "Only low-risk additives"
-        case .C: return "Some to be aware of"
-        case .D: return "Several concerning additives"
-        case .F: return "Multiple high-risk additives"
+        case .none: return "No additives detected"
+        case .average: return "Contains additives (low risk)"
+        case .belowAverage: return "Contains concerning additives"
+        case .poor: return "Contains high-risk additives"
         }
     }
 
-    static func from(score: Int) -> AdditiveGrade {
-        switch score {
-        case 80...100: return .A
-        case 60..<80: return .B
-        case 40..<60: return .C
-        case 20..<40: return .D
-        default: return .F
+    /// Calculate grade based on additive counts - presence of ANY additives caps at average
+    static func from(score: Int, hasAdditives: Bool) -> AdditiveGrade {
+        // If no additives, that's the only way to get "good"
+        if !hasAdditives {
+            return .none
         }
+
+        // With additives present, best possible is average
+        switch score {
+        case 70...100: return .average       // Low-risk additives only
+        case 40..<70: return .belowAverage   // Some concerning additives
+        default: return .poor                 // High-risk additives
+        }
+    }
+
+    // Legacy support - maps old score-only calls
+    static func from(score: Int) -> AdditiveGrade {
+        return from(score: score, hasAdditives: score < 100)
     }
 }
 
@@ -136,15 +143,23 @@ struct AdditiveSafetyBadge: View {
 
     private func gradeBadge(analysis: AdditiveAnalysisResult) -> some View {
         HStack(spacing: 12) {
-            // Grade circle
+            // Grade indicator - color-coded circle with icon or letter
             ZStack {
                 Circle()
                     .fill(analysis.grade.color)
                     .frame(width: 44, height: 44)
 
-                Text(analysis.grade.rawValue)
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
+                if analysis.grade == .none {
+                    // Checkmark for no additives
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                } else {
+                    // Letter grade for products with additives
+                    Text(analysis.grade.rawValue)
+                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                }
             }
 
             // Description
@@ -757,7 +772,7 @@ struct AdditiveMiniGradeBadge: View {
 
     private var summaryText: String {
         if watchCount == 0 {
-            return grade == .A ? "Clean" : "Safe"
+            return grade == .none ? "Clean" : "Safe"
         } else {
             return "\(watchCount) to watch"
         }
@@ -956,7 +971,7 @@ class AdditiveAnalyzer {
             safe: safeCount
         )
 
-        let grade = AdditiveGrade.from(score: score)
+        let grade = AdditiveGrade.from(score: score, hasAdditives: totalCount > 0)
 
         return AdditiveAnalysisResult(
             score: score,
@@ -1075,11 +1090,28 @@ class AdditiveAnalyzer {
 #Preview {
     ScrollView {
         VStack(spacing: 20) {
-            // Safety badge examples
+            // Safety badge examples - No additives (good)
             AdditiveSafetyBadge(
                 analysis: AdditiveAnalysisResult(
-                    score: 92,
-                    grade: .A,
+                    score: 100,
+                    grade: .none,
+                    totalCount: 0,
+                    highRiskCount: 0,
+                    moderateRiskCount: 0,
+                    lowRiskCount: 0,
+                    safeCount: 0,
+                    personalAlerts: [],
+                    groupedAdditives: [:]
+                ),
+                hasIngredients: true
+            )
+            .padding(.horizontal)
+
+            // Has low-risk additives (average)
+            AdditiveSafetyBadge(
+                analysis: AdditiveAnalysisResult(
+                    score: 85,
+                    grade: .average,
                     totalCount: 2,
                     highRiskCount: 0,
                     moderateRiskCount: 0,
@@ -1092,10 +1124,11 @@ class AdditiveAnalyzer {
             )
             .padding(.horizontal)
 
+            // Has concerning additives (below average)
             AdditiveSafetyBadge(
                 analysis: AdditiveAnalysisResult(
                     score: 58,
-                    grade: .C,
+                    grade: .belowAverage,
                     totalCount: 5,
                     highRiskCount: 1,
                     moderateRiskCount: 2,
@@ -1117,17 +1150,17 @@ class AdditiveAnalyzer {
 
             // Mini badges
             HStack(spacing: 12) {
-                AdditiveMiniGradeBadge(grade: .A, watchCount: 0, hasPersonalAlert: false)
-                AdditiveMiniGradeBadge(grade: .B, watchCount: 1, hasPersonalAlert: false)
-                AdditiveMiniGradeBadge(grade: .D, watchCount: 3, hasPersonalAlert: true)
+                AdditiveMiniGradeBadge(grade: .none, watchCount: 0, hasPersonalAlert: false)
+                AdditiveMiniGradeBadge(grade: .average, watchCount: 1, hasPersonalAlert: false)
+                AdditiveMiniGradeBadge(grade: .poor, watchCount: 3, hasPersonalAlert: true)
             }
             .padding(.horizontal)
 
             // Circular score
             HStack(spacing: 20) {
-                AdditiveCircularScore(score: 92, grade: .A)
-                AdditiveCircularScore(score: 58, grade: .C)
-                AdditiveCircularScore(score: 28, grade: .F)
+                AdditiveCircularScore(score: 100, grade: .none)
+                AdditiveCircularScore(score: 58, grade: .belowAverage)
+                AdditiveCircularScore(score: 28, grade: .poor)
             }
             .padding(.horizontal)
         }

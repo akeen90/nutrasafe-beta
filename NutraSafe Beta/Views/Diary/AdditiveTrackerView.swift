@@ -44,7 +44,7 @@ struct AdditiveTrackerSection: View {
         let neutral = neutralAdditives.count
         let total = avoid + caution + neutral
 
-        if total == 0 { return .A }
+        if total == 0 { return .none }
 
         // Calculate score similar to the analyzer
         var score = 100
@@ -52,7 +52,7 @@ struct AdditiveTrackerSection: View {
         if total > 5 { score -= (total - 5) * 2 }
         score = max(0, min(100, score))
 
-        return AdditiveGrade.from(score: score)
+        return AdditiveGrade.from(score: score, hasAdditives: total > 0)
     }
 
     // Generate actionable insight based on the data

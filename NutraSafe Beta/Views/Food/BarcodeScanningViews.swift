@@ -884,7 +884,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     // Multi-frame verification for barcode accuracy
     private var candidateBarcode: String?
     private var consecutiveDetections: Int = 0
-    private let requiredConsecutiveDetections: Int = 3
+    private let requiredConsecutiveDetections: Int = 1
     
     override func viewDidLoad() {
         super.viewDidLoad()

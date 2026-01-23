@@ -261,7 +261,7 @@ class ProcessingScorer {
             }
             additiveResult = AdditiveAnalysisResult(
                 score: estimatedScore,
-                grade: AdditiveGrade.from(score: estimatedScore),
+                grade: AdditiveGrade.from(score: estimatedScore, hasAdditives: additiveCount > 0),
                 totalCount: additiveCount,
                 highRiskCount: 0, moderateRiskCount: 0, lowRiskCount: additiveCount, safeCount: 0,
                 personalAlerts: [], groupedAdditives: [:]

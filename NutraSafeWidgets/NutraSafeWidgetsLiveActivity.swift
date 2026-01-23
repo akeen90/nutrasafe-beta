@@ -315,118 +315,120 @@ private struct LockScreenView: View {
     var body: some View {
         VStack(spacing: 10) {
             // Header
-            HStack {
+            HStack(spacing: 8) {
                 HStack(spacing: 4) {
                     Image(systemName: "leaf.fill")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(Design.teal)
                     Text("NutraSafe - Fasting")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(Design.textSecondary)
-                        .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.8).allowsTightening(true)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
                 }
 
                 Spacer()
 
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text(phase.emoji)
                         .font(.system(size: 11))
                     Text(phase.name)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(Design.textSecondary)
-                        .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.8).allowsTightening(true)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
                 }
             }
 
-            // Main timers
-            HStack {
-                // Elapsed
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("ELAPSED")
-                        .font(.system(size: 9, weight: .bold))
-                        .kerning(0.5)
-                        .foregroundColor(Design.textMuted)
-                        .lineLimit(1).minimumScaleFactor(0.8).allowsTightening(true)
-
-                    HStack(spacing: 8) {
-                        ZStack {
-                            Circle()
-                                .stroke(Design.ringTrack, lineWidth: 3)
-                            Circle()
-                                .trim(from: 0, to: CGFloat(progress))
-                                .stroke(Design.teal, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                        }
-                        .frame(width: 34, height: 34)
-
-                        Text(context.state.fastingStartTime, style: .timer)
-                            .font(.system(size: 17, weight: .bold, design: .monospaced))
-                            .foregroundColor(Design.textPrimary)
-                            .monospacedDigit()
-                            .lineLimit(1).minimumScaleFactor(0.6).allowsTightening(true)
-                    }
+            // Center: Progress ring with elapsed/remaining summary
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .stroke(Design.ringTrack, lineWidth: 4)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(progress))
+                        .stroke(Design.teal, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
                 }
+                .frame(width: 40, height: 40)
 
-                Spacer()
+                VStack(alignment: .leading, spacing: 4) {
+                    // Remaining
+                    HStack(spacing: 6) {
+                        Text("REMAINING")
+                            .font(.system(size: 10, weight: .bold))
+                            .kerning(0.5)
+                            .foregroundColor(Design.textMuted)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .allowsTightening(true)
 
-                // Remaining
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("REMAINING")
-                        .font(.system(size: 9, weight: .bold))
-                        .kerning(0.5)
-                        .foregroundColor(Design.textMuted)
-                        .lineLimit(1).minimumScaleFactor(0.8).allowsTightening(true)
+                        Spacer(minLength: 0)
 
-                    HStack(spacing: 8) {
                         if context.state.fastingEndTime > Date() {
                             Text(timerInterval: Date()...context.state.fastingEndTime, countsDown: true)
-                                .font(.system(size: 17, weight: .bold, design: .monospaced))
+                                .font(.system(size: 16, weight: .bold, design: .monospaced))
                                 .foregroundColor(Design.teal)
                                 .monospacedDigit()
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.6)
+                                .minimumScaleFactor(0.7)
                                 .allowsTightening(true)
                                 .layoutPriority(2)
-                                .frame(minWidth: 88, alignment: .trailing)
                         } else {
                             Text("DONE!")
-                                .font(.system(size: 15, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(.green)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                                 .allowsTightening(true)
                                 .layoutPriority(2)
-                                .frame(minWidth: 88, alignment: .trailing)
                         }
+                    }
 
-                        ZStack {
-                            Circle()
-                                .stroke(Design.ringTrack, lineWidth: 3)
-                            Circle()
-                                .trim(from: 0, to: CGFloat(1.0 - progress))
-                                .stroke(Design.teal, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                        }
-                        .frame(width: 34, height: 34)
+                    // Elapsed (smaller, secondary)
+                    HStack(spacing: 6) {
+                        Text("ELAPSED")
+                            .font(.system(size: 10, weight: .bold))
+                            .kerning(0.5)
+                            .foregroundColor(Design.textMuted)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .allowsTightening(true)
+
+                        Spacer(minLength: 0)
+
+                        Text(context.state.fastingStartTime, style: .timer)
+                            .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                            .foregroundColor(Design.textPrimary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .allowsTightening(true)
                     }
                 }
             }
 
-            // Progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Design.ringTrack)
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Design.teal, Design.tealLight],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+            // Bottom: Thin progress bar
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Design.ringTrack)
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [Design.teal, Design.tealLight],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-                        .frame(width: max(geo.size.width * CGFloat(progress), 4))
-                }
+                    )
+                    .frame(maxWidth: .infinity)
+                    .overlay(
+                        GeometryReader { geo in
+                            Color.clear
+                                .frame(width: max(geo.size.width * CGFloat(progress), 4))
+                        }
+                    )
             }
             .frame(height: 3)
             .clipped()
