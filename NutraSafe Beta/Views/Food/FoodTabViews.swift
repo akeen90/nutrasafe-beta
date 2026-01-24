@@ -1412,9 +1412,85 @@ struct FoodPatternAnalysisCard: View {
             .map { (symptom: $0.key, count: $0.value) }
     }
 
+    // E-numbers and additives derived from or processed with allergens
+    private func getAllergenFromAdditive(_ ingredient: String) -> String? {
+        let lower = ingredient.lowercased()
+
+        // Sulphites (E220-E228) - must be declared if >10mg/kg
+        if lower.contains("e220") || lower.contains("e221") || lower.contains("e222") ||
+           lower.contains("e223") || lower.contains("e224") || lower.contains("e225") ||
+           lower.contains("e226") || lower.contains("e227") || lower.contains("e228") {
+            return "Sulphites"
+        }
+
+        // Milk-derived additives
+        // E101 (Riboflavin) - can be dairy-derived
+        // E153 (Vegetable carbon) - sometimes processed with milk proteins
+        // E270 (Lactic acid) - often dairy-derived
+        // E322 (Lecithin) - when from milk (soy lecithin is fine)
+        // E325-E327 (Lactates) - derived from lactic acid (milk)
+        // E472b (Lactic acid esters) - milk-derived
+        // E481 (Sodium stearoyl lactylate) - contains lactylate from milk
+        // E966 (Lactitol) - derived from lactose (milk sugar)
+        if lower.contains("e270") || lower.contains("e325") || lower.contains("e326") ||
+           lower.contains("e327") || lower.contains("e472b") || lower.contains("e481") ||
+           lower.contains("e966") || lower.contains("lactitol") || lower.contains("lactate") ||
+           lower.contains("lactic acid") {
+            return "Milk"
+        }
+
+        // Egg-derived additives
+        // E322 (Lecithin) - when from eggs
+        // E1105 (Lysozyme) - derived from egg whites
+        if lower.contains("e1105") || lower.contains("lysozyme") {
+            return "Eggs"
+        }
+
+        // Fish-derived additives
+        // E1105 (Lysozyme) - can also be fish-derived
+        // E640 (Glycine) - sometimes fish-derived
+        // Fish gelatine used in some additives
+        if lower.contains("fish gelatin") || lower.contains("fish gelatine") {
+            return "Fish"
+        }
+
+        // Soy-derived additives
+        // E322 (Lecithin) - often soy-derived (most common source)
+        // E426 (Soybean hemicellulose)
+        // E479b (Soy oil oxidized with mono- and diglycerides)
+        if (lower.contains("e322") && (lower.contains("soy") || lower.contains("soya"))) ||
+           lower.contains("e426") || lower.contains("e479b") ||
+           lower.contains("soy lecithin") || lower.contains("soya lecithin") {
+            return "Soya"
+        }
+
+        // Gluten-derived additives
+        // E1404-E1451 (Modified starches) - can be wheat-derived
+        // E953 (Isomalt) - often derived from wheat
+        // Maltodextrin - often wheat-derived (but can be corn)
+        // Dextrose/glucose syrup - can be wheat-derived
+        if (lower.contains("modified starch") || lower.contains("maltodextrin")) &&
+           (lower.contains("wheat") || lower.contains("gluten")) {
+            return "Gluten"
+        }
+
+        // Celery-derived
+        // E640 (Glycine) - can be celery-derived
+        if lower.contains("celery") && (lower.contains("extract") || lower.contains("e640")) {
+            return "Celery"
+        }
+
+        return nil
+    }
+
     // UK's 14 Major Allergens - Base Categories (comprehensive detection)
     private func getBaseAllergen(for ingredient: String) -> String? {
         let lower = ingredient.lowercased()
+
+        // First check if it's an additive derived from allergens
+        if let allergenFromAdditive = getAllergenFromAdditive(ingredient) {
+            return allergenFromAdditive
+        }
 
         // Milk and dairy products (uses comprehensive cheese/dairy list)
         if AllergenDetector.shared.containsDairyMilk(in: lower) {
