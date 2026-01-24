@@ -4535,7 +4535,7 @@ struct MultipleFoodReactionsPDFExportSheet: View {
                     ShareSheet(items: [url])
                 }
             }
-            .alert("Personalize Your Report", isPresented: $showingNameAlert) {
+            .alert("Personalise Your Report", isPresented: $showingNameAlert) {
                 TextField("Your name (optional)", text: $userName)
                 Button("Generate") {
                     generatePDF(userName: userName.isEmpty ? "User" : userName)

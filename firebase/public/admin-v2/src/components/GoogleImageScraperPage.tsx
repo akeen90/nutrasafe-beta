@@ -209,7 +209,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     }
   }, [selectedIndices, filterUKOnly]);
 
-  // Search by barcode
+  // Search by barcode - finds foods with this barcode and searches Google Images using the barcode
   const handleBarcodeSearch = useCallback(async () => {
     if (!barcodeQuery.trim()) {
       addLog('❌ No barcode entered');
@@ -233,7 +233,9 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       }
 
       addLog(`✅ Found ${results.length} food(s) with barcode ${barcodeQuery}`);
+      addLog(`🔎 Will search Google Images using barcode: ${barcodeQuery}`);
 
+      // Map foods and immediately search Google Images using the BARCODE
       const foodsWithImage: FoodWithImage[] = results.map(result => ({
         id: result._id,
         objectID: result.objectID,
@@ -242,7 +244,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         barcode: result.barcode,
         currentImageUrl: result.imageUrl,
         sourceIndex: result._sourceIndex,
-        selected: false,
+        selected: true, // Auto-select for processing
         searchResults: [],
         selectedImageUrl: null,
         analysis: null,
@@ -259,14 +261,135 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         processing: 0,
       });
       addLog(`📦 Loaded ${foodsWithImage.length} food(s) for image scraping`);
-    } catch (err) {
-      addLog(`❌ Barcode search failed: ${err}`);
-    } finally {
+
+      // Auto-start processing using BARCODE as search query
       setIsLoading(false);
       setIsBarcodeSearching(false);
-      setLoadingProgress(100);
+
+      // Start image search immediately using the barcode
+      setTimeout(() => {
+        processSelectedFoodsWithBarcode(foodsWithImage, barcodeQuery.trim());
+      }, 500);
+
+    } catch (err) {
+      addLog(`❌ Barcode search failed: ${err}`);
+      setIsLoading(false);
+      setIsBarcodeSearching(false);
     }
   }, [barcodeQuery, selectedIndices, addLog]);
+
+  // Process foods using barcode for Google Images search
+  const processSelectedFoodsWithBarcode = async (foodsList: FoodWithImage[], barcode: string) => {
+    if (!apiConfigured) {
+      addLog('⚠️ SearchAPI not configured. Please set SERP_API_KEY in .env');
+      return;
+    }
+
+    setIsProcessing(true);
+    pauseRef.current = false;
+    abortRef.current = false;
+
+    const selectedFoods = foodsList.filter(f => f.selected);
+    if (selectedFoods.length === 0) {
+      addLog('No foods selected for processing');
+      setIsProcessing(false);
+      return;
+    }
+
+    addLog(`🚀 Starting image search for ${selectedFoods.length} food(s) using barcode: ${barcode}`);
+
+    for (const food of selectedFoods) {
+      if (abortRef.current) {
+        addLog('⏹️ Processing aborted');
+        break;
+      }
+
+      while (pauseRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      try {
+        updateFoodStatus(food.id, 'searching', 0);
+        addLog(`🔍 Searching Google Images for barcode: ${barcode} (${food.name})`);
+
+        // Search using BARCODE instead of product name
+        const results = await searchSerpApiImages(barcode);
+
+        if (results.length === 0) {
+          updateFoodStatus(food.id, 'no_results');
+          addLog(`❌ No images found for barcode: ${barcode}`);
+          continue;
+        }
+
+        addLog(`✅ Found ${results.length} images for ${barcode}`);
+        setFoods(prev => prev.map(f =>
+          f.id === food.id ? { ...f, searchResults: results, status: 'analyzing' } : f
+        ));
+
+        // Analyze images
+        updateFoodStatus(food.id, 'analyzing', 0);
+        const analyzed: Array<SerpApiImageResult & { analysis: ImageAnalysisResult }> = [];
+
+        for (let i = 0; i < results.length; i++) {
+          const result = results[i];
+          const progress = Math.round(((i + 1) / results.length) * 100);
+          updateFoodStatus(food.id, 'analyzing', progress);
+
+          try {
+            const analysis = await analyzeImageQuality(result.original);
+            analyzed.push({ ...result, analysis });
+          } catch (err) {
+            console.error('Analysis error:', err);
+          }
+        }
+
+        // Find best candidate
+        const candidates = analyzed
+          .map(item => {
+            let confidence = 0;
+            if (item.analysis.backgroundConfidence >= 95 && item.analysis.hasWhiteBackground) {
+              confidence = 95;
+            } else {
+              if (item.analysis.hasWhiteBackground) confidence += 40;
+              if (!item.analysis.hasOverlay) confidence += 30;
+              confidence += Math.min(20, item.analysis.backgroundConfidence * 0.2);
+            }
+            if (item.isManufacturerSite) confidence += 5;
+            return { ...item, confidence };
+          })
+          .sort((a, b) => b.confidence - a.confidence);
+
+        if (candidates.length > 0) {
+          const best = candidates[0];
+          setFoods(prev => prev.map(f =>
+            f.id === food.id
+              ? {
+                  ...f,
+                  searchResults: candidates,
+                  selectedImageUrl: best.confidence >= 80 ? best.original : null,
+                  analysis: best.analysis,
+                  status: best.confidence >= 80 ? 'ready' : 'pending',
+                  confidence: best.confidence,
+                }
+              : f
+          ));
+
+          if (best.confidence >= 80) {
+            addLog(`✅ ${food.name}: Auto-selected image (${best.confidence}% confidence)`);
+          } else {
+            addLog(`⚠️ ${food.name}: Manual selection needed (${best.confidence}% confidence)`);
+          }
+        }
+
+      } catch (err) {
+        updateFoodStatus(food.id, 'failed', 0, String(err));
+        addLog(`❌ Error processing ${food.name}: ${err}`);
+      }
+    }
+
+    setIsProcessing(false);
+    addLog('✅ Processing complete');
+  };
 
   const updateStats = (foodList: FoodWithImage[]) => {
     setStats({
@@ -275,6 +398,30 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       failed: foodList.filter(f => f.status === 'failed').length,
       noResults: foodList.filter(f => f.status === 'no_results').length,
       processing: foodList.filter(f => ['searching', 'analyzing', 'uploading'].includes(f.status)).length,
+    });
+  };
+
+  // Update food status
+  const updateFoodStatus = (
+    id: string,
+    status: FoodWithImage['status'],
+    progress?: number,
+    error?: string
+  ) => {
+    setFoods(prev => {
+      const updated = prev.map(f => {
+        if (f.id === id) {
+          return {
+            ...f,
+            status,
+            analysisProgress: progress !== undefined ? progress : f.analysisProgress,
+            error,
+          };
+        }
+        return f;
+      });
+      updateStats(updated);
+      return updated;
     });
   };
 

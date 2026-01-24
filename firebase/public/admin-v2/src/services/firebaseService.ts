@@ -296,7 +296,16 @@ export async function moveFoodsBetweenIndices(
         }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Move failed (HTTP ${response.status}):`, errorText);
+        totalFailed += foodIds.length;
+        allErrors.push(`${fromIndex} → ${toIndex}: HTTP ${response.status} - ${errorText}`);
+        continue;
+      }
+
       const result = await response.json();
+      console.log('Move result:', result);
 
       if (result.success) {
         totalSuccess += result.moved || 0;
@@ -307,10 +316,12 @@ export async function moveFoodsBetweenIndices(
         console.log(`✅ Moved ${result.moved} foods from ${fromIndex} to ${toIndex}`);
       } else {
         totalFailed += foodIds.length;
-        allErrors.push(`${fromIndex} → ${toIndex}: ${result.error || 'Unknown error'}`);
+        const errorDetail = result.details || result.error || 'Unknown error';
+        console.error(`❌ Move failed:`, errorDetail);
+        allErrors.push(`${fromIndex} → ${toIndex}: ${errorDetail}`);
       }
     } catch (error) {
-      console.error(`Error moving foods from ${fromIndex}:`, error);
+      console.error(`❌ Error moving foods from ${fromIndex}:`, error);
       totalFailed += foodIds.length;
       allErrors.push(`${fromIndex} → ${toIndex}: ${String(error)}`);
     }
