@@ -921,74 +921,66 @@ struct ReactionLogView: View {
                 )
             }
 
-            if cachedCommonIngredients.isEmpty {
-                Text("Not enough observations yet to identify ingredient patterns")
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(palette.textTertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 40)
-            } else {
-                // Tab Picker
-                HStack(spacing: 0) {
-                    ForEach(TriggerTab.allCases, id: \.self) { tab in
-                        let count = tab == .allergens ? allergenIngredients.count :
-                                   tab == .additives ? additiveIngredients.count :
-                                   otherIngredients.count
+            // Tab Picker - ALWAYS SHOWN (moved outside isEmpty check)
+            HStack(spacing: 0) {
+                ForEach(TriggerTab.allCases, id: \.self) { tab in
+                    let count = tab == .allergens ? allergenIngredients.count :
+                               tab == .additives ? additiveIngredients.count :
+                               otherIngredients.count
 
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedTriggerTab = tab
-                            }
-                        }) {
-                            VStack(spacing: 6) {
-                                Text(tab.rawValue)
-                                    .font(.system(size: 14, weight: selectedTriggerTab == tab ? .semibold : .medium))
-                                    .foregroundColor(selectedTriggerTab == tab ? palette.accent : palette.textSecondary)
-
-                                Text("\(count)")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(selectedTriggerTab == tab ? palette.accent : palette.textTertiary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedTriggerTab == tab ? palette.accent.opacity(0.1) : Color.clear)
-                            )
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTriggerTab = tab
                         }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(UIColor.tertiarySystemFill))
-                )
+                    }) {
+                        VStack(spacing: 6) {
+                            Text(tab.rawValue)
+                                .font(.system(size: 14, weight: selectedTriggerTab == tab ? .semibold : .medium))
+                                .foregroundColor(selectedTriggerTab == tab ? palette.accent : palette.textSecondary)
 
-                // Tab Content
-                VStack(alignment: .leading, spacing: 12) {
-                    switch selectedTriggerTab {
-                    case .allergens:
-                        triggerTabContent(
-                            ingredients: allergenIngredients,
-                            emptyMessage: "No allergens detected in common ingredients"
-                        )
-                    case .additives:
-                        triggerTabContent(
-                            ingredients: additiveIngredients,
-                            emptyMessage: "No additives detected in common ingredients",
-                            showWatchButton: true
-                        )
-                    case .ingredients:
-                        triggerTabContent(
-                            ingredients: otherIngredients,
-                            emptyMessage: "No other ingredients detected yet"
+                            Text("\(count)")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(selectedTriggerTab == tab ? palette.accent : palette.textTertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(selectedTriggerTab == tab ? palette.accent.opacity(0.1) : Color.clear)
                         )
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.top, 8)
             }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(UIColor.tertiarySystemFill))
+            )
+
+            // Tab Content - with per-tab empty states
+            VStack(alignment: .leading, spacing: 12) {
+                switch selectedTriggerTab {
+                case .allergens:
+                    triggerTabContent(
+                        ingredients: allergenIngredients,
+                        emptyMessage: "No allergens detected in your reactions"
+                    )
+                case .additives:
+                    triggerTabContent(
+                        ingredients: additiveIngredients,
+                        emptyMessage: "No additives detected in your reactions",
+                        showWatchButton: true
+                    )
+                case .ingredients:
+                    triggerTabContent(
+                        ingredients: otherIngredients,
+                        emptyMessage: "No other ingredients detected yet"
+                    )
+                }
+            }
+            .padding(.top, 8)
         }
         .padding(16)
         .background(
