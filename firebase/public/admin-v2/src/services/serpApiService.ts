@@ -52,7 +52,7 @@ export async function searchSerpApiImages(
   brandName?: string | null,
   maxResults: number = 10
 ): Promise<SerpApiImageResult[]> {
-  // Build search query
+  // Build search query - keep it simple to maximize results
   let query = '';
 
   if (brandName && brandName.trim()) {
@@ -61,9 +61,17 @@ export async function searchSerpApiImages(
     query = productName;
   }
 
-  // Add terms to find clean product shots (but keep it simple to get results)
-  // Don't make it too restrictive or we'll get zero results
-  query += ' white background';
+  // Clean up the query to remove common noise words that hurt search results
+  query = query
+    .replace(/\b(zero sugar|sugar free|no sugar|caffeine free)\b/gi, '') // Remove sugar/caffeine descriptors
+    .replace(/\b\d+ml\b/gi, '') // Remove size (500ml, 330ml, etc.)
+    .replace(/\b\d+g\b/gi, '') // Remove weight (100g, etc.)
+    .replace(/\bpack of \d+\b/gi, '') // Remove pack sizes
+    .replace(/\bmultipack\b/gi, '') // Remove multipack
+    .replace(/\s+/g, ' ') // Clean up extra spaces
+    .trim();
+
+  console.log(`Original: "${brandName} ${productName}" → Cleaned: "${query}"`);
 
   try {
     // Use SearchAPI.io Google Images
@@ -116,13 +124,13 @@ async function searchGoogleImagesViaSearchAPI(
 
   console.log('SearchAPI response for query:', query);
   console.log('Response keys:', Object.keys(data));
-  console.log('Number of results:', data.images_results?.length || 0);
+  console.log('Number of results:', data.images?.length || 0);
 
-  // SearchAPI returns images_results array for Google Images engine
-  const imagesResults = data.images_results || [];
+  // SearchAPI returns "images" array for Google Images engine
+  const imagesResults = data.images || [];
 
   if (imagesResults.length === 0) {
-    console.warn('No images_results found in SearchAPI response:', data);
+    console.warn('No images found in SearchAPI response:', data);
   }
 
   // Convert SearchAPI format to our format
@@ -132,15 +140,20 @@ async function searchGoogleImagesViaSearchAPI(
   }));
 
   const results: SerpApiImageResult[] = images.map((item: any) => {
-    // SearchAPI Google Images format:
-    // { position, thumbnail, source (string domain), title, link (page url),
-    //   original (image url string), original_width, original_height }
-    const url = item.original || item.link || item.thumbnail || '';
+    // SearchAPI Google Images format (verified from API response):
+    // {
+    //   position: number,
+    //   title: string,
+    //   source: { name: string, link: string },
+    //   original: { link: string, width: number, height: number },
+    //   thumbnail: string
+    // }
+    const url = item.original?.link || item.thumbnail || '';
     let domain = '';
 
     try {
-      // source is just the domain string, or extract from link
-      domain = item.source || new URL(item.link || url).hostname.replace('www.', '');
+      // Extract domain from source.name or source.link
+      domain = item.source?.name || new URL(item.source?.link || url).hostname.replace('www.', '');
     } catch (e) {
       domain = '';
     }
@@ -151,21 +164,21 @@ async function searchGoogleImagesViaSearchAPI(
     let qualityScore = 50;
     if (isManufacturer) qualityScore += 30;
     if (item.position <= 3) qualityScore += 10;
-    if (item.original_width > 800) qualityScore += 10;
-    if (item.original_height > 800) qualityScore += 10;
+    if (item.original?.width > 800) qualityScore += 10;
+    if (item.original?.height > 800) qualityScore += 10;
 
     return {
       url,
       thumbnail: item.thumbnail || url,
       title: item.title || '',
       domain,
-      width: item.original_width,
-      height: item.original_height,
+      width: item.original?.width,
+      height: item.original?.height,
       isManufacturerSite: isManufacturer,
       qualityScore,
       disqualified: isExcluded,
       disqualifyReason: isExcluded ? `Retailer site (${domain})` : undefined,
-      source: item.source,
+      source: item.source?.name,
     };
   });
 

@@ -67,8 +67,8 @@
                 const data = await response.json();
                 console.log('Full response:', data);
                 
-                // Check for images_results
-                const images = data.images_results || [];
+                // Check for images array (verified correct field name)
+                const images = data.images || [];
                 
                 resultDiv.innerHTML = `
                     <p class="success">✓ Success! Found ${images.length} images</p>
@@ -80,9 +80,9 @@
                     imagesDiv.innerHTML = '<h3>Images:</h3>';
                     images.slice(0, 6).forEach((img, i) => {
                         const imgEl = document.createElement('img');
-                        imgEl.src = img.thumbnail || img.original;
+                        imgEl.src = img.thumbnail || img.original?.link || '';
                         imgEl.className = 'result-image';
-                        imgEl.title = `${i + 1}. ${img.title || 'No title'}\nDomain: ${img.source || 'Unknown'}`;
+                        imgEl.title = `${i + 1}. ${img.title || 'No title'}\nDomain: ${img.source?.name || 'Unknown'}`;
                         imagesDiv.appendChild(imgEl);
                     });
                 }
@@ -109,16 +109,16 @@
                 const data = await response.json();
                 
                 const keys = Object.keys(data);
-                const hasImagesResults = 'images_results' in data;
-                const imageCount = data.images_results?.length || 0;
-                
+                const hasImages = 'images' in data;
+                const imageCount = data.images?.length || 0;
+
                 resultDiv.innerHTML = `
                     <p><strong>Response Keys:</strong> ${keys.join(', ')}</p>
-                    <p><strong>Has images_results:</strong> ${hasImagesResults ? '✓ Yes' : '✗ No'}</p>
+                    <p><strong>Has images:</strong> ${hasImages ? '✓ Yes' : '✗ No'}</p>
                     <p><strong>Number of images:</strong> ${imageCount}</p>
                     ${imageCount > 0 ? `
                         <p><strong>First image structure:</strong></p>
-                        <pre>${JSON.stringify(data.images_results[0], null, 2)}</pre>
+                        <pre>${JSON.stringify(data.images[0], null, 2)}</pre>
                     ` : ''}
                 `;
                 

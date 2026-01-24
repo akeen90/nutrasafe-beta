@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import FirebaseFirestore
 
 // MARK: - Time Period Enum
 
@@ -670,7 +671,7 @@ class AdditiveTrackerViewModel: ObservableObject {
 
     /// Calculate time-weighted pattern score based on recency and frequency
     func analyzeAdditivePattern() async -> AdditivePatternScore {
-        // Get all additives from last 30 days with timestamps
+        // Get all food entries from last 30 days
         let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let allEntries = await fetchAdditiveEntriesWithDates(since: thirtyDaysAgo)
 
@@ -838,47 +839,40 @@ class AdditiveTrackerViewModel: ObservableObject {
         let category: String
     }
 
-    /// Fetch additive entries with timestamps from Firebase
+    /// Fetch additive entries with timestamps from Firebase using existing infrastructure
     private func fetchAdditiveEntriesWithDates(since startDate: Date) async -> [AdditiveEntry] {
-        guard let userId = firebaseManager.getCurrentUserId() else { return [] }
-
         do {
-            let snapshot = try await firebaseManager.db
-                .collection("users")
-                .document(userId)
-                .collection("foodLog")
-                .whereField("timestamp", isGreaterThanOrEqualTo: startDate)
-                .getDocuments()
+            // Use existing FirebaseManager method to get food entries with date filter
+            let calendar = Calendar.current
+            let endDate = Date()
+
+            guard let userId = firebaseManager.currentUser?.uid else { return [] }
+
+            // Get food entries in range
+            let foodEntries = try await firebaseManager.getFoodEntriesInRange(
+                userId: userId,
+                startDate: startDate,
+                endDate: endDate
+            )
 
             var entries: [AdditiveEntry] = []
 
-            for document in snapshot.documents {
-                let data = document.data()
-                guard let timestamp = (data["timestamp"] as? Timestamp)?.dateValue(),
-                      let ingredients = data["ingredients"] as? [[String: Any]] else {
-                    continue
-                }
+            // Extract additives from each food entry
+            for foodEntry in foodEntries {
+                guard let additives = foodEntry.additives, !additives.isEmpty else { continue }
 
-                for ingredient in ingredients {
-                    guard let code = ingredient["eNumber"] as? String,
-                          !code.isEmpty,
-                          let name = ingredient["name"] as? String else {
-                        continue
-                    }
+                let entryDate = foodEntry.date
 
-                    // Look up additive data
-                    if let additiveData = await firebaseManager.fetchAdditiveData(code: code) {
-                        let verdict = additiveData["effectsVerdict"] as? String ?? ""
-                        let category = additiveData["category"] as? String ?? ""
+                for additive in additives {
+                    guard !additive.code.isEmpty else { continue }
 
-                        entries.append(AdditiveEntry(
-                            date: timestamp,
-                            code: code,
-                            name: name,
-                            verdict: verdict,
-                            category: category
-                        ))
-                    }
+                    entries.append(AdditiveEntry(
+                        date: entryDate,
+                        code: additive.code,
+                        name: additive.name,
+                        verdict: additive.effectsVerdict,
+                        category: additive.category
+                    ))
                 }
             }
 
@@ -893,6 +887,7 @@ class AdditiveTrackerViewModel: ObservableObject {
     private func createAggregate(from entry: AdditiveEntry) -> AdditiveAggregate {
         // This is a simplified version - in real use we'd fetch full data
         return AdditiveAggregate(
+            id: entry.code.isEmpty ? entry.name.lowercased() : entry.code.lowercased(),
             code: entry.code,
             name: entry.name,
             category: entry.category,
@@ -904,8 +899,10 @@ class AdditiveTrackerViewModel: ObservableObject {
             origin: nil,
             consumerGuide: nil,
             overview: nil,
+            typicalUses: nil,
             effectsSummary: nil,
             hasPKUWarning: false,
+            hasPolyolsWarning: false,
             hasSulphitesAllergenLabel: false
         )
     }
