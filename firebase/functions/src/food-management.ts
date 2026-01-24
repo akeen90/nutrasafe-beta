@@ -3,6 +3,7 @@ import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import { algoliasearch } from 'algoliasearch';
 import axios from 'axios';
+const cors = require('cors')({ origin: true });
 
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
@@ -1580,4 +1581,102 @@ export const deleteFoodComprehensive = functions.runWith({
       details: error.message,
     });
   }
+});
+
+// Browse all records from specified indices
+export const browseAllIndices = functions.runWith({
+  secrets: [algoliaAdminKey],
+  timeoutSeconds: 540,
+  memory: '2GB'
+}).https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      const { indices } = req.body;
+
+      if (!indices || !Array.isArray(indices) || indices.length === 0) {
+        res.status(400).json({ success: false, error: 'Indices array is required' });
+        return;
+      }
+
+        console.log(`📦 Browsing all records from ${indices.length} indices...`);
+
+      const allProducts: any[] = [];
+      const adminKey = algoliaAdminKey.value();
+
+      // Browse each index using Algolia REST API directly
+      for (const indexName of indices) {
+        console.log(`📦 Browsing ${indexName}...`);
+
+        try {
+          let browseCount = 0;
+          let page = 0;
+          let hasMore = true;
+          const hitsPerPage = 1000;
+
+          // Use Algolia REST API directly with axios to avoid SDK header issues
+          while (hasMore) {
+            const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${indexName}`;
+
+            const response = await axios.post(
+              `${url}/query`,
+              {
+                query: '', // Empty query returns all records
+                hitsPerPage,
+                page,
+              },
+              {
+                headers: {
+                  'X-Algolia-Application-Id': ALGOLIA_APP_ID,
+                  'X-Algolia-API-Key': adminKey,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            const hits = response.data.hits || [];
+
+            hits.forEach((hit: any) => {
+              allProducts.push({
+                ...hit,
+                sourceIndex: indexName,
+              });
+            });
+
+            browseCount += hits.length;
+
+            // Check if there are more pages
+            hasMore = (page + 1) * hitsPerPage < (response.data.nbHits || 0);
+            page++;
+
+            // Log progress every 10k records
+            if (browseCount % 10000 === 0) {
+              console.log(`  → Browsed ${browseCount.toLocaleString()} records from ${indexName}...`);
+            }
+          }
+
+          console.log(`✅ ${indexName}: ${browseCount.toLocaleString()} total products`);
+        } catch (indexError: any) {
+          console.error(`❌ Error browsing ${indexName}:`, indexError.message);
+          console.error('Full error:', indexError);
+          // Continue with other indices even if one fails
+        }
+      }
+
+      console.log(`📊 Total products browsed: ${allProducts.length.toLocaleString()}`);
+
+      res.json({
+        success: true,
+        totalProducts: allProducts.length,
+        products: allProducts,
+      });
+
+    } catch (error: any) {
+      console.error('❌ Browse all indices error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to browse indices',
+        details: error.message,
+      });
+    }
+  });
 });

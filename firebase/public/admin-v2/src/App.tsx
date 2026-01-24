@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage } from './components';
+import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage, MasterDatabaseBuilderPage } from './components';
 import { useGridStore } from './store';
 import { searchAllIndices, getIndexStats } from './services/algoliaService';
 import { batchUpdateFoods, batchDeleteFoods, moveFoodsBetweenIndices, initializeFirebase } from './services/firebaseService';
@@ -49,7 +49,7 @@ const AppContent: React.FC = () => {
   const [isDetectingDuplicates, setIsDetectingDuplicates] = useState(false);
   const [showOFFModal, setShowOFFModal] = useState(false);
   const [showDuplicatesPanel, setShowDuplicatesPanel] = useState(false);
-  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports'>('grid');
+  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports' | 'master-builder'>('grid');
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   // Load pending reports count
@@ -93,10 +93,10 @@ const AppContent: React.FC = () => {
       setLoadingProgress(10);
       console.log(`Total foods across indices: ${totalFoods}`);
 
-      // Load foods from all indices (100 per index for faster initial load)
+      // Load foods from all indices (10 per index for faster initial load)
       setLoading(true, 'Loading foods from indices...');
       const { foods: allFoods } = await searchAllIndices('', [...ALGOLIA_INDICES], {
-        hitsPerPage: 100,
+        hitsPerPage: 10,
       });
 
       console.log(`Loaded ${allFoods.length} foods`);
@@ -338,6 +338,15 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Show master database builder page
+  if (currentView === 'master-builder') {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50">
+        <MasterDatabaseBuilderPage onBack={() => setCurrentView('grid')} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -360,6 +369,7 @@ const AppContent: React.FC = () => {
           onImageProcessing={() => setCurrentView('image-processing')}
           onGoogleScraper={() => setCurrentView('google-scraper')}
           onReports={() => setCurrentView('reports')}
+          onMasterBuilder={() => setCurrentView('master-builder')}
           isDetectingDuplicates={isDetectingDuplicates}
           pendingReportsCount={pendingReportsCount}
         />

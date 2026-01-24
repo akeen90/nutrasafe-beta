@@ -13,6 +13,7 @@ interface SidebarProps {
   onImageProcessing: () => void;
   onGoogleScraper: () => void;
   onReports: () => void;
+  onMasterBuilder: () => void;
   isDetectingDuplicates: boolean;
   pendingReportsCount?: number;
 }
@@ -23,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onImageProcessing,
   onGoogleScraper,
   onReports,
+  onMasterBuilder,
   isDetectingDuplicates,
   pendingReportsCount = 0,
 }) => {
@@ -255,6 +257,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {pendingReportsCount > 99 ? '99+' : pendingReportsCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={onMasterBuilder}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors font-semibold"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            <span>Master Builder</span>
           </button>
         </div>
       </div>

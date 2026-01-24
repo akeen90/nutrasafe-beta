@@ -220,16 +220,17 @@ struct ReactionLogView: View {
         }
 
         // Calculate top trigger
-        var ingredientScores: [String: Double] = [:]
+        // crossReactionFrequency is already a percentage (0-100), so we take the max value
+        var ingredientMaxPercentage: [String: Double] = [:]
         for entry in logs {
             guard let analysis = entry.triggerAnalysis else { continue }
             for ingredient in analysis.topIngredients.prefix(3) {
-                ingredientScores[ingredient.ingredientName, default: 0] += ingredient.crossReactionFrequency
+                let currentMax = ingredientMaxPercentage[ingredient.ingredientName] ?? 0
+                ingredientMaxPercentage[ingredient.ingredientName] = max(currentMax, ingredient.crossReactionFrequency)
             }
         }
-        if let (name, score) = ingredientScores.max(by: { $0.value < $1.value }), score > 0 {
-            let percentage = Int(score / Double(max(1, logs.filter { $0.triggerAnalysis != nil }.count)))
-            cachedTopTrigger = (name, min(percentage, 100))
+        if let (name, percentage) = ingredientMaxPercentage.max(by: { $0.value < $1.value }), percentage > 0 {
+            cachedTopTrigger = (name, Int(min(percentage, 100)))
         } else {
             cachedTopTrigger = nil
         }

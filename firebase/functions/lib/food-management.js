@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteFoodComprehensive = exports.adminSaveFood = exports.searchTescoAndUpdate = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodsBetweenIndices = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
+exports.browseAllIndices = exports.deleteFoodComprehensive = exports.adminSaveFood = exports.searchTescoAndUpdate = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodsBetweenIndices = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
 const functions = require("firebase-functions");
 const params_1 = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const algoliasearch_1 = require("algoliasearch");
 const axios_1 = require("axios");
+const cors = require('cors')({ origin: true });
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -1404,5 +1405,84 @@ exports.deleteFoodComprehensive = functions.runWith({
             details: error.message,
         });
     }
+});
+// Browse all records from specified indices
+exports.browseAllIndices = functions.runWith({
+    secrets: [algoliaAdminKey],
+    timeoutSeconds: 540,
+    memory: '2GB'
+}).https.onRequest((req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { indices } = req.body;
+            if (!indices || !Array.isArray(indices) || indices.length === 0) {
+                res.status(400).json({ success: false, error: 'Indices array is required' });
+                return;
+            }
+            console.log(`📦 Browsing all records from ${indices.length} indices...`);
+            const allProducts = [];
+            const adminKey = algoliaAdminKey.value();
+            // Browse each index using Algolia REST API directly
+            for (const indexName of indices) {
+                console.log(`📦 Browsing ${indexName}...`);
+                try {
+                    let browseCount = 0;
+                    let page = 0;
+                    let hasMore = true;
+                    const hitsPerPage = 1000;
+                    // Use Algolia REST API directly with axios to avoid SDK header issues
+                    while (hasMore) {
+                        const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${indexName}`;
+                        const response = await axios_1.default.post(`${url}/query`, {
+                            query: '', // Empty query returns all records
+                            hitsPerPage,
+                            page,
+                        }, {
+                            headers: {
+                                'X-Algolia-Application-Id': ALGOLIA_APP_ID,
+                                'X-Algolia-API-Key': adminKey,
+                                'Content-Type': 'application/json',
+                            },
+                        });
+                        const hits = response.data.hits || [];
+                        hits.forEach((hit) => {
+                            allProducts.push({
+                                ...hit,
+                                sourceIndex: indexName,
+                            });
+                        });
+                        browseCount += hits.length;
+                        // Check if there are more pages
+                        hasMore = (page + 1) * hitsPerPage < (response.data.nbHits || 0);
+                        page++;
+                        // Log progress every 10k records
+                        if (browseCount % 10000 === 0) {
+                            console.log(`  → Browsed ${browseCount.toLocaleString()} records from ${indexName}...`);
+                        }
+                    }
+                    console.log(`✅ ${indexName}: ${browseCount.toLocaleString()} total products`);
+                }
+                catch (indexError) {
+                    console.error(`❌ Error browsing ${indexName}:`, indexError.message);
+                    console.error('Full error:', indexError);
+                    // Continue with other indices even if one fails
+                }
+            }
+            console.log(`📊 Total products browsed: ${allProducts.length.toLocaleString()}`);
+            res.json({
+                success: true,
+                totalProducts: allProducts.length,
+                products: allProducts,
+            });
+        }
+        catch (error) {
+            console.error('❌ Browse all indices error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to browse indices',
+                details: error.message,
+            });
+        }
+    });
 });
 //# sourceMappingURL=food-management.js.map

@@ -7,3 +7,4 @@ export { DuplicatesPanel } from './DuplicatesPanel';
 export { ImageProcessingPage } from './ImageProcessingPage';
 export { GoogleImageScraperPage } from './GoogleImageScraperPage';
 export { ReportsPage } from './ReportsPage';
+export { MasterDatabaseBuilderPage } from './MasterDatabaseBuilderPage';
