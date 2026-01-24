@@ -14,8 +14,7 @@ import UIKit
 struct AdditiveTrackerSection: View {
     @ObservedObject var viewModel: AdditiveTrackerViewModel
     @State private var expandedAdditiveId: String?
-    @State private var fullFactsExpandedId: String?
-    @State private var funDescriptionExpandedId: String?
+    @State private var expandedSections: [String: Set<String>] = [:]  // [additiveId: Set of expanded section IDs]
     @State private var isExpanded = true
     @State private var showingSources = false
     @Environment(\.colorScheme) private var colorScheme
@@ -513,167 +512,181 @@ struct AdditiveTrackerSection: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-            // Expanded content
+            // Expanded content - NEW 5-SECTION STRUCTURE
             if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    // PRIORITY 1: "What I need to know" - ALWAYS VISIBLE, TOP POSITION
-                    if !additive.whatYouNeedToKnow.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("What I need to know")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(appPalette.textPrimary)
-
-                            ForEach(additive.whatYouNeedToKnow, id: \.self) { claim in
-                                HStack(alignment: .top, spacing: 8) {
-                                    Text("•")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(color)
-                                        .frame(width: 6, alignment: .center)
-
-                                    Text(claim)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(appPalette.textPrimary)
-                                        .lineLimit(.max)
-
-                                    Spacer()
-                                }
-                            }
-                        }
-                        .padding(.top, 8)
-                    }
-
-                    // PRIORITY 2: Fun descriptions - COLLAPSIBLE (starts closed)
+                VStack(alignment: .leading, spacing: 16) {
+                    // SECTION 1: "What it is & why it's used" - ALWAYS VISIBLE
                     VStack(alignment: .leading, spacing: 8) {
-                        Button(action: {
-                            var transaction = Transaction()
-                            transaction.disablesAnimations = true
-                            withTransaction(transaction) {
-                                if funDescriptionExpandedId == additive.id {
-                                    funDescriptionExpandedId = nil
-                                } else {
-                                    funDescriptionExpandedId = additive.id
-                                }
-                            }
-                        }) {
-                            HStack {
-                                Text("More about this additive")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(appPalette.textPrimary)
+                        Text("What it is & why it's used")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(appPalette.textPrimary)
 
-                                Spacer()
-
-                                Image(systemName: funDescriptionExpandedId == additive.id ? "chevron.up" : "chevron.down")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(appPalette.textTertiary)
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-
-                        if funDescriptionExpandedId == additive.id {
-                            VStack(alignment: .leading, spacing: 10) {
-                                // Fun engaging description (what is it)
-                                HStack(alignment: .top, spacing: 10) {
-                                    Image(systemName: "info.circle.fill")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.purple)
-                                        .frame(width: 16)
-
-                                    Text(additive.whatIsIt)
-                                        .font(.system(size: 13))
-                                        .foregroundColor(appPalette.textSecondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                .padding(.leading, 4)
-
-                                // Fun origin description (where from)
-                                HStack(alignment: .top, spacing: 10) {
-                                    Image(systemName: "leaf.fill")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.teal)
-                                        .frame(width: 16)
-
-                                    Text(additive.whereIsItFrom)
-                                        .font(.system(size: 13))
-                                        .foregroundColor(appPalette.textSecondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                .padding(.leading, 4)
-                            }
-                            .padding(.top, 4)
-                        }
+                        Text(additive.whatItIsAndWhyItsUsed)
+                            .font(.system(size: 12))
+                            .foregroundColor(appPalette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    // "Full Facts" section - collapsible
-                    if !additive.fullFacts.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Button(action: {
-                                var transaction = Transaction()
-                                transaction.disablesAnimations = true
-                                withTransaction(transaction) {
-                                    // Toggle full facts visibility
-                                    if fullFactsExpandedId == additive.id {
-                                        fullFactsExpandedId = nil
-                                    } else {
-                                        fullFactsExpandedId = additive.id
+                    // SECTION 2: "Where it's found" - COLLAPSIBLE (starts closed)
+                    if !additive.whereItsFound.isEmpty {
+                        collapsibleSection(
+                            additive: additive,
+                            sectionId: "whereFound",
+                            title: "Where it's found",
+                            content: {
+                                ForEach(additive.whereItsFound.prefix(5), id: \.self) { food in
+                                    HStack(spacing: 8) {
+                                        Text("•")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(appPalette.textTertiary)
+
+                                        Text(food)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(appPalette.textSecondary)
+                                            .lineLimit(1)
+
+                                        Spacer()
                                     }
                                 }
-                            }) {
-                                HStack {
-                                    Text("Full Facts")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(appPalette.textPrimary)
 
-                                    Spacer()
-
-                                    Image(systemName: fullFactsExpandedId == additive.id ? "chevron.up" : "chevron.down")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(appPalette.textTertiary)
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
-
-                            if fullFactsExpandedId == additive.id {
-                                Text(additive.fullFacts)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(appPalette.textSecondary)
-                                    .lineLimit(.max)
-                            }
-                        }
-                    }
-
-                    // Foods list
-                    if !additive.foodItems.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Found in \(additive.occurrenceCount) food(s):")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(appPalette.textPrimary)
-
-                            ForEach(additive.foodItems.prefix(5), id: \.self) { food in
-                                HStack(spacing: 8) {
-                                    Text("•")
+                                if additive.whereItsFound.count > 5 {
+                                    Text("and \(additive.whereItsFound.count - 5) more...")
                                         .font(.system(size: 11))
                                         .foregroundColor(appPalette.textTertiary)
-
-                                    Text(food)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(appPalette.textSecondary)
-                                        .lineLimit(1)
-
-                                    Spacer()
                                 }
                             }
+                        )
+                    }
 
-                            if additive.foodItems.count > 5 {
-                                Text("and \(additive.foodItems.count - 5) more...")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(appPalette.textTertiary)
+                    // SECTION 3: "Known reactions" - COLLAPSIBLE (starts closed)
+                    if !additive.knownReactions.isEmpty {
+                        collapsibleSection(
+                            additive: additive,
+                            sectionId: "knownReactions",
+                            title: "Known reactions",
+                            content: {
+                                ForEach(additive.knownReactions, id: \.self) { reaction in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Text("•")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundColor(color)
+                                            .frame(width: 6, alignment: .center)
+
+                                        Text(reaction)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(appPalette.textPrimary)
+                                            .fixedSize(horizontal: false, vertical: true)
+
+                                        Spacer()
+                                    }
+                                }
                             }
+                        )
+                    }
+
+                    // SECTION 4: "What research says" - COLLAPSIBLE (starts closed)
+                    let research = additive.whatResearchSays
+                    collapsibleSection(
+                        additive: additive,
+                        sectionId: "whatResearchSays",
+                        title: "What research says",
+                        content: {
+                            // Research strength indicator
+                            HStack(spacing: 8) {
+                                Image(systemName: research.strength.icon)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(research.strength.color)
+
+                                Text(research.strength.rawValue)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(research.strength.color)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(
+                                        Capsule()
+                                            .fill(research.strength.color.opacity(0.12))
+                                    )
+
+                                Spacer()
+                            }
+                            .padding(.bottom, 4)
+
+                            // Research summary
+                            Text(research.summary)
+                                .font(.system(size: 12))
+                                .foregroundColor(appPalette.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
+                    )
+
+                    // SECTION 5: "Full description" - COLLAPSIBLE (starts closed)
+                    if !additive.fullDescription.isEmpty {
+                        collapsibleSection(
+                            additive: additive,
+                            sectionId: "fullDescription",
+                            title: "Full description",
+                            content: {
+                                Text(additive.fullDescription)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(appPalette.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        )
                     }
                 }
                 .padding(12)
                 .background(Color(.systemGray6).opacity(0.5))
                 .cornerRadius(8)
+            }
+        }
+    }
+
+    // Helper to create collapsible sections
+    @ViewBuilder
+    private func collapsibleSection<Content: View>(
+        additive: AdditiveAggregate,
+        sectionId: String,
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let isExpanded = expandedSections[additive.id]?.contains(sectionId) ?? false
+
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    if var sections = expandedSections[additive.id] {
+                        if sections.contains(sectionId) {
+                            sections.remove(sectionId)
+                        } else {
+                            sections.insert(sectionId)
+                        }
+                        expandedSections[additive.id] = sections
+                    } else {
+                        expandedSections[additive.id] = [sectionId]
+                    }
+                }
+            }) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(appPalette.textPrimary)
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(appPalette.textTertiary)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    content()
+                }
+                .padding(.top, 4)
             }
         }
     }

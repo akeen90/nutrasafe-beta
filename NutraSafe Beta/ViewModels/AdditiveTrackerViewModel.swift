@@ -36,6 +36,7 @@ enum AdditiveTimePeriod: String, CaseIterable {
 }
 
 // MARK: - Additive Aggregate Model
+// Note: ResearchStrength enum is defined in AdditiveResearchDatabase.swift
 
 struct AdditiveAggregate: Identifiable {
     let id: String  // E-number code
@@ -66,71 +67,152 @@ struct AdditiveAggregate: Identifiable {
         }
     }
 
-    /// Build "What I need to know" health claim bullets - research-backed, specific claims
-    var whatYouNeedToKnow: [String] {
-        var bullets: [String] = []
+    // MARK: - NEW 5-Section Template Structure
 
-        // Child warning (Southampton Six study - specific research)
-        if childWarning {
-            bullets.append("Linked to hyperactivity in children (Southampton Six study)")
+    /// SECTION 1: "What it is & why it's used" - Proper description from research database
+    var whatItIsAndWhyItsUsed: String {
+        // FIRST: Check the research database for a proper description
+        if let databaseDescription = AdditiveResearchDatabase.shared.getWhatItIs(for: code), !databaseDescription.isEmpty {
+            return databaseDescription
         }
 
-        // PKU warning (serious health condition)
-        if hasPKUWarning {
-            bullets.append("Dangerous for people with phenylketonuria (PKU) - can cause brain damage")
+        // SECOND: Try to use the overview field if available
+        if let overview = overview, !overview.trimmingCharacters(in: .whitespaces).isEmpty {
+            return overview
         }
 
-        // Sulphites allergen (specific reactions)
-        if hasSulphitesAllergenLabel {
-            bullets.append("Contains sulphites - can trigger asthma attacks and allergic reactions")
-        }
-
-        // Polyols warning (digestive effects)
-        if hasPolyolsWarning {
-            bullets.append("May cause bloating, gas, and laxative effects in large amounts")
-        }
-
-        // Verdict-based claim - more specific based on risk level
-        switch effectsVerdict.lowercased() {
-        case "avoid":
-            // High-risk additives need strong, specific warnings
-            if !bullets.isEmpty {
-                bullets.append("Regulatory bodies recommend avoiding or limiting intake")
-            } else {
-                bullets.append("Some research links this additive to potential health concerns")
-            }
-        case "caution":
-            // Moderate-risk additives
-            if !bullets.isEmpty {
-                bullets.append("Consume in moderation - some studies suggest caution")
-            } else {
-                bullets.append("Some people may experience sensitivity or wish to avoid")
-            }
+        // THIRD: Fallback to category-based short description
+        switch category.lowercased() {
+        case "colour", "colours", "color", "colors":
+            return "A food colouring that makes products more visually appealing."
+        case "preservative", "preservatives":
+            return "Helps keep food fresh by preventing bacterial growth."
+        case "sweetener", "sweeteners":
+            return "Provides sweetness without the calories of sugar."
+        case "emulsifier", "emulsifiers":
+            return "Keeps oil and water mixed for smooth textures."
+        case "flavour enhancer", "flavour enhancers":
+            return "Intensifies the natural flavour of foods."
+        case "thickener", "thickeners":
+            return "Gives food a thicker, more satisfying texture."
+        case "antioxidant", "antioxidants":
+            return "Prevents fats and oils from going rancid."
+        case "stabiliser", "stabilisers":
+            return "Keeps ingredients evenly mixed throughout the product."
         default:
-            // Only show "safe" if there are NO other warnings
-            if bullets.isEmpty {
-                bullets.append("Generally recognised as safe at permitted use levels")
-            }
+            return "A food additive used to enhance or preserve food."
         }
-
-        return bullets
     }
 
-    /// Build "Full Facts" scientific background text
-    var fullFacts: String {
+    /// SECTION 2: "Where it's found" - Common foods from research database + user's logged foods
+    var whereItsFound: [String] {
+        var foods: [String] = []
+
+        // First check the research database for comprehensive food list
+        let databaseFoods = AdditiveResearchDatabase.shared.getCommonFoods(for: code)
+        if !databaseFoods.isEmpty {
+            foods.append(contentsOf: databaseFoods)
+        } else if let typicalUses = typicalUses, !typicalUses.trimmingCharacters(in: .whitespaces).isEmpty {
+            // Fallback: parse typicalUses into individual food items
+            let parsed = typicalUses
+                .replacingOccurrences(of: " and ", with: ", ")
+                .replacingOccurrences(of: "; ", with: ", ")
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty && $0.count > 2 }
+            foods.append(contentsOf: parsed)
+        }
+
+        // Add user's logged foods (if any, mark them distinctly)
+        if !foodItems.isEmpty {
+            foods.append(contentsOf: foodItems.prefix(3).map { "Your log: \($0)" })
+        }
+
+        return foods
+    }
+
+    /// SECTION 3: "Known reactions" - Specific health reactions from research database
+    var knownReactions: [String] {
+        // First check the research database for comprehensive reactions
+        let databaseReactions = AdditiveResearchDatabase.shared.getKnownReactions(for: code)
+        if !databaseReactions.isEmpty {
+            return databaseReactions
+        }
+
+        // Fallback to boolean-based reactions
+        var reactions: [String] = []
+
+        if childWarning {
+            reactions.append("Hyperactivity and attention issues in children")
+        }
+        if hasPKUWarning {
+            reactions.append("Brain damage in people with phenylketonuria (PKU)")
+        }
+        if hasSulphitesAllergenLabel {
+            reactions.append("Asthma attacks and allergic reactions")
+        }
+        if hasPolyolsWarning {
+            reactions.append("Bloating, gas, and laxative effects")
+        }
+
+        return reactions
+    }
+
+    /// SECTION 4: "What research says" - Evidence-based summary from research database
+    var whatResearchSays: (summary: String, strength: ResearchStrength) {
+        // First check the research database for comprehensive research summary
+        if let databaseResearch = AdditiveResearchDatabase.shared.getResearchSummary(for: code) {
+            return databaseResearch
+        }
+
+        // Fallback to computed research summary
+        let strength: ResearchStrength = {
+            if childWarning || hasPKUWarning {
+                return .strong
+            } else if hasSulphitesAllergenLabel || hasPolyolsWarning {
+                return .moderate
+            } else if effectsVerdict.lowercased() == "avoid" {
+                return .moderate
+            } else if effectsVerdict.lowercased() == "caution" {
+                return .emerging
+            } else {
+                return .limited
+            }
+        }()
+
+        var summary = ""
+
+        if childWarning {
+            summary = "The Southampton Six study (2007) found this additive linked to increased hyperactivity in children. The FSA recommends parents of children showing signs of hyperactivity consider avoiding these additives."
+        } else if hasPKUWarning {
+            summary = "Medical research shows this substance causes brain damage in people with phenylketonuria (PKU), a genetic condition. Products must carry warnings for PKU sufferers."
+        } else if hasSulphitesAllergenLabel {
+            summary = "Clinical studies show sulphites can trigger asthma attacks and allergic reactions in sensitive individuals. The FSA requires sulphite content to be declared as an allergen."
+        } else if hasPolyolsWarning {
+            summary = "Research indicates that polyols (sugar alcohols) can cause digestive discomfort including bloating and laxative effects when consumed in large amounts."
+        } else {
+            switch effectsVerdict.lowercased() {
+            case "avoid":
+                summary = "Some research links this additive to potential health concerns. Regulatory bodies recommend avoiding or limiting intake."
+            case "caution":
+                summary = "Some studies suggest this additive may cause sensitivity in certain individuals. Consuming in moderation is advised."
+            default:
+                summary = "Regulatory bodies including the FSA and EFSA consider this additive safe at permitted use levels based on current evidence."
+            }
+        }
+
+        return (summary, strength)
+    }
+
+    /// SECTION 5: "Full description" - The FUN engaging description (collapsed by default)
+    var fullDescription: String {
         var sections: [String] = []
 
-        if let overview = overview, !overview.trimmingCharacters(in: .whitespaces).isEmpty {
-            sections.append(overview)
-        }
+        // The fun "what is it" description
+        sections.append(whatIsIt)
 
-        if let typicalUses = typicalUses, !typicalUses.trimmingCharacters(in: .whitespaces).isEmpty {
-            sections.append("**Typical Uses:** \(typicalUses)")
-        }
-
-        if let effectsSummary = effectsSummary, !effectsSummary.trimmingCharacters(in: .whitespaces).isEmpty {
-            sections.append(effectsSummary)
-        }
+        // The fun "where is it from" description
+        sections.append(whereIsItFrom)
 
         return sections.joined(separator: "\n\n")
     }
