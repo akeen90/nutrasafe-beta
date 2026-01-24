@@ -77,6 +77,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const [barcodeQuery, setBarcodeQuery] = useState('');
   const [isBarcodeSearching, setIsBarcodeSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   // Preview modal
   const [previewImage, setPreviewImage] = useState<{
@@ -209,6 +210,110 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       setIsLoading(false);
     }
   }, [selectedIndices, filterUKOnly]);
+
+  // Search Algolia for foods by name/brand/barcode
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) {
+      addLog('❌ No search query entered');
+      return;
+    }
+
+    if (selectedIndices.size === 0) {
+      addLog('❌ No indices selected');
+      return;
+    }
+
+    setIsSearching(true);
+    setIsLoading(true);
+    setShowIndexSelector(false);
+    setLoadingProgress(0);
+    addLog(`🔍 Searching for: ${searchQuery}`);
+
+    const allFoods: FoodWithImage[] = [];
+    const indicesToSearch = Array.from(selectedIndices);
+
+    try {
+      for (let i = 0; i < indicesToSearch.length; i++) {
+        const indexName = indicesToSearch[i];
+        setLoadingMessage(`Searching ${indexName}...`);
+        setLoadingProgress(Math.round((i / indicesToSearch.length) * 100));
+
+        const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${indexName}/query`;
+
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'X-Algolia-Application-Id': ALGOLIA_APP_ID,
+              'X-Algolia-API-Key': ALGOLIA_SEARCH_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: searchQuery.trim(),
+              hitsPerPage: 1000,
+              attributesToRetrieve: ['objectID', 'name', 'foodName', 'brandName', 'brand', 'barcode', 'imageUrl'],
+            }),
+          });
+
+          if (!response.ok) {
+            addLog(`Error searching ${indexName}: ${response.status}`);
+            continue;
+          }
+
+          const data = await response.json();
+          const hits = data.hits || [];
+          addLog(`${indexName}: ${hits.length} results`);
+
+          for (const hit of hits) {
+            allFoods.push({
+              id: `${indexName}:${hit.objectID}`,
+              objectID: hit.objectID,
+              name: hit.name || hit.foodName || 'Unknown',
+              brandName: hit.brandName || hit.brand || null,
+              barcode: hit.barcode || null,
+              currentImageUrl: hit.imageUrl || null,
+              sourceIndex: indexName,
+              selected: false,
+              searchResults: [],
+              selectedImageUrl: null,
+              analysis: null,
+              status: 'pending',
+              analysisProgress: 0,
+            });
+          }
+        } catch (err) {
+          addLog(`Error searching ${indexName}: ${err}`);
+        }
+      }
+
+      addLog(`✅ Found ${allFoods.length} foods matching "${searchQuery}"`);
+
+      // Apply UK filter if enabled
+      let foodsToUse = allFoods;
+      if (filterUKOnly) {
+        const filterResult = filterUKProducts(allFoods, 40);
+        foodsToUse = filterResult.ukProducts;
+        setUkFilterStats(filterResult.stats);
+        addLog(`🇬🇧 UK Filter: ${filterResult.ukProducts.length} kept, ${filterResult.nonUkProducts.length} filtered`);
+      }
+
+      setFoods(foodsToUse);
+      setStats({
+        total: foodsToUse.length,
+        completed: 0,
+        failed: 0,
+        noResults: 0,
+        processing: 0,
+      });
+
+    } catch (err) {
+      addLog(`❌ Search failed: ${err}`);
+    } finally {
+      setIsSearching(false);
+      setIsLoading(false);
+      setLoadingProgress(100);
+    }
+  }, [searchQuery, selectedIndices, filterUKOnly, addLog]);
 
   // Search by barcode - finds foods with this barcode and searches Google Images using the barcode
   const handleBarcodeSearch = useCallback(async () => {
@@ -896,6 +1001,11 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                 setSearchQuery(e.target.value);
                 setCurrentPage(0); // Reset to first page on search
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim() && foods.length === 0) {
+                  handleSearch();
+                }
+              }}
               className="w-64 px-3 py-1.5 pl-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             <svg
@@ -920,9 +1030,31 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
               </button>
             )}
           </div>
-          {searchQuery && (
+
+          {/* Search Algolia button - only show when no foods are loaded */}
+          {foods.length === 0 && (
+            <button
+              onClick={handleSearch}
+              disabled={!searchQuery.trim() || isSearching || selectedIndices.size === 0}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSearching ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              )}
+              Search Algolia
+            </button>
+          )}
+
+          {searchQuery && foods.length > 0 && (
             <span className="text-xs text-gray-500">
-              {filteredFoods.length} result{filteredFoods.length !== 1 ? 's' : ''}
+              {filteredFoods.length} result{filteredFoods.length !== 1 ? 's' : ''} (filtered)
             </span>
           )}
           <button onClick={selectAll} className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded">
