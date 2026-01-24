@@ -64,14 +64,27 @@ struct AdditiveTrackerSection: View {
 
         let grade = AdditiveGrade.from(score: score, hasAdditives: total > 0)
 
-        // Simple, direct messaging
+        // Message should match the grade being shown
         let message: String = {
-            if avoid > 2 {
+            switch grade {
+            case .none:
+                return "No additives detected"
+            case .average:
+                // Low-risk only, few additives
+                if avoid == 0 && caution == 0 {
+                    return "Your choices look good"
+                } else {
+                    return "Balanced choices"
+                }
+            case .belowAverage:
+                // Some caution additives or many neutral ones
+                if avoid == 0 {
+                    return "Mostly safe additives in moderation"
+                } else {
+                    return "A few worth noting"
+                }
+            case .poor:
                 return "Worth noting what's in your food"
-            } else if avoid == 0 && caution <= 2 {
-                return "Your choices look good"
-            } else {
-                return "Balance is key"
             }
         }()
 
