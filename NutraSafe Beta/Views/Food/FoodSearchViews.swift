@@ -559,6 +559,39 @@ struct FoodSearchResultRowEnhanced: View {
         }
 
         // Create diary entry at standard serving
+        // Analyze additives from ingredients if available (like FoodDetailViewFromSearch does)
+        let additivesToSave: [NutritionAdditiveInfo]?
+        if let ingredients = food.ingredients, !ingredients.isEmpty {
+            let ingredientsText = ingredients.joined(separator: ", ")
+            let freshAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
+
+            // Convert AdditiveInfo to NutritionAdditiveInfo for diary storage
+            additivesToSave = freshAdditives.map { additive in
+                // Calculate health score based on verdict and warnings
+                var healthScore = 70 // Base score
+                if additive.hasChildWarning { healthScore -= 20 }
+                if additive.hasPKUWarning { healthScore -= 15 }
+                if additive.hasPolyolsWarning { healthScore -= 10 }
+                if additive.effectsVerdict == .caution { healthScore -= 15 }
+                if additive.effectsVerdict == .avoid { healthScore -= 25 }
+                healthScore = max(0, min(100, healthScore))
+
+                return NutritionAdditiveInfo(
+                    code: additive.eNumber,
+                    name: additive.name,
+                    category: additive.group.displayName,
+                    healthScore: healthScore,
+                    childWarning: additive.hasChildWarning,
+                    effectsVerdict: additive.effectsVerdict.rawValue,
+                    consumerGuide: additive.consumerInfo,
+                    origin: additive.origin.rawValue
+                )
+            }
+        } else {
+            // Fallback to food.additives if no ingredients to analyze
+            additivesToSave = food.additives
+        }
+
         let diaryEntry = DiaryFoodItem(
             id: UUID(),
             name: food.name,
@@ -576,7 +609,7 @@ struct FoodSearchResultRowEnhanced: View {
             processedScore: food.processingGrade,
             sugarLevel: nil,
             ingredients: food.ingredients,
-            additives: food.additives,
+            additives: additivesToSave,  // Use freshly analyzed additives
             barcode: food.barcode,
             micronutrientProfile: food.micronutrientProfile,
             isPerUnit: food.isPerUnit
