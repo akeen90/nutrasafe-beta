@@ -323,6 +323,31 @@ enum AdditiveOverrides {
         return overrides[additive.name.lowercased()]
     }
 
+    /// Helper methods for insights tracker lookup (allows lookup without creating full AdditiveInfo)
+    static func getWhatItIs(code: String, name: String) -> String? {
+        // Try code first
+        if let override = overrides[code.lowercased()], let whatItIs = override.whatItIs {
+            return whatItIs
+        }
+        // Try name
+        if let override = overrides[name.lowercased()], let whatItIs = override.whatItIs {
+            return whatItIs
+        }
+        return nil
+    }
+
+    static func getOriginSummary(code: String, name: String) -> String? {
+        // Try code first
+        if let override = overrides[code.lowercased()], let originSummary = override.originSummary {
+            return originSummary
+        }
+        // Try name
+        if let override = overrides[name.lowercased()], let originSummary = override.originSummary {
+            return originSummary
+        }
+        return nil
+    }
+
     /// Get risk level for an additive
     static func getRiskLevel(for additive: AdditiveInfo) -> AdditiveRiskLevel {
         // First check if we have an override with explicit risk level

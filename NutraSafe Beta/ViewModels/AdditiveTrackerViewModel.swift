@@ -60,61 +60,15 @@ struct AdditiveAggregate: Identifiable {
 
     /// Fun, human-friendly description of what this additive is
     var whatIsIt: String {
-        // Check for specific additives with fun descriptions
-        let codeLower = code.lowercased()
-        let nameLower = name.lowercased()
+        // First try to get description from AdditiveOverrides (single source of truth)
+        // This ensures consistency between food detail view and insights tracker
 
-        // Colours from bugs
-        if codeLower == "e120" || nameLower.contains("carmine") || nameLower.contains("cochineal") {
-            return "A bright red dye made from crushed cochineal beetles. Yes, actual bugs! About 70,000 beetles are needed to make just one pound of dye. Vegetarians and vegans, look away!"
+        // Try lookup by E-number or name using the helper method
+        if let whatItIs = AdditiveOverrides.getWhatItIs(code: code, name: name), !whatItIs.isEmpty {
+            return whatItIs
         }
 
-        // Shellac (also from bugs)
-        if codeLower == "e904" || nameLower.contains("shellac") {
-            return "A shiny coating secreted by lac bugs. It's the same stuff used to make furniture polish shine! Also found on apples and sweets to give them that glossy look."
-        }
-
-        // Gelatin
-        if nameLower.contains("gelatin") || nameLower.contains("gelatine") {
-            return "Made by boiling animal bones, skin, and connective tissue. It's what makes jelly wobble and gummy bears chewy. Not one for the vegans!"
-        }
-
-        // Carrageenan (seaweed)
-        if codeLower == "e407" || nameLower.contains("carrageenan") {
-            return "Extracted from red seaweed harvested from the ocean. It's been used in Irish cooking for centuries - nature's thickener!"
-        }
-
-        // MSG
-        if codeLower == "e621" || nameLower.contains("monosodium glutamate") || nameLower.contains("msg") {
-            return "The famous 'umami' flavour enhancer. Despite its bad reputation, it's just a salt of glutamic acid - an amino acid found naturally in tomatoes, parmesan, and your own body!"
-        }
-
-        // Aspartame
-        if codeLower == "e951" || nameLower.contains("aspartame") {
-            return "An artificial sweetener about 200 times sweeter than sugar. Made from two amino acids, it's in most diet drinks. One of the most studied food additives ever!"
-        }
-
-        // Xanthan gum
-        if codeLower == "e415" || nameLower.contains("xanthan") {
-            return "A slimy substance produced by bacteria during fermentation. Sounds gross, but it's brilliant at making sauces smooth and gluten-free baking possible!"
-        }
-
-        // Lecithin
-        if codeLower == "e322" || nameLower.contains("lecithin") {
-            return "Usually extracted from soy or egg yolks. It's an emulsifier that stops oil and water from separating - the unsung hero of chocolate bars everywhere!"
-        }
-
-        // Tartrazine (yellow)
-        if codeLower == "e102" || nameLower.contains("tartrazine") {
-            return "A bright yellow synthetic dye also known as 'Yellow 5'. It's what gives custard and fizzy drinks that sunny colour. Some people are sensitive to it."
-        }
-
-        // Sodium benzoate
-        if codeLower == "e211" || nameLower.contains("sodium benzoate") {
-            return "A preservative that stops bacteria and fungi from growing. Naturally found in cranberries and prunes, but usually made synthetically."
-        }
-
-        // Generic based on category
+        // Fallback to consumer guide or generic based on category
         switch category.lowercased() {
         case "colour", "colours", "color", "colors":
             return consumerGuide ?? "A food colouring used to make products more visually appealing. Because apparently we eat with our eyes first!"
@@ -139,21 +93,19 @@ struct AdditiveAggregate: Identifiable {
 
     /// Fun description of where this additive comes from
     var whereIsItFrom: String {
+        // First try to get description from AdditiveOverrides (single source of truth)
+
+        // Try lookup by E-number or name using the helper method
+        if let originSummary = AdditiveOverrides.getOriginSummary(code: code, name: name), !originSummary.isEmpty {
+            return originSummary
+        }
+
+        // Fallback to generic origin descriptions
         guard let origin = origin else {
             return "Origin unknown - probably cooked up in a lab somewhere!"
         }
 
         let originLower = origin.lowercased()
-        let codeLower = code.lowercased()
-
-        // Special cases
-        if codeLower == "e120" || name.lowercased().contains("carmine") {
-            return "🐛 Crushed beetles from South America and Mexico. The female cochineal bugs are harvested, dried, and crushed. It takes about 70,000 bugs to make 450g of dye!"
-        }
-
-        if codeLower == "e904" || name.lowercased().contains("shellac") {
-            return "🐛 Secreted by lac bugs in India and Thailand. The bugs coat tree branches with this resinous substance, which is then scraped off and processed."
-        }
 
         switch originLower {
         case "synthetic":
