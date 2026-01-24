@@ -560,64 +560,77 @@ final class AlgoliaSearchManager {
         // === STAGE 0: NORMALIZE INPUT ===
         let normalized = SearchQueryNormalizer.normalize(trimmedQuery)
 
-        // Build comprehensive query set from:
-        // 1. Normalized variants (compound word expansion, UK spelling)
-        // 2. Brand synonym expansion
-        // 3. Word order flexibility
-        var querySet = Set<String>()
-
-        // Add normalized variants
-        for variant in normalized.variants {
-            querySet.insert(variant)
-            // Also expand each variant with brand synonyms
-            let expanded = expandSearchQuery(variant)
-            for exp in expanded {
-                querySet.insert(exp.lowercased())
-            }
-        }
-
-        // Add word order variants for 2-word queries
-        for existingQuery in Array(querySet) {
-            if shouldUseFlexibleWordOrder(existingQuery) {
-                let variants = generateWordOrderVariants(existingQuery)
-                for variant in variants {
-                    querySet.insert(variant.lowercased())
-                }
-            }
-        }
-
-        // === STAGES 1-3: PARALLEL SEARCH ===
-        // Search all query variants in parallel
-        // Use intent-based indices for generic food searches
+        // PERFORMANCE: Instead of searching ALL variants in parallel (slow),
+        // use a cascading approach: try primary first, expand only if needed
         var seenIds = Set<String>()
-        let allSearchQueries = Array(querySet)
         let searchIndices = indicesForIntent(normalized.intent)
 
-        await withTaskGroup(of: [FoodSearchResult].self) { group in
-            for searchQuery in allSearchQueries {
-                group.addTask {
-                    do {
-                        return try await self.searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage * 2, usingIndices: searchIndices)
-                    } catch {
-                        return []
+        // === STAGE 1: PRIMARY SEARCH (FAST PATH) ===
+        // Search with the normalized primary query first
+        do {
+            let primaryResults = try await searchMultipleIndices(
+                query: normalized.primary,
+                hitsPerPage: hitsPerPage * 2,
+                usingIndices: searchIndices
+            )
+            for result in primaryResults where !seenIds.contains(result.id) {
+                seenIds.insert(result.id)
+                allResults.append(result)
+            }
+        } catch {
+            // Continue to expansions if primary fails
+        }
+
+        // === STAGE 2: EXPAND IF SPARSE (ONLY IF NEEDED) ===
+        // Only search additional variants if we got < 10 results
+        if allResults.count < 10 {
+            // Build SMALL query set: top 3 most relevant variants only
+            var expandedQueries = Set<String>()
+
+            // Add first 2 normalized variants (exclude primary - already searched)
+            for variant in normalized.variants.prefix(3) where variant != normalized.primary {
+                expandedQueries.insert(variant)
+            }
+
+            // Add top brand synonym if available
+            let brandExpanded = expandSearchQuery(normalized.primary)
+            if let topBrandVariant = brandExpanded.first, topBrandVariant != normalized.primary {
+                expandedQueries.insert(topBrandVariant.lowercased())
+            }
+
+            // Search these limited variants in parallel
+            if !expandedQueries.isEmpty {
+                await withTaskGroup(of: [FoodSearchResult].self) { group in
+                    for searchQuery in expandedQueries {
+                        group.addTask {
+                            do {
+                                return try await self.searchMultipleIndices(
+                                    query: searchQuery,
+                                    hitsPerPage: 15,
+                                    usingIndices: searchIndices
+                                )
+                            } catch {
+                                return []
+                            }
+                        }
+                    }
+
+                    for await results in group {
+                        for result in results where !seenIds.contains(result.id) {
+                            seenIds.insert(result.id)
+                            allResults.append(result)
+                        }
                     }
                 }
             }
-
-            for await results in group {
-                for result in results where !seenIds.contains(result.id) {
-                    seenIds.insert(result.id)
-                    allResults.append(result)
-                }
-            }
         }
 
-        // === STAGE 3B: FUZZY MATCHING ===
-        // If results are sparse, try fuzzy variants
+        // === STAGE 3: FUZZY MATCHING (ONLY IF VERY SPARSE) ===
+        // Only try fuzzy if we still have < 5 results
         if allResults.count < 5 {
             let fuzzyVariants = FuzzyMatcher.generateMisspellingVariants(normalized.primary)
             await withTaskGroup(of: [FoodSearchResult].self) { group in
-                for fuzzyQuery in fuzzyVariants.prefix(5) {  // Limit fuzzy searches
+                for fuzzyQuery in fuzzyVariants.prefix(3) {  // Reduced from 5 to 3
                     group.addTask {
                         do {
                             return try await self.searchMultipleIndices(query: fuzzyQuery, hitsPerPage: 10, usingIndices: searchIndices)
