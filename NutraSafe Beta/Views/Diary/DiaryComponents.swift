@@ -204,7 +204,14 @@ struct DiaryFoodRow: View {
         let count = containsWatchedAdditives.count
         if count == 1 {
             return containsWatchedAdditives[0].name
+        } else if count == 2 {
+            // Show both names for 2 additives (still readable)
+            return containsWatchedAdditives.map { $0.name }.joined(separator: ", ")
+        } else if count == 3 {
+            // Show all 3 names for 3 additives (comma-separated)
+            return containsWatchedAdditives.map { $0.name }.joined(separator: ", ")
         } else {
+            // 4+ additives: show count
             return "\(count) watched additives"
         }
     }
