@@ -185,6 +185,30 @@ struct DiaryFoodRow: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var firebaseManager: FirebaseManager
 
+    // Check for watched additives
+    private var watchedAdditives: Set<String> {
+        if let saved = UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] {
+            return Set(saved)
+        }
+        return []
+    }
+
+    private var containsWatchedAdditives: [NutritionAdditiveInfo] {
+        guard let additives = food.additives else { return [] }
+        return additives.filter { additive in
+            watchedAdditives.contains(additive.code)
+        }
+    }
+
+    private var watchedAdditivesText: String {
+        let count = containsWatchedAdditives.count
+        if count == 1 {
+            return containsWatchedAdditives[0].name
+        } else {
+            return "\(count) watched additives"
+        }
+    }
+
     var body: some View {
         Button(action: {
             // Tap always toggles selection
@@ -227,6 +251,25 @@ struct DiaryFoodRow: View {
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(AppPalette.standard.accent)
                         }
+                    }
+
+                    // Watched additive warning badge
+                    if !containsWatchedAdditives.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "eye.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+
+                            Text(watchedAdditivesText)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(Color.orange.opacity(0.15))
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
