@@ -867,7 +867,6 @@ struct AddFoodSearchView: View {
             AppAnimatedBackground()
         }
         .onAppear {
-            print("[AddFoodSearchView] onAppear called")
             setupKeyboardObservers()
             checkForEditingMode()
             loadRecentFoods()
@@ -877,7 +876,6 @@ struct AddFoodSearchView: View {
             }
         }
         .onDisappear {
-            print("[AddFoodSearchView] onDisappear called")
             removeKeyboardObservers()
         }
         .onReceive(NotificationCenter.default.publisher(for: .favoritesDidChange)) { _ in
