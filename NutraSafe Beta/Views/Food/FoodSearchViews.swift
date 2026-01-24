@@ -371,6 +371,7 @@ struct FoodSearchResultRowEnhanced: View {
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
+                        .minimumScaleFactor(0.85)
 
                     HStack(spacing: 6) {
                         if let brand = food.brand, !brand.isEmpty {
