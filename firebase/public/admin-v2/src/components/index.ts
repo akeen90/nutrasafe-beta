@@ -5,4 +5,5 @@ export { LoadingOverlay } from './LoadingOverlay';
 export { OFFLookupModal } from './OFFLookupModal';
 export { DuplicatesPanel } from './DuplicatesPanel';
 export { ImageProcessingPage } from './ImageProcessingPage';
+export { GoogleImageScraperPage } from './GoogleImageScraperPage';
 export { ReportsPage } from './ReportsPage';

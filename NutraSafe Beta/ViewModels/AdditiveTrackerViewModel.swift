@@ -324,6 +324,128 @@ struct AdditiveCategorySummary: Identifiable {
     }
 }
 
+// MARK: - Pattern-Based Scoring Models
+
+/// Frequency of concerning additive consumption
+enum AdditiveFrequencyLevel: String {
+    case rare = "Rare"           // < 2/week
+    case occasional = "Occasional" // 2-4/week
+    case frequent = "Frequent"    // 5-10/week
+    case daily = "Daily"          // > 10/week
+
+    static func from(concerningCount: Int, days: Int) -> AdditiveFrequencyLevel {
+        let weeklyAverage = Double(concerningCount) / (Double(days) / 7.0)
+
+        if weeklyAverage < 2 { return .rare }
+        if weeklyAverage < 4 { return .occasional }
+        if weeklyAverage < 10 { return .frequent }
+        return .daily
+    }
+
+    var color: Color {
+        switch self {
+        case .rare: return SemanticColors.positive
+        case .occasional: return .yellow
+        case .frequent: return .orange
+        case .daily: return .red
+        }
+    }
+}
+
+/// Trend direction for additive consumption
+enum AdditiveTrendDirection: String {
+    case improving = "↗️ Improving"
+    case stable = "→ Stable"
+    case declining = "↘️ Declining"
+
+    var color: Color {
+        switch self {
+        case .improving: return SemanticColors.positive
+        case .stable: return .yellow
+        case .declining: return .red
+        }
+    }
+}
+
+/// Pattern-based grade that considers recency and frequency
+enum AdditivePatternGrade: String {
+    case clean = "Clean"           // 70-100: No concerning additives recently
+    case moderate = "Moderate"     // 40-69: Some concerns, mostly safe
+    case concerning = "Concerning" // 0-39: Frequent concerning additives
+
+    static func from(score: Int) -> AdditivePatternGrade {
+        if score >= 70 { return .clean }
+        if score >= 40 { return .moderate }
+        return .concerning
+    }
+
+    var color: Color {
+        switch self {
+        case .clean: return SemanticColors.positive
+        case .moderate: return .yellow
+        case .concerning: return .red
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .clean: return "checkmark.circle.fill"
+        case .moderate: return "exclamationmark.triangle.fill"
+        case .concerning: return "xmark.octagon.fill"
+        }
+    }
+}
+
+/// Complete pattern analysis result
+struct AdditivePatternScore {
+    let overallScore: Int // 0-100
+    let grade: AdditivePatternGrade
+    let message: String
+    let cleanStreakDays: Int
+    let lastConcerningDate: Date?
+    let lastConcerningAdditive: AdditiveAggregate?
+    let frequency: AdditiveFrequencyLevel
+    let trend: AdditiveTrendDirection
+
+    // Recent vs. earlier comparison (for "now vs then" visualization)
+    let recentScore: Int  // Last 7 days
+    let earlierScore: Int // Days 8-30
+
+    // Daily breakdown for sparkline visualization
+    let dailyBreakdown: [DailyAdditiveData]
+}
+
+/// Daily additive data point for visualization
+struct DailyAdditiveData: Identifiable {
+    let id = UUID()
+    let date: Date
+    let avoidCount: Int
+    let cautionCount: Int
+    let neutralCount: Int
+
+    var totalConcerning: Int {
+        avoidCount + cautionCount
+    }
+
+    var severity: AdditiveSeverity {
+        if avoidCount > 0 { return .avoid }
+        if cautionCount > 0 { return .caution }
+        return .neutral
+    }
+}
+
+enum AdditiveSeverity {
+    case avoid, caution, neutral
+
+    var color: Color {
+        switch self {
+        case .avoid: return .red
+        case .caution: return .orange
+        case .neutral: return SemanticColors.positive
+        }
+    }
+}
+
 // MARK: - ViewModel
 
 @MainActor
@@ -542,6 +664,250 @@ class AdditiveTrackerViewModel: ObservableObject {
             // Capitalize first letter of each word
             return category.capitalized
         }
+    }
+
+    // MARK: - Pattern Analysis (Time-Decay Scoring)
+
+    /// Calculate time-weighted pattern score based on recency and frequency
+    func analyzeAdditivePattern() async -> AdditivePatternScore {
+        // Get all additives from last 30 days with timestamps
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        let allEntries = await fetchAdditiveEntriesWithDates(since: thirtyDaysAgo)
+
+        // Calculate clean streak
+        let cleanStreak = calculateCleanStreak(entries: allEntries)
+
+        // Find last concerning additive
+        let concerningEntries = allEntries.filter { $0.verdict == "avoid" || $0.verdict == "caution" }
+        let lastConcerning = concerningEntries.sorted { $0.date > $1.date }.first
+
+        // Calculate frequency
+        let frequency = AdditiveFrequencyLevel.from(concerningCount: concerningEntries.count, days: 30)
+
+        // Calculate time-weighted score
+        var score = 100
+        for entry in allEntries {
+            let daysAgo = Calendar.current.dateComponents([.day], from: entry.date, to: Date()).day ?? 0
+            let weight = calculateTimeWeight(daysAgo: daysAgo)
+            let severity = entry.verdict == "avoid" ? 20 : (entry.verdict == "caution" ? 10 : 2)
+            score -= Int(Double(severity) * weight)
+        }
+        score = max(0, min(100, score))
+
+        // Calculate recent vs. earlier scores for trend
+        let recentEntries = allEntries.filter {
+            Calendar.current.dateComponents([.day], from: $0.date, to: Date()).day ?? 0 < 7
+        }
+        let earlierEntries = allEntries.filter {
+            let days = Calendar.current.dateComponents([.day], from: $0.date, to: Date()).day ?? 0
+            return days >= 7 && days < 30
+        }
+
+        let recentScore = calculateScore(for: recentEntries, days: 7)
+        let earlierScore = calculateScore(for: earlierEntries, days: 23)
+
+        // Determine trend
+        let trend: AdditiveTrendDirection
+        if recentScore > earlierScore + 15 {
+            trend = .improving
+        } else if recentScore < earlierScore - 15 {
+            trend = .declining
+        } else {
+            trend = .stable
+        }
+
+        // Generate grade and message
+        let grade = AdditivePatternGrade.from(score: score)
+        let message = generateEmotionalMessage(grade: grade, streak: cleanStreak, frequency: frequency, trend: trend)
+
+        // Generate daily breakdown for visualization
+        let dailyBreakdown = generateDailyBreakdown(entries: allEntries)
+
+        return AdditivePatternScore(
+            overallScore: score,
+            grade: grade,
+            message: message,
+            cleanStreakDays: cleanStreak,
+            lastConcerningDate: lastConcerning?.date,
+            lastConcerningAdditive: lastConcerning != nil ? createAggregate(from: lastConcerning!) : nil,
+            frequency: frequency,
+            trend: trend,
+            recentScore: recentScore,
+            earlierScore: earlierScore,
+            dailyBreakdown: dailyBreakdown
+        )
+    }
+
+    /// Time-decay weight function: exponential decay with 7-day half-life
+    private func calculateTimeWeight(daysAgo: Int) -> Double {
+        let decayConstant = 7.0
+        return exp(-Double(daysAgo) / decayConstant)
+    }
+
+    /// Calculate score for a set of entries over a period
+    private func calculateScore(for entries: [AdditiveEntry], days: Int) -> Int {
+        var score = 100
+        for entry in entries {
+            let severity = entry.verdict == "avoid" ? 20 : (entry.verdict == "caution" ? 10 : 2)
+            score -= severity
+        }
+        return max(0, min(100, score))
+    }
+
+    /// Calculate clean streak (days since last concerning additive)
+    private func calculateCleanStreak(entries: [AdditiveEntry]) -> Int {
+        let concerningEntries = entries.filter { $0.verdict == "avoid" || $0.verdict == "caution" }
+        guard let lastConcerning = concerningEntries.sorted(by: { $0.date > $1.date }).first else {
+            // No concerning additives ever? Count all 30 days
+            return 30
+        }
+
+        let daysSince = Calendar.current.dateComponents([.day], from: lastConcerning.date, to: Date()).day ?? 0
+        return max(0, daysSince)
+    }
+
+    /// Generate emotion-first message based on pattern analysis
+    private func generateEmotionalMessage(grade: AdditivePatternGrade, streak: Int, frequency: AdditiveFrequencyLevel, trend: AdditiveTrendDirection) -> String {
+        switch grade {
+        case .clean:
+            if streak >= 14 {
+                return "Clean streak: \(streak) days. You're thriving!"
+            } else if streak >= 7 {
+                return "Building good habits"
+            } else {
+                return "Your choices look good"
+            }
+
+        case .moderate:
+            if trend == .improving {
+                return "Making cleaner choices"
+            } else if frequency == .rare {
+                return "Worth noting what's in your food"
+            } else {
+                return "Some patterns emerging"
+            }
+
+        case .concerning:
+            if frequency == .daily {
+                return "Daily patterns worth exploring"
+            } else {
+                return "Patterns worth noting"
+            }
+        }
+    }
+
+    /// Generate daily breakdown for sparkline visualization
+    private func generateDailyBreakdown(entries: [AdditiveEntry]) -> [DailyAdditiveData] {
+        let calendar = Calendar.current
+        var dailyData: [Date: (avoid: Int, caution: Int, neutral: Int)] = [:]
+
+        // Group by day
+        for entry in entries {
+            let dayStart = calendar.startOfDay(for: entry.date)
+            var existing = dailyData[dayStart] ?? (0, 0, 0)
+
+            switch entry.verdict {
+            case "avoid":
+                existing.avoid += 1
+            case "caution":
+                existing.caution += 1
+            default:
+                existing.neutral += 1
+            }
+
+            dailyData[dayStart] = existing
+        }
+
+        // Convert to array sorted by date
+        return dailyData.map { date, counts in
+            DailyAdditiveData(
+                date: date,
+                avoidCount: counts.avoid,
+                cautionCount: counts.caution,
+                neutralCount: counts.neutral
+            )
+        }.sorted { $0.date < $1.date }
+    }
+
+    /// Helper struct for pattern analysis
+    private struct AdditiveEntry {
+        let date: Date
+        let code: String
+        let name: String
+        let verdict: String
+        let category: String
+    }
+
+    /// Fetch additive entries with timestamps from Firebase
+    private func fetchAdditiveEntriesWithDates(since startDate: Date) async -> [AdditiveEntry] {
+        guard let userId = firebaseManager.getCurrentUserId() else { return [] }
+
+        do {
+            let snapshot = try await firebaseManager.db
+                .collection("users")
+                .document(userId)
+                .collection("foodLog")
+                .whereField("timestamp", isGreaterThanOrEqualTo: startDate)
+                .getDocuments()
+
+            var entries: [AdditiveEntry] = []
+
+            for document in snapshot.documents {
+                let data = document.data()
+                guard let timestamp = (data["timestamp"] as? Timestamp)?.dateValue(),
+                      let ingredients = data["ingredients"] as? [[String: Any]] else {
+                    continue
+                }
+
+                for ingredient in ingredients {
+                    guard let code = ingredient["eNumber"] as? String,
+                          !code.isEmpty,
+                          let name = ingredient["name"] as? String else {
+                        continue
+                    }
+
+                    // Look up additive data
+                    if let additiveData = await firebaseManager.fetchAdditiveData(code: code) {
+                        let verdict = additiveData["effectsVerdict"] as? String ?? ""
+                        let category = additiveData["category"] as? String ?? ""
+
+                        entries.append(AdditiveEntry(
+                            date: timestamp,
+                            code: code,
+                            name: name,
+                            verdict: verdict,
+                            category: category
+                        ))
+                    }
+                }
+            }
+
+            return entries
+        } catch {
+            print("Error fetching additive entries: \(error)")
+            return []
+        }
+    }
+
+    /// Create aggregate from single entry (for "last concerning" display)
+    private func createAggregate(from entry: AdditiveEntry) -> AdditiveAggregate {
+        // This is a simplified version - in real use we'd fetch full data
+        return AdditiveAggregate(
+            code: entry.code,
+            name: entry.name,
+            category: entry.category,
+            healthScore: 50,
+            effectsVerdict: entry.verdict,
+            childWarning: false,
+            occurrenceCount: 1,
+            foodItems: [],
+            origin: nil,
+            consumerGuide: nil,
+            overview: nil,
+            effectsSummary: nil,
+            hasPKUWarning: false,
+            hasSulphitesAllergenLabel: false
+        )
     }
 
     // MARK: - Cache Management

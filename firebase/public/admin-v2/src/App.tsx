@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, ReportsPage } from './components';
+import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage } from './components';
 import { useGridStore } from './store';
 import { searchAllIndices, getIndexStats } from './services/algoliaService';
 import { batchUpdateFoods, batchDeleteFoods, initializeFirebase } from './services/firebaseService';
@@ -48,7 +48,7 @@ const AppContent: React.FC = () => {
   const [isDetectingDuplicates, setIsDetectingDuplicates] = useState(false);
   const [showOFFModal, setShowOFFModal] = useState(false);
   const [showDuplicatesPanel, setShowDuplicatesPanel] = useState(false);
-  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'reports'>('grid');
+  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports'>('grid');
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   // Load pending reports count
@@ -261,6 +261,15 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Show Google image scraper page
+  if (currentView === 'google-scraper') {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50">
+        <GoogleImageScraperPage onBack={() => setCurrentView('grid')} />
+      </div>
+    );
+  }
+
   // Show reports page
   if (currentView === 'reports') {
     return (
@@ -300,6 +309,7 @@ const AppContent: React.FC = () => {
           onDetectDuplicates={handleDetectDuplicates}
           onLookupOFF={handleLookupOFF}
           onImageProcessing={() => setCurrentView('image-processing')}
+          onGoogleScraper={() => setCurrentView('google-scraper')}
           onReports={() => setCurrentView('reports')}
           isDetectingDuplicates={isDetectingDuplicates}
           pendingReportsCount={pendingReportsCount}

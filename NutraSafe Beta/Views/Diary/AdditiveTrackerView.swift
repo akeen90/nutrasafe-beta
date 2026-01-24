@@ -534,7 +534,7 @@ struct AdditiveTrackerSection: View {
                             sectionId: "whereFound",
                             title: "Where it's found",
                             content: {
-                                ForEach(additive.whereItsFound.prefix(5), id: \.self) { food in
+                                ForEach(additive.whereItsFound, id: \.self) { food in
                                     HStack(spacing: 8) {
                                         Text("•")
                                             .font(.system(size: 11))
@@ -543,16 +543,10 @@ struct AdditiveTrackerSection: View {
                                         Text(food)
                                             .font(.system(size: 12))
                                             .foregroundColor(appPalette.textSecondary)
-                                            .lineLimit(1)
+                                            .fixedSize(horizontal: false, vertical: true)
 
                                         Spacer()
                                     }
-                                }
-
-                                if additive.whereItsFound.count > 5 {
-                                    Text("and \(additive.whereItsFound.count - 5) more...")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(appPalette.textTertiary)
                                 }
                             }
                         )

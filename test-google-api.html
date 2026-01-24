@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Google Custom Search API</title>
+</head>
+<body>
+    <h1>Google Custom Search API Test</h1>
+    <button onclick="testSearch()">Test Search for "Cadbury Dairy Milk"</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testSearch() {
+            const apiKey = 'AIzaSyC_UY9AgNcilmCA0MsuI6QflqT5SWJ9D4k';
+            const cx = '66328932c18d14706';
+            const query = 'Cadbury Dairy Milk product white background';
+
+            const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(query)}&searchType=image&num=5&imgSize=large&imgDominantColor=white`;
+
+            document.getElementById('result').textContent = 'Searching...\n\n';
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('result').textContent =
+                        'ERROR:\n' + JSON.stringify(data.error, null, 2);
+                } else {
+                    document.getElementById('result').textContent =
+                        'SUCCESS! Found ' + (data.items?.length || 0) + ' images\n\n' +
+                        JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                document.getElementById('result').textContent =
+                    'FETCH ERROR:\n' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
