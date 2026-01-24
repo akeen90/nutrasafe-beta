@@ -66,39 +66,50 @@ struct AdditiveAggregate: Identifiable {
         }
     }
 
-    /// Build "What I need to know" health claim bullets
+    /// Build "What I need to know" health claim bullets - research-backed, specific claims
     var whatYouNeedToKnow: [String] {
         var bullets: [String] = []
 
-        // Child warning (Southampton Six)
+        // Child warning (Southampton Six study - specific research)
         if childWarning {
-            bullets.append("May affect children's activity and attention")
+            bullets.append("Linked to hyperactivity in children (Southampton Six study)")
         }
 
-        // PKU warning
+        // PKU warning (serious health condition)
         if hasPKUWarning {
-            bullets.append("Not suitable for people with phenylketonuria (PKU)")
+            bullets.append("Dangerous for people with phenylketonuria (PKU) - can cause brain damage")
         }
 
-        // Sulphites allergen
+        // Sulphites allergen (specific reactions)
         if hasSulphitesAllergenLabel {
-            bullets.append("Contains sulphites (allergen)")
+            bullets.append("Contains sulphites - can trigger asthma attacks and allergic reactions")
         }
 
-        // Polyols warning
+        // Polyols warning (digestive effects)
         if hasPolyolsWarning {
-            bullets.append("May have a laxative effect if consumed in large amounts")
+            bullets.append("May cause bloating, gas, and laxative effects in large amounts")
         }
 
-        // Verdict-based claim
+        // Verdict-based claim - more specific based on risk level
         switch effectsVerdict.lowercased() {
         case "avoid":
-            bullets.append("Some studies suggest limiting intake")
+            // High-risk additives need strong, specific warnings
+            if !bullets.isEmpty {
+                bullets.append("Regulatory bodies recommend avoiding or limiting intake")
+            } else {
+                bullets.append("Some research links this additive to potential health concerns")
+            }
         case "caution":
-            bullets.append("Some people may wish to avoid")
+            // Moderate-risk additives
+            if !bullets.isEmpty {
+                bullets.append("Consume in moderation - some studies suggest caution")
+            } else {
+                bullets.append("Some people may experience sensitivity or wish to avoid")
+            }
         default:
+            // Only show "safe" if there are NO other warnings
             if bullets.isEmpty {
-                bullets.append("Generally recognised as safe")  // British spelling
+                bullets.append("Generally recognised as safe at permitted use levels")
             }
         }
 

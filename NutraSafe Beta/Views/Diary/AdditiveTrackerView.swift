@@ -15,6 +15,7 @@ struct AdditiveTrackerSection: View {
     @ObservedObject var viewModel: AdditiveTrackerViewModel
     @State private var expandedAdditiveId: String?
     @State private var fullFactsExpandedId: String?
+    @State private var funDescriptionExpandedId: String?
     @State private var isExpanded = true
     @State private var showingSources = false
     @Environment(\.colorScheme) private var colorScheme
@@ -515,43 +516,12 @@ struct AdditiveTrackerSection: View {
             // Expanded content
             if isExpanded {
                 VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-
-                    // ORIGINAL: Fun engaging description (what is it)
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.purple)
-                            .frame(width: 16)
-
-                        Text(additive.whatIsIt)
-                            .font(.system(size: 13))
-                            .foregroundColor(appPalette.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.leading, 4)
-
-                    // ORIGINAL: Fun origin description (where from)
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "leaf.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.teal)
-                            .frame(width: 16)
-
-                        Text(additive.whereIsItFrom)
-                            .font(.system(size: 13))
-                            .foregroundColor(appPalette.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.leading, 4)
-
-                    // NEW: "What I need to know" section - health claims
+                    // PRIORITY 1: "What I need to know" - ALWAYS VISIBLE, TOP POSITION
                     if !additive.whatYouNeedToKnow.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("What I need to know")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(appPalette.textPrimary)
-                                .padding(.top, 4)
 
                             ForEach(additive.whatYouNeedToKnow, id: \.self) { claim in
                                 HStack(alignment: .top, spacing: 8) {
@@ -568,6 +538,68 @@ struct AdditiveTrackerSection: View {
                                     Spacer()
                                 }
                             }
+                        }
+                        .padding(.top, 8)
+                    }
+
+                    // PRIORITY 2: Fun descriptions - COLLAPSIBLE (starts closed)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button(action: {
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) {
+                                if funDescriptionExpandedId == additive.id {
+                                    funDescriptionExpandedId = nil
+                                } else {
+                                    funDescriptionExpandedId = additive.id
+                                }
+                            }
+                        }) {
+                            HStack {
+                                Text("More about this additive")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(appPalette.textPrimary)
+
+                                Spacer()
+
+                                Image(systemName: funDescriptionExpandedId == additive.id ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(appPalette.textTertiary)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        if funDescriptionExpandedId == additive.id {
+                            VStack(alignment: .leading, spacing: 10) {
+                                // Fun engaging description (what is it)
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: "info.circle.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.purple)
+                                        .frame(width: 16)
+
+                                    Text(additive.whatIsIt)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(appPalette.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(.leading, 4)
+
+                                // Fun origin description (where from)
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: "leaf.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.teal)
+                                        .frame(width: 16)
+
+                                    Text(additive.whereIsItFrom)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(appPalette.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(.leading, 4)
+                            }
+                            .padding(.top, 4)
                         }
                     }
 
