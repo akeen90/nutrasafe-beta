@@ -17,6 +17,7 @@ struct AdditivePatternSectionRedesigned: View {
     @State private var expandedSections: [String: Set<String>] = [:]
     @State private var showingSources = false
     @State private var isLoadingPattern = false
+    @State private var watchedAdditives: Set<String> = [] // E-numbers user wants to track
     @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("userIntent") private var userIntentRaw: String = "safer"
@@ -61,16 +62,22 @@ struct AdditivePatternSectionRedesigned: View {
             .padding(.vertical, 16)
 
             VStack(spacing: 20) {
-                if isLoadingPattern {
+                if viewModel.isLoading {
                     loadingView
-                } else if let score = patternScore {
-                    // Summary card with real info
-                    summaryCard(score)
-                        .padding(.horizontal, 20)
+                } else if viewModel.hasData {
+                    // Summary card with real info (if pattern score loaded)
+                    if let score = patternScore {
+                        summaryCard(score)
+                            .padding(.horizontal, 20)
 
-                    // Full-width trend card (if changing)
-                    if score.trend != .stable {
-                        trendCard(score)
+                        // Full-width trend card (if changing)
+                        if score.trend != .stable {
+                            trendCard(score)
+                                .padding(.horizontal, 20)
+                        }
+                    } else {
+                        // Show simple summary while pattern loads
+                        simpleSummary
                             .padding(.horizontal, 20)
                     }
 
@@ -95,12 +102,57 @@ struct AdditivePatternSectionRedesigned: View {
         )
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        .onAppear {
+            loadWatchedAdditives()
+            viewModel.loadData()
+        }
         .task {
             await loadPatternScore()
         }
         .fullScreenCover(isPresented: $showingSources) {
             SourcesAndCitationsView()
         }
+    }
+
+    // MARK: - Simple Summary (while pattern loads)
+
+    private var simpleSummary: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(SemanticColors.positive.opacity(0.15))
+                        .frame(width: 56, height: 56)
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(SemanticColors.positive)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("This week's additives")
+                        .font(.system(size: 16, weight: .semibold, design: .serif))
+                        .foregroundColor(appPalette.textPrimary)
+
+                    HStack(spacing: 12) {
+                        HStack(spacing: 4) {
+                            Text("\(viewModel.totalAdditiveCount)")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("total")
+                                .font(.system(size: 13))
+                        }
+                        .foregroundColor(appPalette.textSecondary)
+                    }
+                }
+
+                Spacer()
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(appPalette.tertiary.opacity(colorScheme == .dark ? 0.08 : 0.04))
+        )
     }
 
     // MARK: - Summary Card (Clear, Informative)
@@ -274,34 +326,45 @@ struct AdditivePatternSectionRedesigned: View {
 
     private func additiveGroup(title: String, subtitle: String, additives: [AdditiveAggregate], color: Color) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with explanation
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 8, height: 8)
+            // Header with explanation - MORE PROMINENT
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    // Larger, clearer risk indicator
+                    ZStack {
+                        Circle()
+                            .fill(color.opacity(0.15))
+                            .frame(width: 28, height: 28)
 
-                    Text(title)
-                        .font(.system(size: 15, weight: .semibold, design: .serif))
-                        .foregroundColor(appPalette.textPrimary)
+                        Circle()
+                            .fill(color)
+                            .frame(width: 10, height: 10)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.system(size: 16, weight: .bold, design: .serif))
+                            .foregroundColor(appPalette.textPrimary)
+
+                        Text(subtitle)
+                            .font(.system(size: 13))
+                            .foregroundColor(appPalette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
                     Spacer()
 
                     Text("\(additives.count)")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(color)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
                         .background(
                             Capsule()
-                                .fill(color.opacity(0.12))
+                                .fill(color.opacity(0.15))
                         )
                 }
-
-                Text(subtitle)
-                    .font(.system(size: 12))
-                    .foregroundColor(appPalette.textSecondary)
             }
+            .padding(.bottom, 4)
 
             // Additive rows with expand for details
             VStack(spacing: 0) {
@@ -324,59 +387,82 @@ struct AdditivePatternSectionRedesigned: View {
 
     private func additiveRow(_ additive: AdditiveAggregate, color: Color) -> some View {
         let isExpanded = expandedAdditiveId == additive.id
+        let isWatched = watchedAdditives.contains(additive.code)
 
         return VStack(alignment: .leading, spacing: 0) {
-            Button(action: {
-                withAnimation(.none) {
-                    expandedAdditiveId = expandedAdditiveId == additive.id ? nil : additive.id
-                }
-            }) {
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 10, height: 10)
+            HStack(spacing: 12) {
+                // Risk indicator
+                Circle()
+                    .fill(color)
+                    .frame(width: 10, height: 10)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text(additive.name)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(appPalette.textPrimary)
-
-                            if !additive.code.isEmpty {
-                                Text(additive.code)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(appPalette.textSecondary)
-                            }
-                        }
-
-                        // Show occurrence count and foods
-                        HStack(spacing: 8) {
-                            Text("×\(additive.occurrenceCount)")
-                                .font(.system(size: 12))
-                                .foregroundColor(appPalette.textTertiary)
-
-                            if !additive.foodItems.isEmpty {
-                                Text("·")
-                                    .foregroundColor(appPalette.textTertiary)
-                                Text(additive.foodItems.prefix(2).joined(separator: ", "))
-                                    .font(.system(size: 12))
-                                    .foregroundColor(appPalette.textSecondary)
-                                    .lineLimit(1)
-                            }
-                        }
+                // Main content - tappable
+                Button(action: {
+                    withAnimation(.none) {
+                        expandedAdditiveId = expandedAdditiveId == additive.id ? nil : additive.id
                     }
+                }) {
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                // Watched indicator
+                                if isWatched {
+                                    Image(systemName: "eye.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.orange)
+                                }
 
-                    Spacer()
+                                Text(additive.name)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor(appPalette.textPrimary)
 
-                    Image(systemName: isExpanded ? "chevron.up" : "info.circle")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(appPalette.textTertiary)
+                                if !additive.code.isEmpty {
+                                    Text(additive.code)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(appPalette.textSecondary)
+                                }
+                            }
+
+                            // Show occurrence count and foods
+                            HStack(spacing: 8) {
+                                Text("×\(additive.occurrenceCount)")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(appPalette.textTertiary)
+
+                                if !additive.foodItems.isEmpty {
+                                    Text("in")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(appPalette.textTertiary)
+                                    Text(additive.foodItems.prefix(2).joined(separator: ", "))
+                                        .font(.system(size: 12))
+                                        .foregroundColor(appPalette.textSecondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(systemName: isExpanded ? "chevron.up" : "info.circle")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(appPalette.textTertiary)
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 12)
-                .contentShape(Rectangle())
+                .buttonStyle(PlainButtonStyle())
+
+                // Watch/Flag button
+                Button(action: {
+                    toggleWatch(for: additive.code)
+                }) {
+                    Image(systemName: isWatched ? "eye.fill" : "eye")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(isWatched ? .orange : appPalette.textTertiary.opacity(0.5))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
 
             // Expanded: Show the actual useful info from AdditiveTrackerView
             if isExpanded {
@@ -535,5 +621,21 @@ struct AdditivePatternSectionRedesigned: View {
         isLoadingPattern = true
         patternScore = await viewModel.analyzeAdditivePattern()
         isLoadingPattern = false
+    }
+
+    private func toggleWatch(for code: String) {
+        if watchedAdditives.contains(code) {
+            watchedAdditives.remove(code)
+        } else {
+            watchedAdditives.insert(code)
+        }
+        // Persist to UserDefaults
+        UserDefaults.standard.set(Array(watchedAdditives), forKey: "watchedAdditives")
+    }
+
+    private func loadWatchedAdditives() {
+        if let saved = UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] {
+            watchedAdditives = Set(saved)
+        }
     }
 }

@@ -228,43 +228,41 @@ export async function analyzeImageQuality(
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const pixels = imageData.data;
 
-        // Analyze edges for background detection
-        const edgePixels: number[] = [];
-        const edgeThickness = Math.floor(Math.min(canvas.width, canvas.height) * 0.1);
+        // Analyze CENTER region for product background (not edges which may be studio background)
+        const centerPixels: number[] = [];
+        const centerSize = Math.floor(Math.min(canvas.width, canvas.height) * 0.6); // 60% of image
+        const centerX = Math.floor((canvas.width - centerSize) / 2);
+        const centerY = Math.floor((canvas.height - centerSize) / 2);
 
-        // Sample edges
-        for (let x = 0; x < canvas.width; x++) {
-          for (let y = 0; y < edgeThickness; y++) {
+        // Sample center region where the product typically is
+        for (let y = centerY; y < centerY + centerSize; y += 3) { // Sample every 3rd pixel for speed
+          for (let x = centerX; x < centerX + centerSize; x += 3) {
             const idx = (y * canvas.width + x) * 4;
-            edgePixels.push(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
-          }
-          for (let y = canvas.height - edgeThickness; y < canvas.height; y++) {
-            const idx = (y * canvas.width + x) * 4;
-            edgePixels.push(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
-          }
-        }
+            const r = pixels[idx];
+            const g = pixels[idx + 1];
+            const b = pixels[idx + 2];
 
-        for (let y = edgeThickness; y < canvas.height - edgeThickness; y++) {
-          for (let x = 0; x < edgeThickness; x++) {
-            const idx = (y * canvas.width + x) * 4;
-            edgePixels.push(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
-          }
-          for (let x = canvas.width - edgeThickness; x < canvas.width; x++) {
-            const idx = (y * canvas.width + x) * 4;
-            edgePixels.push(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
+            // Only sample bright pixels (potential white background)
+            if (r > 200 && g > 200 && b > 200) {
+              centerPixels.push(r, g, b);
+            }
           }
         }
 
         onProgress?.(60);
 
-        // Calculate average edge color
-        const avgR = edgePixels.filter((_, i) => i % 3 === 0).reduce((a, b) => a + b, 0) / (edgePixels.length / 3);
-        const avgG = edgePixels.filter((_, i) => i % 3 === 1).reduce((a, b) => a + b, 0) / (edgePixels.length / 3);
-        const avgB = edgePixels.filter((_, i) => i % 3 === 2).reduce((a, b) => a + b, 0) / (edgePixels.length / 3);
+        // Calculate average of bright center pixels
+        let avgR = 0, avgG = 0, avgB = 0;
 
-        // Check if background is white (all RGB > 240)
-        const isWhite = avgR > 240 && avgG > 240 && avgB > 240;
-        const whiteness = (avgR + avgG + avgB) / (3 * 255) * 100;
+        if (centerPixels.length > 0) {
+          avgR = centerPixels.filter((_, i) => i % 3 === 0).reduce((a, b) => a + b, 0) / (centerPixels.length / 3);
+          avgG = centerPixels.filter((_, i) => i % 3 === 1).reduce((a, b) => a + b, 0) / (centerPixels.length / 3);
+          avgB = centerPixels.filter((_, i) => i % 3 === 2).reduce((a, b) => a + b, 0) / (centerPixels.length / 3);
+        }
+
+        // Check if product has white background (all RGB > 235)
+        const isWhite = avgR > 235 && avgG > 235 && avgB > 235 && centerPixels.length > 100;
+        const whiteness = centerPixels.length > 0 ? (avgR + avgG + avgB) / (3 * 255) * 100 : 0;
 
         onProgress?.(80);
 

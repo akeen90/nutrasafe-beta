@@ -38,6 +38,7 @@ interface FoodWithImage {
   status: 'pending' | 'searching' | 'analyzing' | 'ready' | 'uploading' | 'completed' | 'failed' | 'no_results';
   error?: string;
   analysisProgress: number;
+  confidence?: number; // 0-100 confidence score
 }
 
 interface ProcessingStats {
@@ -262,11 +263,12 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         return { ...food, status: 'no_results', searchResults: results, error: 'All images disqualified' };
       }
 
-      // Step 2: Try analyzing images until we find one that works (CORS issues)
+      // Step 2: Analyze top results and score them
       let bestResult = null;
       let bestAnalysis = null;
+      let bestConfidence = 0;
 
-      for (let i = 0; i < Math.min(validResults.length, 5); i++) {
+      for (let i = 0; i < Math.min(validResults.length, 8); i++) {
         const candidate = validResults[i];
         addLog(`Analyzing result ${i + 1}/${validResults.length} for ${food.name} (${candidate.domain})`);
 
@@ -282,24 +284,41 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             setFoods(prev => prev.map(f => f.id === food.id ? { ...f, analysisProgress: progress } : f));
           });
 
-          addLog(`Analysis complete for ${food.name}: ${analysis.isCleanProductShot ? '✓ Clean' : '✗ Not clean'}`);
+          // Calculate confidence score (0-100)
+          let confidence = 0;
 
-          // If this is a clean shot, use it immediately
-          if (analysis.isCleanProductShot) {
+          // White background: +40 points
+          if (analysis.hasWhiteBackground) confidence += 40;
+
+          // No overlays: +30 points
+          if (!analysis.hasOverlay) confidence += 30;
+
+          // High background confidence: up to +20 points
+          confidence += Math.min(20, analysis.backgroundConfidence * 0.2);
+
+          // Manufacturer site: +10 bonus points
+          if (candidate.isManufacturerSite) confidence += 10;
+
+          addLog(`Analysis: ${food.name} - Confidence: ${Math.round(confidence)}% (BG: ${analysis.backgroundConfidence}%, Overlay: ${analysis.hasOverlay ? 'Yes' : 'No'})`);
+
+          // If confidence >= 80%, use it immediately
+          if (confidence >= 80) {
+            addLog(`✓ High confidence (${Math.round(confidence)}%) - Auto-selecting`);
             bestResult = candidate;
             bestAnalysis = analysis;
+            bestConfidence = confidence;
             break;
           }
 
-          // Otherwise, keep trying but remember the best we've found
-          if (!bestAnalysis || analysis.qualityScore > bestAnalysis.qualityScore) {
+          // Otherwise, remember the best we've found
+          if (confidence > bestConfidence) {
             bestResult = candidate;
             bestAnalysis = analysis;
+            bestConfidence = confidence;
           }
 
         } catch (error) {
           addLog(`Failed to analyze image from ${candidate.domain}: ${error instanceof Error ? error.message : 'CORS error'}`);
-          // Continue to next image
           continue;
         }
       }
@@ -310,17 +329,26 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           ...food,
           searchResults: results,
           status: 'failed',
-          error: 'All images blocked by CORS - try different products or sources',
+          error: 'All images blocked by CORS',
         };
       }
+
+      const confidence = Math.round(bestConfidence);
+      const status = confidence >= 80 ? 'ready' : 'analyzing'; // Use 'analyzing' status for review needed
+      const message = confidence >= 80
+        ? `✓ High confidence (${confidence}%) - Ready to use`
+        : `⚠ Low confidence (${confidence}%) - Review needed`;
+
+      addLog(message);
 
       return {
         ...food,
         searchResults: results,
         selectedImageUrl: bestResult.url,
         analysis: bestAnalysis,
-        status: bestAnalysis.isCleanProductShot ? 'ready' : 'failed',
-        error: bestAnalysis.isCleanProductShot ? undefined : `Not a clean product shot: ${bestAnalysis.overlayTypes.join(', ')}`,
+        status,
+        confidence,
+        error: confidence < 80 ? `Low confidence (${confidence}%) - ${bestAnalysis.overlayTypes.join(', ') || 'Check image quality'}` : undefined,
         analysisProgress: 100,
       };
     } catch (error) {
@@ -770,9 +798,13 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                           <div className="mt-3">
                             <div className="text-xs text-gray-500 mb-2">
                               Found {food.searchResults.length} images
-                              {food.analysis && (
-                                <span className={`ml-2 ${food.analysis.isCleanProductShot ? 'text-green-600' : 'text-red-600'}`}>
-                                  {food.analysis.isCleanProductShot ? '✓ Clean' : '✗ Has issues'}
+                              {food.confidence !== undefined && (
+                                <span className={`ml-2 font-semibold ${
+                                  food.confidence >= 80 ? 'text-green-600' :
+                                  food.confidence >= 60 ? 'text-yellow-600' :
+                                  'text-red-600'
+                                }`}>
+                                  {food.confidence >= 80 ? '✓' : '⚠'} {food.confidence}% confidence
                                 </span>
                               )}
                             </div>
