@@ -2266,14 +2266,27 @@ struct LogReactionSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    LinearGradient(
-                        colors: isValid ? [Color(red: 0.3, green: 0.5, blue: 1.0), Color(red: 0.5, green: 0.3, blue: 0.9)] : [.gray.opacity(0.6), .gray.opacity(0.4)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    Group {
+                        if isValid {
+                            // Use user-adaptive gradient matching onboarding aesthetic
+                            let userIntent = UserIntent(rawValue: UserDefaults.standard.string(forKey: "userIntent") ?? "safer") ?? .safer
+                            let palette = OnboardingPalette.forIntent(userIntent)
+                            LinearGradient(
+                                colors: [palette.accent, palette.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        } else {
+                            LinearGradient(
+                                colors: [.gray.opacity(0.6), .gray.opacity(0.4)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        }
+                    }
                 )
                 .cornerRadius(14)
-                .shadow(color: isValid ? .blue.opacity(0.3) : .clear, radius: 8, x: 0, y: 4)
+                .shadow(color: isValid ? Color.black.opacity(0.15) : .clear, radius: 8, x: 0, y: 4)
             }
             .disabled(isSaving || !isValid)
         }

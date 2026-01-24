@@ -870,7 +870,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                                         formData.append('index', food.sourceIndex);
                                         formData.append('objectID', food.objectID);
 
-                                        const uploadResponse = await fetch('/api/upload-food-image', {
+                                        const uploadResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/uploadFoodImage', {
                                           method: 'POST',
                                           body: formData,
                                         });
