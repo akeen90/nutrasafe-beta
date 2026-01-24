@@ -98,7 +98,7 @@ struct AdditiveAggregate: Identifiable {
             bullets.append("Some people may wish to avoid")
         default:
             if bullets.isEmpty {
-                bullets.append("Generally recognized as safe")
+                bullets.append("Generally recognised as safe")  // British spelling
             }
         }
 

@@ -515,12 +515,43 @@ struct AdditiveTrackerSection: View {
             // Expanded content
             if isExpanded {
                 VStack(alignment: .leading, spacing: 12) {
-                    // "What I need to know" section - always visible
+                    Divider()
+
+                    // ORIGINAL: Fun engaging description (what is it)
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.purple)
+                            .frame(width: 16)
+
+                        Text(additive.whatIsIt)
+                            .font(.system(size: 13))
+                            .foregroundColor(appPalette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.leading, 4)
+
+                    // ORIGINAL: Fun origin description (where from)
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "leaf.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.teal)
+                            .frame(width: 16)
+
+                        Text(additive.whereIsItFrom)
+                            .font(.system(size: 13))
+                            .foregroundColor(appPalette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.leading, 4)
+
+                    // NEW: "What I need to know" section - health claims
                     if !additive.whatYouNeedToKnow.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("What I need to know")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(appPalette.textPrimary)
+                                .padding(.top, 4)
 
                             ForEach(additive.whatYouNeedToKnow, id: \.self) { claim in
                                 HStack(alignment: .top, spacing: 8) {
