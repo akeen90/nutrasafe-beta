@@ -594,6 +594,7 @@ struct RedesignedAdditiveRow: View {
     let onTap: () -> Void
 
     @Environment(\.colorScheme) var colorScheme
+    @State private var isScientificBackgroundExpanded = false
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
@@ -680,17 +681,31 @@ struct RedesignedAdditiveRow: View {
 
                     // Scientific Background - Expandable long-form explanation
                     if !additive.scientificBackground.isEmpty {
-                        DisclosureGroup {
-                            Text(additive.scientificBackground)
-                                .font(.system(size: 13))
-                                .foregroundColor(palette.textSecondary)
-                                .padding(.top, 8)
-                        } label: {
-                            Text("Scientific Background")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(palette.textPrimary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                isScientificBackgroundExpanded.toggle()
+                            }) {
+                                HStack {
+                                    Text("Scientific Background")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(palette.textPrimary)
+
+                                    Spacer()
+
+                                    Image(systemName: isScientificBackgroundExpanded ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(palette.textTertiary)
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            if isScientificBackgroundExpanded {
+                                Text(additive.scientificBackground)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(palette.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
-                        .accentColor(palette.accent)
                     }
 
                     // Personal sensitivity warning
