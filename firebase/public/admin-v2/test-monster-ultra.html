@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monster Ultra Test</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; max-width: 1400px; margin: 0 auto; background: #f5f5f5; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button { padding: 12px 24px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background: #45a049; }
+        .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .image-card { border: 2px solid #ddd; border-radius: 8px; padding: 10px; background: white; }
+        .image-card.excluded { border-color: #f44336; opacity: 0.5; }
+        .image-card.manufacturer { border-color: #4CAF50; }
+        .image-card img { width: 100%; height: 200px; object-fit: contain; background: #fafafa; }
+        .image-info { font-size: 12px; margin-top: 8px; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 11px; margin: 2px; }
+        .badge.excluded { background: #f44336; color: white; }
+        .badge.manufacturer { background: #4CAF50; color: white; }
+        .stats { background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Monster Ultra SearchAPI Test</h1>
+    
+    <div class="card">
+        <h2>Test Parameters</h2>
+        <p><strong>Product:</strong> Monster Ultra</p>
+        <p><strong>Brand:</strong> Monster</p>
+        <p><strong>API Key:</strong> gRLnCJAV5rWycCc6PKrAUYHb</p>
+        <button onclick="runTest()">🚀 Run Test</button>
+    </div>
+
+    <div id="stats" class="stats" style="display:none;"></div>
+    <div id="console" class="card" style="display:none;">
+        <h3>Console Output</h3>
+        <pre id="console-output"></pre>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        const API_KEY = 'gRLnCJAV5rWycCc6PKrAUYHb';
+        const EXCLUDED_DOMAINS = [
+          'tesco.com', 'sainsburys.co.uk', 'asda.com', 'morrisons.com',
+          'waitrose.com', 'ocado.com', 'amazon.co.uk', 'ebay.co.uk',
+        ];
+        const MANUFACTURER_DOMAINS = [
+          'nestle.com', 'unilever.com', 'pepsico.com', 'cocacola.com', 'kellogs.com',
+          'kraftheinz.com', 'danone.com', 'generalmills.com', 'mondelez.com',
+          'mars.com', 'ferrero.com', 'heinz.com', 'campbells.com', 'kelloggs.co.uk',
+          'monsterenergy.com', 'monster.com',
+        ];
+
+        let logs = [];
+        function log(msg) {
+            console.log(msg);
+            logs.push(msg);
+            document.getElementById('console-output').textContent = logs.join('\n');
+        }
+
+        async function runTest() {
+            logs = [];
+            document.getElementById('console').style.display = 'block';
+            document.getElementById('stats').style.display = 'block';
+            document.getElementById('results').innerHTML = '';
+            
+            log('Starting test...');
+            
+            // Clean query like the code does
+            let productName = 'Ultra';
+            let brandName = 'Monster';
+            let query = `${brandName} ${productName}`;
+            
+            // Apply cleaning
+            query = query
+                .replace(/\b(zero sugar|sugar free|no sugar|caffeine free)\b/gi, '')
+                .replace(/\b\d+ml\b/gi, '')
+                .replace(/\b\d+g\b/gi, '')
+                .replace(/\bpack of \d+\b/gi, '')
+                .replace(/\bmultipack\b/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            
+            log(`Query: "${query}"`);
+            
+            const params = new URLSearchParams({
+                api_key: API_KEY,
+                engine: 'google_images',
+                q: query,
+                hl: 'en',
+                gl: 'uk',
+                num: '10'
+            });
+
+            try {
+                log('Fetching from SearchAPI...');
+                const response = await fetch(`https://www.searchapi.io/api/v1/search?${params}`);
+                const data = await response.json();
+                
+                log(`Response keys: ${Object.keys(data).join(', ')}`);
+                
+                const images = data.images || [];
+                log(`Total images returned: ${images.length}`);
+                
+                // Process like the dashboard does
+                const results = images.map((item, index) => {
+                    const url = item.original?.link || item.thumbnail || '';
+                    let domain = '';
+                    try {
+                        domain = item.source?.name || new URL(item.source?.link || url).hostname.replace('www.', '');
+                    } catch (e) {
+                        domain = '';
+                    }
+                    
+                    const isManufacturer = MANUFACTURER_DOMAINS.some(d => domain.toLowerCase().includes(d));
+                    const isExcluded = EXCLUDED_DOMAINS.some(d => domain.toLowerCase().includes(d));
+                    
+                    return {
+                        position: index + 1,
+                        url,
+                        thumbnail: item.thumbnail,
+                        title: item.title || '',
+                        domain,
+                        isManufacturer,
+                        isExcluded
+                    };
+                });
+                
+                const validResults = results.filter(r => !r.isExcluded);
+                const excludedResults = results.filter(r => r.isExcluded);
+                const manufacturerResults = results.filter(r => r.isManufacturer);
+                
+                log(`Valid images: ${validResults.length}`);
+                log(`Excluded (retailers): ${excludedResults.length}`);
+                log(`Manufacturer sites: ${manufacturerResults.length}`);
+                
+                // Stats
+                document.getElementById('stats').innerHTML = `
+                    <h3>📊 Results Summary</h3>
+                    <p><strong>Total:</strong> ${results.length}</p>
+                    <p><strong>✅ Valid:</strong> ${validResults.length}</p>
+                    <p><strong>❌ Excluded:</strong> ${excludedResults.length}</p>
+                    <p><strong>🏭 Manufacturer:</strong> ${manufacturerResults.length}</p>
+                `;
+                
+                // Display images
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = '<div class="card"><h3>🖼️ All Results</h3><div class="images-grid" id="grid"></div></div>';
+                const grid = document.getElementById('grid');
+                
+                results.forEach(r => {
+                    const card = document.createElement('div');
+                    card.className = `image-card ${r.isExcluded ? 'excluded' : ''} ${r.isManufacturer ? 'manufacturer' : ''}`;
+                    card.innerHTML = `
+                        <img src="${r.thumbnail}" alt="${r.title}" loading="lazy">
+                        <div class="image-info">
+                            <div><strong>#${r.position}</strong></div>
+                            <div style="font-size:10px; margin:4px 0;">${r.title.substring(0, 50)}...</div>
+                            <div><strong>Domain:</strong> ${r.domain}</div>
+                            ${r.isExcluded ? '<span class="badge excluded">EXCLUDED</span>' : ''}
+                            ${r.isManufacturer ? '<span class="badge manufacturer">MANUFACTURER</span>' : ''}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                
+                log('✅ Test complete!');
+                
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -15,7 +15,6 @@ struct AdditivePatternSection: View {
     @State private var patternScore: AdditivePatternScore?
     @State private var expandedAdditiveId: String?
     @State private var expandedSections: [String: Set<String>] = [:]
-    @State private var isExpanded = true
     @State private var showingSources = false
     @State private var showingHistoricalView = false
     @State private var isLoadingPattern = false
@@ -37,47 +36,34 @@ struct AdditivePatternSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header - simple, clean
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    // Simple circle icon matching onboarding style
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [palette.primary.opacity(0.8), palette.accent.opacity(0.6)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+            // Header - simple, non-collapsible
+            HStack(spacing: 12) {
+                // Simple circle icon matching onboarding style
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [palette.primary.opacity(0.8), palette.accent.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Image(systemName: "chart.dots.scatter")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white)
-                        )
+                    )
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Image(systemName: "chart.dots.scatter")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    )
 
-                    Text("Your Additive Pattern")
-                        .font(.system(size: 18, weight: .semibold, design: .serif))
-                        .foregroundColor(appPalette.textPrimary)
+                Text("Your Additive Pattern")
+                    .font(.system(size: 18, weight: .semibold, design: .serif))
+                    .foregroundColor(appPalette.textPrimary)
 
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(palette.accent.opacity(0.6))
-                        .symbolRenderingMode(.hierarchical)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                Spacer()
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
 
-            if isExpanded {
-                VStack(spacing: 20) {
+            VStack(spacing: 20) {
                     if isLoadingPattern {
                         loadingView
                     } else if let score = patternScore {
@@ -110,7 +96,6 @@ struct AdditivePatternSection: View {
                     }
                 }
                 .padding(.bottom, 20)
-            }
         }
         .background(
             RoundedRectangle(cornerRadius: 20)
