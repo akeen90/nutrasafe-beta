@@ -230,9 +230,8 @@ struct UseByTabView: View {
             .navigationBarHidden(true)
         }
         .fullScreenCover(item: $showingFoodDetailForSearch) { food in
-            UseByItemDetailView(
-                item: nil,
-                prefillFood: food,
+            UseByFoodDetailSheetRedesigned(
+                food: food,
                 onComplete: {
                     showingFoodDetailForSearch = nil
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -244,14 +243,13 @@ struct UseByTabView: View {
             )
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(onComplete: {
+            AddUseByItemSheetRedesigned(onComplete: {
                 showingAddSheet = false
             })
         }
         .fullScreenCover(isPresented: $showingManualAddDirect) {
             // Direct manual add - skip the search/manual tab sheet
-            // Note: UseByItemDetailView already has its own NavigationView, don't wrap again
-            UseByItemDetailView(item: nil, onComplete: {
+            UseByFoodDetailSheetRedesigned(onComplete: {
                 showingManualAddDirect = false
             })
         }
@@ -1054,6 +1052,167 @@ struct UseByExpiryView: View {
         .frame(height: 480)
     }
 
+    // MARK: - Main Content View (extracted to help Swift type-checker)
+    @ViewBuilder
+    private var mainContentView: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                statCardsSection
+                itemsContainerSection
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var statCardsSection: some View {
+        HStack(spacing: 10) {
+            CompactStatPill(
+                value: "\(sortedItems.count)",
+                label: "Items",
+                icon: "refrigerator.fill",
+                tint: AppPalette.standard.accent
+            )
+
+            CompactStatPill(
+                value: adaptiveValue,
+                label: adaptiveTitle == "This Week" ? "This Week" : "Expiring",
+                icon: adaptiveIcon,
+                tint: adaptiveColor
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private var itemsContainerSection: some View {
+        VStack(spacing: 0) {
+            itemsHeader
+            itemsList
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 28)
+                .fill(AppColors.cardBackgroundElevated)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28)
+                .stroke(AppColors.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 28))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+    }
+
+    @ViewBuilder
+    private var itemsHeader: some View {
+        HStack {
+            Text("Your Items")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.primary, .primary.opacity(0.7)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+
+            Spacer()
+
+            itemCountBadge
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 14)
+    }
+
+    @ViewBuilder
+    private var itemCountBadge: some View {
+        HStack(spacing: 4) {
+            Text("\(sortedItems.count)")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [AppPalette.standard.accent, Color.purple.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+            Text("item\(sortedItems.count == 1 ? "" : "s")")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background {
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            AppPalette.standard.accent.opacity(0.12),
+                            Color.purple.opacity(0.08)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    AppPalette.standard.accent.opacity(0.3),
+                                    Color.purple.opacity(0.2)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                )
+        }
+    }
+
+    @ViewBuilder
+    private var itemsList: some View {
+        if sortedItems.isEmpty {
+            VStack(spacing: AppSpacing.large) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 60, weight: .light))
+                    .foregroundColor(Color.textTertiary.opacity(0.4))
+                    .padding(.top, AppSpacing.large)
+
+                VStack(spacing: AppSpacing.small) {
+                    Text("No items tracked")
+                        .font(AppTypography.sectionTitle(20))
+                        .foregroundColor(Color.textSecondary)
+
+                    Text("Add use-by dates when logging food to avoid waste")
+                        .font(AppTypography.body)
+                        .foregroundColor(Color.textTertiary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, AppSpacing.xl)
+                        .lineSpacing(AppSpacing.lineSpacing)
+                }
+
+                NSInfoCard(
+                    icon: "lightbulb.fill",
+                    text: "Tap the + button above to start tracking items and get notified before they expire",
+                    iconColor: .orange
+                )
+                .padding(.horizontal, AppSpacing.large)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppSpacing.section)
+        } else {
+            LazyVStack(spacing: 8) {
+                ForEach(sortedItems, id: \.id) { item in
+                    CleanUseByRow(item: item)
+                }
+            }
+            .padding(.vertical, 6)
+        }
+    }
+
     var body: some View {
         Group {
             if dataManager.isLoading {
@@ -1061,148 +1220,7 @@ struct UseByExpiryView: View {
             } else if dataManager.items.isEmpty {
                 emptyStateView
             } else {
-                // Modern premium design with gradients and depth
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        
-
-                        // Ultra-modern compact stat cards
-                        HStack(spacing: 10) {
-                            CompactStatPill(
-                                value: "\(sortedItems.count)",
-                                label: "Items",
-                                icon: "refrigerator.fill",
-                                tint: AppPalette.standard.accent
-                            )
-
-                            CompactStatPill(
-                                value: adaptiveValue,
-                                label: adaptiveTitle == "This Week" ? "This Week" : "Expiring",
-                                icon: adaptiveIcon,
-                                tint: adaptiveColor
-                            )
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 4)
-
-                        // Ultra-modern items container
-                        VStack(spacing: 0) {
-                            // Modern gradient header
-                            HStack {
-                                Text("Your Items")
-                                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.primary, .primary.opacity(0.7)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-
-                                Spacer()
-
-                                // Modern count badge
-                                HStack(spacing: 4) {
-                                    Text("\(sortedItems.count)")
-                                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                                        .foregroundStyle(
-                                            LinearGradient(
-                                                colors: [AppPalette.standard.accent, Color.purple.opacity(0.8)],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
-                                    Text("item\(sortedItems.count == 1 ? "" : "s")")
-                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background {
-                                    Capsule()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    AppPalette.standard.accent.opacity(0.12),
-                                                    Color.purple.opacity(0.08)
-                                                ],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
-                                        .overlay(
-                                            Capsule()
-                                                .strokeBorder(
-                                                    LinearGradient(
-                                                        colors: [
-                                                            AppPalette.standard.accent.opacity(0.3),
-                                                            Color.purple.opacity(0.2)
-                                                        ],
-                                                        startPoint: .leading,
-                                                        endPoint: .trailing
-                                                    ),
-                                                    lineWidth: 1.5
-                                                )
-                                        )
-                                }
-                            }
-                            .padding(.horizontal, 18)
-                            .padding(.top, 18)
-                            .padding(.bottom, 14)
-
-                            // Items list - Empty State (Onboarding Design Language)
-                            if sortedItems.isEmpty {
-                                VStack(spacing: AppSpacing.large) {
-                                    Image(systemName: "calendar.badge.clock")
-                                        .font(.system(size: 60, weight: .light))
-                                        .foregroundColor(Color.textTertiary.opacity(0.4))
-                                        .padding(.top, AppSpacing.large)
-
-                                    VStack(spacing: AppSpacing.small) {
-                                        Text("No items tracked")
-                                            .font(AppTypography.sectionTitle(20))
-                                            .foregroundColor(Color.textSecondary)
-
-                                        Text("Add use-by dates when logging food to avoid waste")
-                                            .font(AppTypography.body)
-                                            .foregroundColor(Color.textTertiary)
-                                            .multilineTextAlignment(.center)
-                                            .padding(.horizontal, AppSpacing.xl)
-                                            .lineSpacing(AppSpacing.lineSpacing)
-                                    }
-
-                                    // Helpful tip using onboarding InfoCard pattern
-                                    NSInfoCard(
-                                        icon: "lightbulb.fill",
-                                        text: "Tap the + button above to start tracking items and get notified before they expire",
-                                        iconColor: .orange
-                                    )
-                                    .padding(.horizontal, AppSpacing.large)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, AppSpacing.section)
-                            } else {
-                                LazyVStack(spacing: 8) {
-                                    ForEach(sortedItems, id: \.id) { item in
-                                        CleanUseByRow(item: item)
-                                    }
-                                }
-                                .padding(.vertical, 6)
-                            }
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 28)
-                                .fill(AppColors.cardBackgroundElevated)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28)
-                                .stroke(AppColors.border, lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 28))
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
-                    }
-                }
+                mainContentView
             }
         }
         .transaction { $0.disablesAnimations = true }
@@ -1248,7 +1266,7 @@ struct UseByExpiryView: View {
             Text("This will remove all items from your useBy inventory.")
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(onComplete: {
+            AddUseByItemSheetRedesigned(onComplete: {
                 showingAddSheet = false
             })
         }
@@ -1405,7 +1423,7 @@ struct UseByExpiryAlertsCard: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(onComplete: {
+            AddUseByItemSheetRedesigned(onComplete: {
                 showingAddSheet = false
             })
         }
@@ -2171,7 +2189,7 @@ struct ModernExpiryRow: View {
             }
         }
         .fullScreenCover(isPresented: $showingDetail) {
-            UseByItemDetailView(item: item)
+            UseByFoodDetailSheetRedesigned(item: item)
         }
         .alert("Delete Item", isPresented: $showingDeleteAlert) {
             Button("Delete", role: .destructive) { confirmDelete() }
@@ -2388,7 +2406,7 @@ struct UseByQuickAddCard: View {
                 .fill(Color(.systemGray6))
         )
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(onComplete: {
+            AddUseByItemSheetRedesigned(onComplete: {
                 showingAddSheet = false
             })
         }
@@ -2904,7 +2922,7 @@ struct AddUseByItemSheet: View {
                                 selectedOption = .barcode
                             })
                         case .manual:
-                            UseByItemDetailView(item: nil, onComplete: {
+                            UseByFoodDetailSheetRedesigned(onComplete: {
                                 dismiss()
                                 onComplete?()
                             })
@@ -3044,8 +3062,11 @@ struct UseByInlineSearchView: View {
         }
         .background(AppAnimatedBackground())
         .fullScreenCover(isPresented: $showingFoodDetail) {
+            // Reset selected food when dismissed to fix search bug
+            selectedFood = nil
+        } content: {
             if let food = selectedFood {
-                UseByFoodDetailSheet(food: food, onComplete: onComplete)
+                UseByFoodDetailSheetRedesigned(food: food, onComplete: onComplete)
             }
         }
     }
@@ -3267,572 +3288,6 @@ struct FreshnessIndicatorView: View {
             return "1 day"
         } else {
             return "\(daysLeft) days"
-        }
-    }
-}
-
-// MARK: - UseBy Food Detail Sheet (from Search)
-
-/// Food detail sheet for Use By - shows food info and allows adding to Use By inventory
-struct UseByFoodDetailSheet: View {
-    let food: FoodSearchResult
-    var onComplete: (() -> Void)? = nil
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) var colorScheme
-    @State private var quantity: String = "1"
-    @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
-    @State private var location: String = ""
-    @State private var notes: String = ""
-    @State private var isSaving = false
-    @State private var expiryMode: ExpiryMode = .selector
-    @State private var expiryAmount: Int = 7
-    @State private var expiryUnit: ExpiryUnit = .days
-
-    // Photo capture states
-    @State private var capturedImage: UIImage?
-    @State private var showCameraPicker: Bool = false
-    @State private var showPhotoPicker: Bool = false
-    @State private var showPhotoActionSheet: Bool = false
-    @State private var isUploadingPhoto: Bool = false
-
-    // Keyboard focus
-    @FocusState private var isAnyFieldFocused: Bool
-
-    enum ExpiryMode {
-        case calendar
-        case selector
-    }
-
-    enum ExpiryUnit: String, CaseIterable {
-        case days = "Days"
-        case weeks = "Weeks"
-        case months = "Months"
-    }
-
-    private var calculatedExpiryDate: Date {
-        let calendar = Calendar.current
-        let baseDate = Date()
-
-        switch expiryUnit {
-        case .days:
-            return calendar.date(byAdding: .day, value: expiryAmount, to: baseDate) ?? baseDate
-        case .weeks:
-            return calendar.date(byAdding: .day, value: expiryAmount * 7, to: baseDate) ?? baseDate
-        case .months:
-            return calendar.date(byAdding: .month, value: expiryAmount, to: baseDate) ?? baseDate
-        }
-    }
-
-    private var daysLeft: Int {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let expiry = calendar.startOfDay(for: expiryMode == .selector ? calculatedExpiryDate : expiryDate)
-        let components = calendar.dateComponents([.day], from: today, to: expiry)
-        return components.day ?? 0
-    }
-
-    private var freshnessScore: Double {
-        let totalShelfLife = max(daysLeft + 8, 1)
-        let remaining = max(daysLeft + 1, 0)
-        return Double(remaining) / Double(totalShelfLife)
-    }
-
-    private var freshnessColor: Color {
-        if freshnessScore > 0.7 { return .green }
-        else if freshnessScore > 0.4 { return .yellow }
-        else if freshnessScore > 0.2 { return .orange }
-        else { return .red }
-    }
-
-    private var freshnessEmoji: String {
-        if freshnessScore > 0.7 { return "👍" }
-        else if freshnessScore > 0.4 { return "👍" }
-        else if freshnessScore > 0.2 { return "⚠️" }
-        else { return "🚨" }
-    }
-
-    private var freshnessLabel: String {
-        switch daysLeft {
-        case ..<0: return "Expired"
-        case 0: return "Last day"
-        default: return "Fresh"
-        }
-    }
-
-    private var smartRecommendation: String {
-        switch daysLeft {
-        case ..<0: return "Expired - discard item"
-        case 0: return "Last day - use today"
-        case 1: return "Perfect for tomorrow"
-        case 2...3: return "Plan to use within next few meals"
-        case 4...7: return "Still fresh - use this week"
-        default: return "Plenty of time - store properly"
-        }
-    }
-
-    var body: some View {
-        NavigationView {
-            ZStack {
-                // Background
-                (colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
-                    .ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    // Scrollable content
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            // Compact Header Card with Freshness + Name
-                            VStack(spacing: 0) {
-                                // Freshness bar at top
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .fill(Color.gray.opacity(0.2))
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .fill(
-                                                LinearGradient(
-                                                    colors: [freshnessColor, freshnessColor.opacity(0.7)],
-                                                    startPoint: .leading,
-                                                    endPoint: .trailing
-                                                )
-                                            )
-                                            .frame(width: geo.size.width * CGFloat(freshnessScore))
-                                    }
-                                }
-                                .frame(height: 6)
-                                .padding(.horizontal, 16)
-                                .padding(.top, 16)
-
-                                HStack(spacing: 14) {
-                                    // Compact freshness circle
-                                    ZStack {
-                                        Circle()
-                                            .fill(freshnessColor.opacity(0.15))
-                                            .frame(width: 56, height: 56)
-                                        Text(freshnessEmoji)
-                                            .font(.system(size: 24))
-                                    }
-
-                                    // Name and info
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(food.name)
-                                            .font(.system(size: 18, weight: .bold))
-                                            .foregroundColor(.primary)
-                                            .lineLimit(2)
-
-                                        if let brand = food.brand, !brand.isEmpty {
-                                            Text(brand)
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.secondary)
-                                        }
-
-                                        // Days badge
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "clock.fill")
-                                                .font(.system(size: 10))
-                                            Text(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day!" : "\(daysLeft) days left"))
-                                                .font(.system(size: 12, weight: .semibold))
-                                        }
-                                        .foregroundColor(freshnessColor)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(freshnessColor.opacity(0.12))
-                                        .cornerRadius(6)
-                                    }
-
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-
-                                // Smart tip
-                                HStack(spacing: 8) {
-                                    Image(systemName: "lightbulb.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.yellow)
-                                    Text(smartRecommendation)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 12)
-                            }
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                            )
-
-                            // Expiry Date Section - Compact
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack {
-                                    Image(systemName: "calendar.badge.clock")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.orange)
-                                    Text("Expiry Date")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                }
-
-                                // Mode toggle
-                                HStack(spacing: 8) {
-                                    ForEach([("calendar", "Date", ExpiryMode.calendar), ("slider.horizontal.3", "Quick", ExpiryMode.selector)], id: \.1) { icon, label, mode in
-                                        Button(action: { expiryMode = mode }) {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: icon)
-                                                    .font(.system(size: 12))
-                                                Text(label)
-                                                    .font(.system(size: 12, weight: .medium))
-                                            }
-                                            .foregroundColor(expiryMode == mode ? .white : .primary)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                            .background(
-                                                Capsule()
-                                                    .fill(expiryMode == mode ? Color.orange : Color.gray.opacity(0.15))
-                                            )
-                                        }
-                                        .buttonStyle(PlainButtonStyle())
-                                    }
-                                    Spacer()
-                                }
-
-                                if expiryMode == .calendar {
-                                    DatePicker("", selection: $expiryDate, displayedComponents: .date)
-                                        .datePickerStyle(.compact)
-                                        .labelsHidden()
-                                        .padding(8)
-                                        .background(Color.gray.opacity(0.1))
-                                        .cornerRadius(10)
-                                } else {
-                                    // Quick selector
-                                    HStack(spacing: 8) {
-                                        HStack(spacing: 0) {
-                                            Button(action: { if expiryAmount > 1 { expiryAmount -= 1 } }) {
-                                                Image(systemName: "minus")
-                                                    .font(.system(size: 14, weight: .bold))
-                                                    .foregroundColor(.orange)
-                                                    .frame(width: 36, height: 36)
-                                            }
-                                            Text("\(expiryAmount)")
-                                                .font(.system(size: 18, weight: .bold))
-                                                .frame(minWidth: 36)
-                                            Button(action: { expiryAmount += 1 }) {
-                                                Image(systemName: "plus")
-                                                    .font(.system(size: 14, weight: .bold))
-                                                    .foregroundColor(.orange)
-                                                    .frame(width: 36, height: 36)
-                                            }
-                                        }
-                                        .background(Color.gray.opacity(0.1))
-                                        .cornerRadius(10)
-
-                                        ForEach(ExpiryUnit.allCases, id: \.self) { unit in
-                                            Button(action: { expiryUnit = unit }) {
-                                                Text(unit.rawValue)
-                                                    .font(.system(size: 13, weight: .medium))
-                                                    .foregroundColor(expiryUnit == unit ? .white : .primary)
-                                                    .padding(.horizontal, 14)
-                                                    .padding(.vertical, 10)
-                                                    .background(
-                                                        Capsule()
-                                                            .fill(expiryUnit == unit ? Color.orange : Color.gray.opacity(0.15))
-                                                    )
-                                            }
-                                            .buttonStyle(PlainButtonStyle())
-                                        }
-                                        Spacer()
-                                    }
-
-                                    Text("Expires: \(calculatedExpiryDate, style: .date)")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .padding(14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                            )
-
-                            // Notes + Photo side by side
-                            HStack(spacing: 10) {
-                                // Notes (compact)
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Image(systemName: "note.text")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(AppPalette.standard.accent)
-                                        Text("Notes")
-                                            .font(.system(size: 13, weight: .semibold))
-                                    }
-
-                                    ZStack(alignment: .topLeading) {
-                                        TextEditor(text: $notes)
-                                            .font(.system(size: 13))
-                                            .frame(height: 60)
-                                            .scrollContentBackground(.hidden)
-                                            .background(Color.gray.opacity(0.1))
-                                            .cornerRadius(8)
-
-                                        if notes.isEmpty {
-                                            Text("Add notes...")
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.secondary)
-                                                .padding(.horizontal, 6)
-                                                .padding(.top, 8)
-                                                .allowsHitTesting(false)
-                                        }
-                                    }
-                                }
-                                .padding(12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                                )
-
-                                // Photo (compact)
-                                VStack(spacing: 6) {
-                                    if let displayImage = capturedImage {
-                                        ZStack(alignment: .topTrailing) {
-                                            Image(uiImage: displayImage)
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 80, height: 80)
-                                                .clipped()
-                                                .cornerRadius(10)
-
-                                            Button(action: { capturedImage = nil }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .font(.system(size: 18))
-                                                    .foregroundColor(.white)
-                                                    .background(Circle().fill(Color.black.opacity(0.5)))
-                                            }
-                                            .offset(x: 4, y: -4)
-                                        }
-                                    } else {
-                                        Button(action: { showPhotoActionSheet = true }) {
-                                            VStack(spacing: 6) {
-                                                Image(systemName: "camera.fill")
-                                                    .font(.system(size: 20))
-                                                    .foregroundColor(AppPalette.standard.accent)
-                                                Text("Photo")
-                                                    .font(.system(size: 11, weight: .medium))
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            .frame(width: 80, height: 80)
-                                            .background(Color.gray.opacity(0.1))
-                                            .cornerRadius(10)
-                                        }
-                                        .buttonStyle(PlainButtonStyle())
-                                    }
-                                }
-                                .padding(12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                                )
-                            }
-
-                            // Bottom spacer for fixed button
-                            Spacer().frame(height: 80)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                    }
-
-                    // Fixed bottom button
-                    VStack(spacing: 0) {
-                        Divider()
-                        Button(action: {
-                            // Dismiss keyboard before saving
-                            isAnyFieldFocused = false
-                            saveToUseBy()
-                        }) {
-                            HStack(spacing: 8) {
-                                if isSaving {
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                        .tint(.white)
-                                        .scaleEffect(0.9)
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 16))
-                                    Text("Add to Use By")
-                                        .font(.system(size: 16, weight: .semibold))
-                                }
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                LinearGradient(
-                                    colors: [AppPalette.standard.accent, Color.purple],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .cornerRadius(14)
-                        }
-                        .disabled(isSaving || food.name.isEmpty)
-                        .opacity((isSaving || food.name.isEmpty) ? 0.6 : 1.0)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
-                    }
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-        .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
-            Button("Take Photo") {
-                showCameraPicker = true
-            }
-            Button("Choose from Library") {
-                showPhotoPicker = true
-            }
-            Button("Cancel", role: .cancel) {}
-        }
-        .fullScreenCover(isPresented: $showCameraPicker) {
-            ImagePicker(selectedImage: nil, sourceType: .camera) { image in
-                if let image = image {
-                    capturedImage = image
-                }
-                showCameraPicker = false
-            }
-        }
-        .fullScreenCover(isPresented: $showPhotoPicker) {
-            PhotoLibraryPicker { image in
-                // IMPORTANT: Set capturedImage BEFORE dismissing picker
-                if let image = image {
-                    capturedImage = image
-                }
-                // Dismiss picker AFTER setting the image
-                showPhotoPicker = false
-            }
-        }
-    }
-
-    private func saveToUseBy() {
-        guard !food.name.isEmpty else { return }
-
-        isSaving = true
-
-        // Haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.prepare()
-        impactFeedback.impactOccurred()
-
-        let finalExpiryDate = expiryMode == .selector ? calculatedExpiryDate : expiryDate
-        let itemId = UUID().uuidString
-        let imageToUpload = capturedImage
-        let notesText = notes.isEmpty ? nil : notes
-        let foodName = food.name
-        let foodBrand = food.brand
-        let foodQuantity = quantity
-
-        // Create item immediately without waiting for photo upload
-        let newItem = UseByInventoryItem(
-            id: itemId,
-            name: foodName,
-            brand: foodBrand,
-            quantity: foodQuantity,
-            expiryDate: finalExpiryDate,
-            addedDate: Date(),
-            barcode: nil,
-            category: nil,
-            imageURL: nil,  // Will be updated in background
-            notes: notesText
-        )
-
-        // Main save task
-        Task {
-            // ✅ STEP 1: Save photo to LOCAL CACHE FIRST (before adding to list)
-            // This ensures CachedUseByImage will find the image immediately
-            if let image = imageToUpload {
-                print("📸 [UseBy] Saving image to local cache FIRST for item: \(itemId)")
-                do {
-                    try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                    print("📸 [UseBy] Image cached locally - will be visible immediately!")
-                } catch {
-                    print("📸 [UseBy] Failed to cache image: \(error)")
-                }
-            }
-
-            // ✅ STEP 2: Add to local data manager (image is now in cache)
-            await MainActor.run {
-                UseByDataManager.shared.items.append(newItem)
-                UseByDataManager.shared.items.sort { $0.expiryDate < $1.expiryDate }
-                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-            }
-
-            // ✅ STEP 3: Success feedback and dismiss immediately
-            await MainActor.run {
-                isSaving = false
-                let successFeedback = UINotificationFeedbackGenerator()
-                successFeedback.notificationOccurred(.success)
-                dismiss()
-                onComplete?()
-            }
-
-            // ✅ STEP 4: Save to Firebase in background (item first, then photo)
-            do {
-                print("💾 [UseBy] Saving item to Firebase: \(itemId)")
-                try await FirebaseManager.shared.addUseByItem(newItem)
-                print("💾 [UseBy] Item saved to Firebase!")
-            } catch {
-                print("💾 [UseBy] Failed to save item to Firebase: \(error)")
-            }
-
-            // Schedule notifications in background
-            Task.detached(priority: .background) {
-                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
-            }
-
-            // ✅ STEP 5: Upload photo to Firebase in background (truly background now)
-            if let image = imageToUpload {
-                Task.detached(priority: .utility) {
-                    do {
-                        print("📸 [UseBy] Uploading image to Firebase...")
-                        let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                        print("📸 [UseBy] Image uploaded! URL: \(url)")
-
-                        // Update item with image URL
-                        let updatedItem = UseByInventoryItem(
-                            id: itemId,
-                            name: foodName,
-                            brand: foodBrand,
-                            quantity: foodQuantity,
-                            expiryDate: finalExpiryDate,
-                            addedDate: Date(),
-                            barcode: nil,
-                            category: nil,
-                            imageURL: url,
-                            notes: notesText
-                        )
-
-                        try await FirebaseManager.shared.updateUseByItem(updatedItem)
-                        print("📸 [UseBy] Firebase updated with image URL!")
-
-                        // Update local data manager for future sessions
-                        await MainActor.run {
-                            if let index = UseByDataManager.shared.items.firstIndex(where: { $0.id == itemId }) {
-                                UseByDataManager.shared.items[index] = updatedItem
-                            }
-                        }
-                    } catch {
-                        print("📸 [UseBy] Failed to upload image to Firebase: \(error)")
-                    }
-                }
-            }
         }
     }
 }
@@ -5193,7 +4648,7 @@ struct CleanUseByRow: View {
             }
         }
         .fullScreenCover(isPresented: $showingDetail) {
-            UseByItemDetailView(item: item)
+            UseByFoodDetailSheetRedesigned(item: item)
         }
     }
 
