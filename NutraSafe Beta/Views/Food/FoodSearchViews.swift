@@ -608,6 +608,8 @@ struct AddFoodSearchView: View {
     @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
     @State private var recentFoods: [DiaryFoodItem] = []
     @State private var favoriteFoods: [FoodSearchResult] = []
+    @State private var isFavoritesLoading = true  // Track loading state
+    @State private var hasFavoritesLoaded = false  // Prevent reload on rapid appear/disappear cycles
     @State private var searchTask: Task<Void, Never>?
     @State private var keyboardHeight: CGFloat = 0
     @State private var isEditingMode = false
@@ -791,8 +793,8 @@ struct AddFoodSearchView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
                         LazyVStack(spacing: 10) {
-                            // Show favorites when search is empty
-                            if searchText.isEmpty && !favoriteFoods.isEmpty {
+                            // Show favorites when search is empty and not loading
+                            if searchText.isEmpty && !isFavoritesLoading && !favoriteFoods.isEmpty {
                                 // Favorites Section - redesigned header
                                 VStack(alignment: .leading, spacing: 12) {
                                     SearchSectionHeader(icon: "heart.fill", title: "Favourites", iconColor: .red)
@@ -877,6 +879,8 @@ struct AddFoodSearchView: View {
             removeKeyboardObservers()
         }
         .onReceive(NotificationCenter.default.publisher(for: .favoritesDidChange)) { _ in
+            // Reset flag to allow reload when favorites actually change
+            hasFavoritesLoaded = false
             loadFavorites()
         }
     }
@@ -1021,21 +1025,31 @@ struct AddFoodSearchView: View {
     }
 
     private func loadFavorites() {
+        // PERFORMANCE FIX: Prevent reloading during rapid appear/disappear cycles
+        // (SwiftUI sheet bug can trigger onAppear → onDisappear → onAppear)
+        guard !hasFavoritesLoaded else { return }
+
+        // Set loading state to prevent empty content flash
+        isFavoritesLoading = true
+        hasFavoritesLoaded = true
+
+        // Fetch favorites from Firebase
         Task {
             do {
                 let favorites = try await firebaseManager.getFavoriteFoods()
                 await MainActor.run {
-                    // Use animation to prevent jarring "blink" when data loads
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        favoriteFoods = favorites
-                    }
+                    favoriteFoods = favorites
+                    isFavoritesLoading = false
                 }
             } catch {
+                await MainActor.run {
+                    isFavoritesLoading = false
+                }
                 // Silently fail - favorites are optional
             }
         }
     }
-    
+
     private func convertToSearchResult(_ diaryItem: DiaryFoodItem) -> FoodSearchResult {
         // Use the canonical conversion to ensure nutrients are per-100g
         // and the actual serving size from the diary item is preserved.

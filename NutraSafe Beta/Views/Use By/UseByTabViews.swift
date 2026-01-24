@@ -5020,10 +5020,9 @@ struct CachedUseByImage: View {
             await loadImage()
         }
         .onReceive(NotificationCenter.default.publisher(for: .useByInventoryUpdated)) { _ in
-            // Only refresh if we don't have an image yet (image was just uploaded)
-            if loadedImage == nil {
-                refreshTrigger = UUID()
-            }
+            // Always refresh when inventory updates (photo may have changed)
+            loadedImage = nil  // Clear current image
+            refreshTrigger = UUID()  // Trigger reload
         }
         .onChange(of: imageURL) { _, newURL in
             // If imageURL changed from nil to something, reload

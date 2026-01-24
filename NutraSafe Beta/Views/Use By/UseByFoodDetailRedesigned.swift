@@ -506,29 +506,59 @@ struct UseByFoodDetailSheetRedesigned: View {
 
     @ViewBuilder
     private func photoPreview(_ image: UIImage, isNewCapture: Bool) -> some View {
-        ZStack(alignment: .topTrailing) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(height: 180)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+        ZStack {
+            // Make the entire image tappable to change photo
+            Button(action: { showPhotoActionSheet = true }) {
+                ZStack(alignment: .bottom) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 180)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
 
-            Button(action: {
-                if isNewCapture {
-                    // Just clear the new capture
-                    capturedImage = nil
-                } else {
-                    // Mark existing photo for deletion
-                    shouldDeleteExistingPhoto = true
-                }
-            }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 24))
+                    // Subtle hint overlay that photo is tappable
+                    HStack(spacing: 6) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 12))
+                        Text("Tap to change")
+                            .font(.system(size: 12, weight: .medium))
+                    }
                     .foregroundColor(.white)
-                    .background(Circle().fill(Color.black.opacity(0.6)).frame(width: 28, height: 28))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.black.opacity(0.7))
+                    )
+                    .padding(.bottom, 12)
+                }
             }
-            .padding(12)
+            .buttonStyle(PlainButtonStyle())
+
+            // Delete button in top-right corner
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        if isNewCapture {
+                            // Just clear the new capture
+                            capturedImage = nil
+                        } else {
+                            // Mark existing photo for deletion
+                            shouldDeleteExistingPhoto = true
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white)
+                            .background(Circle().fill(Color.black.opacity(0.6)).frame(width: 28, height: 28))
+                    }
+                    .padding(12)
+                }
+                Spacer()
+            }
         }
+        .frame(height: 180)
     }
 
     @ViewBuilder
@@ -684,37 +714,46 @@ struct UseByFoodDetailSheetRedesigned: View {
 
         if isEditMode, let existing = existingItem {
             // EDIT MODE - update existing item
-            // Determine the new imageURL: nil if deleted, existing if unchanged, will be updated if new photo
-            let newImageURL: String? = shouldDeleteExistingPhoto ? nil : existing.imageURL
-
-            let updatedItem = UseByInventoryItem(
-                id: existing.id,
-                name: foodName,
-                brand: foodBrand,
-                quantity: foodQuantity,
-                expiryDate: finalExpiryDate,
-                addedDate: existing.addedDate,
-                barcode: existing.barcode,
-                category: existing.category,
-                imageURL: newImageURL,
-                notes: notesText
-            )
 
             Task {
-                // Handle photo deletion
+                // Determine the final imageURL based on user actions
+                var finalImageURL: String? = existing.imageURL
+
+                // Handle photo deletion FIRST
                 if shouldDeleteExistingPhoto {
                     ImageCacheManager.shared.deleteUseByImage(for: existing.id)
+                    finalImageURL = nil
                 }
 
-                // Handle new photo upload
+                // Handle new photo upload - cache immediately
                 if let image = imageToUpload {
                     do {
                         try await ImageCacheManager.shared.saveUseByImageAsync(image, for: existing.id)
+                        // Update the UI immediately to show the new photo
+                        await MainActor.run {
+                            existingImage = image
+                            capturedImage = nil  // Clear captured image since it's now the existing image
+                        }
                     } catch {
                         print("📸 [UseBy] Failed to cache image: \(error)")
                     }
                 }
 
+                // Create updated item with current imageURL state
+                let updatedItem = UseByInventoryItem(
+                    id: existing.id,
+                    name: foodName,
+                    brand: foodBrand,
+                    quantity: foodQuantity,
+                    expiryDate: finalExpiryDate,
+                    addedDate: existing.addedDate,
+                    barcode: existing.barcode,
+                    category: existing.category,
+                    imageURL: finalImageURL,
+                    notes: notesText
+                )
+
+                // Update local data manager
                 await MainActor.run {
                     if let index = UseByDataManager.shared.items.firstIndex(where: { $0.id == existing.id }) {
                         UseByDataManager.shared.items[index] = updatedItem
@@ -723,24 +762,19 @@ struct UseByFoodDetailSheetRedesigned: View {
                     NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
                 }
 
-                await MainActor.run {
-                    isSaving = false
-                    let successFeedback = UINotificationFeedbackGenerator()
-                    successFeedback.notificationOccurred(.success)
-                    dismiss()
-                    onComplete?()
-                }
-
+                // Update Firebase with current state
                 do {
                     try await FirebaseManager.shared.updateUseByItem(updatedItem)
                 } catch {
                     print("💾 [UseBy] Failed to update item in Firebase: \(error)")
                 }
 
+                // Schedule notifications
                 Task.detached(priority: .background) {
                     await UseByNotificationManager.shared.scheduleNotifications(for: updatedItem)
                 }
 
+                // If new photo was captured, upload it in the background and update URL
                 if let image = imageToUpload {
                     Task.detached(priority: .utility) {
                         do {
@@ -767,6 +801,15 @@ struct UseByFoodDetailSheetRedesigned: View {
                             print("📸 [UseBy] Failed to upload image to Firebase: \(error)")
                         }
                     }
+                }
+
+                // Dismiss and complete AFTER all critical updates are done
+                await MainActor.run {
+                    isSaving = false
+                    let successFeedback = UINotificationFeedbackGenerator()
+                    successFeedback.notificationOccurred(.success)
+                    dismiss()
+                    onComplete?()
                 }
             }
         } else {

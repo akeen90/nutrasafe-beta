@@ -95,7 +95,7 @@ struct PreAuthOnboardingView: View {
                 )
             }
             .padding(.trailing, 20)
-            .padding(.top, 52) // Adjusted: closer to status bar
+            .padding(.top, 0) // Move to highest safe position near status bar
         }
     }
 }
