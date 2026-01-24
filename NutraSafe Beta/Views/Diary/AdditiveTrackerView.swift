@@ -301,7 +301,7 @@ struct AdditiveTrackerSection: View {
         // Only show ONE contextual insight, never multiple
 
         // Priority 1: Check for specific concerning additives
-        if let titanium = viewModel.additiveAggregates.first(where: {
+        if viewModel.additiveAggregates.contains(where: {
             $0.code.lowercased() == "e171" || $0.name.lowercased().contains("titanium dioxide")
         }) {
             return (

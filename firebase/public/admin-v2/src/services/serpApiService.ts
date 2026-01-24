@@ -75,9 +75,12 @@ export async function searchSerpApiImages(
 
   try {
     // Use SearchAPI.io Google Images
-    return await searchGoogleImagesViaSearchAPI(query, maxResults);
+    console.log('[searchSerpApiImages] About to call searchGoogleImagesViaSearchAPI with query:', query);
+    const results = await searchGoogleImagesViaSearchAPI(query, maxResults);
+    console.log('[searchSerpApiImages] Got results back:', results.length);
+    return results;
   } catch (error) {
-    console.error('SearchAPI search error:', error);
+    console.error('[searchSerpApiImages] SearchAPI search error:', error);
     throw error;
   }
 }
@@ -89,6 +92,9 @@ async function searchGoogleImagesViaSearchAPI(
   query: string,
   maxResults: number
 ): Promise<SerpApiImageResult[]> {
+  console.log('[searchGoogleImagesViaSearchAPI] ENTRY - query:', query, 'maxResults:', maxResults);
+  console.log('[searchGoogleImagesViaSearchAPI] API KEY exists:', SEARCHAPI_KEY.length > 0);
+
   const params = new URLSearchParams({
     api_key: SEARCHAPI_KEY,
     engine: 'google_images',
@@ -97,6 +103,8 @@ async function searchGoogleImagesViaSearchAPI(
     gl: 'uk',
     num: String(Math.min(maxResults, 20)), // SearchAPI supports up to 20
   });
+
+  console.log('[searchGoogleImagesViaSearchAPI] URL:', `https://www.searchapi.io/api/v1/search?${params}`);
 
   const response = await fetch(
     `https://www.searchapi.io/api/v1/search?${params}`,

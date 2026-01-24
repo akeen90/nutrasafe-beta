@@ -843,7 +843,6 @@ class AdditiveTrackerViewModel: ObservableObject {
     private func fetchAdditiveEntriesWithDates(since startDate: Date) async -> [AdditiveEntry] {
         do {
             // Use existing FirebaseManager method to get food entries with date filter
-            let calendar = Calendar.current
             let endDate = Date()
 
             guard let userId = firebaseManager.currentUser?.uid else { return [] }
