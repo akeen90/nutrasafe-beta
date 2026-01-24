@@ -1,17 +1,13 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import algoliasearch from 'algoliasearch';
-import * as busboy from 'busboy';
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
+import {algoliasearch} from 'algoliasearch';
 
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 const ALGOLIA_ADMIN_KEY = functions.config().algolia?.key || '';
-const client = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
 
 /**
  * Upload food image to Firebase Storage and update Algolia
+ * Accepts JSON with imageUrl (URL to fetch), index, and objectID
  */
 export const uploadFoodImage = functions
   .region('us-central1')
@@ -31,60 +27,65 @@ export const uploadFoodImage = functions
     }
 
     try {
-      const bb = busboy({ headers: req.headers });
-      const tmpdir = os.tmpdir();
+      const { imageUrl, index, objectID } = req.body;
 
-      const fields: Record<string, string> = {};
-      const uploads: Record<string, string> = {};
+      if (!imageUrl || !index || !objectID) {
+        res.status(400).json({ error: 'Missing required fields: imageUrl, index, objectID' });
+        return;
+      }
 
-      bb.on('field', (name: string, val: string) => {
-        fields[name] = val;
+      // Fetch the image
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error('Failed to fetch image');
+      }
+
+      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+      // Upload to Firebase Storage
+      const bucket = admin.storage().bucket();
+      const fileName = `food-images/${index}/${objectID}.jpg`;
+      const file = bucket.file(fileName);
+
+      await file.save(imageBuffer, {
+        metadata: {
+          contentType: 'image/jpeg',
+        },
       });
 
-      bb.on('file', (name: string, file: NodeJS.ReadableStream, info: busboy.FileInfo) => {
-        const { filename } = info;
-        const filepath = path.join(tmpdir, filename);
-        uploads[name] = filepath;
-        file.pipe(fs.createWriteStream(filepath));
+      await file.makePublic();
+
+      const firebaseImageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+      // Update Algolia (v5 API - client IS the index)
+      const algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+      await algoliaClient.partialUpdateObject({
+        indexName: index,
+        objectID,
+        attributesToUpdate: {
+          imageUrl: firebaseImageUrl,
+        },
       });
 
-      bb.on('finish', async () => {
-        try {
-          const { index, objectID } = fields;
-          const filePath = uploads['file'];
-
-          if (!index || !objectID || !filePath) {
-            res.status(400).json({ error: 'Missing required fields' });
-            return;
-          }
-
-          const bucket = admin.storage().bucket();
-          const fileName = `food-images/${index}/${objectID}.jpg`;
-
-          await bucket.upload(filePath, {
-            destination: fileName,
-            metadata: { contentType: 'image/jpeg' },
-          });
-
-          await bucket.file(fileName).makePublic();
-
-          const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-
-          const algoliaIndex = client.initIndex(index);
-          await algoliaIndex.partialUpdateObject({ objectID, imageUrl });
-
-          fs.unlinkSync(filePath);
-
-          res.status(200).json({ success: true, imageUrl });
-        } catch (error) {
-          console.error('Upload error:', error);
-          res.status(500).json({ error: 'Upload failed' });
-        }
+      res.status(200).json({
+        success: true,
+        imageUrl: firebaseImageUrl,
+        message: 'Image uploaded successfully',
       });
-
-      req.pipe(bb);
     } catch (error) {
-      console.error('Request error:', error);
-      res.status(500).json({ error: 'Request processing failed' });
+      console.error('Upload error:', error);
+      res.status(500).json({
+        error: 'Upload failed',
+        details: error instanceof Error ? error.message : String(error),
+      });
     }
+  });
+
+/**
+ * Batch upload food images (placeholder for future)
+ */
+export const batchUploadFoodImages = functions
+  .region('us-central1')
+  .https.onRequest(async (req, res) => {
+    res.status(501).json({ error: 'Not implemented yet' });
   });

@@ -40,7 +40,6 @@ export { auditMissingIngredients } from './audit-missing-ingredients';
 export { recognizeFood } from './recognize-food';
 export { scanProductComplete } from './scan-product-complete';
 export { inferMealIngredients } from './infer-meal-ingredients';
-export { uploadFoodImage } from './upload-food-image';
 
 // Algolia integration (auto-sync on document write + manual sync functions)
 export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, syncTescoProductToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';

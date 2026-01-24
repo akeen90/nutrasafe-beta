@@ -860,19 +860,17 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                                       try {
                                         addLog(`Uploading image for ${food.name} to Firebase...`);
 
-                                        // Download image as blob
-                                        const response = await fetch(result.url);
-                                        const blob = await response.blob();
-
-                                        // Upload to Firebase Storage
-                                        const formData = new FormData();
-                                        formData.append('file', blob);
-                                        formData.append('index', food.sourceIndex);
-                                        formData.append('objectID', food.objectID);
-
+                                        // Upload to Firebase Storage via Cloud Function
                                         const uploadResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/uploadFoodImage', {
                                           method: 'POST',
-                                          body: formData,
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                          },
+                                          body: JSON.stringify({
+                                            imageUrl: result.url,
+                                            index: food.sourceIndex,
+                                            objectID: food.objectID,
+                                          }),
                                         });
 
                                         if (!uploadResponse.ok) {

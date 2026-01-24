@@ -39,6 +39,9 @@ struct ReactionLogView: View {
     @State private var cachedWeeklyTrend: (thisWeek: Int, lastWeek: Int, trend: String)?
     @State private var lastCacheUpdateLogCount: Int = -1  // Track when cache was last updated
 
+    // MARK: - Watched Additives (for Triggers Tab)
+    @State private var watchedAdditives: Set<String> = []
+
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
         case fiveDays = 5
@@ -53,6 +56,14 @@ struct ReactionLogView: View {
         case potentialTriggers = "Potential Triggers"
         case reactionTimeline = "Reaction Timeline"
     }
+
+    enum TriggerTab: String, CaseIterable {
+        case allergens = "Allergens"
+        case additives = "Additives"
+        case ingredients = "Ingredients"
+    }
+
+    @State private var selectedTriggerTab: TriggerTab = .allergens
 
     var body: some View {
         ScrollView {
@@ -111,6 +122,7 @@ struct ReactionLogView: View {
             await logsTask
             await allergensTask
             updateCachedValues()
+            loadWatchedAdditives()
             isLoadingData = false
             print("📊 [ReactionLogView] Initial load complete. reactionLogs count: \(manager.reactionLogs.count)")
         }
@@ -354,6 +366,35 @@ struct ReactionLogView: View {
             }
         }
         return false
+    }
+
+    // MARK: - Ingredient Categorization Helpers (for Tabbed Triggers)
+
+    private func isAllergen(_ ingredientName: String) -> Bool {
+        // Basic allergen keyword detection
+        let lower = ingredientName.lowercased()
+        let allergenKeywords = ["milk", "dairy", "cream", "cheese", "butter", "yogurt", "whey", "casein", "lactose",
+                               "egg", "albumin", "mayonnaise", "peanut", "groundnut", "almond", "hazelnut", "walnut",
+                               "cashew", "pistachio", "pecan", "brazil nut", "macadamia", "nut",
+                               "wheat", "gluten", "barley", "rye", "oats", "spelt", "kamut", " bread ", "breaded", "breadcrumb",
+                               "soy", "soya", "soybean", "tofu", "edamame", "fish", "salmon", "tuna", "cod", "haddock", "trout",
+                               "shellfish", "shrimp", "prawn", "crab", "lobster", "oyster", "mussel", "clam",
+                               "sesame", "mustard", "celery", "lupin", "mollusc", "sulphite", "sulfite"]
+        return allergenKeywords.contains(where: { lower.contains($0) })
+    }
+
+    private func isAdditive(_ name: String) -> Bool {
+        // E-number pattern: E followed by 3-4 digits
+        let eNumberPattern = "^E\\d{3,4}"
+        return name.range(of: eNumberPattern, options: .regularExpression) != nil
+    }
+
+    private func extractAdditiveCode(from name: String) -> String {
+        // Extract E-number from name like "E102 - Tartrazine" → "E102"
+        if let match = name.range(of: "^E\\d{3,4}", options: .regularExpression) {
+            return String(name[match])
+        }
+        return name
     }
 
     // MARK: - Allergen Warning Banner (shown when allergens fail to load)
@@ -827,10 +868,16 @@ struct ReactionLogView: View {
     }
 
     // MARK: - Common Ingredients View (Pattern Signals)
-    // Redesigned with NutraSafe signal iconography
+    // Redesigned with NutraSafe signal iconography + Tabbed Organization
     private var commonIngredientsView: some View {
-        // Using cached values for performance (no recalculation on tab switch)
-        let matchedAllergens = cachedCommonIngredients.filter { isUserAllergenIngredient($0.name) }
+        // Categorize ingredients into allergens, additives, and other ingredients
+        let allergenIngredients = cachedCommonIngredients.filter { isAllergen($0.name) }
+        let additiveIngredients = cachedCommonIngredients.filter { isAdditive($0.name) }
+        let otherIngredients = cachedCommonIngredients.filter {
+            !isAllergen($0.name) && !isAdditive($0.name)
+        }
+
+        let matchedAllergens = allergenIngredients.filter { isUserAllergenIngredient($0.name) }
 
         return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
@@ -881,23 +928,66 @@ struct ReactionLogView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 40)
             } else {
-                // Disclaimer about estimated ingredients (AI-Inferred Meal Analysis)
-                if cachedCommonIngredients.contains(where: { $0.isPrimarilyEstimated }) {
-                    Text("Patterns may include both exact ingredients and estimated exposures from meals without ingredient labels.")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(palette.textTertiary)
-                        .padding(.bottom, 8)
-                }
+                // Tab Picker
+                HStack(spacing: 0) {
+                    ForEach(TriggerTab.allCases, id: \.self) { tab in
+                        let count = tab == .allergens ? allergenIngredients.count :
+                                   tab == .additives ? additiveIngredients.count :
+                                   otherIngredients.count
 
-                ForEach(cachedCommonIngredients.prefix(10), id: \.name) { ingredient in
-                    CommonIngredientRow(
-                        name: ingredient.name,
-                        frequency: ingredient.frequency,
-                        percentage: ingredient.percentage,
-                        isUserAllergen: isUserAllergenIngredient(ingredient.name),
-                        isPrimarilyEstimated: ingredient.isPrimarilyEstimated
-                    )
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTriggerTab = tab
+                            }
+                        }) {
+                            VStack(spacing: 6) {
+                                Text(tab.rawValue)
+                                    .font(.system(size: 14, weight: selectedTriggerTab == tab ? .semibold : .medium))
+                                    .foregroundColor(selectedTriggerTab == tab ? palette.accent : palette.textSecondary)
+
+                                Text("\(count)")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(selectedTriggerTab == tab ? palette.accent : palette.textTertiary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedTriggerTab == tab ? palette.accent.opacity(0.1) : Color.clear)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(UIColor.tertiarySystemFill))
+                )
+
+                // Tab Content
+                VStack(alignment: .leading, spacing: 12) {
+                    switch selectedTriggerTab {
+                    case .allergens:
+                        triggerTabContent(
+                            ingredients: allergenIngredients,
+                            emptyMessage: "No allergens detected in common ingredients"
+                        )
+                    case .additives:
+                        triggerTabContent(
+                            ingredients: additiveIngredients,
+                            emptyMessage: "No additives detected in common ingredients",
+                            showWatchButton: true
+                        )
+                    case .ingredients:
+                        triggerTabContent(
+                            ingredients: otherIngredients,
+                            emptyMessage: "No other ingredients detected yet"
+                        )
+                    }
+                }
+                .padding(.top, 8)
             }
         }
         .padding(16)
@@ -909,6 +999,94 @@ struct ReactionLogView: View {
                         .stroke(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12), lineWidth: 1)
                 )
         )
+    }
+
+    // MARK: - Trigger Tab Content
+    private func triggerTabContent(
+        ingredients: [(name: String, frequency: Int, percentage: Double, isPrimarilyEstimated: Bool)],
+        emptyMessage: String,
+        showWatchButton: Bool = false
+    ) -> some View {
+        Group {
+            if ingredients.isEmpty {
+                Text(emptyMessage)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(palette.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 30)
+            } else {
+                // Disclaimer about estimated ingredients (AI-Inferred Meal Analysis)
+                if ingredients.contains(where: { $0.isPrimarilyEstimated }) {
+                    Text("Patterns may include both exact ingredients and estimated exposures from meals without ingredient labels.")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(palette.textTertiary)
+                        .padding(.bottom, 4)
+                }
+
+                ForEach(ingredients.prefix(10), id: \.name) { ingredient in
+                    if showWatchButton {
+                        triggerRowWithWatchButton(ingredient: ingredient)
+                    } else {
+                        CommonIngredientRow(
+                            name: ingredient.name,
+                            frequency: ingredient.frequency,
+                            percentage: ingredient.percentage,
+                            isUserAllergen: isUserAllergenIngredient(ingredient.name),
+                            isPrimarilyEstimated: ingredient.isPrimarilyEstimated
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Trigger Row with Watch Button (for Additives tab)
+    private func triggerRowWithWatchButton(
+        ingredient: (name: String, frequency: Int, percentage: Double, isPrimarilyEstimated: Bool)
+    ) -> some View {
+        let additiveCode = extractAdditiveCode(from: ingredient.name)
+        let isWatched = watchedAdditives.contains(additiveCode)
+
+        return HStack(spacing: 12) {
+            CommonIngredientRow(
+                name: ingredient.name,
+                frequency: ingredient.frequency,
+                percentage: ingredient.percentage,
+                isUserAllergen: isUserAllergenIngredient(ingredient.name),
+                isPrimarilyEstimated: ingredient.isPrimarilyEstimated
+            )
+
+            Button(action: {
+                toggleWatch(for: additiveCode)
+            }) {
+                Image(systemName: isWatched ? "eye.fill" : "eye")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(isWatched ? .orange : palette.textTertiary)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(isWatched ? Color.orange.opacity(0.15) : Color(UIColor.tertiarySystemFill))
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+    }
+
+    // MARK: - Watched Additives Helpers
+    private func toggleWatch(for code: String) {
+        if watchedAdditives.contains(code) {
+            watchedAdditives.remove(code)
+        } else {
+            watchedAdditives.insert(code)
+        }
+        // Persist to UserDefaults
+        UserDefaults.standard.set(Array(watchedAdditives), forKey: "watchedAdditives")
+    }
+
+    private func loadWatchedAdditives() {
+        if let saved = UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] {
+            watchedAdditives = Set(saved)
+        }
     }
 
     // NOTE: calculateCommonIngredients() and calculateCommonFoods() have been moved into
@@ -3012,10 +3190,11 @@ struct ReactionLogDetailView: View {
             return "Tree Nuts"
         }
 
-        // Gluten (comprehensive)
+        // Gluten (comprehensive) - removed "bread" to prevent false positives like "chicken breast"
         let glutenKeywords = ["wheat", "gluten", "barley", "rye", "oats", "spelt", "kamut", "einkorn",
                               "triticale", "durum", "farro", "freekeh", "seitan", "malt", "brewer's yeast",
-                              "semolina", "bulgur", "couscous", "flour", "bread", "pasta", "beer", "lager", "ale", "stout"]
+                              "semolina", "bulgur", "couscous", "flour", "pasta", "beer", "lager", "ale", "stout",
+                              " bread ", "breaded", "breadcrumb"] // Use word boundary versions to avoid "breast" false positives
         if glutenKeywords.contains(where: { lower.contains($0) }) {
             return "Gluten"
         }
@@ -3907,7 +4086,7 @@ struct FoodHistoryDetailView: View {
         }
         if lower.contains("wheat") || lower.contains("gluten") || lower.contains("barley") ||
            lower.contains("rye") || lower.contains("oats") || lower.contains("spelt") ||
-           lower.contains("kamut") {
+           lower.contains("kamut") || lower.contains(" bread ") || lower.contains("breaded") || lower.contains("breadcrumb") {
             return "Gluten"
         }
         if lower.contains("soy") || lower.contains("soya") || lower.contains("soybean") ||
@@ -4294,7 +4473,7 @@ struct RecentMealsListView: View {
         }
         if lower.contains("wheat") || lower.contains("gluten") || lower.contains("barley") ||
            lower.contains("rye") || lower.contains("oats") || lower.contains("spelt") ||
-           lower.contains("kamut") {
+           lower.contains("kamut") || lower.contains(" bread ") || lower.contains("breaded") || lower.contains("breadcrumb") {
             return "Gluten"
         }
         if lower.contains("soy") || lower.contains("soya") || lower.contains("soybean") ||
