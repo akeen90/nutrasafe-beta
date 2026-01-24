@@ -253,12 +253,12 @@ struct ReactionLogView: View {
             .map { (name: $0.value.displayName, frequency: $0.value.count, percentage: (Double($0.value.count) / Double(max(1, totalReactions))) * 100.0) }
             .sorted { $0.frequency > $1.frequency }
 
-        // Calculate common ingredients
+        // Calculate common ingredients with smart normalization
         var ingredientCounts: [String: (count: Int, displayName: String, exactCount: Int, estimatedCount: Int)] = [:]
         for entry in logs {
             guard let analysis = entry.triggerAnalysis else { continue }
             for ingredient in analysis.topIngredients {
-                let normalizedName = ingredient.ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                let normalizedName = normalizeIngredientName(ingredient.ingredientName)
                 if ingredientCounts[normalizedName] == nil {
                     ingredientCounts[normalizedName] = (
                         count: 1,
@@ -285,6 +285,60 @@ struct ReactionLogView: View {
                 )
             }
             .sorted { $0.frequency > $1.frequency }
+    }
+
+    // MARK: - Ingredient Normalization (Smart Deduplication)
+
+    /// Normalizes ingredient names to detect duplicates and variations
+    /// Examples:
+    /// - "citric acid (citric acid)" → "citric acid"
+    /// - "Citric Acide" → "citric acid"
+    /// - "Breast)." → "breast"
+    /// - "  Sugar  " → "sugar"
+    private func normalizeIngredientName(_ name: String) -> String {
+        var normalized = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Remove parenthetical duplicates: "citric acid (citric acid)" → "citric acid"
+        // Match pattern: word (same word) or word(same word)
+        if let regex = try? NSRegularExpression(pattern: "^(.+?)\\s*\\(\\1\\)$", options: .caseInsensitive) {
+            let range = NSRange(normalized.startIndex..., in: normalized)
+            if let match = regex.firstMatch(in: normalized, range: range),
+               let captureRange = Range(match.range(at: 1), in: normalized) {
+                normalized = String(normalized[captureRange])
+            }
+        }
+
+        // Remove trailing punctuation artifacts: "breast)." → "breast"
+        normalized = normalized.replacingOccurrences(of: "[)\\]}.,:;!?]+$", with: "", options: .regularExpression)
+
+        // Remove leading punctuation artifacts: "[(citric" → "citric"
+        normalized = normalized.replacingOccurrences(of: "^[({\\[]+", with: "", options: .regularExpression)
+
+        // Fix common French/typo endings: "acide" → "acid", "sucre" → "sugar"
+        let commonFixes: [String: String] = [
+            "acide": "acid",
+            "sucre": "sugar",
+            "sel": "salt",
+            "huile": "oil",
+            "beurre": "butter",
+            "farine": "flour"
+        ]
+
+        for (wrong, correct) in commonFixes {
+            // Replace as whole word only
+            let pattern = "\\b\(wrong)\\b"
+            normalized = normalized.replacingOccurrences(of: pattern, with: correct, options: .regularExpression)
+        }
+
+        // Trim again after all replacements
+        normalized = normalized.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Handle empty results (shouldn't happen but safety check)
+        if normalized.isEmpty {
+            return name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return normalized
     }
 
     // MARK: - Load User Allergens
