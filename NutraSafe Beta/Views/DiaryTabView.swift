@@ -1406,6 +1406,7 @@ struct CategoricalNutrientTrackingView: View {
     @State private var showCalendar: Bool = false
     @State private var hasInitiallyLoaded: Bool = false // Prevent duplicate initial loads
     @State private var weekNavigationTask: Task<Void, Never>? // Debounce task for rapid navigation
+    @State private var showingRecommendations: Bool = false // Smart recommendations sheet
 
     var body: some View {
         VStack(spacing: 20) {
@@ -1496,6 +1497,9 @@ struct CategoricalNutrientTrackingView: View {
             } else {
                 Text(row.name)
             }
+        }
+        .fullScreenCover(isPresented: $showingRecommendations) {
+            SmartRecommendationsView()
         }
     }
 
@@ -1663,6 +1667,32 @@ struct CategoricalNutrientTrackingView: View {
                             .foregroundColor(.primary)
 
                         Spacer()
+
+                        // Smart Recommendations button
+                        Button(action: {
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                            showingRecommendations = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "lightbulb.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Ideas")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.orange.opacity(0.12))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(ScaleButtonStyle())
                     }
 
                     Text("Vitamins & minerals from your food")
