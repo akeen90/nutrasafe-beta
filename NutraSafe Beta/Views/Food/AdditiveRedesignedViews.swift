@@ -397,7 +397,7 @@ struct AdditiveScoreCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header with score
+            // Header with score (padded)
             HStack(alignment: .top, spacing: 16) {
                 // Circular score
                 AdditiveCircularScore(score: analysis.score, grade: analysis.grade)
@@ -405,7 +405,7 @@ struct AdditiveScoreCard: View {
                 // Summary text
                 VStack(alignment: .leading, spacing: 6) {
                     Text(analysis.grade.label)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .font(AppTypography.sectionTitle(18))
                         .foregroundColor(palette.textPrimary)
 
                     if analysis.totalCount == 0 {
@@ -427,16 +427,19 @@ struct AdditiveScoreCard: View {
 
                 Spacer()
             }
+            .padding(.horizontal, AppSpacing.medium)  // Consistent app-wide padding
 
-            // Personal alerts (if any)
+            // Personal alerts (if any) - padded
             if analysis.hasPersonalAlerts {
                 PersonalSensitivityAlertCard(alerts: analysis.personalAlerts)
+                    .padding(.horizontal, AppSpacing.medium)
             }
 
-            // Grouped additive lists
+            // Grouped additive lists - edge-to-edge for immersive feel
             if analysis.totalCount > 0 {
                 Divider()
                     .padding(.vertical, 4)
+                    .padding(.horizontal, AppSpacing.medium)
 
                 // High risk (Worth Noting)
                 if analysis.highRiskCount > 0, let additives = analysis.groupedAdditives[.highRisk] {
@@ -447,6 +450,7 @@ struct AdditiveScoreCard: View {
                         additives: additives,
                         expandedId: $expandedAdditiveId
                     )
+                    .padding(.bottom, 12)
                 }
 
                 // Moderate risk
@@ -458,6 +462,7 @@ struct AdditiveScoreCard: View {
                         additives: additives,
                         expandedId: $expandedAdditiveId
                     )
+                    .padding(.bottom, 12)
                 }
 
                 // Low risk
@@ -470,6 +475,7 @@ struct AdditiveScoreCard: View {
                         expandedId: $expandedAdditiveId,
                         startCollapsed: true
                     )
+                    .padding(.bottom, 12)
                 }
 
                 // Safe (vitamins, natural)
@@ -482,10 +488,11 @@ struct AdditiveScoreCard: View {
                         expandedId: $expandedAdditiveId,
                         startCollapsed: true
                     )
+                    .padding(.bottom, 12)
                 }
             }
 
-            // Sources link
+            // Sources link (padded)
             Button(action: { showingSources = true }) {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text.magnifyingglass")
@@ -497,6 +504,7 @@ struct AdditiveScoreCard: View {
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.top, 4)
+            .padding(.horizontal, AppSpacing.medium)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fullScreenCover(isPresented: $showingSources) {
@@ -523,7 +531,7 @@ struct AdditiveRiskGroup: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Section header - always expanded, no collapse functionality to avoid animation issues
+            // Section header - with consistent padding
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
@@ -551,41 +559,38 @@ struct AdditiveRiskGroup: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(palette.textTertiary)
             }
-            .padding(.horizontal, 24)  // Add padding back inside for header
+            .padding(.horizontal, AppSpacing.medium)  // Consistent app-wide padding
 
-            // Additive rows - always visible
-            if true {
-                VStack(spacing: 0) {
-                    ForEach(additives) { additive in
-                        RedesignedAdditiveRow(
-                            additive: additive,
-                            isExpanded: expandedId == additive.id,
-                            onTap: {
-                                // Toggle without animation - disable all animations
-                                var transaction = Transaction()
-                                transaction.disablesAnimations = true
-                                withTransaction(transaction) {
-                                    if expandedId == additive.id {
-                                        expandedId = nil
-                                    } else {
-                                        expandedId = additive.id
-                                    }
+            // Additive rows - edge-to-edge with subtle background for depth
+            VStack(spacing: 0) {
+                ForEach(additives) { additive in
+                    RedesignedAdditiveRow(
+                        additive: additive,
+                        isExpanded: expandedId == additive.id,
+                        onTap: {
+                            // Toggle without animation - disable all animations
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) {
+                                if expandedId == additive.id {
+                                    expandedId = nil
+                                } else {
+                                    expandedId = additive.id
                                 }
                             }
-                        )
-
-                        if additive.id != additives.last?.id {
-                            Divider()
-                                .padding(.horizontal, 24)
                         }
+                    )
+
+                    if additive.id != additives.last?.id {
+                        Divider()
+                            .padding(.leading, AppSpacing.medium + 22)  // Align with text, not edge
                     }
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 0)
-                        .fill(palette.tertiary.opacity(0.05))
-                )
-                .padding(.horizontal, -24)  // Extend to screen edges (compensate for parent padding)
             }
+            .background(
+                Rectangle()
+                    .fill(palette.tertiary.opacity(0.05))
+            )
         }
     }
 }
@@ -629,7 +634,7 @@ struct RedesignedAdditiveRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Main row (always visible)
+            // Main row (always visible) - consistent padding
             Button(action: onTap) {
                 HStack(alignment: .center, spacing: 10) {
                     // Risk indicator
@@ -687,7 +692,7 @@ struct RedesignedAdditiveRow: View {
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(palette.textTertiary)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, AppSpacing.medium)  // Consistent padding
                 .padding(.vertical, 10)
             }
             .buttonStyle(PlainButtonStyle())
@@ -698,23 +703,25 @@ struct RedesignedAdditiveRow: View {
                 loadWatchedAdditives()
             }
 
-            // Expanded details
+            // Expanded details - consistent padding, calm spacing
             if isExpanded {
                 VStack(alignment: .leading, spacing: 14) {
                     // "What I need to know" - Key health claims (always visible)
                     if !additive.whatYouNeedToKnow.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("What I need to know")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(AppTypography.sectionTitle(13))
                                 .foregroundColor(palette.textPrimary)
 
                             ForEach(additive.whatYouNeedToKnow, id: \.self) { claim in
                                 HStack(alignment: .top, spacing: 8) {
-                                    Text("•")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(additive.riskLevel.color)
+                                    Circle()
+                                        .fill(additive.riskLevel.color)
+                                        .frame(width: 6, height: 6)
+                                        .padding(.top, 6)
+
                                     Text(claim)
-                                        .font(.system(size: 14))
+                                        .font(.system(size: 13))
                                         .foregroundColor(palette.textPrimary)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
@@ -734,7 +741,7 @@ struct RedesignedAdditiveRow: View {
                             }) {
                                 HStack {
                                     Text("Full Facts")
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(AppTypography.sectionTitle(13))
                                         .foregroundColor(palette.textPrimary)
 
                                     Spacer()
@@ -768,12 +775,12 @@ struct RedesignedAdditiveRow: View {
                         }
                         .padding(10)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: AppRadius.medium)
                                 .fill(SemanticColors.caution.opacity(0.1))
                         )
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, AppSpacing.medium)
                 .padding(.bottom, 12)
             }
         }

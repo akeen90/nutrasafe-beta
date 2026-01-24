@@ -4545,18 +4545,21 @@ struct FoodDetailViewFromSearch: View {
     
     // MARK: - Additive Analysis Content (Redesigned Yuka-style)
     private var additivesContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             if subscriptionManager.hasAccess {
                 // Premium users see redesigned additive analysis
                 if let analysis = additiveAnalysis {
+                    // NO WRAPPER PADDING - AdditiveScoreCard handles its own layout
                     AdditiveScoreCard(
                         analysis: analysis,
                         expandedAdditiveId: $expandedAdditiveId
                     )
                 } else if cachedIngredients == nil || cachedIngredients?.isEmpty == true {
+                    // Empty state with consistent padding
                     noIngredientDataView
+                        .padding(.horizontal, 16)
                 } else {
-                    // Loading state
+                    // Loading state with consistent padding
                     VStack(spacing: 12) {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle())
@@ -4566,13 +4569,14 @@ struct FoodDetailViewFromSearch: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 32)
+                    .padding(.horizontal, 16)
                 }
             } else {
-                // Free users see locked preview
+                // Free users see locked preview with consistent padding
                 additivesLockedView
+                    .padding(.horizontal, 16)
             }
         }
-        .padding(16)
     }
 
     private var noIngredientDataView: some View {
