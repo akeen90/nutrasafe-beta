@@ -5,18 +5,20 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useGridStore } from '../store';
-import { searchAllIndices } from '../services/algoliaService';
+import { searchAllIndices, searchByBarcode } from '../services/algoliaService';
 import { ALGOLIA_INDICES, AlgoliaIndexName } from '../types';
 
 interface HeaderProps {
   onSave: () => void;
   onRefresh: () => void;
   onDeleteSelected: () => void;
+  onMoveSelected?: (toIndex: string) => void;
   isSaving: boolean;
   isDeleting: boolean;
+  isMoving?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelected, isSaving, isDeleting }) => {
+export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelected, onMoveSelected, isSaving, isDeleting, isMoving = false }) => {
   const {
     filters,
     setFilters,
@@ -30,7 +32,10 @@ export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelec
   } = useGridStore();
 
   const [showIndexFilter, setShowIndexFilter] = useState(false);
+  const [showMoveDropdown, setShowMoveDropdown] = useState(false);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [barcodeQuery, setBarcodeQuery] = useState('');
+  const [isBarcodeSearching, setIsBarcodeSearching] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const dirtyCount = getDirtyFoods().length;
@@ -78,6 +83,23 @@ export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelec
       }
     };
   }, []);
+
+  // Barcode search
+  const handleBarcodeSearch = useCallback(async () => {
+    if (!barcodeQuery.trim()) return;
+
+    setIsBarcodeSearching(true);
+    try {
+      const { foods } = await searchByBarcode(barcodeQuery.trim(), filters.indices);
+      setSearchResults(foods);
+      // Update main search query to show what was searched
+      setFilters({ searchQuery: `Barcode: ${barcodeQuery}` });
+    } catch (error) {
+      console.error('Barcode search error:', error);
+    } finally {
+      setIsBarcodeSearching(false);
+    }
+  }, [barcodeQuery, filters.indices, setSearchResults, setFilters]);
 
   const handleVerifiedFilterChange = useCallback((value: 'all' | 'verified' | 'unverified') => {
     setFilters({ verified: value });
@@ -187,6 +209,49 @@ export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelec
           )}
         </div>
 
+        {/* Barcode Search */}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Barcode..."
+              value={barcodeQuery}
+              onChange={(e) => setBarcodeQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleBarcodeSearch();
+                }
+              }}
+              className="w-36 px-3 py-2 pl-8 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            <svg
+              className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+          </div>
+          <button
+            onClick={handleBarcodeSearch}
+            disabled={!barcodeQuery.trim() || isBarcodeSearching}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isBarcodeSearching ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            )}
+            Search
+          </button>
+        </div>
+
         {/* Filters */}
         <div className="flex items-center gap-2">
           {/* Verified Filter */}
@@ -291,6 +356,59 @@ export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelec
                   </svg>
                 </button>
               </div>
+              {/* Move To Dropdown */}
+              {onMoveSelected && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMoveDropdown(!showMoveDropdown)}
+                    disabled={isMoving}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isMoving ? (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">Move To</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showMoveDropdown && !isMoving && (
+                    <div className="absolute left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <div className="p-2 border-b border-gray-100">
+                        <p className="text-xs text-gray-600 font-medium">Move {selectedFoodIds.length} food(s) to:</p>
+                      </div>
+                      <div className="p-2 max-h-64 overflow-y-auto">
+                        {ALGOLIA_INDICES.map((index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              onMoveSelected(index);
+                              setShowMoveDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            {indexShortNames[index]}
+                            {stats && (
+                              <span className="text-xs text-gray-400 ml-2">
+                                ({stats.byIndex[index]?.toLocaleString() || 0} foods)
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={onDeleteSelected}
                 disabled={isDeleting}

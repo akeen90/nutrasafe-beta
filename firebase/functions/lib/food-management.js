@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteFoodComprehensive = exports.adminSaveFood = exports.searchTescoAndUpdate = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
+exports.deleteFoodComprehensive = exports.adminSaveFood = exports.searchTescoAndUpdate = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodsBetweenIndices = exports.moveFoodBetweenCollections = exports.deleteFoodFromAlgolia = exports.deleteVerifiedFoods = exports.updateServingSizes = exports.addVerifiedFood = exports.updateVerifiedFood = void 0;
 const functions = require("firebase-functions");
 const params_1 = require("firebase-functions/params");
 const admin = require("firebase-admin");
@@ -553,6 +553,139 @@ exports.moveFoodBetweenCollections = functions.https.onRequest(async (req, res) 
     catch (error) {
         console.error('Error moving food between collections:', error);
         res.status(500).json({ error: 'Failed to move food' });
+    }
+});
+// Move foods between Algolia indices (comprehensive)
+exports.moveFoodsBetweenIndices = functions.runWith({
+    secrets: [algoliaAdminKey],
+    timeoutSeconds: 540,
+    memory: '1GB'
+}).https.onRequest(async (req, res) => {
+    // CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    try {
+        const { foodIds, fromIndex, toIndex } = req.body;
+        if (!foodIds || !Array.isArray(foodIds) || foodIds.length === 0) {
+            res.status(400).json({ error: 'foodIds array is required' });
+            return;
+        }
+        if (!fromIndex || !toIndex) {
+            res.status(400).json({ error: 'fromIndex and toIndex are required' });
+            return;
+        }
+        if (fromIndex === toIndex) {
+            res.status(400).json({ error: 'fromIndex and toIndex must be different' });
+            return;
+        }
+        console.log(`🔄 Moving ${foodIds.length} foods from ${fromIndex} to ${toIndex}`);
+        // Initialize Algolia client
+        const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+        let successCount = 0;
+        let failedCount = 0;
+        const errors = [];
+        const movedFoods = [];
+        // Process each food
+        for (const foodId of foodIds) {
+            try {
+                console.log(`Moving ${foodId}...`);
+                // 1. Get the food data from source index
+                const sourceObject = await client.getObject({
+                    indexName: fromIndex,
+                    objectID: foodId
+                });
+                if (!sourceObject) {
+                    throw new Error('Food not found in source index');
+                }
+                // 2. Add to destination index with automatic verification for verified_foods
+                const updates = {
+                    ...sourceObject,
+                    objectID: foodId,
+                    // Update metadata to reflect the move
+                    movedFrom: fromIndex,
+                    movedAt: new Date().toISOString(),
+                };
+                // Automatically verify foods when moving to verified_foods index
+                if (toIndex === 'verified_foods') {
+                    updates.isVerified = true;
+                    updates.verifiedAt = new Date().toISOString();
+                    updates.verifiedBy = 'admin_manual';
+                    console.log(`✅ Auto-verifying ${foodId} for verified_foods index`);
+                }
+                await client.saveObject({
+                    indexName: toIndex,
+                    body: updates
+                });
+                // 3. Delete from source index
+                await client.deleteObject({
+                    indexName: fromIndex,
+                    objectID: foodId
+                });
+                // 4. Update Firestore if applicable
+                const sourceCollection = INDEX_TO_COLLECTION[fromIndex];
+                const destCollection = INDEX_TO_COLLECTION[toIndex];
+                if (sourceCollection && destCollection && sourceCollection !== destCollection) {
+                    // Both have Firestore backing - move the document
+                    const sourceDoc = await admin.firestore().collection(sourceCollection).doc(foodId).get();
+                    if (sourceDoc.exists) {
+                        const data = sourceDoc.data();
+                        await admin.firestore().collection(destCollection).doc(foodId).set({
+                            ...data,
+                            movedFrom: fromIndex,
+                            movedAt: admin.firestore.FieldValue.serverTimestamp(),
+                        });
+                        await admin.firestore().collection(sourceCollection).doc(foodId).delete();
+                        console.log(`✅ Also moved Firestore document from ${sourceCollection} to ${destCollection}`);
+                    }
+                }
+                else if (sourceCollection) {
+                    // Source has Firestore backing but destination doesn't - just delete from Firestore
+                    await admin.firestore().collection(sourceCollection).doc(foodId).delete();
+                    console.log(`✅ Removed from Firestore collection ${sourceCollection}`);
+                }
+                else if (destCollection) {
+                    // Destination has Firestore backing but source doesn't - create document
+                    await admin.firestore().collection(destCollection).doc(foodId).set({
+                        ...sourceObject,
+                        movedFrom: fromIndex,
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                    console.log(`✅ Created Firestore document in ${destCollection}`);
+                }
+                successCount++;
+                movedFoods.push(foodId);
+                console.log(`✅ Successfully moved ${foodId}`);
+            }
+            catch (error) {
+                failedCount++;
+                const errorMsg = `${foodId}: ${error.message}`;
+                errors.push(errorMsg);
+                console.error(`❌ Failed to move ${foodId}:`, error);
+            }
+        }
+        console.log(`🎉 Move complete: ${successCount} succeeded, ${failedCount} failed`);
+        res.json({
+            success: true,
+            moved: successCount,
+            failed: failedCount,
+            errors: errors.length > 0 ? errors : undefined,
+            movedFoods,
+            fromIndex,
+            toIndex,
+        });
+    }
+    catch (error) {
+        console.error('❌ Error moving foods:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to move foods',
+            details: error.message
+        });
     }
 });
 // Reset admin_manual foods to unverified (clean slate)

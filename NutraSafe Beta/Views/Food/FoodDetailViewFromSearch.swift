@@ -6064,31 +6064,23 @@ extension FoodDetailViewFromSearch {
     // MARK: - Redesigned Header Section
     private var redesignedHeaderSection: some View {
         VStack(spacing: 4) {
-            // Product image (only when available) with white background
+            // Product image (only when available) - no background for clean look
             if let imageUrl = displayFood.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
-                ZStack {
-                    // White background so product images blend in
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
-
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(maxHeight: 160)
-                                .padding(12)
-                        case .failure(_):
-                            EmptyView()
-                        case .empty:
-                            ProgressView()
-                                .tint(.secondary)
-                                .frame(height: 140)
-                        @unknown default:
-                            EmptyView()
-                        }
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: 160)
+                    case .failure(_):
+                        EmptyView()
+                    case .empty:
+                        ProgressView()
+                            .tint(.secondary)
+                            .frame(height: 140)
+                    @unknown default:
+                        EmptyView()
                     }
                 }
                 .frame(maxHeight: 180)

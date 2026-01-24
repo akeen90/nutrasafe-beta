@@ -346,10 +346,16 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
       addLog(message);
 
+      // Mark best result for preview
+      const resultsWithBest = results.map(r => ({
+        ...r,
+        isBestResult: r.url === bestResult.url,
+      }));
+
       return {
         ...food,
-        searchResults: results,
-        selectedImageUrl: bestResult.url,
+        searchResults: resultsWithBest,
+        selectedImageUrl: bestResult.url, // Show highest confidence in preview
         analysis: bestAnalysis,
         status,
         confidence,
@@ -504,16 +510,72 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             </div>
 
             {!isProcessing ? (
-              <button
-                onClick={startBatchSearch}
-                disabled={isLoading || !apiConfigured || (selectedCount === 0 && pendingCount === 0)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                {selectedCount > 0 ? `Search Selected (${selectedCount})` : `Search All (${pendingCount})`}
-              </button>
+              <>
+                <button
+                  onClick={startBatchSearch}
+                  disabled={isLoading || !apiConfigured || (selectedCount === 0 && pendingCount === 0)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  {selectedCount > 0 ? `Search Selected (${selectedCount})` : `Search All (${pendingCount})`}
+                </button>
+
+                {readyCount > 0 && (
+                  <button
+                    onClick={async () => {
+                      const readyFoods = foods.filter(f => f.status === 'ready' && f.selectedImageUrl);
+                      addLog(`Starting upload of ${readyFoods.length} ready items...`);
+
+                      for (const food of readyFoods) {
+                        setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'uploading' as const } : f));
+
+                        try {
+                          addLog(`Uploading ${food.name}...`);
+
+                          const uploadResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/uploadFoodImage', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              imageUrl: food.selectedImageUrl,
+                              index: food.sourceIndex,
+                              objectID: food.objectID,
+                            }),
+                          });
+
+                          if (!uploadResponse.ok) {
+                            const errorText = await uploadResponse.text();
+                            throw new Error(`HTTP ${uploadResponse.status}: ${errorText}`);
+                          }
+
+                          const uploadData = await uploadResponse.json();
+                          addLog(`✓ ${food.name}`);
+
+                          setFoods(prev => prev.map(f =>
+                            f.id === food.id ? { ...f, status: 'completed' as const, currentImageUrl: uploadData.imageUrl } : f
+                          ));
+
+                          await new Promise(r => setTimeout(r, 500)); // Rate limit
+                        } catch (error) {
+                          addLog(`✗ ${food.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                          setFoods(prev => prev.map(f =>
+                            f.id === food.id ? { ...f, status: 'failed' as const, error: 'Upload failed' } : f
+                          ));
+                        }
+                      }
+
+                      addLog('Upload batch complete');
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Upload All Ready ({readyCount})
+                  </button>
+                )}
+              </>
             ) : (
               <>
                 {isPaused ? (
@@ -771,16 +833,21 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                         className="w-4 h-4 text-primary-600 rounded mt-1"
                       />
 
-                      {/* Current image */}
+                      {/* Current/Selected image preview */}
                       <div className="flex-shrink-0">
-                        <div className="text-xs text-gray-400 mb-1 text-center">Current</div>
+                        <div className="text-xs text-gray-400 mb-1 text-center">
+                          {food.selectedImageUrl ? 'Selected' : 'Current'}
+                        </div>
                         <div
-                          className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-gray-400"
+                          className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400"
                           onClick={() => {
-                            if (food.currentImageUrl) setPreviewImage({ url: food.currentImageUrl, title: `${food.name} - Current` });
+                            const url = food.selectedImageUrl || food.currentImageUrl;
+                            if (url) setPreviewImage({ url, title: `${food.name}` });
                           }}
                         >
-                          {food.currentImageUrl ? (
+                          {food.selectedImageUrl ? (
+                            <img src={food.selectedImageUrl} alt="" className="w-full h-full object-contain" />
+                          ) : food.currentImageUrl ? (
                             <img src={food.currentImageUrl} alt="" className="w-full h-full object-contain" />
                           ) : (
                             <span className="text-xs text-gray-400">None</span>
@@ -817,7 +884,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                               {food.searchResults.slice(0, 10).map((result, idx) => (
                                 <div
                                   key={idx}
-                                  className="flex-shrink-0 relative"
+                                  className="flex-shrink-0 relative group"
                                 >
                                   <div
                                     className={`w-20 h-20 bg-gray-100 rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-400 ${
@@ -847,63 +914,19 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                                     </div>
                                   )}
                                   <button
-                                    onClick={async (e) => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
-
-                                      // Mark as uploading
+                                      // Mark this image as selected and ready for upload
                                       setFoods(prev => prev.map(f =>
                                         f.id === food.id
-                                          ? { ...f, selectedImageUrl: result.url, status: 'uploading' as const }
+                                          ? { ...f, selectedImageUrl: result.url, status: 'ready' as const, error: undefined }
                                           : f
                                       ));
-
-                                      try {
-                                        addLog(`Uploading image for ${food.name} to Firebase...`);
-
-                                        // Upload to Firebase Storage via Cloud Function
-                                        const uploadResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/uploadFoodImage', {
-                                          method: 'POST',
-                                          headers: {
-                                            'Content-Type': 'application/json',
-                                          },
-                                          body: JSON.stringify({
-                                            imageUrl: result.url,
-                                            index: food.sourceIndex,
-                                            objectID: food.objectID,
-                                          }),
-                                        });
-
-                                        if (!uploadResponse.ok) {
-                                          throw new Error('Upload failed');
-                                        }
-
-                                        const uploadData = await uploadResponse.json();
-                                        addLog(`✓ Uploaded to Firebase: ${uploadData.imageUrl}`);
-
-                                        // Update Algolia with Firebase URL
-                                        addLog(`Updating Algolia with Firebase URL...`);
-                                        // The API endpoint should handle Algolia update
-
-                                        setFoods(prev => prev.map(f =>
-                                          f.id === food.id
-                                            ? { ...f, status: 'completed' as const, currentImageUrl: uploadData.imageUrl }
-                                            : f
-                                        ));
-
-                                        addLog(`✓ Complete: ${food.name}`);
-
-                                      } catch (error) {
-                                        addLog(`✗ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                                        setFoods(prev => prev.map(f =>
-                                          f.id === food.id
-                                            ? { ...f, status: 'failed' as const, error: 'Upload failed' }
-                                            : f
-                                        ));
-                                      }
+                                      addLog(`Selected image for ${food.name} - ready for upload`);
                                     }}
                                     className="absolute bottom-0 left-0 right-0 bg-primary-600 text-white text-[9px] py-0.5 hover:bg-primary-700 opacity-0 group-hover:opacity-100 transition-opacity"
                                   >
-                                    Use This
+                                    Select This
                                   </button>
                                   <div className="text-[8px] text-gray-400 mt-0.5 truncate w-20 text-center">
                                     {result.domain}

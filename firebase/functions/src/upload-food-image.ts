@@ -3,7 +3,7 @@ import * as admin from 'firebase-admin';
 import {algoliasearch} from 'algoliasearch';
 
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
-const ALGOLIA_ADMIN_KEY = functions.config().algolia?.key || '';
+const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
 
 /**
  * Upload food image to Firebase Storage and update Algolia
@@ -58,7 +58,12 @@ export const uploadFoodImage = functions
       const firebaseImageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
       // Update Algolia (v5 API - client IS the index)
-      const algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+      const adminKey = getAlgoliaAdminKey();
+      if (!adminKey) {
+        throw new Error('Algolia admin key not configured');
+      }
+
+      const algoliaClient = algoliasearch(ALGOLIA_APP_ID, adminKey);
       await algoliaClient.partialUpdateObject({
         indexName: index,
         objectID,

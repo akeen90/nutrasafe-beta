@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage } from './components';
 import { useGridStore } from './store';
 import { searchAllIndices, getIndexStats } from './services/algoliaService';
-import { batchUpdateFoods, batchDeleteFoods, initializeFirebase } from './services/firebaseService';
+import { batchUpdateFoods, batchDeleteFoods, moveFoodsBetweenIndices, initializeFirebase } from './services/firebaseService';
 import { detectDuplicates } from './utils/duplicateDetection';
 import { ALGOLIA_INDICES, DatabaseStats } from './types';
 
@@ -45,6 +45,7 @@ const AppContent: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const [isDetectingDuplicates, setIsDetectingDuplicates] = useState(false);
   const [showOFFModal, setShowOFFModal] = useState(false);
   const [showDuplicatesPanel, setShowDuplicatesPanel] = useState(false);
@@ -225,6 +226,52 @@ const AppContent: React.FC = () => {
     }
   }, [selectedFoodIds, getFoodById, foods, setFoods, deselectAll]);
 
+  // Move selected foods to a different index
+  const handleMoveSelected = useCallback(async (toIndex: string) => {
+    if (selectedFoodIds.length === 0) return;
+
+    const confirmMove = window.confirm(
+      `Move ${selectedFoodIds.length} food(s) to ${toIndex}? This will remove them from their current index.`
+    );
+
+    if (!confirmMove) return;
+
+    setIsMoving(true);
+
+    try {
+      // Get the full food objects for selected IDs
+      const foodsToMove = selectedFoodIds
+        .map(id => getFoodById(id))
+        .filter((food): food is NonNullable<typeof food> => food !== undefined);
+
+      if (foodsToMove.length === 0) {
+        alert('No foods found to move.');
+        return;
+      }
+
+      console.log(`Moving ${foodsToMove.length} foods to ${toIndex}`);
+      const result = await moveFoodsBetweenIndices(foodsToMove, toIndex);
+
+      if (result.success > 0) {
+        console.log(`✅ Moved ${result.success} foods to ${toIndex}`);
+        // Reload data to reflect the move
+        await loadData();
+        deselectAll();
+        alert(`Successfully moved ${result.success} food(s) to ${toIndex}!`);
+      }
+
+      if (result.failed > 0) {
+        console.error(`Failed to move ${result.failed} foods:`, result.errors);
+        alert(`Failed to move ${result.failed} foods. Check console for details.`);
+      }
+    } catch (error) {
+      console.error('Error moving:', error);
+      alert('Error moving foods. Please try again.');
+    } finally {
+      setIsMoving(false);
+    }
+  }, [selectedFoodIds, getFoodById, deselectAll, loadData]);
+
   // Detect duplicates
   const handleDetectDuplicates = useCallback(async () => {
     setIsDetectingDuplicates(true);
@@ -298,8 +345,10 @@ const AppContent: React.FC = () => {
         onSave={handleSave}
         onRefresh={loadData}
         onDeleteSelected={handleDeleteSelected}
+        onMoveSelected={handleMoveSelected}
         isSaving={isSaving}
         isDeleting={isDeleting}
+        isMoving={isMoving}
       />
 
       {/* Main content */}

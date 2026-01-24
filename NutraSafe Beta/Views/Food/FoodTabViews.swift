@@ -1362,6 +1362,14 @@ struct FoodPatternAnalysisCard: View {
     @State private var showingPDFExportSheet = false
     @State private var showingPaywall = false
 
+    // Tab selection for categorizing patterns
+    enum PatternTab: String, CaseIterable {
+        case allergens = "Allergens"
+        case additives = "Additives"
+        case ingredients = "Ingredients"
+    }
+    @State private var selectedPatternTab: PatternTab = .allergens
+
     // Confidence level based on data points
     private var confidenceLevel: (label: String, color: Color, description: String) {
         let count = reactionManager.reactions.count
@@ -1551,7 +1559,29 @@ struct FoodPatternAnalysisCard: View {
         return true
     }
 
-    private var allTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
+    /// Checks if an ingredient is an additive (E-number or common additive name)
+    private func isAdditive(_ ingredient: String) -> Bool {
+        let lower = ingredient.lowercased()
+
+        // E-number pattern (e.g., E100, E621, etc.)
+        let eNumberPattern = #"^e\d{3,4}[a-z]?$"#
+        if lower.range(of: eNumberPattern, options: .regularExpression) != nil {
+            return true
+        }
+
+        // Common additive names
+        let additiveKeywords = [
+            "monosodium glutamate", "msg", "aspartame", "sodium benzoate",
+            "potassium sorbate", "citric acid", "ascorbic acid", "sodium nitrite",
+            "sodium nitrate", "carrageenan", "xanthan gum", "guar gum",
+            "modified starch", "lecithin", "annatto", "caramel color",
+            "artificial flavor", "artificial colour", "natural flavor"
+        ]
+
+        return additiveKeywords.contains(where: { lower.contains($0) })
+    }
+
+    private var allTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?)] {
         // Require at least 3 reactions before showing patterns
         guard reactionManager.reactions.count >= 3 else { return [] }
 
@@ -1568,14 +1598,15 @@ struct FoodPatternAnalysisCard: View {
             }
         }
 
-        // Calculate percentages and determine if allergen
+        // Calculate percentages and determine category
         let totalReactions = reactionManager.reactions.count
-        let mapped = ingredientCounts.map { (ingredient, count) -> (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?) in
+        let mapped = ingredientCounts.map { (ingredient, count) -> (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?) in
             let percentage = Int((Double(count) / Double(totalReactions)) * 100)
             let trend = calculateTrend(for: ingredient)
             let baseAllergen = getBaseAllergen(for: ingredient)
-            let isAllergen = baseAllergen != nil
-            return (ingredient.capitalized, count, percentage, trend, isAllergen, baseAllergen)
+            let allergen = baseAllergen != nil
+            let additive = isAdditive(ingredient)
+            return (ingredient.capitalized, count, percentage, trend, allergen, additive, baseAllergen)
         }
 
         // Sort by frequency (descending), then alphabetically for stable ordering
@@ -1587,12 +1618,16 @@ struct FoodPatternAnalysisCard: View {
         }
     }
 
-    private var allergenTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
+    private var allergenTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?)] {
         allTriggers.filter { $0.isAllergen }
     }
 
-    private var otherTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
-        allTriggers.filter { !$0.isAllergen }
+    private var additiveTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?)] {
+        allTriggers.filter { $0.isAdditive && !$0.isAllergen }
+    }
+
+    private var otherTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?)] {
+        allTriggers.filter { !$0.isAllergen && !$0.isAdditive }
     }
 
     // Group allergen triggers by their base allergen category with category percentage
@@ -1669,6 +1704,66 @@ struct FoodPatternAnalysisCard: View {
         } else {
             return .stable
         }
+    }
+
+    // MARK: - Tab Helper Views
+
+    private func emptyTabMessage(_ message: String) -> some View {
+        HStack {
+            Spacer()
+            VStack(spacing: 8) {
+                Image(systemName: "tray")
+                    .font(.system(size: 28))
+                    .foregroundColor(.secondary.opacity(0.5))
+
+                Text(message)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.vertical, 32)
+            Spacer()
+        }
+    }
+
+    private func patternRow(trigger: (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?), showWatchButton: Bool) -> some View {
+        HStack(spacing: 10) {
+            Text("—")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Text(trigger.ingredient)
+                .font(.system(size: 15))
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            // Watch button for additives
+            if showWatchButton {
+                Button(action: {
+                    // Toggle watched status
+                    var watched = UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] ?? []
+                    if let index = watched.firstIndex(of: trigger.ingredient) {
+                        watched.remove(at: index)
+                    } else {
+                        watched.append(trigger.ingredient)
+                    }
+                    UserDefaults.standard.set(watched, forKey: "watchedAdditives")
+                }) {
+                    let isWatched = (UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] ?? []).contains(trigger.ingredient)
+                    Image(systemName: isWatched ? "eye.fill" : "eye")
+                        .font(.system(size: 14))
+                        .foregroundColor(isWatched ? .orange : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Percentage indicator
+            Text("\(trigger.percentage)%")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary.opacity(0.6))
+        }
+        .padding(.leading, 4)
     }
 
     var body: some View {
@@ -1807,16 +1902,60 @@ struct FoodPatternAnalysisCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Recognised Allergens Section (Simplified)
-                    if !allergenTriggers.isEmpty {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("Recognised Allergens")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.primary)
-                                .padding(.bottom, 20)
+                // Tabbed Pattern View
+                VStack(alignment: .leading, spacing: 16) {
+                    // Tab Picker
+                    HStack(spacing: 0) {
+                        ForEach(PatternTab.allCases, id: \.self) { tab in
+                            let count = tab == .allergens ? allergenTriggers.count :
+                                       tab == .additives ? additiveTriggers.count :
+                                       otherTriggers.count
 
-                            VStack(alignment: .leading, spacing: 0) {
+                            Button(action: {
+                                selectedPatternTab = tab
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }) {
+                                VStack(spacing: 6) {
+                                    Text(tab.rawValue)
+                                        .font(.system(size: 13, weight: selectedPatternTab == tab ? .bold : .medium, design: .rounded))
+                                        .foregroundColor(selectedPatternTab == tab ? .white : .secondary)
+
+                                    Text("\(count)")
+                                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                        .foregroundColor(selectedPatternTab == tab ? .white.opacity(0.8) : .secondary.opacity(0.6))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    selectedPatternTab == tab ?
+                                    LinearGradient(
+                                        colors: [
+                                            AppPalette.standard.accent,
+                                            AppPalette.standard.accent.opacity(0.8)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                    : LinearGradient(colors: [Color.clear], startPoint: .leading, endPoint: .trailing)
+                                )
+                                .cornerRadius(8)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(4)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+
+                    // Tab Content
+                    VStack(alignment: .leading, spacing: 12) {
+                        switch selectedPatternTab {
+                        case .allergens:
+                            if allergenTriggers.isEmpty {
+                                emptyTabMessage("No allergens detected in your reactions")
+                            } else {
+                                // Grouped allergen display
                                 ForEach(groupedAllergenTriggers, id: \.category) { group in
                                     SimplifiedAllergenGroup(
                                         allergenCategory: group.category,
@@ -1824,69 +1963,30 @@ struct FoodPatternAnalysisCard: View {
                                         ingredients: group.ingredients,
                                         symptoms: symptomsForCategory(group.category)
                                     )
-                                    .id(group.category)  // Stable identity to prevent re-rendering
+                                    .id(group.category)
                                 }
                             }
-                        }
-                        .id("recognised-allergens-section")  // Stable identity for entire section
-                        .padding(.bottom, 28)
-                    }
 
-                    // Other Ingredients Section (Expandable)
-                    if !otherTriggers.isEmpty {
-                        VStack(alignment: .leading, spacing: 0) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Button(action: {
-                                    showOtherIngredients.toggle()
-                                }) {
-                                    HStack(alignment: .center, spacing: 12) {
-                                        Text("Other Ingredients")
-                                            .font(.system(size: 18, weight: .bold))
-                                            .foregroundColor(.primary)
-
-                                        Spacer()
-
-                                        Image(systemName: showOtherIngredients ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
-                                            .font(.system(size: 20))
-                                            .foregroundColor(.secondary.opacity(0.5))
-                                    }
-                                    .contentShape(Rectangle())
+                        case .additives:
+                            if additiveTriggers.isEmpty {
+                                emptyTabMessage("No additives detected in your reactions")
+                            } else {
+                                ForEach(additiveTriggers, id: \.ingredient) { trigger in
+                                    patternRow(trigger: trigger, showWatchButton: true)
                                 }
-                                .buttonStyle(PlainButtonStyle())
-
-                                Text("Ingredients not identified as common allergens")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.secondary)
                             }
 
-                            if showOtherIngredients {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ForEach(otherTriggers, id: \.ingredient) { trigger in
-                                        HStack(spacing: 10) {
-                                            Text("—")
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.secondary)
-
-                                            Text(trigger.ingredient)
-                                                .font(.system(size: 15))
-                                                .foregroundColor(.primary)
-
-                                            Spacer()
-
-                                            // Subtle percentage indicator
-                                            Text("\(trigger.percentage)%")
-                                                .font(.system(size: 13, weight: .medium))
-                                                .foregroundColor(.secondary.opacity(0.6))
-                                        }
-                                        .padding(.leading, 4)
-                                    }
+                        case .ingredients:
+                            if otherTriggers.isEmpty {
+                                emptyTabMessage("No other ingredients detected yet")
+                            } else {
+                                ForEach(otherTriggers, id: \.ingredient) { trigger in
+                                    patternRow(trigger: trigger, showWatchButton: false)
                                 }
-                                .padding(.top, 16)
                             }
                         }
                     }
                 }
-                .animation(nil, value: showOtherIngredients)  // Disable all animations when expanding/collapsing
             }
         }
         .animation(nil, value: showOtherIngredients)  // Prevent all implicit animations on entire card

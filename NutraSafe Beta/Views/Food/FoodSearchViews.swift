@@ -87,7 +87,56 @@ struct FoodSearchResultRow: View {
 
     var body: some View {
         Button(action: onAdd) {
-            HStack {
+            HStack(spacing: 12) {
+                // Product image thumbnail (48x48)
+                if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 48, height: 48)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.white)
+                                )
+                        case .failure(_):
+                            // Show placeholder on image load failure
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(width: 48, height: 48)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.gray)
+                                )
+                        case .empty:
+                            // Show loading indicator
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(width: 48, height: 48)
+                                .overlay(
+                                    ProgressView()
+                                        .tint(.secondary)
+                                )
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                } else {
+                    // No image - show placeholder icon
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.system(size: 20))
+                                .foregroundColor(.gray)
+                        )
+                }
+
                 VStack(alignment: .leading) {
                     Text(food.name)
                         .font(.headline)

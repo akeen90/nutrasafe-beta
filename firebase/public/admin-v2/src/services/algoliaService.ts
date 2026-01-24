@@ -312,7 +312,7 @@ export async function searchIndex(
 }
 
 /**
- * Search all indices in parallel
+ * Search all indices in parallel with verified_foods prioritized
  */
 export async function searchAllIndices(
   query: string = '',
@@ -333,7 +333,58 @@ export async function searchAllIndices(
   const foods: UnifiedFood[] = [];
   const totalByIndex: Record<AlgoliaIndexName, number> = {} as Record<AlgoliaIndexName, number>;
 
-  results.forEach((result) => {
+  // Prioritize verified_foods by adding them first
+  const priorityOrder: AlgoliaIndexName[] = ['verified_foods', 'uk_foods_cleaned', 'tesco_products', 'manual_foods', 'ai_enhanced', 'user_added', 'foods', 'ai_manually_added', 'fast_foods_database', 'generic_database'];
+
+  // Sort results by priority order
+  const sortedResults = results.sort((a, b) => {
+    const aIndex = priorityOrder.indexOf(a.indexName);
+    const bIndex = priorityOrder.indexOf(b.indexName);
+    const aPriority = aIndex === -1 ? 999 : aIndex;
+    const bPriority = bIndex === -1 ? 999 : bIndex;
+    return aPriority - bPriority;
+  });
+
+  sortedResults.forEach((result) => {
+    foods.push(...result.foods);
+    totalByIndex[result.indexName] = result.total;
+  });
+
+  return { foods, totalByIndex };
+}
+
+/**
+ * Search by barcode across all indices
+ */
+export async function searchByBarcode(
+  barcode: string,
+  indicesToSearch: AlgoliaIndexName[] = [...ALGOLIA_INDICES]
+): Promise<{ foods: UnifiedFood[]; totalByIndex: Record<AlgoliaIndexName, number> }> {
+  const results = await Promise.all(
+    indicesToSearch.map(async (indexName) => {
+      const result = await searchIndex(indexName, '', {
+        hitsPerPage: 100,
+        filters: `barcode:"${barcode}"`
+      });
+      return { indexName, ...result };
+    })
+  );
+
+  const foods: UnifiedFood[] = [];
+  const totalByIndex: Record<AlgoliaIndexName, number> = {} as Record<AlgoliaIndexName, number>;
+
+  // Prioritize verified_foods first
+  const priorityOrder: AlgoliaIndexName[] = ['verified_foods', 'uk_foods_cleaned', 'tesco_products', 'manual_foods', 'ai_enhanced', 'user_added', 'foods', 'ai_manually_added', 'fast_foods_database', 'generic_database'];
+
+  const sortedResults = results.sort((a, b) => {
+    const aIndex = priorityOrder.indexOf(a.indexName);
+    const bIndex = priorityOrder.indexOf(b.indexName);
+    const aPriority = aIndex === -1 ? 999 : aIndex;
+    const bPriority = bIndex === -1 ? 999 : bIndex;
+    return aPriority - bPriority;
+  });
+
+  sortedResults.forEach((result) => {
     foods.push(...result.foods);
     totalByIndex[result.indexName] = result.total;
   });

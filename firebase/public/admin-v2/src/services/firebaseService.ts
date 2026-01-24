@@ -252,4 +252,71 @@ export async function addFood(
   }
 }
 
+/**
+ * Move foods between Algolia indices
+ */
+export async function moveFoodsBetweenIndices(
+  foods: UnifiedFood[],
+  toIndex: string
+): Promise<{ success: number; failed: number; errors: string[] }> {
+  const foodsBySourceIndex = new Map<string, string[]>();
+
+  // Group foods by source index
+  foods.forEach(food => {
+    const sourceIndex = food._sourceIndex;
+    if (!foodsBySourceIndex.has(sourceIndex)) {
+      foodsBySourceIndex.set(sourceIndex, []);
+    }
+    foodsBySourceIndex.get(sourceIndex)!.push(food.objectID);
+  });
+
+  let totalSuccess = 0;
+  let totalFailed = 0;
+  const allErrors: string[] = [];
+
+  // Move each group
+  for (const [fromIndex, foodIds] of foodsBySourceIndex.entries()) {
+    if (fromIndex === toIndex) {
+      // Skip foods already in destination index
+      console.log(`Skipping ${foodIds.length} foods already in ${toIndex}`);
+      totalSuccess += foodIds.length;
+      continue;
+    }
+
+    try {
+      const response = await fetch(`${FUNCTIONS_BASE}/moveFoodsBetweenIndices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          foodIds,
+          fromIndex,
+          toIndex,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        totalSuccess += result.moved || 0;
+        totalFailed += result.failed || 0;
+        if (result.errors && result.errors.length > 0) {
+          allErrors.push(...result.errors);
+        }
+        console.log(`✅ Moved ${result.moved} foods from ${fromIndex} to ${toIndex}`);
+      } else {
+        totalFailed += foodIds.length;
+        allErrors.push(`${fromIndex} → ${toIndex}: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error(`Error moving foods from ${fromIndex}:`, error);
+      totalFailed += foodIds.length;
+      allErrors.push(`${fromIndex} → ${toIndex}: ${String(error)}`);
+    }
+  }
+
+  return { success: totalSuccess, failed: totalFailed, errors: allErrors };
+}
+
 export { db };
