@@ -683,7 +683,7 @@ struct RedesignedAdditiveRow: View {
                         }
                     }
 
-                    // Scientific Background - Expandable long-form explanation
+                    // Full Facts - Expandable long-form explanation
                     if !additive.scientificBackground.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Button(action: {
@@ -694,7 +694,7 @@ struct RedesignedAdditiveRow: View {
                                 }
                             }) {
                                 HStack {
-                                    Text("Scientific Background")
+                                    Text("Full Facts")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(palette.textPrimary)
 
@@ -1262,4 +1262,207 @@ class AdditiveAnalyzer {
         .padding(.vertical)
     }
     .background(Color(.systemGroupedBackground))
+}
+
+// MARK: - Unified Additive Row (for Insights & Food Detail)
+
+/// Reusable additive display component for both Insights tab and Food Detail view
+/// Shows health claims always visible when expanded, Full Facts collapsible
+struct UnifiedAdditiveRow: View {
+    let code: String
+    let name: String
+    let category: String
+    let effectsVerdict: String
+    let whatYouNeedToKnow: [String]
+    let fullFacts: String
+    let isPersonalAlert: Bool
+    let personalSensitivity: String?
+
+    // Optional: Insights-specific fields
+    let occurrenceCount: Int?
+    let foodItems: [String]?
+
+    @State private var isExpanded = false
+    @State private var showFullFacts = false
+
+    private var riskColor: Color {
+        switch effectsVerdict.lowercased() {
+        case "avoid": return .red
+        case "caution": return .orange
+        default: return .green
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Main row - always visible
+            Button(action: {
+                withAnimation(.none) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: 12) {
+                    // Risk indicator
+                    Circle()
+                        .fill(riskColor)
+                        .frame(width: 10, height: 10)
+
+                    // Name + Code
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(name)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            Text(code)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+
+                        if let occurrenceCount = occurrenceCount {
+                            Text("×\(occurrenceCount)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Personal alert indicator
+                    if isPersonalAlert {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.orange)
+                    }
+
+                    // Expand/Collapse indicator
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(Color(.systemBackground))
+            }
+
+            // Expanded content
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Personal sensitivity warning
+                    if let personalSensitivity = personalSensitivity {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.orange)
+
+                            Text("Affects your \(personalSensitivity) sensitivity")
+                                .font(.system(size: 13))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .background(Color.orange.opacity(0.08))
+                        .cornerRadius(8)
+                    }
+
+                    // "What I need to know" section - always visible
+                    if !whatYouNeedToKnow.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What I need to know")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            ForEach(whatYouNeedToKnow, id: \.self) { claim in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text("•")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(riskColor)
+                                        .frame(width: 6, alignment: .center)
+
+                                    Text(claim)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(.max)
+
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+
+                    // "Full Facts" section - collapsible
+                    if !fullFacts.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
+                                    showFullFacts.toggle()
+                                }
+                            }) {
+                                HStack {
+                                    Text("Full Facts")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.primary)
+
+                                    Spacer()
+
+                                    Image(systemName: showFullFacts ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            if showFullFacts {
+                                Text(fullFacts)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(.max)
+                            }
+                        }
+                    }
+
+                    // Occurrence count and foods list (Insights only)
+                    if let occurrenceCount = occurrenceCount, let foodItems = foodItems, !foodItems.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Found in \(occurrenceCount) food(s):")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            ForEach(foodItems.prefix(5), id: \.self) { food in
+                                HStack(spacing: 8) {
+                                    Text("•")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+
+                                    Text(food)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+
+                                    Spacer()
+                                }
+                            }
+
+                            if foodItems.count > 5 {
+                                Text("and \(foodItems.count - 5) more...")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+            }
+        }
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+    }
 }

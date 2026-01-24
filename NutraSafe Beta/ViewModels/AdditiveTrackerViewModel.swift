@@ -50,12 +50,78 @@ struct AdditiveAggregate: Identifiable {
     let origin: String?
     let consumerGuide: String?
 
+    // NEW: Full database fields for unified display
+    let overview: String?           // Scientific explanation
+    let typicalUses: String?        // Usage information
+    let effectsSummary: String?     // Health effects details
+    let hasPKUWarning: Bool
+    let hasPolyolsWarning: Bool
+    let hasSulphitesAllergenLabel: Bool
+
     var verdictColor: Color {
         switch effectsVerdict.lowercased() {
         case "avoid": return .red
         case "caution": return .orange
         default: return .green
         }
+    }
+
+    /// Build "What I need to know" health claim bullets
+    var whatYouNeedToKnow: [String] {
+        var bullets: [String] = []
+
+        // Child warning (Southampton Six)
+        if childWarning {
+            bullets.append("May affect children's activity and attention")
+        }
+
+        // PKU warning
+        if hasPKUWarning {
+            bullets.append("Not suitable for people with phenylketonuria (PKU)")
+        }
+
+        // Sulphites allergen
+        if hasSulphitesAllergenLabel {
+            bullets.append("Contains sulphites (allergen)")
+        }
+
+        // Polyols warning
+        if hasPolyolsWarning {
+            bullets.append("May have a laxative effect if consumed in large amounts")
+        }
+
+        // Verdict-based claim
+        switch effectsVerdict.lowercased() {
+        case "avoid":
+            bullets.append("Some studies suggest limiting intake")
+        case "caution":
+            bullets.append("Some people may wish to avoid")
+        default:
+            if bullets.isEmpty {
+                bullets.append("Generally recognized as safe")
+            }
+        }
+
+        return bullets
+    }
+
+    /// Build "Full Facts" scientific background text
+    var fullFacts: String {
+        var sections: [String] = []
+
+        if let overview = overview, !overview.trimmingCharacters(in: .whitespaces).isEmpty {
+            sections.append(overview)
+        }
+
+        if let typicalUses = typicalUses, !typicalUses.trimmingCharacters(in: .whitespaces).isEmpty {
+            sections.append("**Typical Uses:** \(typicalUses)")
+        }
+
+        if let effectsSummary = effectsSummary, !effectsSummary.trimmingCharacters(in: .whitespaces).isEmpty {
+            sections.append(effectsSummary)
+        }
+
+        return sections.joined(separator: "\n\n")
     }
 
     /// Fun, human-friendly description of what this additive is
@@ -284,9 +350,12 @@ class AdditiveTrackerViewModel: ObservableObject {
 
             guard !Task.isCancelled else { return }
 
-            // Convert to aggregates
+            // Convert to aggregates - look up full additive info for each
             let aggregates = additiveMap.map { key, value in
-                AdditiveAggregate(
+                // Try to get full additive info from database
+                let fullAdditive = AdditiveWatchService.shared.getAdditiveInfo(eNumber: value.info.code)
+
+                return AdditiveAggregate(
                     id: key,
                     code: value.info.code,
                     name: value.info.name,
@@ -297,7 +366,14 @@ class AdditiveTrackerViewModel: ObservableObject {
                     occurrenceCount: value.count,
                     foodItems: Array(value.foods),
                     origin: value.info.origin,
-                    consumerGuide: value.info.consumerGuide
+                    consumerGuide: value.info.consumerGuide,
+                    // NEW: Full database fields
+                    overview: fullAdditive?.overview,
+                    typicalUses: fullAdditive?.typicalUses,
+                    effectsSummary: fullAdditive?.effectsSummary,
+                    hasPKUWarning: fullAdditive?.hasPKUWarning ?? false,
+                    hasPolyolsWarning: fullAdditive?.hasPolyolsWarning ?? false,
+                    hasSulphitesAllergenLabel: fullAdditive?.hasSulphitesAllergenLabel ?? false
                 )
             }.sorted { $0.occurrenceCount > $1.occurrenceCount }
 

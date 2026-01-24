@@ -14,6 +14,7 @@ import UIKit
 struct AdditiveTrackerSection: View {
     @ObservedObject var viewModel: AdditiveTrackerViewModel
     @State private var expandedAdditiveId: String?
+    @State private var fullFactsExpandedId: String?
     @State private var isExpanded = true
     @State private var showingSources = false
     @Environment(\.colorScheme) private var colorScheme
@@ -464,66 +465,154 @@ struct AdditiveTrackerSection: View {
     }
 
     private func additiveRow(_ additive: AdditiveAggregate, color: Color) -> some View {
-        Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                expandedAdditiveId = expandedAdditiveId == additive.id ? nil : additive.id
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                // Main row
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 3) {
+        let isExpanded = expandedAdditiveId == additive.id
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // Main row - always visible
+            Button(action: {
+                withAnimation(.none) {
+                    expandedAdditiveId = expandedAdditiveId == additive.id ? nil : additive.id
+                }
+            }) {
+                HStack(spacing: 12) {
+                    // Risk indicator
+                    Circle()
+                        .fill(color)
+                        .frame(width: 10, height: 10)
+
+                    // Name + Code
+                    VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
+                            Text(additive.name)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(appPalette.textPrimary)
+
                             if !additive.code.isEmpty {
                                 Text(additive.code)
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(color)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(appPalette.textSecondary)
                             }
-                            Text(additive.name)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(appPalette.textPrimary)
-                                .lineLimit(1)
                         }
 
-                        Text(additive.category)
+                        Text("×\(additive.occurrenceCount)")
                             .font(.system(size: 12))
                             .foregroundColor(appPalette.textTertiary)
                     }
 
                     Spacer()
 
-                    Text("×\(additive.occurrenceCount)")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(appPalette.textSecondary)
-
-                    Image(systemName: expandedAdditiveId == additive.id ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
+                    // Expand/Collapse indicator
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(appPalette.textTertiary)
                 }
-                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
 
-                // Expanded details - minimal, essential info only
-                if expandedAdditiveId == additive.id {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Divider()
+            // Expanded content
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    // "What I need to know" section - always visible
+                    if !additive.whatYouNeedToKnow.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What I need to know")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(appPalette.textPrimary)
 
-                        detailRow(icon: "info.circle.fill", text: additive.whatIsIt, color: .purple)
-                        detailRow(icon: "leaf.fill", text: additive.whereIsItFrom, color: .teal)
+                            ForEach(additive.whatYouNeedToKnow, id: \.self) { claim in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text("•")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(color)
+                                        .frame(width: 6, alignment: .center)
 
-                        // Only show foods if helpful
-                        if !additive.foodItems.isEmpty && additive.foodItems.count <= 3 {
-                            detailRow(
-                                icon: "fork.knife",
-                                text: "In: \(additive.foodItems.prefix(3).joined(separator: ", "))",
-                                color: palette.accent
-                            )
+                                    Text(claim)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(appPalette.textPrimary)
+                                        .lineLimit(.max)
+
+                                    Spacer()
+                                }
+                            }
                         }
                     }
-                    .padding(.bottom, 8)
+
+                    // "Full Facts" section - collapsible
+                    if !additive.fullFacts.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
+                                    // Toggle full facts visibility
+                                    if fullFactsExpandedId == additive.id {
+                                        fullFactsExpandedId = nil
+                                    } else {
+                                        fullFactsExpandedId = additive.id
+                                    }
+                                }
+                            }) {
+                                HStack {
+                                    Text("Full Facts")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(appPalette.textPrimary)
+
+                                    Spacer()
+
+                                    Image(systemName: fullFactsExpandedId == additive.id ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(appPalette.textTertiary)
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            if fullFactsExpandedId == additive.id {
+                                Text(additive.fullFacts)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(appPalette.textSecondary)
+                                    .lineLimit(.max)
+                            }
+                        }
+                    }
+
+                    // Foods list
+                    if !additive.foodItems.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Found in \(additive.occurrenceCount) food(s):")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(appPalette.textPrimary)
+
+                            ForEach(additive.foodItems.prefix(5), id: \.self) { food in
+                                HStack(spacing: 8) {
+                                    Text("•")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(appPalette.textTertiary)
+
+                                    Text(food)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(appPalette.textSecondary)
+                                        .lineLimit(1)
+
+                                    Spacer()
+                                }
+                            }
+
+                            if additive.foodItems.count > 5 {
+                                Text("and \(additive.foodItems.count - 5) more...")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(appPalette.textTertiary)
+                            }
+                        }
+                    }
                 }
+                .padding(12)
+                .background(Color(.systemGray6).opacity(0.5))
+                .cornerRadius(8)
             }
         }
-        .buttonStyle(PlainButtonStyle())
     }
 
     private func detailRow(icon: String, text: String, color: Color) -> some View {
