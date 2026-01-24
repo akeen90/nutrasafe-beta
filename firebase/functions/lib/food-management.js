@@ -1421,27 +1421,36 @@ exports.browseAllIndices = functions.runWith({
             }
             console.log(`📦 Browsing all records from ${indices.length} indices...`);
             const allProducts = [];
-            const adminKey = algoliaAdminKey.value();
-            // Browse each index using Algolia REST API directly
+            // Get and sanitize admin key - remove any quotes, newlines, or control characters
+            const rawKey = algoliaAdminKey.value();
+            const adminKey = rawKey.replace(/[\r\n\t"']/g, '').trim();
+            console.log(`🔑 Admin key length: ${adminKey.length} chars`);
+            // Browse each index using Algolia Browse API (not Search API)
+            // Browse API has no 1000-result limit and uses cursor-based pagination
             for (const indexName of indices) {
                 console.log(`📦 Browsing ${indexName}...`);
                 try {
                     let browseCount = 0;
-                    let page = 0;
-                    let hasMore = true;
+                    let cursor = undefined;
                     const hitsPerPage = 1000;
-                    // Use Algolia REST API directly with axios to avoid SDK header issues
-                    while (hasMore) {
-                        const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${indexName}`;
-                        const response = await axios_1.default.post(`${url}/query`, {
-                            query: '', // Empty query returns all records
+                    // Use Algolia Browse API endpoint
+                    const browseUrl = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${encodeURIComponent(indexName)}/browse`;
+                    // First request (no cursor)
+                    do {
+                        const requestData = {
                             hitsPerPage,
-                            page,
-                        }, {
+                        };
+                        // Add cursor for subsequent requests
+                        if (cursor) {
+                            requestData.cursor = cursor;
+                        }
+                        const response = await (0, axios_1.default)({
+                            method: 'POST',
+                            url: browseUrl,
+                            data: requestData,
                             headers: {
                                 'X-Algolia-Application-Id': ALGOLIA_APP_ID,
                                 'X-Algolia-API-Key': adminKey,
-                                'Content-Type': 'application/json',
                             },
                         });
                         const hits = response.data.hits || [];
@@ -1452,19 +1461,24 @@ exports.browseAllIndices = functions.runWith({
                             });
                         });
                         browseCount += hits.length;
-                        // Check if there are more pages
-                        hasMore = (page + 1) * hitsPerPage < (response.data.nbHits || 0);
-                        page++;
+                        cursor = response.data.cursor;
                         // Log progress every 10k records
                         if (browseCount % 10000 === 0) {
                             console.log(`  → Browsed ${browseCount.toLocaleString()} records from ${indexName}...`);
                         }
-                    }
+                        // Safety check: if no cursor and no hits, break
+                        if (!cursor && hits.length === 0) {
+                            break;
+                        }
+                    } while (cursor);
                     console.log(`✅ ${indexName}: ${browseCount.toLocaleString()} total products`);
                 }
                 catch (indexError) {
                     console.error(`❌ Error browsing ${indexName}:`, indexError.message);
-                    console.error('Full error:', indexError);
+                    if (indexError.response) {
+                        console.error('Response status:', indexError.response.status);
+                        console.error('Response data:', indexError.response.data);
+                    }
                     // Continue with other indices even if one fails
                 }
             }

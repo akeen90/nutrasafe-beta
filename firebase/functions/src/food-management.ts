@@ -1608,61 +1608,41 @@ export const browseAllIndices = functions.runWith({
 
       console.log(`🔑 Admin key length: ${adminKey.length} chars`);
 
-      // Browse each index using Firebase Functions SDK approach (simpler than REST API)
-      // Use empty search query to get all records
+      // Browse each index using Algolia Browse API (not Search API)
+      // Browse API has no 1000-result limit and uses cursor-based pagination
       for (const indexName of indices) {
         console.log(`📦 Browsing ${indexName}...`);
 
         try {
           let browseCount = 0;
-          let page = 0;
+          let cursor: string | undefined = undefined;
           const hitsPerPage = 1000;
-          let totalHits = 0;
 
-          // First request to get total count
-          const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${encodeURIComponent(indexName)}/query`;
+          // Use Algolia Browse API endpoint
+          const browseUrl = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${encodeURIComponent(indexName)}/browse`;
 
-          const firstResponse = await axios({
-            method: 'POST',
-            url,
-            data: {
-              params: `query=&hitsPerPage=${hitsPerPage}&page=0`
-            },
-            headers: {
-              'X-Algolia-Application-Id': ALGOLIA_APP_ID,
-              'X-Algolia-API-Key': adminKey,
-            },
-          });
+          // First request (no cursor)
+          do {
+            const requestData: any = {
+              hitsPerPage,
+            };
 
-          totalHits = firstResponse.data.nbHits || 0;
-          const totalPages = firstResponse.data.nbPages || 0;
-          console.log(`  → Total: ${totalHits.toLocaleString()} products, ${totalPages} pages`);
+            // Add cursor for subsequent requests
+            if (cursor) {
+              requestData.cursor = cursor;
+            }
 
-          // Add first page results
-          const firstHits = firstResponse.data.hits || [];
-          firstHits.forEach((hit: any) => {
-            allProducts.push({
-              ...hit,
-              sourceIndex: indexName,
-            });
-          });
-          browseCount += firstHits.length;
-
-          // Fetch remaining pages
-          for (page = 1; page < totalPages; page++) {
-            const pageResponse = await axios({
+            const response = await axios({
               method: 'POST',
-              url,
-              data: {
-                params: `query=&hitsPerPage=${hitsPerPage}&page=${page}`
-              },
+              url: browseUrl,
+              data: requestData,
               headers: {
                 'X-Algolia-Application-Id': ALGOLIA_APP_ID,
                 'X-Algolia-API-Key': adminKey,
               },
             });
 
-            const hits = pageResponse.data.hits || [];
+            const hits = response.data.hits || [];
             hits.forEach((hit: any) => {
               allProducts.push({
                 ...hit,
@@ -1671,12 +1651,18 @@ export const browseAllIndices = functions.runWith({
             });
 
             browseCount += hits.length;
+            cursor = response.data.cursor;
 
             // Log progress every 10k records
             if (browseCount % 10000 === 0) {
               console.log(`  → Browsed ${browseCount.toLocaleString()} records from ${indexName}...`);
             }
-          }
+
+            // Safety check: if no cursor and no hits, break
+            if (!cursor && hits.length === 0) {
+              break;
+            }
+          } while (cursor);
 
           console.log(`✅ ${indexName}: ${browseCount.toLocaleString()} total products`);
         } catch (indexError: any) {

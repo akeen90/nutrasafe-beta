@@ -815,6 +815,7 @@ struct ReactionLogView: View {
                 peakTiming: cachedPeakTiming,
                 weeklyTrend: cachedWeeklyTrend,
                 topTrigger: cachedTopTrigger,
+                commonFoods: cachedCommonFoods,
                 totalReactions: manager.reactionLogs.count
             )
             .padding(.bottom, 8)
@@ -5106,6 +5107,7 @@ struct ReactionInsightHeroCard: View {
     let peakTiming: String?
     let weeklyTrend: (thisWeek: Int, lastWeek: Int, trend: String)?
     let topTrigger: (name: String, percentage: Int)?
+    let commonFoods: [(name: String, frequency: Int, percentage: Double)]
     let totalReactions: Int
 
     @Environment(\.colorScheme) private var colorScheme
@@ -5138,9 +5140,17 @@ struct ReactionInsightHeroCard: View {
             insight += ", \(timingPhrase)"
         }
 
-        // Add trigger context if available
-        if let trigger = topTrigger, trigger.percentage >= 30 {
-            insight += ". Foods containing \(trigger.name.lowercased()) appear frequently before your symptoms"
+        // Add ACTIONABLE trigger context: show specific foods, not just ingredients
+        // More useful: "Skittles and pizza appear before 66% of your reactions"
+        // vs generic: "Foods containing gluten appear frequently"
+        if !commonFoods.isEmpty {
+            let topFoods = commonFoods.prefix(2)
+            if topFoods.count == 1 {
+                let pct = Int(topFoods[0].percentage)
+                insight += ". \(topFoods[0].name) appears before \(pct)% of your reactions"
+            } else if topFoods.count == 2 {
+                insight += ". \(topFoods[0].name) and \(topFoods[1].name) appear most often"
+            }
         }
 
         return insight + "."
