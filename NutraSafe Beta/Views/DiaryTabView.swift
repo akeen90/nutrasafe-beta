@@ -974,7 +974,7 @@ struct DiaryTabView: View {
             // Content based on selected sub-tab
             switch insightsSubTab {
             case .additives:
-                AdditivePatternSection(viewModel: additiveTrackerVM)
+                AdditivePatternSectionRedesigned(viewModel: additiveTrackerVM)
 
             case .nutrients:
                 if #available(iOS 16.0, *) {
