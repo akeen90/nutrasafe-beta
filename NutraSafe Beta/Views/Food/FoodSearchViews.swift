@@ -871,7 +871,10 @@ struct AddFoodSearchView: View {
             setupKeyboardObservers()
             checkForEditingMode()
             loadRecentFoods()
-            loadFavorites()
+            // Only load favorites on first appear (guard inside prevents duplicates)
+            if !hasFavoritesLoaded {
+                loadFavorites()
+            }
         }
         .onDisappear {
             print("[AddFoodSearchView] onDisappear called")

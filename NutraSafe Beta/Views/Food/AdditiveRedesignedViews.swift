@@ -551,6 +551,7 @@ struct AdditiveRiskGroup: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(palette.textTertiary)
             }
+            .padding(.horizontal, 24)  // Add padding back inside for header
 
             // Additive rows - always visible
             if true {
@@ -560,35 +561,26 @@ struct AdditiveRiskGroup: View {
                             additive: additive,
                             isExpanded: expandedId == additive.id,
                             onTap: {
+                                // Toggle without animation for instant response
                                 if expandedId == additive.id {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        expandedId = nil
-                                    }
+                                    expandedId = nil
                                 } else {
-                                    // Collapse previous instantly to avoid double-animate jump
-                                    var tx = Transaction()
-                                    tx.disablesAnimations = true
-                                    withTransaction(tx) {
-                                        expandedId = nil
-                                    }
-                                    // Animate opening the new row
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        expandedId = additive.id
-                                    }
+                                    expandedId = additive.id
                                 }
                             }
                         )
 
                         if additive.id != additives.last?.id {
                             Divider()
-                                .padding(.leading, 28)
+                                .padding(.horizontal, 24)
                         }
                     }
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 0)
                         .fill(palette.tertiary.opacity(0.05))
                 )
+                .padding(.horizontal, -24)  // Extend to screen edges (compensate for parent padding)
             }
         }
     }
@@ -657,7 +649,7 @@ struct RedesignedAdditiveRow: View {
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(palette.textTertiary)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 24)
                 .padding(.vertical, 10)
             }
             .buttonStyle(PlainButtonStyle())
@@ -719,9 +711,8 @@ struct RedesignedAdditiveRow: View {
                         )
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 24)
                 .padding(.bottom, 12)
-                .padding(.leading, 22) // Indent to align with text above
             }
         }
     }
