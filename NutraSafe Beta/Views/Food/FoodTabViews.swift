@@ -1944,43 +1944,6 @@ struct FoodPatternAnalysisCard: View {
                 )
             }
 
-            // Dynamic insight card (only for allergens/additives)
-            if let insight = topTriggerInsight {
-                HStack(spacing: 14) {
-                    // Icon
-                    ZStack {
-                        Circle()
-                            .fill(insight.color.opacity(0.12))
-                            .frame(width: 48, height: 48)
-
-                        Image(systemName: insight.icon)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(insight.color)
-                    }
-
-                    // Text content
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(insight.text)
-                            .font(AppTypography.sectionTitle(16))
-                            .foregroundColor(Color.textPrimary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-
-                        Text(insight.subtext)
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundColor(Color.textSecondary)
-                    }
-
-                    Spacer()
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: AppRadius.large)
-                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
-                )
-                .cardShadow()
-            }
-
             if allTriggers.isEmpty {
                 // Enhanced empty state with specific suggestions
                 VStack(spacing: 16) {
