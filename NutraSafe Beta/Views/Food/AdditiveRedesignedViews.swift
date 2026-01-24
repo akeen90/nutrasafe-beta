@@ -561,11 +561,15 @@ struct AdditiveRiskGroup: View {
                             additive: additive,
                             isExpanded: expandedId == additive.id,
                             onTap: {
-                                // Toggle without animation for instant response
-                                if expandedId == additive.id {
-                                    expandedId = nil
-                                } else {
-                                    expandedId = additive.id
+                                // Toggle without animation - disable all animations
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
+                                    if expandedId == additive.id {
+                                        expandedId = nil
+                                    } else {
+                                        expandedId = additive.id
+                                    }
                                 }
                             }
                         )
@@ -683,7 +687,11 @@ struct RedesignedAdditiveRow: View {
                     if !additive.scientificBackground.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Button(action: {
-                                isScientificBackgroundExpanded.toggle()
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
+                                    isScientificBackgroundExpanded.toggle()
+                                }
                             }) {
                                 HStack {
                                     Text("Scientific Background")
