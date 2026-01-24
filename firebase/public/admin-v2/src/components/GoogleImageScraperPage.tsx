@@ -13,6 +13,7 @@ import {
   ImageAnalysisResult,
 } from '../services/serpApiService';
 import { filterUKProducts } from '../services/ukProductDetection';
+import { searchByBarcode } from '../services/algoliaService';
 import { ALGOLIA_INDICES } from '../types';
 
 // Algolia config
@@ -73,6 +74,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     ukPercentage: number;
     nonUkPercentage: number;
   } | null>(null);
+  const [barcodeQuery, setBarcodeQuery] = useState('');
+  const [isBarcodeSearching, setIsBarcodeSearching] = useState(false);
 
   // Preview modal
   const [previewImage, setPreviewImage] = useState<{
@@ -205,6 +208,65 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       setIsLoading(false);
     }
   }, [selectedIndices, filterUKOnly]);
+
+  // Search by barcode
+  const handleBarcodeSearch = useCallback(async () => {
+    if (!barcodeQuery.trim()) {
+      addLog('❌ No barcode entered');
+      return;
+    }
+
+    setIsBarcodeSearching(true);
+    setIsLoading(true);
+    setShowIndexSelector(false);
+    setLoadingProgress(0);
+    addLog(`🔍 Searching for barcode: ${barcodeQuery}`);
+
+    try {
+      const { foods: results } = await searchByBarcode(barcodeQuery.trim(), Array.from(selectedIndices) as any);
+
+      if (results.length === 0) {
+        addLog(`❌ No foods found with barcode: ${barcodeQuery}`);
+        setIsLoading(false);
+        setIsBarcodeSearching(false);
+        return;
+      }
+
+      addLog(`✅ Found ${results.length} food(s) with barcode ${barcodeQuery}`);
+
+      const foodsWithImage: FoodWithImage[] = results.map(result => ({
+        id: result._id,
+        objectID: result.objectID,
+        name: result.name,
+        brandName: result.brandName,
+        barcode: result.barcode,
+        currentImageUrl: result.imageUrl,
+        sourceIndex: result._sourceIndex,
+        selected: false,
+        searchResults: [],
+        selectedImageUrl: null,
+        analysis: null,
+        status: 'pending',
+        analysisProgress: 0,
+      }));
+
+      setFoods(foodsWithImage);
+      setStats({
+        total: foodsWithImage.length,
+        completed: 0,
+        failed: 0,
+        noResults: 0,
+        processing: 0,
+      });
+      addLog(`📦 Loaded ${foodsWithImage.length} food(s) for image scraping`);
+    } catch (err) {
+      addLog(`❌ Barcode search failed: ${err}`);
+    } finally {
+      setIsLoading(false);
+      setIsBarcodeSearching(false);
+      setLoadingProgress(100);
+    }
+  }, [barcodeQuery, selectedIndices, addLog]);
 
   const updateStats = (foodList: FoodWithImage[]) => {
     setStats({
@@ -787,6 +849,49 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                     </label>
                   </div>
 
+                  {/* Barcode Search OR Load All */}
+                  <div className="mb-6 pb-6 border-b border-gray-200">
+                    <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                      <span className="flex items-center justify-center w-6 h-6 bg-primary-600 text-white rounded-full text-xs font-bold">3</span>
+                      <span className="font-medium text-gray-700">Search by barcode or load all</span>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Enter barcode (e.g., 5000159407236)"
+                          value={barcodeQuery}
+                          onChange={(e) => setBarcodeQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && barcodeQuery.trim()) {
+                              handleBarcodeSearch();
+                            }
+                          }}
+                          className="w-full px-4 py-3 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </div>
+                      <button
+                        onClick={handleBarcodeSearch}
+                        disabled={!barcodeQuery.trim() || isBarcodeSearching || selectedIndices.size === 0}
+                        className="flex items-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                      >
+                        {isBarcodeSearching ? (
+                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                          </svg>
+                        )}
+                        Search
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">💡 Search for a specific product by barcode, or load all foods from selected indices below</p>
+                  </div>
+
                   <button
                     onClick={loadFoodsFromIndices}
                     disabled={selectedIndices.size === 0}
@@ -795,7 +900,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Load {selectedIndices.size > 0 ? `Foods from ${selectedIndices.size} ${selectedIndices.size === 1 ? 'Index' : 'Indices'}` : 'Foods'}
+                    Load All {selectedIndices.size > 0 ? `Foods from ${selectedIndices.size} ${selectedIndices.size === 1 ? 'Index' : 'Indices'}` : 'Foods'}
                   </button>
 
                   {selectedIndices.size === 0 && (

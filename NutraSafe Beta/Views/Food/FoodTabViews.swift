@@ -1049,42 +1049,14 @@ struct FoodReactionListCard: View {
     let title: String
     let reactions: [FoodReaction]
     @EnvironmentObject var reactionManager: ReactionManager
-    @State private var showingPDFExportSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header with title and share button
+            // Header with title (no export button - moved to Patterns section)
             HStack(alignment: .center) {
                 Text(title)
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.primary)
-
-                Spacer()
-
-                // Share button (PDF export) - only show if reactions exist
-                if !reactions.isEmpty {
-                    Button(action: {
-                        showingPDFExportSheet = true
-                    }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(AppPalette.standard.accent)
-                            .frame(width: 40, height: 40)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle().stroke(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1
-                                )
-                            )
-                            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 3)
-                    }
-                }
             }
 
             if reactions.isEmpty {
@@ -1132,9 +1104,6 @@ struct FoodReactionListCard: View {
                 )
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 4)
-        .fullScreenCover(isPresented: $showingPDFExportSheet) {
-            MultipleFoodReactionsPDFExportSheet(reactions: reactions)
-        }
     }
 }
 
@@ -4235,6 +4204,7 @@ struct FoodReactionPDFExportSheet: View {
 
 struct MultipleFoodReactionsPDFExportSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     let reactions: [FoodReaction]
     @State private var isGenerating = false
     @State private var pdfURL: URL?
@@ -4243,131 +4213,321 @@ struct MultipleFoodReactionsPDFExportSheet: View {
     @State private var userName: String = ""
     @State private var showingNameAlert = false
 
+    // Get user's adaptive palette (fallback to safer theme if not set)
+    private var userPalette: OnboardingPalette {
+        if let intentRaw = UserDefaults.standard.string(forKey: "userIntent"),
+           let intent = UserIntent(rawValue: intentRaw) {
+            return OnboardingPalette.forIntent(intent)
+        }
+        return OnboardingPalette.safer
+    }
+
     var body: some View {
         navigationContainer {
-            VStack(spacing: 30) {
-                if isGenerating {
-                    ProgressView("Generating PDF...")
-                        .font(.headline)
-                        .padding()
-                } else if let error = errorMessage {
-                    VStack(spacing: 20) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.red)
+            ScrollView {
+                VStack(spacing: 0) {
+                    if isGenerating {
+                        // Generating state - breathing animation
+                        VStack(spacing: 32) {
+                            Spacer()
 
-                        Text("Export Failed")
-                            .font(.title2)
-                            .fontWeight(.semibold)
+                            ZStack {
+                                Circle()
+                                    .fill(userPalette.accent.opacity(0.1))
+                                    .frame(width: 100, height: 100)
+                                    .scaleEffect(isGenerating ? 1.2 : 1.0)
+                                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isGenerating)
 
-                        Text(error)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                                Image(systemName: "doc.text.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(userPalette.accent)
+                            }
 
-                        Button("Try Again") {
-                            errorMessage = nil
-                            showingNameAlert = true
+                            VStack(spacing: 12) {
+                                Text("Creating Your Report")
+                                    .font(AppTypography.sectionTitle(24))
+                                    .foregroundColor(Color.textPrimary)
+
+                                Text("Gathering your reaction patterns...")
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundColor(Color.textSecondary)
+                                    .multilineTextAlignment(.center)
+                            }
+
+                            Spacer()
                         }
-                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.horizontal, 24)
 
-                        Button("Close") {
-                            dismiss()
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                } else if pdfURL != nil {
-                    VStack(spacing: 20) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.green)
+                    } else if let error = errorMessage {
+                        // Error state - warm, supportive
+                        VStack(spacing: 32) {
+                            Spacer()
 
-                        Text("PDF Ready")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-
-                        Text("Your reaction report is ready to share.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-
-                        Button(action: {
-                            showShareSheet = true
-                        }) {
-                            Label("Share Report", systemImage: "square.and.arrow.up")
-                                .font(.headline)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .padding()
-
-                        Button("Done") {
-                            dismiss()
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            Image(systemName: "doc.text.fill")
+                            Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.system(size: 60))
-                                .foregroundColor(AppPalette.standard.accent)
+                                .foregroundColor(.orange)
+                                .padding(.top, 40)
 
-                            Text("Export Reaction Report")
-                                .font(.title2)
-                                .fontWeight(.semibold)
+                            VStack(spacing: 12) {
+                                Text("Something Went Wrong")
+                                    .font(AppTypography.sectionTitle(24))
+                                    .foregroundColor(Color.textPrimary)
 
-                            Text("Generate a PDF report of your \(reactions.count) recent reaction\(reactions.count == 1 ? "" : "s").")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
+                                Text(error)
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundColor(Color.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 24)
+                            }
 
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Report Includes")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
+                            Spacer()
 
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Label("Food names and brands", systemImage: "fork.knife")
-                                    Label("Symptoms logged", systemImage: "exclamationmark.triangle")
-                                    Label("Suspected ingredients", systemImage: "list.bullet")
-                                    Label("Reaction dates and times", systemImage: "calendar")
+                            // Action buttons
+                            VStack(spacing: 12) {
+                                Button(action: {
+                                    errorMessage = nil
+                                    showingNameAlert = true
+                                }) {
+                                    Text("Try Again")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 56)
+                                        .background(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [userPalette.accent, userPalette.accent.opacity(0.8)]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .cornerRadius(14)
                                 }
-                                .font(.callout)
-                                .foregroundColor(.secondary)
-                            }
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
+                                .scaleEffect(isGenerating ? 0.98 : 1.0)
 
-                            Text("This report is for informational purposes only. Please share with a qualified healthcare provider for professional guidance.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-
-                            Button(action: {
-                                showingNameAlert = true
-                            }) {
-                                Label("Generate PDF Report", systemImage: "doc.badge.plus")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity)
+                                Button(action: {
+                                    dismiss()
+                                }) {
+                                    Text("Close")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundColor(userPalette.accent)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 56)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(userPalette.accent.opacity(0.3), lineWidth: 1.5)
+                                        )
+                                }
                             }
-                            .buttonStyle(.borderedProminent)
-                            .padding(.horizontal)
-
-                            Button("Cancel") {
-                                dismiss()
-                            }
-                            .buttonStyle(.bordered)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 32)
                         }
-                        .padding()
+
+                    } else if pdfURL != nil {
+                        // Success state - encouraging
+                        VStack(spacing: 32) {
+                            Spacer()
+
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 80))
+                                .foregroundColor(userPalette.accent)
+                                .padding(.top, 40)
+
+                            VStack(spacing: 12) {
+                                Text("Your Report Is Ready")
+                                    .font(AppTypography.sectionTitle(28))
+                                    .foregroundColor(Color.textPrimary)
+
+                                Text("Share with your healthcare provider to help them understand your patterns.")
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundColor(Color.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 24)
+                            }
+
+                            Spacer()
+
+                            // Action buttons
+                            VStack(spacing: 12) {
+                                Button(action: {
+                                    showShareSheet = true
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "square.and.arrow.up")
+                                            .font(.system(size: 16, weight: .semibold))
+                                        Text("Share Report")
+                                            .font(.system(size: 17, weight: .semibold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [userPalette.accent, userPalette.accent.opacity(0.8)]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .cornerRadius(14)
+                                }
+                                .scaleEffect(isGenerating ? 0.98 : 1.0)
+
+                                Button(action: {
+                                    dismiss()
+                                }) {
+                                    Text("Done")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundColor(userPalette.accent)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 56)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(userPalette.accent.opacity(0.3), lineWidth: 1.5)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 32)
+                        }
+
+                    } else {
+                        // Initial state - calm, informative
+                        VStack(spacing: 32) {
+                            // Header
+                            VStack(spacing: 16) {
+                                Image(systemName: "doc.text.fill")
+                                    .font(.system(size: 56))
+                                    .foregroundColor(userPalette.accent)
+                                    .padding(.top, 32)
+
+                                VStack(spacing: 8) {
+                                    Text("Share Your Patterns")
+                                        .font(AppTypography.sectionTitle(32))
+                                        .foregroundColor(Color.textPrimary)
+                                        .multilineTextAlignment(.center)
+
+                                    Text("A clear summary of your \(reactions.count) reaction\(reactions.count == 1 ? "" : "s") to help your healthcare provider understand.")
+                                        .font(.system(size: 15, weight: .regular))
+                                        .foregroundColor(Color.textSecondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 8)
+                                }
+                            }
+                            .padding(.horizontal, 24)
+
+                            // Report includes card
+                            VStack(alignment: .leading, spacing: 20) {
+                                Text("Your Report Includes")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(Color.textPrimary)
+
+                                VStack(alignment: .leading, spacing: 16) {
+                                    ReportIncludesRow(
+                                        icon: "allergens",
+                                        title: "Allergens Detected",
+                                        description: "Recognized allergens across your reactions",
+                                        color: userPalette.accent
+                                    )
+
+                                    ReportIncludesRow(
+                                        icon: "eye.fill",
+                                        title: "Additives Flagged",
+                                        description: "E-numbers and additives you've reacted to",
+                                        color: .orange
+                                    )
+
+                                    ReportIncludesRow(
+                                        icon: "leaf.fill",
+                                        title: "Common Ingredients",
+                                        description: "Other ingredients appearing in patterns",
+                                        color: .green
+                                    )
+
+                                    ReportIncludesRow(
+                                        icon: "exclamationmark.triangle.fill",
+                                        title: "Symptoms Logged",
+                                        description: "What your body was telling you",
+                                        color: .red
+                                    )
+
+                                    ReportIncludesRow(
+                                        icon: "calendar",
+                                        title: "Timeline & Context",
+                                        description: "When reactions occurred and meal history",
+                                        color: .blue
+                                    )
+                                }
+                            }
+                            .padding(24)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+                            )
+                            .cardShadow()
+                            .padding(.horizontal, 24)
+
+                            // Disclaimer
+                            VStack(spacing: 8) {
+                                Text("For Healthcare Use")
+                                    .font(.system(size: 13, weight: .semibold, design: .default))
+                                    .foregroundColor(Color.textSecondary)
+
+                                Text("This report is for informational purposes. Share it with a qualified healthcare provider for professional guidance.")
+                                    .font(.system(size: 13, weight: .regular))
+                                    .foregroundColor(Color.textTertiary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.horizontal, 32)
+
+                            Spacer()
+
+                            // Generate button
+                            VStack(spacing: 12) {
+                                Button(action: {
+                                    showingNameAlert = true
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "doc.badge.plus")
+                                            .font(.system(size: 16, weight: .semibold))
+                                        Text("Generate Report")
+                                            .font(.system(size: 17, weight: .semibold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [userPalette.accent, userPalette.accent.opacity(0.8)]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .cornerRadius(14)
+                                }
+                                .scaleEffect(isGenerating ? 0.98 : 1.0)
+
+                                Button(action: {
+                                    dismiss()
+                                }) {
+                                    Text("Cancel")
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundColor(userPalette.accent)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 56)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(userPalette.accent.opacity(0.3), lineWidth: 1.5)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 32)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, minHeight: UIScreen.main.bounds.height - 100)
             }
-            .padding()
+            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             .navigationTitle("Export Report")
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showShareSheet) {
@@ -4375,16 +4535,16 @@ struct MultipleFoodReactionsPDFExportSheet: View {
                     ShareSheet(items: [url])
                 }
             }
-            .alert("Add Name to Report (Optional)", isPresented: $showingNameAlert) {
-                TextField("Your name", text: $userName)
+            .alert("Personalize Your Report", isPresented: $showingNameAlert) {
+                TextField("Your name (optional)", text: $userName)
                 Button("Generate") {
-                    generatePDF(userName: userName)
+                    generatePDF(userName: userName.isEmpty ? "User" : userName)
                 }
                 Button("Skip", role: .cancel) {
                     generatePDF(userName: "User")
                 }
             } message: {
-                Text("You can add your name to the PDF report, or leave it blank.")
+                Text("Add your name to help healthcare providers identify your report.")
             }
         }
         .onDisappear {
@@ -4454,6 +4614,34 @@ struct MultipleFoodReactionsPDFExportSheet: View {
                     self.errorMessage = "Failed to generate PDF: \(error.localizedDescription)"
                     self.isGenerating = false
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Report Includes Row Helper
+struct ReportIncludesRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    let color: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(Color.textPrimary)
+
+                Text(description)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundColor(Color.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
