@@ -126,6 +126,7 @@ struct FoodSearchResultRowEnhanced: View {
     let food: FoodSearchResult
     let sourceType: FoodSourceType
     @Binding var selectedTab: TabItem
+    @Binding var foodDetailSheetOpen: Bool
     var onComplete: ((TabItem) -> Void)?
     @State private var showingFoodDetail = false
     @State private var isPressed = false
@@ -136,10 +137,11 @@ struct FoodSearchResultRowEnhanced: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var firebaseManager: FirebaseManager
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, onComplete: ((TabItem) -> Void)? = nil) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, foodDetailSheetOpen: Binding<Bool>, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
+        self._foodDetailSheetOpen = foodDetailSheetOpen
         self.onComplete = onComplete
     }
 
@@ -441,6 +443,8 @@ struct FoodSearchResultRowEnhanced: View {
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .onChange(of: showingFoodDetail) { oldValue, newValue in
             print("[FoodSearchResultRowEnhanced] showingFoodDetail changed: \(oldValue) -> \(newValue)")
+            // Notify parent that sheet state changed
+            foodDetailSheetOpen = newValue
         }
         .fullScreenCover(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
@@ -457,6 +461,8 @@ struct FoodSearchResultRowEnhanced: View {
             }
             .onDisappear {
                 print("[FoodDetailViewFromSearch] onDisappear - fullScreenCover dismissed")
+                // Reload favorites after sheet closes to pick up any changes
+                foodDetailSheetOpen = false
             }
             .id(food.id) // Stable ID prevents dismissal when parent view redraws
         }
@@ -614,6 +620,8 @@ struct AddFoodSearchView: View {
     @State private var keyboardHeight: CGFloat = 0
     @State private var isEditingMode = false
     @State private var hasScrolledToResults = false  // Prevents repeated auto-scrolling
+    @State private var foodDetailSheetOpen = false  // Track if any food detail sheet is open
+    @State private var pendingFavoritesReload = false  // Flag to reload favorites when sheet closes
 
     // PERFORMANCE: Debouncer to prevent search from running on every keystroke
     @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
@@ -800,7 +808,7 @@ struct AddFoodSearchView: View {
                                     SearchSectionHeader(icon: "heart.fill", title: "Favourites", iconColor: .red)
 
                                     ForEach(favoriteFoods, id: \.id) { food in
-                                        FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, onComplete: onComplete)
+                                        FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, foodDetailSheetOpen: $foodDetailSheetOpen, onComplete: onComplete)
                                             .padding(.horizontal, DesignTokens.Spacing.md)
                                     }
                                 }
@@ -814,7 +822,7 @@ struct AddFoodSearchView: View {
 
                                     ForEach(recentFoods, id: \.id) { recentFood in
                                         let searchResult = convertToSearchResult(recentFood)
-                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, onComplete: onComplete)
+                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, foodDetailSheetOpen: $foodDetailSheetOpen, onComplete: onComplete)
                                             .padding(.horizontal, DesignTokens.Spacing.md)
                                     }
                                 }
@@ -827,7 +835,7 @@ struct AddFoodSearchView: View {
                             }
 
                             ForEach(Array(searchResults.enumerated()), id: \.element.id) { index, food in
-                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, onComplete: onComplete)
+                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, foodDetailSheetOpen: $foodDetailSheetOpen, onComplete: onComplete)
                                     .id("result_\(index)")
                                     .padding(.horizontal, DesignTokens.Spacing.md)
                             }
@@ -880,9 +888,22 @@ struct AddFoodSearchView: View {
             removeKeyboardObservers()
         }
         .onReceive(NotificationCenter.default.publisher(for: .favoritesDidChange)) { _ in
-            // Reset flag to allow reload when favorites actually change
-            hasFavoritesLoaded = false
-            loadFavorites()
+            // Mark that favorites need to be reloaded
+            // If sheet is open, will reload when it closes; otherwise reload immediately
+            if foodDetailSheetOpen {
+                pendingFavoritesReload = true
+            } else {
+                hasFavoritesLoaded = false
+                loadFavorites()
+            }
+        }
+        .onChange(of: foodDetailSheetOpen) { oldValue, newValue in
+            // When sheet closes and there's a pending reload, reload favorites now
+            if oldValue && !newValue && pendingFavoritesReload {
+                pendingFavoritesReload = false
+                hasFavoritesLoaded = false
+                loadFavorites()
+            }
         }
     }
 
