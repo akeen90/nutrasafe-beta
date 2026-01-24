@@ -233,29 +233,8 @@ struct AdditiveTrackerSection: View {
     private var summaryCard: some View {
         VStack(spacing: 16) {
             HStack(spacing: 16) {
-                // Grade circle
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [healthSignal.color, healthSignal.color.opacity(0.8)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 64, height: 64)
-                        .shadow(color: healthSignal.color.opacity(0.3), radius: 8, x: 0, y: 4)
-
-                    if healthSignal.grade == .none {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.white)
-                    } else {
-                        Text(healthSignal.grade.rawValue)
-                            .font(.system(size: 32, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                    }
-                }
+                // Signal icon - uses NutraSafe design language
+                SignalIconContainer(color: healthSignal.color, size: 64)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(healthSignal.message)
