@@ -1369,6 +1369,7 @@ struct FoodPatternAnalysisCard: View {
         case ingredients = "Ingredients"
     }
     @State private var selectedPatternTab: PatternTab = .allergens
+    @State private var watchedAdditives: Set<String> = []
 
     // Confidence level based on data points
     private var confidenceLevel: (label: String, color: Color, description: String) {
@@ -1727,7 +1728,9 @@ struct FoodPatternAnalysisCard: View {
     }
 
     private func patternRow(trigger: (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?), showWatchButton: Bool) -> some View {
-        HStack(spacing: 10) {
+        let isWatched = watchedAdditives.contains(trigger.ingredient)
+
+        return HStack(spacing: 10) {
             Text("—")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.secondary)
@@ -1741,16 +1744,8 @@ struct FoodPatternAnalysisCard: View {
             // Watch button for additives
             if showWatchButton {
                 Button(action: {
-                    // Toggle watched status
-                    var watched = UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] ?? []
-                    if let index = watched.firstIndex(of: trigger.ingredient) {
-                        watched.remove(at: index)
-                    } else {
-                        watched.append(trigger.ingredient)
-                    }
-                    UserDefaults.standard.set(watched, forKey: "watchedAdditives")
+                    toggleWatchedAdditive(trigger.ingredient)
                 }) {
-                    let isWatched = (UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] ?? []).contains(trigger.ingredient)
                     Image(systemName: isWatched ? "eye.fill" : "eye")
                         .font(.system(size: 14))
                         .foregroundColor(isWatched ? .orange : .secondary)
@@ -1764,6 +1759,24 @@ struct FoodPatternAnalysisCard: View {
                 .foregroundColor(.secondary.opacity(0.6))
         }
         .padding(.leading, 4)
+    }
+
+    private func toggleWatchedAdditive(_ additive: String) {
+        if watchedAdditives.contains(additive) {
+            watchedAdditives.remove(additive)
+        } else {
+            watchedAdditives.insert(additive)
+        }
+        // Persist to UserDefaults
+        UserDefaults.standard.set(Array(watchedAdditives), forKey: "watchedAdditives")
+        // Post notification for other views to update
+        NotificationCenter.default.post(name: NSNotification.Name("WatchedAdditivesChanged"), object: nil)
+    }
+
+    private func loadWatchedAdditives() {
+        if let saved = UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] {
+            watchedAdditives = Set(saved)
+        }
     }
 
     var body: some View {
@@ -2009,6 +2022,12 @@ struct FoodPatternAnalysisCard: View {
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
+        }
+        .onAppear {
+            loadWatchedAdditives()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WatchedAdditivesChanged"))) { _ in
+            loadWatchedAdditives()
         }
     }
 }

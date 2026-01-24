@@ -109,6 +109,9 @@ struct AdditivePatternSectionRedesigned: View {
         .task {
             await loadPatternScore()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WatchedAdditivesChanged"))) { _ in
+            loadWatchedAdditives()
+        }
         .fullScreenCover(isPresented: $showingSources) {
             SourcesAndCitationsView()
         }
@@ -631,6 +634,8 @@ struct AdditivePatternSectionRedesigned: View {
         }
         // Persist to UserDefaults
         UserDefaults.standard.set(Array(watchedAdditives), forKey: "watchedAdditives")
+        // Post notification for other views to update
+        NotificationCenter.default.post(name: NSNotification.Name("WatchedAdditivesChanged"), object: nil)
     }
 
     private func loadWatchedAdditives() {

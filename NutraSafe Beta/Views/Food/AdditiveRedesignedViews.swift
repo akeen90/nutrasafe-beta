@@ -599,9 +599,32 @@ struct RedesignedAdditiveRow: View {
 
     @Environment(\.colorScheme) var colorScheme
     @State private var isScientificBackgroundExpanded = false
+    @State private var watchedAdditives: Set<String> = []
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    private var isWatched: Bool {
+        watchedAdditives.contains(additive.eNumber)
+    }
+
+    private func toggleWatch() {
+        if watchedAdditives.contains(additive.eNumber) {
+            watchedAdditives.remove(additive.eNumber)
+        } else {
+            watchedAdditives.insert(additive.eNumber)
+        }
+        // Persist to UserDefaults
+        UserDefaults.standard.set(Array(watchedAdditives), forKey: "watchedAdditives")
+        // Post notification for other views to update
+        NotificationCenter.default.post(name: NSNotification.Name("WatchedAdditivesChanged"), object: nil)
+    }
+
+    private func loadWatchedAdditives() {
+        if let saved = UserDefaults.standard.array(forKey: "watchedAdditives") as? [String] {
+            watchedAdditives = Set(saved)
+        }
     }
 
     var body: some View {
@@ -650,6 +673,16 @@ struct RedesignedAdditiveRow: View {
 
                     Spacer()
 
+                    // Watch button
+                    Button(action: {
+                        toggleWatch()
+                    }) {
+                        Image(systemName: isWatched ? "eye.fill" : "eye")
+                            .font(.system(size: 14))
+                            .foregroundColor(isWatched ? .orange : palette.textTertiary.opacity(0.5))
+                    }
+                    .buttonStyle(.plain)
+
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(palette.textTertiary)
@@ -658,6 +691,12 @@ struct RedesignedAdditiveRow: View {
                 .padding(.vertical, 10)
             }
             .buttonStyle(PlainButtonStyle())
+            .onAppear {
+                loadWatchedAdditives()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WatchedAdditivesChanged"))) { _ in
+                loadWatchedAdditives()
+            }
 
             // Expanded details
             if isExpanded {
