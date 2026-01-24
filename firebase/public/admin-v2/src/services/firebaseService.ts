@@ -89,15 +89,18 @@ export async function updateFood(
 }
 
 /**
- * Delete a food item
+ * Delete a food item - Uses comprehensive delete to remove from ALL indices
+ * This prevents foods from "coming back" when they exist in multiple indices
+ * Falls back to single-index delete if comprehensive endpoint fails
  */
 export async function deleteFood(
   food: UnifiedFood
-): Promise<{ success: boolean; error?: string }> {
-  const { _sourceIndex, objectID } = food;
+): Promise<{ success: boolean; error?: string; deletedFrom?: number }> {
+  const { _sourceIndex, objectID, barcode } = food;
 
   try {
-    const response = await fetch(`${FUNCTIONS_BASE}/deleteFoodFromAlgolia`, {
+    // Try comprehensive delete first (removes from ALL indices with same barcode)
+    let response = await fetch(`${FUNCTIONS_BASE}/deleteFoodComprehensive`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,13 +108,34 @@ export async function deleteFood(
       body: JSON.stringify({
         foodId: objectID,
         indexName: _sourceIndex,
+        barcode: barcode,
+        deleteFromAllIndices: true,
       }),
     });
+
+    // If comprehensive delete fails, fall back to single-index delete
+    if (!response.ok) {
+      console.log('Comprehensive delete unavailable, using single-index delete');
+      response = await fetch(`${FUNCTIONS_BASE}/deleteFoodFromAlgolia`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          foodId: objectID,
+          indexName: _sourceIndex,
+        }),
+      });
+    }
 
     const result = await response.json();
 
     if (result.success) {
-      return { success: true };
+      console.log(`✅ Deleted food from ${result.deletedFrom?.length || 1} location(s)`);
+      return {
+        success: true,
+        deletedFrom: result.deletedFrom?.length || 1
+      };
     } else {
       return { success: false, error: result.error || 'Unknown error' };
     }

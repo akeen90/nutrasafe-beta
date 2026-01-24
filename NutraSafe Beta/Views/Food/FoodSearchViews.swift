@@ -608,7 +608,6 @@ struct AddFoodSearchView: View {
     @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
     @State private var recentFoods: [DiaryFoodItem] = []
     @State private var favoriteFoods: [FoodSearchResult] = []
-    @State private var isFavoritesLoading = true  // Track loading state
     @State private var hasFavoritesLoaded = false  // Prevent reload on rapid appear/disappear cycles
     @State private var searchTask: Task<Void, Never>?
     @State private var keyboardHeight: CGFloat = 0
@@ -793,8 +792,8 @@ struct AddFoodSearchView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
                         LazyVStack(spacing: 10) {
-                            // Show favorites when search is empty and not loading
-                            if searchText.isEmpty && !isFavoritesLoading && !favoriteFoods.isEmpty {
+                            // Show favorites when search is empty (don't hide during loading to prevent blink)
+                            if searchText.isEmpty && !favoriteFoods.isEmpty {
                                 // Favorites Section - redesigned header
                                 VStack(alignment: .leading, spacing: 12) {
                                     SearchSectionHeader(icon: "heart.fill", title: "Favourites", iconColor: .red)
@@ -1029,22 +1028,21 @@ struct AddFoodSearchView: View {
         // (SwiftUI sheet bug can trigger onAppear → onDisappear → onAppear)
         guard !hasFavoritesLoaded else { return }
 
-        // Set loading state to prevent empty content flash
-        isFavoritesLoading = true
         hasFavoritesLoaded = true
 
-        // Fetch favorites from Firebase
+        // Fetch favorites from Firebase (no loading state to prevent blink)
         Task {
             do {
                 let favorites = try await firebaseManager.getFavoriteFoods()
                 await MainActor.run {
-                    favoriteFoods = favorites
-                    isFavoritesLoading = false
+                    // Update without animation to prevent visual pop-in
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        favoriteFoods = favorites
+                    }
                 }
             } catch {
-                await MainActor.run {
-                    isFavoritesLoading = false
-                }
                 // Silently fail - favorites are optional
             }
         }

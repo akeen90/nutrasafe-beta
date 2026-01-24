@@ -31,7 +31,7 @@ const INDEX_TO_COLLECTION: Record<string, string | null> = {
   'user_added': 'userAdded',
   'ai_enhanced': 'aiEnhanced',
   'ai_manually_added': 'aiManuallyAdded',
-  'tesco_products': 'tesco_products',
+  'tesco_products': 'tescoProducts',  // Fixed: was 'tesco_products', should be 'tescoProducts'
 };
 
 /**

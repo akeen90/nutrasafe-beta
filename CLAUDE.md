@@ -204,6 +204,42 @@ When you encounter old/duplicate code, add it here for future cleanup:
   - Gentle animations and breathing room
   - Changed from clinical data dump to emotional clarity
 
+- ✅ **Use By Add Screen** - Premium emotion-first redesign (UseByAddRedesigned.swift)
+  - Emotional headline: "Track what you have" with warm subtitle
+  - Three method cards with gradient icons and clear hierarchy
+  - User-adaptive color palettes matching onboarding intent
+  - Generous spacing (20-24pt padding) and breathing room
+  - Serif headlines (32pt), clear body text (15-17pt)
+  - Soft shadows and rounded corners (18pt radius)
+  - Contextual empty states with encouraging messaging
+  - Search flow with smooth transitions and gentle loading states
+  - Trust-building language: "Never waste food. Know what needs eating soon."
+
+- ✅ **Use By Quick Add Card** - Premium inline card redesign (UseByQuickAddRedesigned.swift)
+  - Emotional headline: "Track what you have" (20pt serif)
+  - Warm tagline: "Never waste. Always know." (subtle, empowering)
+  - Two-button layout: "Scan" (outlined) and "Add Item" (gradient primary)
+  - User-adaptive accent colors from onboarding intent
+  - Gradient backgrounds with soft shadows (12pt blur)
+  - Rounded corners (20pt card, 14pt buttons)
+  - Tactile scale feedback (0.97) on button press
+  - Gentle border glow matching user's intent palette
+  - 52pt button height for comfortable touch targets
+
+- ✅ **Use By Food Detail Screen** - Premium item add screen redesign (UseByFoodDetailRedesigned.swift)
+  - Calm, focused layout with adaptive backgrounds
+  - Large serif headline (24pt) for food name
+  - User-adaptive color palettes matching onboarding intent
+  - Elegant expiry date selector with calendar and quick modes
+  - Smart freshness messaging: "Plenty of time", "Use this week", "Use today"
+  - Color-coded freshness indicators (accent, green, yellow, orange)
+  - Clean notes field with subtle placeholder styling
+  - Photo upload with dashed border invitation (140pt height)
+  - Fixed bottom button: "Add Item" with gradient (56pt height)
+  - Generous spacing (18-20pt padding) and rounded corners (12-16pt)
+  - Tactile button feedback throughout
+  - Trust-building language over clinical terminology
+
 ### Guidelines
 - Always use redesigned views (`*Redesigned`) over old versions
 - When creating new views, prefix old ones for removal here

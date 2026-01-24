@@ -110,6 +110,8 @@ struct AnalyzedAdditive: Identifiable {
     let affectsUserSensitivity: Bool
     let sensitivityName: String?
     let isVitaminOrMineral: Bool
+    let whatYouNeedToKnow: [String]  // Health-focused claims (concise)
+    let scientificBackground: String  // Long-form scientific explanation
 }
 
 // MARK: - Safety Badge (Top of Food Detail)
@@ -662,32 +664,41 @@ struct RedesignedAdditiveRow: View {
 
             // Expanded details
             if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    // What it is
-                    detailSection(title: "What It Is", content: additive.whatItIs)
+                VStack(alignment: .leading, spacing: 14) {
+                    // "What I need to know" - Key health claims (always visible)
+                    if !additive.whatYouNeedToKnow.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What I need to know")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(palette.textPrimary)
 
-                    // Origin
-                    if !additive.origin.isEmpty {
-                        detailSection(title: "Origin", content: additive.origin)
-                    }
-
-                    // Why flagged
-                    if !additive.whyFlagged.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Why It's Flagged")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(palette.textSecondary)
-
-                            ForEach(additive.whyFlagged, id: \.self) { reason in
+                            ForEach(additive.whatYouNeedToKnow, id: \.self) { claim in
                                 HStack(alignment: .top, spacing: 8) {
                                     Text("•")
+                                        .font(.system(size: 14, weight: .bold))
                                         .foregroundColor(additive.riskLevel.color)
-                                    Text(reason)
-                                        .font(.system(size: 13))
+                                    Text(claim)
+                                        .font(.system(size: 14))
                                         .foregroundColor(palette.textPrimary)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                         }
+                    }
+
+                    // Scientific Background - Expandable long-form explanation
+                    if !additive.scientificBackground.isEmpty {
+                        DisclosureGroup {
+                            Text(additive.scientificBackground)
+                                .font(.system(size: 13))
+                                .foregroundColor(palette.textSecondary)
+                                .padding(.top, 8)
+                        } label: {
+                            Text("Scientific Background")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(palette.textPrimary)
+                        }
+                        .accentColor(palette.accent)
                     }
 
                     // Personal sensitivity warning
@@ -875,6 +886,47 @@ class AdditiveAnalyzer {
                 }
             }
 
+            // Build "What you need to know" - concise health claims
+            var healthClaims: [String] = []
+
+            // Add key health-focused bullet points based on risk level and flags
+            if additive.hasChildWarning {
+                healthClaims.append("May affect children's activity and attention")
+            }
+            if additive.hasPKUWarning {
+                healthClaims.append("Not suitable for people with phenylketonuria (PKU)")
+            }
+            if additive.hasSulphitesAllergenLabel {
+                healthClaims.append("Contains sulphites (allergen)")
+            }
+
+            // Add verdict-specific claims
+            if additive.effectsVerdict == .avoid {
+                healthClaims.append("Some studies suggest limiting intake")
+            } else if additive.effectsVerdict == .caution {
+                healthClaims.append("Some people may wish to avoid")
+            }
+
+            // Fallback for vitamins/minerals
+            if isVitaminOrMineral(additive) && healthClaims.isEmpty {
+                healthClaims.append("Added for nutritional value")
+            }
+
+            // Build scientific background from overview (the long detailed explanation)
+            // This is what currently shows in the long descriptions
+            var scientificBg = ""
+            if !additive.overview.isEmpty {
+                scientificBg = additive.overview
+            } else if !additive.effectsSummary.isEmpty {
+                // Fallback to effects summary if no overview
+                scientificBg = additive.effectsSummary
+            }
+
+            // Add typical uses if available
+            if !additive.typicalUses.isEmpty && !scientificBg.isEmpty {
+                scientificBg += "\n\nTypical uses: \(additive.typicalUses)"
+            }
+
             let analyzed = AnalyzedAdditive(
                 name: override?.displayName ?? additive.name,
                 eNumber: additive.eNumber,
@@ -885,7 +937,9 @@ class AdditiveAnalyzer {
                 whyFlagged: whyFlagged,
                 affectsUserSensitivity: affectsSensitivity,
                 sensitivityName: sensitivityName,
-                isVitaminOrMineral: isVitaminOrMineral(additive)
+                isVitaminOrMineral: isVitaminOrMineral(additive),
+                whatYouNeedToKnow: healthClaims,
+                scientificBackground: scientificBg
             )
 
             groupedAdditives[riskLevel, default: []].append(analyzed)
@@ -939,6 +993,26 @@ class AdditiveAnalyzer {
                 whyFlagged.append("An industrially processed ingredient")
             }
 
+            // Build health claims for ultra-processed ingredients
+            var healthClaims: [String] = []
+            if ultraProcessed.novaGroup == 4 {
+                healthClaims.append("Highly processed ingredient (NOVA Group 4)")
+            }
+            if !ultraProcessed.concerns.isEmpty {
+                // Use concerns as health claim
+                healthClaims.append(ultraProcessed.concerns)
+            }
+
+            // Build scientific background from available fields
+            var scientificBg = ""
+            if let whatItIs = ultraProcessed.whatItIs, !whatItIs.isEmpty {
+                scientificBg = whatItIs
+            }
+            if let whyUsed = ultraProcessed.whyItsUsed, !whyUsed.isEmpty {
+                if !scientificBg.isEmpty { scientificBg += " " }
+                scientificBg += whyUsed
+            }
+
             let analyzed = AnalyzedAdditive(
                 name: ultraProcessed.name,
                 eNumber: ultraProcessed.eNumbers.first ?? "",
@@ -949,7 +1023,9 @@ class AdditiveAnalyzer {
                 whyFlagged: whyFlagged,
                 affectsUserSensitivity: false,
                 sensitivityName: nil,
-                isVitaminOrMineral: false
+                isVitaminOrMineral: false,
+                whatYouNeedToKnow: healthClaims,
+                scientificBackground: scientificBg
             )
 
             groupedAdditives[riskLevel, default: []].append(analyzed)

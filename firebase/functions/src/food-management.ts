@@ -1,5 +1,4 @@
 import * as functions from 'firebase-functions';
-import * as functionsV2 from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import { algoliasearch } from 'algoliasearch';
@@ -29,7 +28,7 @@ const INDEX_TO_COLLECTION: Record<string, string | null> = {
   'user_added': 'userAdded',
   'ai_enhanced': 'aiEnhanced',
   'ai_manually_added': 'aiManuallyAdded',
-  'tesco_products': 'tesco_products',
+  'tesco_products': 'tescoProducts',  // Fixed: was 'tesco_products', should be 'tescoProducts'
 };
 
 // Algolia-only indices (no Firestore backing)
@@ -221,7 +220,7 @@ export const updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey]
           'userAdded': 'user_added',
           'aiEnhanced': 'ai_enhanced',
           'aiManuallyAdded': 'ai_manually_added',
-          'tesco_products': 'tesco_products'
+          'tesco_products': 'tescoProducts'
         };
 
         const algoliaIndex = collectionToIndex[targetCollection] || targetCollection;
@@ -487,10 +486,10 @@ export const deleteVerifiedFoods = functions.https.onRequest(async (req, res) =>
 });
 
 // Delete food from any Algolia index (and Firestore if applicable)
-export const deleteFoodFromAlgolia = functionsV2.https.onRequest({
+export const deleteFoodFromAlgolia = functions.runWith({
   secrets: [algoliaAdminKey],
-  cors: true,
-}, async (req, res) => {
+  timeoutSeconds: 60,
+}).https.onRequest(async (req, res) => {
   // Set CORS headers
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
@@ -1014,7 +1013,7 @@ export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKe
           'foods': 'foods',
           'manualFoods': 'manual_foods',
           'userAdded': 'user_added',
-          'tesco_products': 'tesco_products'
+          'tesco_products': 'tescoProducts'
         };
 
         const algoliaIndex = collectionToIndex[targetCollection] || targetCollection;
@@ -1248,3 +1247,185 @@ export const adminSaveFood = functions
       });
     }
   });
+
+// All Algolia indices
+const ALL_ALGOLIA_INDICES = [
+  'verified_foods',
+  'foods',
+  'manual_foods',
+  'user_added',
+  'ai_enhanced',
+  'ai_manually_added',
+  'tesco_products',
+  'uk_foods_cleaned',
+  'fast_foods_database',
+  'generic_database',
+];
+
+/**
+ * Comprehensive Delete - Removes a food from ALL indices where it exists
+ * This solves the issue of foods "coming back" when they exist in multiple indices
+ */
+export const deleteFoodComprehensive = functions.runWith({
+  secrets: [algoliaAdminKey],
+  timeoutSeconds: 60,
+  memory: '256MB',
+}).https.onRequest(async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).send();
+    return;
+  }
+
+  try {
+    const { foodId, indexName, barcode, deleteFromAllIndices = true } = req.body;
+
+    if (!foodId && !barcode) {
+      res.status(400).json({ success: false, error: 'Food ID or barcode is required' });
+      return;
+    }
+
+    console.log(`🗑️ Comprehensive delete: foodId=${foodId}, barcode=${barcode}, indexName=${indexName}`);
+
+    // Initialize Algolia client
+    const algoliaKey = algoliaAdminKey.value();
+    if (!algoliaKey) {
+      res.status(500).json({ success: false, error: 'Algolia API key not configured' });
+      return;
+    }
+
+    const client = algoliasearch(ALGOLIA_APP_ID, algoliaKey);
+
+    const deletedFrom: { index: string; objectID: string; firestore?: string }[] = [];
+    const errors: string[] = [];
+
+    // Step 1: Delete from the primary index if provided
+    if (foodId && indexName) {
+      try {
+        await client.deleteObject({ indexName, objectID: foodId });
+        console.log(`✅ Deleted ${foodId} from primary index: ${indexName}`);
+
+        // Also delete from Firestore if applicable
+        const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+        if (firestoreCollection) {
+          try {
+            await admin.firestore().collection(firestoreCollection).doc(foodId).delete();
+            deletedFrom.push({ index: indexName, objectID: foodId, firestore: firestoreCollection });
+            console.log(`✅ Deleted from Firestore: ${firestoreCollection}/${foodId}`);
+          } catch (fsError) {
+            deletedFrom.push({ index: indexName, objectID: foodId });
+            console.log(`ℹ️ No Firestore doc found in ${firestoreCollection}`);
+          }
+        } else {
+          deletedFrom.push({ index: indexName, objectID: foodId });
+        }
+      } catch (err: any) {
+        errors.push(`Failed to delete from ${indexName}: ${err.message}`);
+      }
+    }
+
+    // Step 2: If we have a barcode, search and delete from ALL other indices
+    if (barcode && deleteFromAllIndices) {
+      console.log(`🔍 Searching for barcode ${barcode} across all indices...`);
+
+      for (const idx of ALL_ALGOLIA_INDICES) {
+        // Skip the primary index we already deleted from
+        if (idx === indexName) continue;
+
+        try {
+          // Search for foods with this barcode using searchSingleIndex
+          const searchResult = await client.searchSingleIndex({
+            indexName: idx,
+            searchParams: {
+              query: barcode,
+              attributesToRetrieve: ['objectID', 'barcode', 'gtin'],
+              hitsPerPage: 50,
+            },
+          });
+
+          // Filter to only matching barcodes
+          const matchingFoods = (searchResult.hits || []).filter((hit: any) => {
+            return hit.barcode === barcode || hit.gtin === barcode;
+          });
+
+          for (const hit of matchingFoods) {
+            const objId = (hit as any).objectID;
+            try {
+              await client.deleteObject({ indexName: idx, objectID: objId });
+              console.log(`✅ Deleted ${objId} from ${idx}`);
+
+              // Also delete from Firestore
+              const fsCol = INDEX_TO_COLLECTION[idx];
+              if (fsCol) {
+                try {
+                  await admin.firestore().collection(fsCol).doc(objId).delete();
+                  deletedFrom.push({ index: idx, objectID: objId, firestore: fsCol });
+                  console.log(`✅ Deleted from Firestore: ${fsCol}/${objId}`);
+                } catch {
+                  deletedFrom.push({ index: idx, objectID: objId });
+                }
+              } else {
+                deletedFrom.push({ index: idx, objectID: objId });
+              }
+            } catch (delErr: any) {
+              errors.push(`Failed to delete ${objId} from ${idx}: ${delErr.message}`);
+            }
+          }
+        } catch (searchErr: any) {
+          console.log(`ℹ️ Could not search ${idx}: ${searchErr.message}`);
+        }
+      }
+    }
+
+    // Step 3: Also search by objectID in all indices (same food might have same ID)
+    if (foodId && deleteFromAllIndices) {
+      for (const idx of ALL_ALGOLIA_INDICES) {
+        if (idx === indexName) continue;
+
+        try {
+          // Try to get the object directly by ID
+          const obj = await client.getObject({ indexName: idx, objectID: foodId });
+          if (obj) {
+            await client.deleteObject({ indexName: idx, objectID: foodId });
+            console.log(`✅ Deleted ${foodId} from ${idx} (same objectID)`);
+
+            const fsCol = INDEX_TO_COLLECTION[idx];
+            if (fsCol) {
+              try {
+                await admin.firestore().collection(fsCol).doc(foodId).delete();
+                deletedFrom.push({ index: idx, objectID: foodId, firestore: fsCol });
+              } catch {
+                deletedFrom.push({ index: idx, objectID: foodId });
+              }
+            } else {
+              deletedFrom.push({ index: idx, objectID: foodId });
+            }
+          }
+        } catch {
+          // Object doesn't exist in this index, continue
+        }
+      }
+    }
+
+    console.log(`🏁 Comprehensive delete complete. Deleted from ${deletedFrom.length} locations.`);
+
+    res.json({
+      success: true,
+      message: `Deleted food from ${deletedFrom.length} location(s)`,
+      deletedFrom,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+
+  } catch (error: any) {
+    console.error('❌ Comprehensive delete error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete food comprehensively',
+      details: error.message,
+    });
+  }
+});
