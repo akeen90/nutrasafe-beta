@@ -115,6 +115,7 @@ NutraSafe follows a **premium, emotion-first design language** that emphasizes c
 9. ✅ **AI Scanning**: Enhanced nutrition label processing with proper per-100g conversion
 10. ✅ **Admin Dashboard**: Professional food verification system with detailed view modals
 11. ✅ **Data Preservation**: Complete ingredient and photo preservation during verification process
+12. ✅ **Favorites System**: Stable sheet presentation with .id() prevents dismissal when unfavoriting foods
 
 ## 🛠️ Development Commands
 
@@ -201,8 +202,22 @@ When you encounter old/duplicate code, add it here for future cleanup:
   - Single contextual insight instead of 4 overlapping sections
   - Removed verbose "why track additives" repetition
   - Clean serif typography matching premium feel
-  - Gentle animations and breathing room
+  - NO animations - instant expand/collapse with Transaction.disablesAnimations
   - Changed from clinical data dump to emotional clarity
+
+- ✅ **Additive Detail Views** - Redesigned expandable information architecture (AdditiveRedesignedViews.swift)
+  - **"What I need to know"** section: 3-4 concise health-focused bullet points (always visible)
+    - Key claims: child warnings, PKU warnings, allergens, regulatory verdicts
+    - Color-coded by risk level (red/orange/yellow/green bullets)
+    - Health-first language: "May affect children's activity", "Some studies suggest limiting intake"
+  - **"Scientific Background"** section: Collapsible long-form explanation (starts closed)
+    - Uses existing `overview` and `effectsSummary` from database
+    - Custom Button-based expansion (no DisclosureGroup animations)
+    - Includes typical uses where available
+  - **Edge-to-edge layout**: Cards extend full width (negative -24pt padding to compensate parent)
+  - **No animations**: Transaction with disablesAnimations = true for instant show/hide
+  - **Consistent padding**: 24pt horizontal throughout (matches screen edge spacing)
+  - **Personal sensitivity warnings**: Highlighted when additive affects user's stated sensitivities
 
 - ✅ **Use By Add Screen** - Premium emotion-first redesign (UseByAddRedesigned.swift)
   - Emotional headline: "Track what you have" with warm subtitle
