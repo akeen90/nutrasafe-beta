@@ -1421,39 +1421,33 @@ exports.browseAllIndices = functions.runWith({
             }
             console.log(`📦 Browsing all records from ${indices.length} indices...`);
             const allProducts = [];
-            // Get and sanitize admin key - remove any quotes, newlines, or control characters
-            const rawKey = algoliaAdminKey.value();
-            const adminKey = rawKey.replace(/[\r\n\t"']/g, '').trim();
-            console.log(`🔑 Admin key length: ${adminKey.length} chars`);
-            // Browse each index using Algolia Browse API (not Search API)
-            // Browse API has no 1000-result limit and uses cursor-based pagination
+            // Initialize Algolia client (same way as scanDatabaseIssues)
+            const adminKey = algoliaAdminKey.value();
+            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+            // Browse each index using SDK's browse method (same as scanDatabaseIssues)
             for (const indexName of indices) {
                 console.log(`📦 Browsing ${indexName}...`);
                 try {
                     let browseCount = 0;
                     let cursor = undefined;
-                    const hitsPerPage = 1000;
-                    // Use Algolia Browse API endpoint
-                    const browseUrl = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${encodeURIComponent(indexName)}/browse`;
-                    // First request (no cursor)
+                    let batchNumber = 0;
+                    // Browse all objects using cursor-based pagination (no 1000 limit)
                     do {
-                        const requestData = {
-                            hitsPerPage,
+                        batchNumber++;
+                        // Build browse parameters
+                        const browseParams = {
+                            hitsPerPage: 1000,
                         };
                         // Add cursor for subsequent requests
                         if (cursor) {
-                            requestData.cursor = cursor;
+                            browseParams.cursor = cursor;
                         }
-                        const response = await (0, axios_1.default)({
-                            method: 'POST',
-                            url: browseUrl,
-                            data: requestData,
-                            headers: {
-                                'X-Algolia-Application-Id': ALGOLIA_APP_ID,
-                                'X-Algolia-API-Key': adminKey,
-                            },
+                        // Use SDK's browse method (exactly like scanDatabaseIssues)
+                        const result = await client.browse({
+                            indexName,
+                            browseParams,
                         });
-                        const hits = response.data.hits || [];
+                        const hits = result.hits || [];
                         hits.forEach((hit) => {
                             allProducts.push({
                                 ...hit,
@@ -1461,13 +1455,14 @@ exports.browseAllIndices = functions.runWith({
                             });
                         });
                         browseCount += hits.length;
-                        cursor = response.data.cursor;
+                        cursor = result.cursor;
                         // Log progress every 10k records
                         if (browseCount % 10000 === 0) {
                             console.log(`  → Browsed ${browseCount.toLocaleString()} records from ${indexName}...`);
                         }
-                        // Safety check: if no cursor and no hits, break
-                        if (!cursor && hits.length === 0) {
+                        // Safety check to prevent infinite loops
+                        if (batchNumber > 200) {
+                            console.log('⚠️ Reached batch limit (200), stopping browse');
                             break;
                         }
                     } while (cursor);
@@ -1475,10 +1470,6 @@ exports.browseAllIndices = functions.runWith({
                 }
                 catch (indexError) {
                     console.error(`❌ Error browsing ${indexName}:`, indexError.message);
-                    if (indexError.response) {
-                        console.error('Response status:', indexError.response.status);
-                        console.error('Response data:', indexError.response.data);
-                    }
                     // Continue with other indices even if one fails
                 }
             }

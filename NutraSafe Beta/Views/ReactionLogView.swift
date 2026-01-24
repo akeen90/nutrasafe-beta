@@ -816,6 +816,7 @@ struct ReactionLogView: View {
                 weeklyTrend: cachedWeeklyTrend,
                 topTrigger: cachedTopTrigger,
                 commonFoods: cachedCommonFoods,
+                commonIngredients: cachedCommonIngredients,
                 totalReactions: manager.reactionLogs.count
             )
             .padding(.bottom, 8)
@@ -5108,6 +5109,7 @@ struct ReactionInsightHeroCard: View {
     let weeklyTrend: (thisWeek: Int, lastWeek: Int, trend: String)?
     let topTrigger: (name: String, percentage: Int)?
     let commonFoods: [(name: String, frequency: Int, percentage: Double)]
+    let commonIngredients: [(name: String, frequency: Int, percentage: Double, isPrimarilyEstimated: Bool)]
     let totalReactions: Int
 
     @Environment(\.colorScheme) private var colorScheme
@@ -5140,16 +5142,16 @@ struct ReactionInsightHeroCard: View {
             insight += ", \(timingPhrase)"
         }
 
-        // Add ACTIONABLE trigger context: show specific foods, not just ingredients
-        // More useful: "Skittles and pizza appear before 66% of your reactions"
-        // vs generic: "Foods containing gluten appear frequently"
-        if !commonFoods.isEmpty {
-            let topFoods = commonFoods.prefix(2)
-            if topFoods.count == 1 {
-                let pct = Int(topFoods[0].percentage)
-                insight += ". \(topFoods[0].name) appears before \(pct)% of your reactions"
-            } else if topFoods.count == 2 {
-                insight += ". \(topFoods[0].name) and \(topFoods[1].name) appear most often"
+        // Focus on INGREDIENT pattern (not foods) - more educational and actionable
+        // "Gluten appears in 66% of reactions (found in Skittles, Pizza)"
+        if let topIngredient = commonIngredients.first {
+            let pct = Int(topIngredient.percentage)
+            insight += ". \(topIngredient.name) appears in \(pct)% of reactions"
+
+            // Show which foods contained it
+            let foodsWithIngredient = commonFoods.prefix(2).map { $0.name }
+            if !foodsWithIngredient.isEmpty {
+                insight += " (in \(foodsWithIngredient.joined(separator: ", ")))"
             }
         }
 
