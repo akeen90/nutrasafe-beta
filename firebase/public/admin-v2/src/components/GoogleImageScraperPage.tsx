@@ -287,17 +287,22 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           // Calculate confidence score (0-100)
           let confidence = 0;
 
-          // White background: +40 points
-          if (analysis.hasWhiteBackground) confidence += 40;
+          // Transparent/no background detected: MAXIMUM SCORE (check for very high whiteness = 95%+)
+          if (analysis.backgroundConfidence >= 95 && analysis.hasWhiteBackground) {
+            confidence = 95; // Nearly perfect - transparent or pure white
+          } else {
+            // White background: +40 points
+            if (analysis.hasWhiteBackground) confidence += 40;
 
-          // No overlays: +30 points
-          if (!analysis.hasOverlay) confidence += 30;
+            // No overlays: +30 points
+            if (!analysis.hasOverlay) confidence += 30;
 
-          // High background confidence: up to +20 points
-          confidence += Math.min(20, analysis.backgroundConfidence * 0.2);
+            // High background confidence: up to +20 points
+            confidence += Math.min(20, analysis.backgroundConfidence * 0.2);
+          }
 
-          // Manufacturer site: +10 bonus points
-          if (candidate.isManufacturerSite) confidence += 10;
+          // Manufacturer site: +5 bonus points (less important if image is already perfect)
+          if (candidate.isManufacturerSite) confidence += 5;
 
           addLog(`Analysis: ${food.name} - Confidence: ${Math.round(confidence)}% (BG: ${analysis.backgroundConfidence}%, Overlay: ${analysis.hasOverlay ? 'Yes' : 'No'})`);
 
@@ -809,30 +814,100 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                               )}
                             </div>
                             <div className="flex gap-2 overflow-x-auto pb-2">
-                              {food.searchResults.slice(0, 6).map((result, idx) => (
+                              {food.searchResults.slice(0, 10).map((result, idx) => (
                                 <div
                                   key={idx}
-                                  className={`flex-shrink-0 cursor-pointer group relative ${
-                                    food.selectedImageUrl === result.url ? 'ring-2 ring-primary-500' : ''
-                                  }`}
-                                  onClick={() => {
-                                    setPreviewImage({
-                                      url: result.url,
-                                      title: `${food.name} - Result ${idx + 1} (${result.domain})`,
-                                    });
-                                  }}
+                                  className="flex-shrink-0 relative"
                                 >
-                                  <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden">
+                                  <div
+                                    className={`w-20 h-20 bg-gray-100 rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-400 ${
+                                      food.selectedImageUrl === result.url ? 'ring-2 ring-primary-500' : ''
+                                    }`}
+                                    onClick={() => {
+                                      setPreviewImage({
+                                        url: result.url,
+                                        title: `${food.name} - Result ${idx + 1} (${result.domain})`,
+                                      });
+                                    }}
+                                  >
                                     <img src={result.thumbnail} alt="" className="w-full h-full object-cover" />
                                   </div>
                                   {result.isManufacturerSite && (
-                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                    <div className="absolute top-0 right-0 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                       <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                       </svg>
                                     </div>
                                   )}
-                                  <div className="text-[8px] text-gray-400 mt-0.5 truncate w-16 text-center">
+                                  {food.selectedImageUrl === result.url && (
+                                    <div className="absolute inset-0 bg-primary-500/20 rounded flex items-center justify-center">
+                                      <svg className="w-8 h-8 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+
+                                      // Mark as uploading
+                                      setFoods(prev => prev.map(f =>
+                                        f.id === food.id
+                                          ? { ...f, selectedImageUrl: result.url, status: 'uploading' as const }
+                                          : f
+                                      ));
+
+                                      try {
+                                        addLog(`Uploading image for ${food.name} to Firebase...`);
+
+                                        // Download image as blob
+                                        const response = await fetch(result.url);
+                                        const blob = await response.blob();
+
+                                        // Upload to Firebase Storage
+                                        const formData = new FormData();
+                                        formData.append('file', blob);
+                                        formData.append('index', food.sourceIndex);
+                                        formData.append('objectID', food.objectID);
+
+                                        const uploadResponse = await fetch('/api/upload-food-image', {
+                                          method: 'POST',
+                                          body: formData,
+                                        });
+
+                                        if (!uploadResponse.ok) {
+                                          throw new Error('Upload failed');
+                                        }
+
+                                        const uploadData = await uploadResponse.json();
+                                        addLog(`✓ Uploaded to Firebase: ${uploadData.imageUrl}`);
+
+                                        // Update Algolia with Firebase URL
+                                        addLog(`Updating Algolia with Firebase URL...`);
+                                        // The API endpoint should handle Algolia update
+
+                                        setFoods(prev => prev.map(f =>
+                                          f.id === food.id
+                                            ? { ...f, status: 'completed' as const, currentImageUrl: uploadData.imageUrl }
+                                            : f
+                                        ));
+
+                                        addLog(`✓ Complete: ${food.name}`);
+
+                                      } catch (error) {
+                                        addLog(`✗ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                                        setFoods(prev => prev.map(f =>
+                                          f.id === food.id
+                                            ? { ...f, status: 'failed' as const, error: 'Upload failed' }
+                                            : f
+                                        ));
+                                      }
+                                    }}
+                                    className="absolute bottom-0 left-0 right-0 bg-primary-600 text-white text-[9px] py-0.5 hover:bg-primary-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    Use This
+                                  </button>
+                                  <div className="text-[8px] text-gray-400 mt-0.5 truncate w-20 text-center">
                                     {result.domain}
                                   </div>
                                 </div>

@@ -194,6 +194,8 @@ struct DiaryTabView: View {
                 // Perform the actual load
                 await MainActor.run {
                     loadFoodData()
+                    // Also refresh additive insights when diary data changes
+                    additiveTrackerVM.loadData()
                 }
             } catch {
                 // Task was cancelled - another reload is pending
@@ -708,10 +710,14 @@ struct DiaryTabView: View {
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshDiaryData"))) { _ in
                 // Refresh diary when foods are added from AI scanner
                 loadFoodData()
+                // Also refresh additive insights
+                additiveTrackerVM.loadData()
             }
             .onReceive(NotificationCenter.default.publisher(for: .foodEntryAdded)) { _ in
                 // Switch to overview tab when food is added (even from Insights tab)
                 diarySubTab = .overview
+                // Refresh additive insights immediately
+                additiveTrackerVM.loadData()
             }
             // NOTE: HealthKit refresh now handled automatically by HealthKitManager
             .onChange(of: moveTrigger) { _, newValue in
