@@ -1357,6 +1357,56 @@ struct FoodPatternAnalysisCard: View {
         }
     }
 
+    // Top allergen or additive insight (excludes plain ingredients)
+    private var topTriggerInsight: (text: String, subtext: String, icon: String, color: Color)? {
+        // Find top allergen
+        let topAllergen = allergenTriggers.first
+        // Find top additive (that isn't also an allergen)
+        let topAdditive = additiveTriggers.first
+
+        // Prefer allergen if it has higher percentage, otherwise show additive
+        if let allergen = topAllergen {
+            if let additive = topAdditive {
+                // Both exist - show whichever is more common
+                if allergen.percentage >= additive.percentage {
+                    let category = allergen.baseAllergen ?? "Allergen"
+                    return (
+                        "\(category) appears in \(allergen.percentage)% of your reactions",
+                        "Most common trigger detected",
+                        "exclamationmark.triangle.fill",
+                        .orange
+                    )
+                } else {
+                    return (
+                        "\(additive.ingredient) appears in \(additive.percentage)% of your reactions",
+                        "Most common additive detected",
+                        "eye.fill",
+                        .orange
+                    )
+                }
+            } else {
+                // Only allergen exists
+                let category = allergen.baseAllergen ?? "Allergen"
+                return (
+                    "\(category) appears in \(allergen.percentage)% of your reactions",
+                    "Most common trigger detected",
+                    "exclamationmark.triangle.fill",
+                    .orange
+                )
+            }
+        } else if let additive = topAdditive {
+            // Only additive exists
+            return (
+                "\(additive.ingredient) appears in \(additive.percentage)% of your reactions",
+                "Most common additive detected",
+                "eye.fill",
+                .orange
+            )
+        }
+
+        return nil
+    }
+
     // Get symptoms associated with a specific allergen category
     private func symptomsForCategory(_ category: String) -> [(symptom: String, count: Int)] {
         var symptomCounts: [String: Int] = [:]
@@ -1892,6 +1942,43 @@ struct FoodPatternAnalysisCard: View {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(confidenceLevel.color.opacity(0.08))
                 )
+            }
+
+            // Dynamic insight card (only for allergens/additives)
+            if let insight = topTriggerInsight {
+                HStack(spacing: 14) {
+                    // Icon
+                    ZStack {
+                        Circle()
+                            .fill(insight.color.opacity(0.12))
+                            .frame(width: 48, height: 48)
+
+                        Image(systemName: insight.icon)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(insight.color)
+                    }
+
+                    // Text content
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(insight.text)
+                            .font(AppTypography.sectionTitle(16))
+                            .foregroundColor(Color.textPrimary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+
+                        Text(insight.subtext)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(Color.textSecondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: AppRadius.large)
+                        .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
+                )
+                .cardShadow()
             }
 
             if allTriggers.isEmpty {

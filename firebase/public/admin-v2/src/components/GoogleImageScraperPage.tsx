@@ -76,6 +76,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   } | null>(null);
   const [barcodeQuery, setBarcodeQuery] = useState('');
   const [isBarcodeSearching, setIsBarcodeSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Preview modal
   const [previewImage, setPreviewImage] = useState<{
@@ -336,7 +337,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           updateFoodStatus(food.id, 'analyzing', progress);
 
           try {
-            const analysis = await analyzeImageQuality(result.original);
+            const analysis = await analyzeImageQuality(result.url);
             analyzed.push({ ...result, analysis });
           } catch (err) {
             console.error('Analysis error:', err);
@@ -366,7 +367,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
               ? {
                   ...f,
                   searchResults: candidates,
-                  selectedImageUrl: best.confidence >= 80 ? best.original : null,
+                  selectedImageUrl: best.confidence >= 80 ? best.url : null,
                   analysis: best.analysis,
                   status: best.confidence >= 80 ? 'ready' : 'pending',
                   confidence: best.confidence,
@@ -636,15 +637,31 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const resumeProcessing = () => { pauseRef.current = false; setIsPaused(false); addLog('Resumed'); };
   const stopProcessing = () => { abortRef.current = true; setIsProcessing(false); setIsPaused(false); addLog('Stopped'); };
 
-  // Filter foods
+  // Filter foods by status and search query
   const getFilteredFoods = useCallback(() => {
+    let filtered = foods;
+
+    // Filter by status
     switch (filter) {
-      case 'pending': return foods.filter(f => f.status === 'pending');
-      case 'ready': return foods.filter(f => f.status === 'ready');
-      case 'selected': return foods.filter(f => f.selected);
-      default: return foods;
+      case 'pending': filtered = filtered.filter(f => f.status === 'pending'); break;
+      case 'ready': filtered = filtered.filter(f => f.status === 'ready'); break;
+      case 'selected': filtered = filtered.filter(f => f.selected); break;
+      default: break;
     }
-  }, [foods, filter]);
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(f =>
+        f.name.toLowerCase().includes(query) ||
+        f.brandName?.toLowerCase().includes(query) ||
+        f.barcode?.includes(query) ||
+        f.objectID.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [foods, filter, searchQuery]);
 
   const filteredFoods = getFilteredFoods();
   const paginatedFoods = filteredFoods.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE);
@@ -868,7 +885,46 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Search input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search foods..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(0); // Reset to first page on search
+              }}
+              className="w-64 px-3 py-1.5 pl-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            <svg
+              className="absolute left-2.5 top-2 w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setCurrentPage(0);
+                }}
+                className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <span className="text-xs text-gray-500">
+              {filteredFoods.length} result{filteredFoods.length !== 1 ? 's' : ''}
+            </span>
+          )}
           <button onClick={selectAll} className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded">
             Select All
           </button>
