@@ -1601,40 +1601,68 @@ export const browseAllIndices = functions.runWith({
         console.log(`📦 Browsing all records from ${indices.length} indices...`);
 
       const allProducts: any[] = [];
-      const adminKey = algoliaAdminKey.value();
 
-      // Browse each index using Algolia REST API directly
+      // Get and sanitize admin key - remove any quotes, newlines, or control characters
+      const rawKey = algoliaAdminKey.value();
+      const adminKey = rawKey.replace(/[\r\n\t"']/g, '').trim();
+
+      console.log(`🔑 Admin key length: ${adminKey.length} chars`);
+
+      // Browse each index using Firebase Functions SDK approach (simpler than REST API)
+      // Use empty search query to get all records
       for (const indexName of indices) {
         console.log(`📦 Browsing ${indexName}...`);
 
         try {
           let browseCount = 0;
           let page = 0;
-          let hasMore = true;
           const hitsPerPage = 1000;
+          let totalHits = 0;
 
-          // Use Algolia REST API directly with axios to avoid SDK header issues
-          while (hasMore) {
-            const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${indexName}`;
+          // First request to get total count
+          const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${encodeURIComponent(indexName)}/query`;
 
-            const response = await axios.post(
-              `${url}/query`,
-              {
-                query: '', // Empty query returns all records
-                hitsPerPage,
-                page,
+          const firstResponse = await axios({
+            method: 'POST',
+            url,
+            data: {
+              params: `query=&hitsPerPage=${hitsPerPage}&page=0`
+            },
+            headers: {
+              'X-Algolia-Application-Id': ALGOLIA_APP_ID,
+              'X-Algolia-API-Key': adminKey,
+            },
+          });
+
+          totalHits = firstResponse.data.nbHits || 0;
+          const totalPages = firstResponse.data.nbPages || 0;
+          console.log(`  → Total: ${totalHits.toLocaleString()} products, ${totalPages} pages`);
+
+          // Add first page results
+          const firstHits = firstResponse.data.hits || [];
+          firstHits.forEach((hit: any) => {
+            allProducts.push({
+              ...hit,
+              sourceIndex: indexName,
+            });
+          });
+          browseCount += firstHits.length;
+
+          // Fetch remaining pages
+          for (page = 1; page < totalPages; page++) {
+            const pageResponse = await axios({
+              method: 'POST',
+              url,
+              data: {
+                params: `query=&hitsPerPage=${hitsPerPage}&page=${page}`
               },
-              {
-                headers: {
-                  'X-Algolia-Application-Id': ALGOLIA_APP_ID,
-                  'X-Algolia-API-Key': adminKey,
-                  'Content-Type': 'application/json',
-                },
-              }
-            );
+              headers: {
+                'X-Algolia-Application-Id': ALGOLIA_APP_ID,
+                'X-Algolia-API-Key': adminKey,
+              },
+            });
 
-            const hits = response.data.hits || [];
-
+            const hits = pageResponse.data.hits || [];
             hits.forEach((hit: any) => {
               allProducts.push({
                 ...hit,
@@ -1643,10 +1671,6 @@ export const browseAllIndices = functions.runWith({
             });
 
             browseCount += hits.length;
-
-            // Check if there are more pages
-            hasMore = (page + 1) * hitsPerPage < (response.data.nbHits || 0);
-            page++;
 
             // Log progress every 10k records
             if (browseCount % 10000 === 0) {
@@ -1657,7 +1681,10 @@ export const browseAllIndices = functions.runWith({
           console.log(`✅ ${indexName}: ${browseCount.toLocaleString()} total products`);
         } catch (indexError: any) {
           console.error(`❌ Error browsing ${indexName}:`, indexError.message);
-          console.error('Full error:', indexError);
+          if (indexError.response) {
+            console.error('Response status:', indexError.response.status);
+            console.error('Response data:', indexError.response.data);
+          }
           // Continue with other indices even if one fails
         }
       }

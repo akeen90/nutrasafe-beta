@@ -152,9 +152,17 @@ struct ReactionLogView: View {
     private func updateCachedValues() {
         let logs = manager.reactionLogs
 
-        // Only update if data actually changed
-        guard logs.count != lastCacheUpdateLogCount else { return }
+        // Force recalculation if calculation version changed (for bug fixes)
+        let calculationVersion = 2  // Increment when fixing calculation bugs
+        let lastVersion = UserDefaults.standard.integer(forKey: "reactionCacheVersion")
+        let forceUpdate = lastVersion < calculationVersion
+
+        // Only update if data actually changed or we're forcing an update
+        guard logs.count != lastCacheUpdateLogCount || forceUpdate else { return }
         lastCacheUpdateLogCount = logs.count
+        if forceUpdate {
+            UserDefaults.standard.set(calculationVersion, forKey: "reactionCacheVersion")
+        }
 
         // Calculate unique symptoms (sorted by frequency) - O(n) single pass
         let symptomCounts = logs.reduce(into: [String: Int]()) { counts, log in
