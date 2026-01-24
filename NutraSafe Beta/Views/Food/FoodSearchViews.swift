@@ -458,6 +458,7 @@ struct FoodSearchResultRowEnhanced: View {
             .onDisappear {
                 print("[FoodDetailViewFromSearch] onDisappear - fullScreenCover dismissed")
             }
+            .id(food.id) // Stable ID prevents dismissal when parent view redraws
         }
         .overlay(
             Group {
