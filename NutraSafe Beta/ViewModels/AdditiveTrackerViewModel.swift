@@ -759,8 +759,15 @@ class AdditiveTrackerViewModel: ObservableObject {
     private func calculateCleanStreak(entries: [AdditiveEntry]) -> Int {
         let concerningEntries = entries.filter { $0.verdict == "avoid" || $0.verdict == "caution" }
         guard let lastConcerning = concerningEntries.sorted(by: { $0.date > $1.date }).first else {
-            // No concerning additives ever? Count all 30 days
-            return 30
+            // No concerning additives found - calculate streak from first tracked food
+            if let firstEntry = entries.sorted(by: { $0.date < $1.date }).first {
+                // Clean streak is from first entry to now
+                let daysSince = Calendar.current.dateComponents([.day], from: firstEntry.date, to: Date()).day ?? 0
+                return max(0, daysSince)
+            } else {
+                // No entries at all
+                return 0
+            }
         }
 
         let daysSince = Calendar.current.dateComponents([.day], from: lastConcerning.date, to: Date()).day ?? 0
