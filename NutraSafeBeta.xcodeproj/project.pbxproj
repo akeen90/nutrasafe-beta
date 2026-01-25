@@ -129,6 +129,7 @@
 		EXT0NBOARD001BUILD /* ExtendedOnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = EXT0NBOARD001FILE /* ExtendedOnboardingScreens.swift */; };
 		F10BA9CAF86B4921A3EDDBEC /* AdditivePatternViewRedesigned.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D112AEB6222C2637BF67CAA /* AdditivePatternViewRedesigned.swift */; };
 		F274CF78968B4290ADA3C260F96936CE /* UseByTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* UseByTabViews.swift */; };
+		BD0A80E21D2F4DCE819D1014CE67E65C /* UseByMainViewRedesigned.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02DF49B2E0C4A80A14FB52CF99E88F4 /* UseByMainViewRedesigned.swift */; };
 		F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */; };
 		F30EE587A7676BDEA5D95EC6 /* FastingInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3406DEB9F89048699F964329 /* FastingInsightsView.swift */; };
 		F3DF752EB2C082AE0AB0A804 /* StrictMicronutrientValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428A9D43EB8D032F3AFC9F39 /* StrictMicronutrientValidator.swift */; };
@@ -299,6 +300,7 @@
 		D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingLiveActivity.swift; sourceTree = "<group>"; };
 		D3F02B35EB79BB96AD3D3301 /* FastingEducationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingEducationView.swift; sourceTree = "<group>"; };
 		D4841D8FB19F4A7091A7DD0A429B645E /* UseByTabViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UseByTabViews.swift; sourceTree = "<group>"; };
+		E02DF49B2E0C4A80A14FB52CF99E88F4 /* UseByMainViewRedesigned.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UseByMainViewRedesigned.swift; sourceTree = "<group>"; };
 		DC01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryCacheActor.swift; sourceTree = "<group>"; };
 		DC02WEEKD000CACHE000ACTOR /* WeekDataCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekDataCache.swift; sourceTree = "<group>"; };
 		DEBOUNCER001REF /* Utilities/Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/Debouncer.swift; sourceTree = "<group>"; };
@@ -431,7 +433,8 @@
 				4AE96932D3803B6EDA7CC603 /* UseByFoodDetailRedesigned.swift */,
 				16DF1087D3777C4ED64F9567 /* UseByAddRedesigned.swift */,
 				3356CF9900A78308205C6568 /* UseByQuickAddRedesigned.swift */,
-			);
+			
+				E02DF49B2E0C4A80A14FB52CF99E88F4 /* UseByMainViewRedesigned.swift */,);
 			path = "Use By";
 			sourceTree = "<group>";
 		};
@@ -937,6 +940,7 @@
 				24D3ACC266DD4F91AE1F1045B7BE8F34 /* BarcodeScanningViews.swift in Sources */,
 				8699C16F52A0459784A27CD7D0AF30C9 /* FoodTabViews.swift in Sources */,
 				F274CF78968B4290ADA3C260F96936CE /* UseByTabViews.swift in Sources */,
+				BD0A80E21D2F4DCE819D1014CE67E65C /* UseByMainViewRedesigned.swift in Sources */,
 				3B8228DB0918054597694FC4 /* MicronutrientDashboard.swift in Sources */,
 				RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */,
 				RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */,
