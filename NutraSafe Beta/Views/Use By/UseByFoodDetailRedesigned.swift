@@ -825,7 +825,7 @@ struct UseByFoodDetailSheetRedesigned: View {
                 addedDate: Date(),
                 barcode: nil,
                 category: nil,
-                imageURL: nil,
+                imageURL: food?.imageUrl,  // Pass product image from search results
                 notes: notesText
             )
 

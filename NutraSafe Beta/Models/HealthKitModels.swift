@@ -20,9 +20,10 @@ struct UseByItem {
     let notes: String?
     let dateAdded: Date
     let barcode: String?
+    let imageUrl: String?  // Product image URL from search results
 
     init(userId: String, name: String, quantity: Int, unit: String,
-         expiryDate: Date? = nil, category: String = "Other", notes: String? = nil, barcode: String? = nil) {
+         expiryDate: Date? = nil, category: String = "Other", notes: String? = nil, barcode: String? = nil, imageUrl: String? = nil) {
         self.id = UUID()
         self.userId = userId
         self.name = name
@@ -33,10 +34,11 @@ struct UseByItem {
         self.notes = notes
         self.dateAdded = Date()
         self.barcode = barcode
+        self.imageUrl = imageUrl
     }
 
     init(id: UUID, userId: String, name: String, quantity: Int, unit: String,
-         expiryDate: Date?, category: String, notes: String?, dateAdded: Date, barcode: String? = nil) {
+         expiryDate: Date?, category: String, notes: String?, dateAdded: Date, barcode: String? = nil, imageUrl: String? = nil) {
         self.id = id
         self.userId = userId
         self.name = name
@@ -47,6 +49,7 @@ struct UseByItem {
         self.notes = notes
         self.dateAdded = dateAdded
         self.barcode = barcode
+        self.imageUrl = imageUrl
     }
 
     func toDictionary() -> [String: Any] {
@@ -63,6 +66,9 @@ struct UseByItem {
         ]
         if let barcode = barcode {
             dict["barcode"] = barcode
+        }
+        if let imageUrl = imageUrl {
+            dict["imageUrl"] = imageUrl
         }
         return dict
     }
@@ -82,6 +88,7 @@ struct UseByItem {
         let notes = data["notes"] as? String
         let expiryDate = (data["expiryDate"] as? Timestamp)?.dateValue()
         let barcode = data["barcode"] as? String
+        let imageUrl = data["imageUrl"] as? String
 
         return UseByItem(
             id: id,
@@ -93,7 +100,8 @@ struct UseByItem {
             category: category,
             notes: notes,
             dateAdded: dateAddedTimestamp.dateValue(),
-            barcode: barcode
+            barcode: barcode,
+            imageUrl: imageUrl
         )
     }
 }
