@@ -824,31 +824,58 @@ struct FoodReactionSummaryCard: View {
             return "We're tracking your reactions and looking for patterns."
         }
 
-        var insight = "\(symptom.symptom) has appeared in most of your logged reactions"
+        // Build ingredient-first, actionable insight
+        if let trigger = topIngredientTrigger {
+            var insight = "\(trigger.name) is common in your reactions"
+
+            // Add symptom context
+            insight += " and you tend to report \(symptom.symptom.lowercased())"
+
+            // Add timing if available
+            if let timing = peakTiming {
+                let timingPhrase: String
+                switch timing.lowercased() {
+                case "morning": timingPhrase = "in the mornings"
+                case "afternoon": timingPhrase = "in the afternoons"
+                case "evening": timingPhrase = "in the evenings"
+                case "night": timingPhrase = "at night"
+                default: timingPhrase = "throughout the day"
+                }
+                insight += " \(timingPhrase)"
+            }
+
+            insight += " after it"
+
+            // Show specific foods containing this ingredient
+            if !trigger.foods.isEmpty {
+                let foodList = trigger.foods.prefix(3).joined(separator: ", ")
+                insight += ". \(trigger.name) was found in \(foodList)"
+
+                if trigger.foods.count > 3 {
+                    insight += " and \(trigger.foods.count - 3) other logged foods"
+                }
+            }
+
+            return insight + "."
+        }
+
+        // Fallback if no ingredient trigger identified
+        var insight = "You've been experiencing \(symptom.symptom.lowercased())"
 
         // Add timing context inline
         if let timing = peakTiming {
             let timingPhrase: String
             switch timing.lowercased() {
-            case "morning": timingPhrase = "often in the mornings"
-            case "afternoon": timingPhrase = "frequently in the afternoons"
-            case "evening": timingPhrase = "often in the evenings"
-            case "night": timingPhrase = "typically at night"
+            case "morning": timingPhrase = "in the mornings"
+            case "afternoon": timingPhrase = "in the afternoons"
+            case "evening": timingPhrase = "in the evenings"
+            case "night": timingPhrase = "at night"
             default: timingPhrase = "throughout the day"
             }
-            insight += ", \(timingPhrase)"
+            insight += " \(timingPhrase)"
         }
 
-        // Add trigger context if available - focus on INGREDIENT pattern with percentage
-        if let trigger = topIngredientTrigger {
-            insight += ". \(trigger.name) appears in \(trigger.percentage)% of reactions"
-
-            // Show which specific foods contained it (up to 3 for readability)
-            if !trigger.foods.isEmpty {
-                let foodList = trigger.foods.prefix(2).joined(separator: ", ")
-                insight += " (in \(foodList))"
-            }
-        }
+        insight += ". We're still learning what might be causing it"
 
         return insight + "."
     }

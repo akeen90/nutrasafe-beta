@@ -15,6 +15,7 @@ export { searchFoodsWeb } from './search-foods-web';
 export { getFoodDetails } from './food-details';
 export { searchFoodsByCollection } from './search-foods-by-collection';
 export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, deleteFoodComprehensive, moveFoodBetweenCollections, moveFoodsBetweenIndices, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes, searchTescoAndUpdate, adminSaveFood, browseAllIndices, getBrowseJobData } from './food-management';
+export { uploadMasterDatabase } from './upload-master-database';
 export { getOverviewStats, getAnalyticsData } from './analytics';
 export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp, setPremiumOverride, getPremiumOverrideStatus } from './user-management';
 export { getContextualNutritionScore } from './contextual-nutrition';

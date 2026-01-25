@@ -152,7 +152,7 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     return Math.round(score);
   };
 
-  // Step 1: Pull all data from indices
+  // Step 1: Pull all data - ONE INDEX AT A TIME to avoid 10MB limit
   const pullAllData = useCallback(async () => {
     if (selectedIndices.size === 0) {
       addLog('❌ No indices selected');
@@ -163,105 +163,70 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     setProgress(0);
     setAllProducts([]);
     setDuplicateGroups([]);
-    addLog('📥 Starting data pull from all selected indices...');
-    addLog('⚠️ This will pull ALL products from each index (may take several minutes)');
+
+    addLog('📥 Starting data pull (one index at a time)...');
+    if (testMode) {
+      addLog('🧪 TEST MODE: 1000 products per index');
+    }
 
     const indicesToScan = Array.from(selectedIndices);
+    const allFetchedProducts: Product[] = [];
+    const allStats: Record<string, { count: number; error?: string }> = {};
 
     try {
-      setProgress(10);
-      if (testMode) {
-        addLog('🧪 TEST MODE: Limiting to 1000 products per index');
-      }
-      addLog('🔄 Calling Cloud Function to browse all records...');
+      // Call Cloud Function ONCE PER INDEX to keep responses small
+      for (let i = 0; i < indicesToScan.length; i++) {
+        const indexName = indicesToScan[i];
+        addLog(`📦 Pulling ${indexName}...`);
 
-      // Call Cloud Function to browse all indices
-      const response = await fetch(`${FUNCTIONS_BASE}/browseAllIndices`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          indices: indicesToScan,
-          limit: testMode ? 1000 : undefined, // Limit for testing
-        }),
-      });
+        const response = await fetch(`${FUNCTIONS_BASE}/browseAllIndices`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            indices: [indexName], // ONE index at a time
+            limit: testMode ? 1000 : undefined,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      setProgress(50);
-      addLog('📦 Receiving data from Cloud Function...');
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to browse indices');
-      }
-
-      const { jobId, totalProducts, totalBatches, indexStats: stats } = result;
-
-      addLog(`📊 Total products found: ${totalProducts.toLocaleString()}`);
-      addLog(`📦 Fetching ${totalBatches} batches from Firestore...`);
-
-      // Log per-index stats
-      Object.entries(stats || {}).forEach(([index, stat]: [string, any]) => {
-        if (stat.error) {
-          addLog(`  ❌ ${index}: ${stat.error}`);
-        } else {
-          addLog(`  ✅ ${index}: ${stat.count.toLocaleString()} products`);
-        }
-      });
-
-      setIndexStats(stats || {});
-
-      // Fetch batches from Firestore
-      const allFetchedProducts: Product[] = [];
-
-      for (let i = 0; i < totalBatches; i++) {
-        const batchResponse = await fetch(
-          `${FUNCTIONS_BASE}/getBrowseJobData?jobId=${jobId}&batchNumber=${i}`
-        );
-
-        if (!batchResponse.ok) {
-          addLog(`⚠️ Failed to fetch batch ${i + 1}/${totalBatches}`);
+        if (!response.ok) {
+          addLog(`❌ ${indexName}: HTTP ${response.status}`);
+          allStats[indexName] = { count: 0, error: `HTTP ${response.status}` };
           continue;
         }
 
-        const batchResult = await batchResponse.json();
-        if (batchResult.success && batchResult.products) {
-          allFetchedProducts.push(...batchResult.products);
+        const result = await response.json();
 
-          // Update progress
-          const batchProgress = 50 + Math.round((i + 1) / totalBatches * 50);
-          setProgress(batchProgress);
+        if (result.success && result.products) {
+          const products = result.products || [];
+          allFetchedProducts.push(...products);
 
-          if ((i + 1) % 10 === 0 || i === totalBatches - 1) {
-            addLog(`  → Fetched ${i + 1}/${totalBatches} batches (${allFetchedProducts.length.toLocaleString()} products)`);
-          }
+          const stats = result.indexStats || {};
+          Object.assign(allStats, stats);
+
+          const count = products.length;
+          addLog(`✅ ${indexName}: ${count.toLocaleString()} products`);
+        } else {
+          addLog(`❌ ${indexName}: ${result.error || 'Failed'}`);
+          allStats[indexName] = { count: 0, error: result.error || 'Failed' };
         }
+
+        // Update progress
+        setProgress(Math.floor(((i + 1) / indicesToScan.length) * 100));
       }
 
-      addLog(`✅ Retrieved ${allFetchedProducts.length.toLocaleString()} products total`);
-
+      addLog(`📊 Total: ${allFetchedProducts.length.toLocaleString()} products`);
+      setIndexStats(allStats);
       setAllProducts(allFetchedProducts);
-      setStats(prev => ({
-        ...prev,
-        totalScanned: allFetchedProducts.length,
-      }));
-      setProgress(100);
+      setStats(prev => ({ ...prev, totalScanned: allFetchedProducts.length }));
       addLog('✅ Data pull complete! Ready to scan for duplicates.');
 
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-      addLog(`❌ Error pulling data: ${errorMsg}`);
-      console.error('Error pulling data:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      addLog(`❌ Error: ${errorMsg}`);
     } finally {
       setIsPulling(false);
     }
-  }, [selectedIndices]);
+  }, [selectedIndices, testMode]);
 
   // Step 2: Scan for duplicates (on already-pulled data)
   const scanForDuplicates = useCallback(async () => {
@@ -418,15 +383,34 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
       }
 
       addLog(`✅ Created ${masterProducts.length} merged products`);
-      addLog('📤 Ready to export to master_database index');
-      addLog('⚠️ Note: You need to deploy the Algolia upload function to complete this step');
+      addLog('📤 Uploading to Firestore...');
 
-      // TODO: Upload to master_database index via Cloud Function
-      // This would require creating a new Cloud Function to accept the master products
-      // and upload them to a new 'master_database' Algolia index
+      // Upload to Firestore in batches
+      const batchSize = 100;
+      const batches = Math.ceil(masterProducts.length / batchSize);
+
+      for (let i = 0; i < batches; i++) {
+        const start = i * batchSize;
+        const end = Math.min((i + 1) * batchSize, masterProducts.length);
+        const batch = masterProducts.slice(start, end);
+
+        const response = await fetch(`${FUNCTIONS_BASE}/uploadMasterDatabase`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ products: batch }),
+        });
+
+        if (!response.ok) {
+          addLog(`⚠️ Failed to upload batch ${i + 1}/${batches}`);
+        } else {
+          addLog(`  → Uploaded batch ${i + 1}/${batches}`);
+        }
+
+        setProgress(Math.round(((i + 1) / batches) * 100));
+      }
 
       setProgress(100);
-      addLog('✅ Master database built successfully!');
+      addLog('✅ Master database built and uploaded to Firestore!');
 
     } catch (error) {
       addLog(`❌ Error building master database: ${error}`);

@@ -450,7 +450,6 @@
 		1E2302F2CAB144499FF8B394 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				AB7C5BAF2F25A089001E7365 /* Tabs */,
 				95FB33855679471485B474B4 /* SettingsView.swift */,
 				48F7E2851A9B4BD8AF47A1BEE4B27F68 /* Diary */,
 				2DF585D9E80C4490A72B6467 /* Fasting */,
@@ -527,11 +526,6 @@
 		63A53684D54AC54FDAF5A1F3 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				AB7C5BBF2F25A13F001E7365 /* Infrastructure */,
-				AB7C5BBE2F25A139001E7365 /* Diary */,
-				AB7C5BBD2F25A132001E7365 /* Health */,
-				AB7C5BBC2F25A127001E7365 /* Nutrition */,
-				AB7C5BBB2F25A120001E7365 /* Core */,
 				0CD400E363874479B2EC2A32 /* NutrientCacheActor.swift */,
 				DC01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift */,
 				DC02WEEKD000CACHE000ACTOR /* WeekDataCache.swift */,
@@ -652,69 +646,6 @@
 			path = "NutraSafe Beta";
 			sourceTree = "<group>";
 		};
-		AB7C5BAF2F25A089001E7365 /* Tabs */ = {
-			isa = PBXGroup;
-			children = (
-				AB7C5BB42F25A0BF001E7365 /* Add */,
-				AB7C5BB32F25A0B7001E7365 /* UseBy */,
-				AB7C5BB22F25A0AB001E7365 /* Health */,
-				AB7C5BB12F25A09C001E7365 /* Progress */,
-				AB7C5BB02F25A094001E7365 /* Diary */,
-			);
-			path = Tabs;
-			sourceTree = "<group>";
-		};
-		AB7C5BB02F25A094001E7365 /* Diary */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Diary;
-			sourceTree = "<group>";
-		};
-		AB7C5BB12F25A09C001E7365 /* Progress */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Progress;
-			sourceTree = "<group>";
-		};
-		AB7C5BB22F25A0AB001E7365 /* Health */ = {
-			isa = PBXGroup;
-			children = (
-				AB7C5BB62F25A0DE001E7365 /* Fasting */,
-				AB7C5BB52F25A0D8001E7365 /* Reactions */,
-			);
-			path = Health;
-			sourceTree = "<group>";
-		};
-		AB7C5BB32F25A0B7001E7365 /* UseBy */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = UseBy;
-			sourceTree = "<group>";
-		};
-		AB7C5BB42F25A0BF001E7365 /* Add */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Add;
-			sourceTree = "<group>";
-		};
-		AB7C5BB52F25A0D8001E7365 /* Reactions */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Reactions;
-			sourceTree = "<group>";
-		};
-		AB7C5BB62F25A0DE001E7365 /* Fasting */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Fasting;
-			sourceTree = "<group>";
-		};
 		AB7C5BB72F25A0F7001E7365 /* Search */ = {
 			isa = PBXGroup;
 			children = (
@@ -741,41 +672,6 @@
 			children = (
 			);
 			path = Meals;
-			sourceTree = "<group>";
-		};
-		AB7C5BBB2F25A120001E7365 /* Core */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Core;
-			sourceTree = "<group>";
-		};
-		AB7C5BBC2F25A127001E7365 /* Nutrition */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Nutrition;
-			sourceTree = "<group>";
-		};
-		AB7C5BBD2F25A132001E7365 /* Health */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Health;
-			sourceTree = "<group>";
-		};
-		AB7C5BBE2F25A139001E7365 /* Diary */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Diary;
-			sourceTree = "<group>";
-		};
-		AB7C5BBF2F25A13F001E7365 /* Infrastructure */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Infrastructure;
 			sourceTree = "<group>";
 		};
 		AB7C5BC02F25A150001E7365 /* Core */ = {
