@@ -118,6 +118,10 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingFastingPrompt = false
     @State private var isStartingFastAfterLog = false
 
+    // MARK: - Image background detection
+    @State private var detectedImageBackgroundColor: Color? = nil
+    @State private var hasLightImageBackground: Bool = false
+
     // MARK: - Diary replacement support
     let diaryEntryId: UUID?
     let diaryMealType: String?
@@ -139,8 +143,15 @@ struct FoodDetailViewFromSearch: View {
         var initialServingSize = "100"  // Default fallback
         var initialUnit = "g"
 
+        // Special handling for oils: default to tablespoon (15g)
+        let nameLower = food.name.lowercased()
+        let isOil = nameLower.contains("oil") && !nameLower.contains("fish oil") && !nameLower.contains("cod liver")
+        if isOil && food.isPerUnit != true {
+            initialServingSize = "15"
+            initialUnit = "g"
+        }
         // Check if this is a per-unit food first
-        if food.isPerUnit == true {
+        else if food.isPerUnit == true {
             // Per-unit food: use serving description as unit name
             initialServingSize = "1"
             if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
@@ -250,7 +261,12 @@ struct FoodDetailViewFromSearch: View {
 
         // Initialize with custom row selected by default (editable serving size field)
         // This allows immediate editing of portion size when entering the food page
-        self._selectedPortionName = State(initialValue: "__custom__")
+        // Special case: For oils, default to "1 tablespoon" portion
+        if isOil && food.isPerUnit != true {
+            self._selectedPortionName = State(initialValue: "1 tablespoon")
+        } else {
+            self._selectedPortionName = State(initialValue: "__custom__")
+        }
 
         // If portions are available, still use first portion values for the custom row
         if let portions = food.portions, !portions.isEmpty {
@@ -1275,15 +1291,15 @@ struct FoodDetailViewFromSearch: View {
                     riskLevel = "Low"
                 }
 
-                let overview = additive.overview.trimmingCharacters(in: .whitespacesAndNewlines)
-                let uses = additive.typicalUses.trimmingCharacters(in: .whitespacesAndNewlines)
+                let overview = (additive.overview ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                let uses = (additive.typicalUses ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
                 let override = AdditiveOverrides.override(for: additive)
 
                 let displayName = override?.displayName ?? additive.name
                 var whatItIs = override?.whatItIs ?? (!overview.isEmpty ? overview : displayName)
                 if !uses.isEmpty && override?.whatItIs == nil {
-                    let cleanedUses = uses.trimmingCharacters(in: .punctuationCharacters)
+                    let cleanedUses = uses.trimmingCharacters(in: CharacterSet.punctuationCharacters)
                     if !whatItIs.lowercased().contains(cleanedUses.lowercased()) {
                         whatItIs += (whatItIs.isEmpty ? "" : ". ") + "Commonly used in \(cleanedUses)"
                     }
@@ -1291,7 +1307,7 @@ struct FoodDetailViewFromSearch: View {
                 if !whatItIs.isEmpty && !whatItIs.hasSuffix(".") { whatItIs += "." }
 
                 let originSummary = override?.originSummary ?? (additive.whereItComesFrom ?? additive.origin.rawValue.capitalized)
-                let riskSummary = override?.riskSummary ?? (!additive.effectsSummary.isEmpty ? additive.effectsSummary : "No detailed information available for this additive.")
+                let riskSummary = override?.riskSummary ?? (additive.effectsSummary ?? "No detailed information available for this additive.")
 
                 return DetailedAdditive(
                     name: displayName,
@@ -4547,29 +4563,19 @@ struct FoodDetailViewFromSearch: View {
     private var additivesContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             if subscriptionManager.hasAccess {
-                // Premium users see redesigned additive analysis
-                if let analysis = additiveAnalysis {
-                    // NO WRAPPER PADDING - AdditiveScoreCard handles its own layout
-                    AdditiveScoreCard(
-                        analysis: analysis,
-                        expandedAdditiveId: $expandedAdditiveId
-                    )
-                } else if cachedIngredients == nil || cachedIngredients?.isEmpty == true {
+                // Premium users see additive watch analysis
+                if let ingredientsList = cachedIngredients {
+                    let clean = ingredientsList
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                    if !clean.isEmpty {
+                        AdditiveWatchView(ingredients: ingredientsList)
+                    } else {
+                        noIngredientDataView
+                    }
+                } else {
                     // Empty state with consistent padding
                     noIngredientDataView
-                        .padding(.horizontal, 16)
-                } else {
-                    // Loading state with consistent padding
-                    VStack(spacing: 12) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle())
-                        Text("Analyzing additives...")
-                            .font(.system(size: 13))
-                            .foregroundColor(palette.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
-                    .padding(.horizontal, 16)
                 }
             } else {
                 // Free users see locked preview with consistent padding
@@ -6036,33 +6042,138 @@ extension FoodDetailViewFromSearch {
     // MARK: - Soft Gradient Background
     var foodDetailBackground: some View {
         ZStack {
-            // Base: soft tinted background (NOT pure white)
-            if colorScheme == .dark {
-                Color.midnightBackground
+            // If image has a light/white background, use pure white for seamless integration
+            if hasLightImageBackground && colorScheme == .light {
+                Color.white
             } else {
-                // Soft teal/mint wash matching onboarding
-                LinearGradient(
+                // Base: soft tinted background
+                if colorScheme == .dark {
+                    Color.midnightBackground
+                } else {
+                    // Soft teal/mint wash matching onboarding
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.94, green: 0.98, blue: 0.98),  // Soft mint
+                            Color(red: 0.96, green: 0.97, blue: 0.95),  // Warm off-white
+                            palette.background
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+
+                // Subtle radial accent in corner (skip when using white background)
+                RadialGradient(
                     colors: [
-                        Color(red: 0.94, green: 0.98, blue: 0.98),  // Soft mint
-                        Color(red: 0.96, green: 0.97, blue: 0.95),  // Warm off-white
-                        palette.background
+                        palette.accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
+                        Color.clear
                     ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    center: .topLeading,
+                    startRadius: 0,
+                    endRadius: 350
                 )
             }
-
-            // Subtle radial accent in corner
-            RadialGradient(
-                colors: [
-                    palette.accent.opacity(colorScheme == .dark ? 0.08 : 0.04),
-                    Color.clear
-                ],
-                center: .topLeading,
-                startRadius: 0,
-                endRadius: 350
-            )
         }
+    }
+
+    // MARK: - Image Background Detection
+
+    /// Detects if the product image has a light/white background for seamless UI integration
+    private func detectImageBackground(from url: URL) {
+        // Download and analyze the image in the background
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let data = try? Data(contentsOf: url),
+                  let uiImage = UIImage(data: data),
+                  let cgImage = uiImage.cgImage else {
+                return
+            }
+
+            // Sample pixels from the edges to detect background color
+            let isLight = self.hasLightBackground(cgImage: cgImage)
+
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.hasLightImageBackground = isLight
+                }
+            }
+        }
+    }
+
+    /// Analyzes if a CGImage has a light/white background by sampling edge pixels
+    private func hasLightBackground(cgImage: CGImage) -> Bool {
+        let width = cgImage.width
+        let height = cgImage.height
+
+        guard width > 0 && height > 0 else { return false }
+
+        // Create a context to read pixel data
+        let bytesPerPixel = 4
+        let bytesPerRow = bytesPerPixel * width
+        let bitsPerComponent = 8
+
+        var pixelData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
+
+        guard let context = CGContext(
+            data: &pixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return false
+        }
+
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Sample pixels from the edges (top, bottom, left, right corners)
+        let samplePoints: [(Int, Int)] = [
+            // Top edge
+            (width / 2, 10),
+            (width / 4, 10),
+            (3 * width / 4, 10),
+            // Bottom edge
+            (width / 2, height - 10),
+            (width / 4, height - 10),
+            (3 * width / 4, height - 10),
+            // Left edge
+            (10, height / 2),
+            (10, height / 4),
+            (10, 3 * height / 4),
+            // Right edge
+            (width - 10, height / 2),
+            (width - 10, height / 4),
+            (width - 10, 3 * height / 4)
+        ]
+
+        var lightPixelCount = 0
+        var totalSamples = 0
+
+        for (x, y) in samplePoints {
+            guard x >= 0 && x < width && y >= 0 && y < height else { continue }
+
+            let pixelIndex = (y * width + x) * bytesPerPixel
+            guard pixelIndex + 2 < pixelData.count else { continue }
+
+            let r = CGFloat(pixelData[pixelIndex]) / 255.0
+            let g = CGFloat(pixelData[pixelIndex + 1]) / 255.0
+            let b = CGFloat(pixelData[pixelIndex + 2]) / 255.0
+
+            // Calculate brightness (0 to 1)
+            let brightness = (r + g + b) / 3.0
+
+            // Check if pixel is light (brightness > 0.85 is considered light/white)
+            if brightness > 0.85 {
+                lightPixelCount += 1
+            }
+
+            totalSamples += 1
+        }
+
+        // If more than 70% of sampled edge pixels are light, consider it a white background
+        let lightRatio = Double(lightPixelCount) / Double(max(totalSamples, 1))
+        return lightRatio > 0.7
     }
 
     // MARK: - Redesigned Header Section
@@ -6077,6 +6188,10 @@ extension FoodDetailViewFromSearch {
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(maxHeight: 160)
+                            .onAppear {
+                                // Detect if image has a light/white background
+                                detectImageBackground(from: url)
+                            }
                     case .failure(_):
                         EmptyView()
                     case .empty:
