@@ -517,7 +517,7 @@ export const deleteFoodFromAlgolia = functions.runWith({
     console.log(`🗑️ Deleting food ${foodId} from Algolia index: ${indexName}`);
 
     // Initialize Algolia client
-    const client = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const client = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value().trim());
 
     // Delete from Algolia
     await client.deleteObject({
@@ -665,7 +665,7 @@ export const moveFoodsBetweenIndices = functions.runWith({
     console.log(`🔄 Moving ${foodIds.length} foods from ${fromIndex} to ${toIndex}`);
 
     // Initialize Algolia client
-    const client = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const client = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value().trim());
 
     let successCount = 0;
     let failedCount = 0;
@@ -1451,7 +1451,9 @@ export const deleteFoodComprehensive = functions.runWith({
       return;
     }
 
-    const client = algoliasearch(ALGOLIA_APP_ID, algoliaKey);
+    // Trim whitespace/newlines from API key
+    const cleanKey = algoliaKey.trim();
+    const client = algoliasearch(ALGOLIA_APP_ID, cleanKey);
 
     const deletedFrom: { index: string; objectID: string; firestore?: string }[] = [];
     const errors: string[] = [];
@@ -1672,8 +1674,10 @@ export const browseAllIndices = functions.runWith({
       }
 
       const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+
       const allProducts: any[] = [];
       let browseCount = 0;
+      let totalBrowsed = 0; // Track how many we've seen total (not just returned)
       const indexLimit = limit || Infinity;
 
       await client.browseObjects({
@@ -1686,6 +1690,8 @@ export const browseAllIndices = functions.runWith({
           const hits = response.hits || [];
 
           for (const hit of hits) {
+            totalBrowsed++; // Count every hit we see
+
             // Skip products before offset
             if (browseCount < offset) {
               browseCount++;
@@ -1709,29 +1715,32 @@ export const browseAllIndices = functions.runWith({
             browseCount++;
           }
 
-          if (browseCount % 10000 === 0) {
-            console.log(`  → Browsed ${browseCount.toLocaleString()} records from ${indexName}...`);
+          if (totalBrowsed % 10000 === 0) {
+            console.log(`  → Browsed ${totalBrowsed.toLocaleString()} records from ${indexName}...`);
           }
         },
       }).catch((err: any) => {
         if (err.message !== 'LIMIT_REACHED' && err.message !== 'PAGE_LIMIT_REACHED') throw err;
       });
 
-      console.log(`✅ ${indexName}: ${browseCount.toLocaleString()} total products`);
-      console.log(`📊 Total products browsed: ${browseCount.toLocaleString()}`);
+      // If we returned a full page, there might be more
+      // If we returned less than pageSize, we've reached the end
+      const hasMore = allProducts.length === pageSize;
+
+      console.log(`✅ ${indexName}: Returned ${allProducts.length} products (browsed ${totalBrowsed.toLocaleString()} total, hasMore=${hasMore})`);
 
       res.json({
         success: true,
         products: allProducts,
         indexStats: {
-          [indexName]: { count: browseCount }
+          [indexName]: { count: totalBrowsed }
         },
         pagination: {
           offset,
           pageSize,
           returned: allProducts.length,
-          total: browseCount,
-          hasMore: allProducts.length === pageSize,
+          total: totalBrowsed, // Total we've browsed so far
+          hasMore, // True if we returned a full page (likely more data)
         },
       });
 
@@ -1741,6 +1750,170 @@ export const browseAllIndices = functions.runWith({
         success: false,
         error: 'Failed to browse indices',
         details: error.message,
+      });
+    }
+  });
+});
+
+// Bulk delete from Algolia index (for duplicate merging)
+export const deleteFromIndex = functions.runWith({
+  secrets: [algoliaAdminKey],
+  timeoutSeconds: 60,
+  memory: '512MB'
+}).https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      const { indexName, objectIDs } = req.body;
+
+      if (!indexName) {
+        res.status(400).json({ success: false, error: 'Index name is required' });
+        return;
+      }
+
+      if (!objectIDs || !Array.isArray(objectIDs) || objectIDs.length === 0) {
+        res.status(400).json({ success: false, error: 'Object IDs array is required' });
+        return;
+      }
+
+      console.log(`🗑️ Bulk deleting ${objectIDs.length} objects from ${indexName}...`);
+
+      const adminKey = getAlgoliaAdminKey();
+      if (!adminKey) {
+        res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+        return;
+      }
+
+      const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+
+      // Delete objects from Algolia
+      await client.deleteObjects({
+        indexName,
+        objectIDs,
+      });
+
+      console.log(`✅ Deleted ${objectIDs.length} objects from ${indexName}`);
+
+      // Also try to delete from Firestore if there's a corresponding collection
+      const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+      let firestoreDeleted = 0;
+      if (firestoreCollection) {
+        const db = admin.firestore();
+        const batch = db.batch();
+        objectIDs.forEach(id => {
+          batch.delete(db.collection(firestoreCollection).doc(id));
+        });
+        try {
+          await batch.commit();
+          firestoreDeleted = objectIDs.length;
+          console.log(`✅ Also deleted ${firestoreDeleted} documents from Firestore collection: ${firestoreCollection}`);
+        } catch (firestoreError) {
+          console.log(`ℹ️ Could not delete from Firestore collection ${firestoreCollection} (this is OK for Algolia-only indices)`);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully deleted ${objectIDs.length} objects from ${indexName}`,
+        deletedCount: objectIDs.length,
+        indexName: indexName,
+        firestoreDeleted: firestoreDeleted
+      });
+
+    } catch (error: any) {
+      console.error('❌ Bulk delete error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete objects',
+        details: error.message
+      });
+    }
+  });
+});
+
+// Bulk save/update to Algolia index (for duplicate merging and database updates)
+export const updateAlgoliaIndex = functions.runWith({
+  secrets: [algoliaAdminKey],
+  timeoutSeconds: 120,
+  memory: '1GB'
+}).https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      const { indexName, products } = req.body;
+
+      if (!indexName) {
+        res.status(400).json({ success: false, error: 'Index name is required' });
+        return;
+      }
+
+      if (!products || !Array.isArray(products) || products.length === 0) {
+        res.status(400).json({ success: false, error: 'Products array is required' });
+        return;
+      }
+
+      console.log(`💾 Bulk updating ${products.length} objects in ${indexName}...`);
+
+      const adminKey = getAlgoliaAdminKey();
+      if (!adminKey) {
+        res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+        return;
+      }
+
+      const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+
+      // Save/update objects in Algolia (uses objectID to update existing or create new)
+      await client.saveObjects({
+        indexName,
+        objects: products,
+      });
+
+      console.log(`✅ Updated ${products.length} objects in ${indexName}`);
+
+      // Also try to save to Firestore if there's a corresponding collection
+      const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+      let firestoreSaved = 0;
+      if (firestoreCollection) {
+        const db = admin.firestore();
+        // Process in batches of 500 (Firestore limit)
+        const batchSize = 500;
+        for (let i = 0; i < products.length; i += batchSize) {
+          const batch = db.batch();
+          const chunk = products.slice(i, Math.min(i + batchSize, products.length));
+
+          chunk.forEach(product => {
+            if (product.objectID) {
+              batch.set(
+                db.collection(firestoreCollection).doc(product.objectID),
+                product,
+                { merge: true }
+              );
+            }
+          });
+
+          try {
+            await batch.commit();
+            firestoreSaved += chunk.length;
+          } catch (firestoreError) {
+            console.log(`⚠️ Could not save batch to Firestore collection ${firestoreCollection}:`, firestoreError);
+          }
+        }
+
+        console.log(`✅ Also saved ${firestoreSaved} documents to Firestore collection: ${firestoreCollection}`);
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully updated ${products.length} objects in ${indexName}`,
+        updatedCount: products.length,
+        indexName: indexName,
+        firestoreSaved: firestoreSaved
+      });
+
+    } catch (error: any) {
+      console.error('❌ Bulk update error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update objects',
+        details: error.message
       });
     }
   });

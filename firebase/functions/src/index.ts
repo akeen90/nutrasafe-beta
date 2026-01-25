@@ -14,7 +14,7 @@ export { fastSearchFoods } from './fast-search';
 export { searchFoodsWeb } from './search-foods-web';
 export { getFoodDetails } from './food-details';
 export { searchFoodsByCollection } from './search-foods-by-collection';
-export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, deleteFoodComprehensive, moveFoodBetweenCollections, moveFoodsBetweenIndices, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes, searchTescoAndUpdate, adminSaveFood, browseAllIndices, getBrowseJobData } from './food-management';
+export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, deleteFoodComprehensive, moveFoodBetweenCollections, moveFoodsBetweenIndices, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes, searchTescoAndUpdate, adminSaveFood, browseAllIndices, getBrowseJobData, deleteFromIndex, updateAlgoliaIndex } from './food-management';
 export { uploadMasterDatabase } from './upload-master-database';
 export { getOverviewStats, getAnalyticsData } from './analytics';
 export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp, setPremiumOverride, getPremiumOverrideStatus } from './user-management';
@@ -85,6 +85,7 @@ export { uploadFoodImage, batchUploadFoodImages } from './upload-food-image';
 
 // Tesco image quality filtering
 export { filterTescoImages, getTescoImageStats } from './filter-tesco-images';
+export { syncTescoImageQuality } from './sync-tesco-quality';
 
 // Master database sync to Algolia
 export { clearAlgoliaIndex, syncMasterDatabaseToAlgolia, getMasterDatabaseStats } from './sync-master-database';

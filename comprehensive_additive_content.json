@@ -1,0 +1,28 @@
+{
+  "E100 - Curcumin": {
+    "whatItIs": "The vibrant yellow-orange pigment extracted from turmeric root, the same spice that gives curry its golden color and has been used in cooking for over 4,000 years.",
+    "whereItComesFrom": "Extracted from the rhizomes (underground stems) of turmeric plants (Curcuma longa) grown primarily in India and Southeast Asia. The roots are boiled, dried, ground into powder, then curcumin is extracted using solvents like ethanol or hexane.",
+    "whyItsUsed": "Provides natural yellow-orange coloring to mustard, cheese, butter, curry powders, and processed foods without synthetic dyes.",
+    "whatYouNeedToKnow": [
+      "Generally considered safe with a long history of use in traditional cuisine",
+      "Can permanently stain clothing, countertops, and skin bright yellow",
+      "Poorly absorbed by the body unless combined with black pepper (piperine)",
+      "The color fades when exposed to sunlight or alkaline conditions"
+    ],
+    "fullDescription": "Curcumin (E100) is a polyphenol compound that makes up 2-5% of turmeric powder by weight. It's been used for thousands of years in Indian cooking and traditional Ayurvedic medicine. As a food coloring, it's prized for being 'natural' and vibrant, though it's less stable than synthetic alternatives. The molecule has a distinctive chemical structure with two aromatic rings connected by a chain, which gives it antioxidant properties that are heavily researched for potential health benefits. However, curcumin breaks down quickly in the digestive system and has notoriously poor bioavailability - most of it passes through unabsorbed. Food scientists have developed various methods to improve absorption, including nanoparticle formulations and combination with piperine from black pepper, which can increase absorption by up to 2000%. The bright yellow color fades in sunlight and turns brownish-red in alkaline conditions (above pH 7.4), which is why turmeric-colored foods should be stored away from light. In high doses, curcumin may cause digestive upset, but at levels used in food coloring, it's generally well-tolerated."
+  },
+
+  "E120 - Cochineal (Carmine)": {
+    "whatItIs": "A deep crimson red dye made from the dried, crushed bodies of female cochineal insects - tiny scale insects that live on prickly pear cactus plants.",
+    "whereItComesFrom": "Harvested from cochineal beetles (Dactylopius coccus) that feed on Opuntia cacti, primarily in Peru, the Canary Islands, and Mexico. Around 70,000 insects must be dried and crushed to produce just 500 grams of dye. The insects are collected, killed by heat or immersion in hot water, dried, then crushed to extract the red pigment.",
+    "whyItsUsed": "Provides an intense, stable red color that doesn't fade easily with light or heat - used in yogurts, candies, beverages, ice cream, and cosmetics where a vibrant red is desired.",
+    "whatYouNeedToKnow": [
+      "NOT suitable for vegans or vegetarians (made from insects)",
+      "Can cause severe allergic reactions including anaphylaxis in some people",
+      "Often labeled as 'natural color' or 'carmine' without mentioning insects",
+      "One of the most color-stable natural reds available - survives cooking and light exposure",
+      "Used since Aztec and Maya civilizations, who valued it more highly than gold"
+    ],
+    "fullDescription": "Cochineal (E120), also called carmine, has been used as a precious red dye since pre-Columbian times. The Aztec and Maya civilizations cultivated the insects and traded the dye across Mesoamerica. After Spanish conquest in the 1500s, cochineal became Europe's most valuable export from the New World, second only to silver. The insects produce carminic acid (up to 24% of their body weight) as a defense mechanism against predators. Today, Peru produces about 85% of the world's supply. The dye is extracted by boiling the dried insects in water, then treating with alum (aluminum salt) to produce a stable lake pigment. It's prized in modern food production because synthetic reds like Allura Red (Red 40) face increasing consumer resistance, while cochineal can be marketed as 'natural color.' The color remains remarkably stable across different pH ranges (though it shifts from orange-red in acids to bluish-red in alkaline conditions) and doesn't fade with light or heat like many plant-based reds such as betanin from beets. However, it can trigger allergic reactions in sensitive individuals, particularly those with shellfish allergies, because of similar protein structures. The FDA requires it to be specifically labeled as 'cochineal extract' or 'carmine' since 2009, after reports of severe reactions. Some manufacturers have switched away from it due to vegan concerns and allergy risks, but it remains widely used where color stability is critical."
+  }
+}

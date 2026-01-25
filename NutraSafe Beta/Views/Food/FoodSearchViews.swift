@@ -195,14 +195,27 @@ struct FoodSearchResultRowEnhanced: View {
     }
 
     // Calculate standard serving calories for display
+    // Uses first portion from portionsForQuery to ensure consistent serving size
     private var standardServingCalories: Int {
         if food.isPerUnit == true {
             return Int(food.calories)
-        } else if let servingG = food.servingSizeG, servingG > 0 {
-            return Int(food.calories * servingG / 100.0)
         } else {
-            // Default to 100g if no serving size
-            return Int(food.calories)
+            // For oils, default to tablespoon (15ml/15g)
+            if isOilProduct {
+                return Int(food.calories * 15.0 / 100.0)
+            }
+
+            // Use query-aware portions to get the default serving size
+            let portions = food.portionsForQuery(food.name)
+            if let defaultPortion = portions.first {
+                // Calculate calories based on the default portion size
+                return Int(food.calories * defaultPortion.serving_g / 100.0)
+            } else if let servingG = food.servingSizeG, servingG > 0 {
+                return Int(food.calories * servingG / 100.0)
+            } else {
+                // Default to 100g if no serving size
+                return Int(food.calories)
+            }
         }
     }
 
@@ -211,20 +224,24 @@ struct FoodSearchResultRowEnhanced: View {
     private var standardServingDesc: String {
         if food.isPerUnit == true {
             return "1 serving"
-        } else if let servingG = food.servingSizeG, servingG > 0 {
-            // Use ml for drinks instead of g
-            return food.formattedServingSize(servingG)
-        } else if let desc = food.servingDescription, !desc.isEmpty {
-            return desc
         } else {
-            // Use query-aware portions to prevent inappropriate serving descriptions
-            // for composite dishes like "salmon en croute"
-            let effectiveQuery = food.name
-            let portions = food.portionsForQuery(effectiveQuery)
+            // For oils, default to tablespoon
+            if isOilProduct {
+                return "1 tablespoon"
+            }
+
+            // Use query-aware portions first for consistency with calories
+            let portions = food.portionsForQuery(food.name)
             if let firstPortion = portions.first {
                 return firstPortion.name
+            } else if let servingG = food.servingSizeG, servingG > 0 {
+                // Use ml for drinks instead of g
+                return food.formattedServingSize(servingG)
+            } else if let desc = food.servingDescription, !desc.isEmpty {
+                return desc
+            } else {
+                return "100g"
             }
-            return "100g"
         }
     }
 
@@ -233,20 +250,73 @@ struct FoodSearchResultRowEnhanced: View {
     private var standardServingWeight: Double {
         if food.isPerUnit == true {
             return 100.0 // Per-unit foods use full values
-        } else if let servingG = food.servingSizeG, servingG > 0 {
-            return servingG
         } else {
-            // Use query-aware portions for composite dish handling
-            let effectiveQuery = food.name
-            let portions = food.portionsForQuery(effectiveQuery)
+            // For oils, default to tablespoon (15ml/15g)
+            if isOilProduct {
+                return 15.0
+            }
+
+            // Use query-aware portions first for consistency
+            let portions = food.portionsForQuery(food.name)
             if let firstPortion = portions.first {
                 return firstPortion.serving_g
+            } else if let servingG = food.servingSizeG, servingG > 0 {
+                return servingG
+            } else {
+                return 100.0
             }
-            return 100.0
         }
     }
 
     @Environment(\.colorScheme) private var colorScheme
+
+    // Portion unit label (ml for liquids, g for solids)
+    private var portionUnitLabel: String {
+        food.isLiquidCategory ? "ml" : "g"
+    }
+
+    // Detect if this is an oil product (same logic as FoodDetailServingView)
+    private var isOilProduct: Bool {
+        let nameLower = food.name.lowercased()
+
+        // Exclude foods that have "oil" as an ingredient or preparation method, not the main product
+        let excludedPatterns = [
+            "fish oil", "cod liver",
+            "in oil", "in olive oil", "in sunflower oil", "in vegetable oil",
+            "mackerel", "sardine", "tuna", "salmon", "anchov", "herring",
+            "fillet", "fish", "seafood"
+        ]
+
+        for pattern in excludedPatterns {
+            if nameLower.contains(pattern) {
+                return false
+            }
+        }
+
+        // Only treat as oil if it's actually an oil product
+        return nameLower.contains("oil")
+    }
+
+    // Default serving description - concise for search results (e.g., "15ml")
+    private var defaultServingText: String? {
+        guard food.isPerUnit != true else {
+            return nil
+        }
+
+        // For oils, use tablespoon (15ml) as default
+        if isOilProduct {
+            return "15ml"
+        }
+
+        // Use query-aware portions to get dynamic serving options
+        let portions = food.portionsForQuery(food.name)
+        guard let defaultServing = portions.first else {
+            return nil
+        }
+
+        // Just show the serving amount, not the full name (saves space)
+        return "\(Int(defaultServing.serving_g))\(portionUnitLabel)"
+    }
 
     // Food category icon based on name
     private var foodIcon: (name: String, color: Color) {
@@ -379,18 +449,34 @@ struct FoodSearchResultRowEnhanced: View {
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
-                        }
 
-                        if food.brand != nil && !standardServingDesc.isEmpty {
                             Text("•")
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary.opacity(0.5))
                         }
 
-                        Text(standardServingDesc)
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(.secondary.opacity(0.8))
-                            .lineLimit(1)
+                        // Show default serving size (e.g., "15ml")
+                        if let defaultText = defaultServingText {
+                            Text(defaultText)
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundColor(.secondary.opacity(0.8))
+                                .lineLimit(1)
+
+                            // For oils, don't show standardServingDesc since defaultServingText already shows it
+                            if !isOilProduct {
+                                Text("•")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary.opacity(0.5))
+                            }
+                        }
+
+                        // Only show standardServingDesc if not an oil product (oils already show "15ml")
+                        if !isOilProduct {
+                            Text(standardServingDesc)
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundColor(.secondary.opacity(0.8))
+                                .lineLimit(1)
+                        }
                     }
 
                     // Note: NutraSafe unified score is shown on food detail view

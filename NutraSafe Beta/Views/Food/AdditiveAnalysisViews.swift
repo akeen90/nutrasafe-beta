@@ -1015,10 +1015,10 @@ struct AdditiveWatchView: View {
     // Convert AdditiveInfo to DetailedAdditive for UI display
     private func convertToDetailedAdditive(_ additive: AdditiveInfo) -> DetailedAdditive {
         // Prefer the human-friendly overview from the consolidated DB; fall back to typical uses or group label
-        let overview = additive.overview.trimmingCharacters(in: .whitespacesAndNewlines)
-        let uses = additive.typicalUses.trimmingCharacters(in: .whitespacesAndNewlines)
+        let overview = (additive.overview ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let uses = (additive.typicalUses ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let whereFrom = (additive.whereItComesFrom ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let effects = additive.effectsSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effects = (additive.effectsSummary ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let override = AdditiveOverrides.override(for: additive)
 
         // Show consumer-friendly name for known vitamins/aliases
@@ -1037,7 +1037,7 @@ struct AdditiveWatchView: View {
 
         // Add typical uses if we have them and they're not already mentioned
         if !uses.isEmpty && override?.whatItIs == nil && !looksLikeProductList(whatItIs) {
-            let cleanedUses = uses.trimmingCharacters(in: .punctuationCharacters)
+            let cleanedUses = uses.trimmingCharacters(in: CharacterSet.punctuationCharacters)
             if !whatItIs.lowercased().contains(cleanedUses.lowercased()) {
                 whatItIs += (whatItIs.isEmpty ? "" : " ") + "Commonly found in \(cleanedUses)."
             }
@@ -1178,25 +1178,25 @@ struct AdditiveCard: View {
                         .padding(.vertical, 4)
                     
                     // Overview
-                    if !additive.overview.isEmpty {
+                    if let overview = additive.overview, !overview.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("What is it?")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(.primary)
-                            Text(additive.overview)
+                            Text(overview)
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                                 .lineLimit(nil)
                         }
                     }
-                    
+
                     // Typical uses
-                    if !additive.typicalUses.isEmpty {
+                    if let typicalUses = additive.typicalUses, !typicalUses.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Typical uses:")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(.primary)
-                            Text(additive.typicalUses)
+                            Text(typicalUses)
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                                 .lineLimit(nil)
@@ -1225,14 +1225,16 @@ struct AdditiveCard: View {
                             }
 
                             // Safety message
-                            HStack(alignment: .top, spacing: 6) {
-                                Image(systemName: safetyIcon(verdict: additive.effectsVerdict.rawValue))
-                                    .foregroundColor(verdictColor(for: additive.effectsVerdict.rawValue))
-                                    .font(.system(size: 11))
-                                Text(additive.effectsSummary)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(nil)
+                            if let effectsSummary = additive.effectsSummary {
+                                HStack(alignment: .top, spacing: 6) {
+                                    Image(systemName: safetyIcon(verdict: additive.effectsVerdict.rawValue))
+                                        .foregroundColor(verdictColor(for: additive.effectsVerdict.rawValue))
+                                        .font(.system(size: 11))
+                                    Text(effectsSummary)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(nil)
+                                }
                             }
                         }
                     }
@@ -2360,12 +2362,12 @@ struct EnhancedAdditiveCard: View {
                         }
 
                         // Effects/Safety - use effectsSummary for more detail
-                        if !additive.effectsSummary.isEmpty {
+                        if let effectsSummary = additive.effectsSummary, !effectsSummary.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("What to know")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(palette.textSecondary)
-                                Text(additive.effectsSummary)
+                                Text(effectsSummary)
                                     .font(.system(size: 13))
                                     .foregroundColor(palette.textPrimary)
                                     .fixedSize(horizontal: false, vertical: true)

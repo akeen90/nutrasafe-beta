@@ -455,6 +455,22 @@ class AllergenDetector {
     }
 }
 
+// MARK: - Additive Key Point with Severity
+struct AdditiveKeyPoint: Codable, Hashable {
+    let text: String
+    let severity: String  // "severe", "high", "medium", "info"
+
+    var color: Color {
+        switch severity {
+        case "severe": return .red
+        case "high": return .orange
+        case "medium": return .yellow
+        case "info": return .green
+        default: return .gray
+        }
+    }
+}
+
 struct AdditiveInfo: Codable, Identifiable {
     var id: String {
         // Generate ID from first E-number if not provided in JSON
@@ -477,19 +493,30 @@ struct AdditiveInfo: Codable, Identifiable {
     let hasSulphitesAllergenLabel: Bool
     let category: AdditiveCategory
     let origin: AdditiveOrigin
-    let overview: String
-    let typicalUses: String
-    let effectsSummary: String
+
+    // COMPREHENSIVE CONSUMER-FOCUSED FIELDS
+    let shortSummary: String?  // Quick 1-2 sentence overview for compact views
+    let whatItIs: String?  // Detailed engaging description of what it actually is
+    let whereItComesFrom: String?  // Honest origin story (e.g., "crushed beetles", "coal tar")
+    let whyItsUsed: String?  // Clear explanation of purpose in food
+    let whatYouNeedToKnow: [String]?  // Health-focused bullet points (concerns, warnings, research) - LEGACY
+    let keyPoints: [AdditiveKeyPoint]?  // NEW: Severity-coded bullet points
+    let fullDescription: String?  // Comprehensive scientific background (collapsed by default in UI)
+
+    // LEGACY FIELDS (for backward compatibility with old database)
+    let overview: String?
+    let typicalUses: String?
+    let effectsSummary: String?
+
     let effectsVerdict: AdditiveVerdict
     let synonyms: [String]
     let insNumber: String?
     let sources: [AdditiveSource]
     let consumerInfo: String?
-    let whereItComesFrom: String?  // Descriptive origin text for ultra-processed ingredients
     let processingPenalty: Int  // Processing penalty score for ultra-processed ingredients
     let novaGroup: Int  // NOVA classification group (1-4)
 
-    init(eNumbers: [String] = [], name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, overview: String = "", typicalUses: String = "", effectsSummary: String = "", effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil, whereItComesFrom: String? = nil, processingPenalty: Int = 0, novaGroup: Int = 0) {
+    init(eNumbers: [String] = [], name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, shortSummary: String? = nil, whatItIs: String? = nil, whereItComesFrom: String? = nil, whyItsUsed: String? = nil, whatYouNeedToKnow: [String]? = nil, keyPoints: [AdditiveKeyPoint]? = nil, fullDescription: String? = nil, overview: String? = nil, typicalUses: String? = nil, effectsSummary: String? = nil, effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil, processingPenalty: Int = 0, novaGroup: Int = 0) {
         self.eNumbers = eNumbers
         self.name = name
         self.group = group
@@ -503,6 +530,13 @@ struct AdditiveInfo: Codable, Identifiable {
         self.hasSulphitesAllergenLabel = hasSulphitesAllergenLabel
         self.category = category
         self.origin = origin
+        self.shortSummary = shortSummary
+        self.whatItIs = whatItIs
+        self.whereItComesFrom = whereItComesFrom
+        self.whyItsUsed = whyItsUsed
+        self.whatYouNeedToKnow = whatYouNeedToKnow
+        self.keyPoints = keyPoints
+        self.fullDescription = fullDescription
         self.overview = overview
         self.typicalUses = typicalUses
         self.effectsSummary = effectsSummary
@@ -511,7 +545,6 @@ struct AdditiveInfo: Codable, Identifiable {
         self.insNumber = insNumber
         self.sources = sources
         self.consumerInfo = consumerInfo
-        self.whereItComesFrom = whereItComesFrom
         self.processingPenalty = processingPenalty
         self.novaGroup = novaGroup
     }
@@ -820,19 +853,27 @@ class AdditiveWatchService {
     }
     
     private func loadAdditiveDatabase() {
-        guard let url = Bundle.main.url(forResource: "ingredients_consolidated", withExtension: "json") else {
-                        return
+        // Try to load comprehensive database first, fall back to legacy consolidated database
+        let databaseName = Bundle.main.url(forResource: "ingredients_comprehensive", withExtension: "json") != nil
+            ? "ingredients_comprehensive"
+            : "ingredients_consolidated"
+
+        guard let url = Bundle.main.url(forResource: databaseName, withExtension: "json") else {
+            print("❌ No additive database found")
+            return
         }
+
+        print("📚 Loading additive database: \(databaseName).json")
 
         do {
             let data = try Data(contentsOf: url)
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let ingredients = json["ingredients"] as? [[String: Any]] else {
-                                return
+                print("❌ Failed to parse additive database JSON")
+                return
             }
 
-            // Convert consolidated ingredients to AdditiveInfo format
-            // For ingredients with multiple E-numbers, create separate AdditiveInfo entries
+            // Convert ingredients to AdditiveInfo format
             var tempDatabase: [AdditiveInfo] = []
 
             for ingredientDict in ingredients {
@@ -859,9 +900,19 @@ class AdditiveWatchService {
                 let polyolsWarning = ingredientDict["hasPolyolsWarning"] as? Bool ?? false
                 let sulphitesLabel = ingredientDict["hasSulphitesAllergenLabel"] as? Bool ?? false
 
-                let overviewText = ingredientDict["what_it_is"] as? String ?? ingredientDict["overview"] as? String ?? ""
-                let usesText = ingredientDict["why_its_used"] as? String ?? ingredientDict["typicalUses"] as? String ?? ""
-                let concernsText = ingredientDict["concerns"] as? String ?? ingredientDict["effectsSummary"] as? String ?? ""
+                // Parse comprehensive fields (new format)
+                let shortSummary = ingredientDict["shortSummary"] as? String
+                let whatItIs = ingredientDict["whatItIs"] as? String
+                let whereItComesFrom = ingredientDict["whereItComesFrom"] as? String
+                let whyItsUsed = ingredientDict["whyItsUsed"] as? String
+                let whatYouNeedToKnow = ingredientDict["whatYouNeedToKnow"] as? [String]
+                let fullDescription = ingredientDict["fullDescription"] as? String
+
+                // Parse legacy fields (old format) - fallback if comprehensive fields not present
+                let overviewText = ingredientDict["what_it_is"] as? String ?? ingredientDict["overview"] as? String
+                let usesText = ingredientDict["why_its_used"] as? String ?? ingredientDict["typicalUses"] as? String
+                let concernsText = ingredientDict["concerns"] as? String ?? ingredientDict["effectsSummary"] as? String
+
                 let verdictString = ingredientDict["effectsVerdict"] as? String ?? "neutral"
                 let verdict = AdditiveVerdict(rawValue: verdictString) ?? .neutral
 
@@ -869,7 +920,6 @@ class AdditiveWatchService {
                 let origin = AdditiveOrigin(rawValue: originString) ?? .synthetic
                 let group = AdditiveGroup(rawValue: category) ?? .other
                 let categ = AdditiveCategory(rawValue: category) ?? .other
-                let whereFrom = ingredientDict["where_it_comes_from"] as? String
 
                 // Create ONE entry per ingredient with all E-numbers in the array
                 let additiveInfo = AdditiveInfo(
@@ -886,12 +936,17 @@ class AdditiveWatchService {
                     hasSulphitesAllergenLabel: sulphitesLabel,
                     category: categ,
                     origin: origin,
+                    shortSummary: shortSummary,
+                    whatItIs: whatItIs,
+                    whereItComesFrom: whereItComesFrom,
+                    whyItsUsed: whyItsUsed,
+                    whatYouNeedToKnow: whatYouNeedToKnow,
+                    fullDescription: fullDescription,
                     overview: overviewText,
                     typicalUses: usesText,
                     effectsSummary: concernsText,
                     effectsVerdict: verdict,
-                    sources: sources,
-                    whereItComesFrom: whereFrom
+                    sources: sources
                 )
                 tempDatabase.append(additiveInfo)
             }

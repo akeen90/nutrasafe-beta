@@ -124,10 +124,19 @@ export const filterTescoImages = functions.runWith({
 }).https.onRequest((req, res) => {
   cors(req, res, async () => {
     try {
-      const { collection = 'tesco_products', batchSize = 100, dryRun = true } = req.body;
+      const { collection = 'tesco_products', batchSize = 100, dryRun = true, startAfter = null } = req.body;
 
       const db = admin.firestore();
-      const snapshot = await db.collection(collection).limit(batchSize).get();
+
+      // Build query with pagination cursor
+      let query = db.collection(collection).orderBy(admin.firestore.FieldPath.documentId()).limit(batchSize);
+
+      // Use cursor-based pagination if provided
+      if (startAfter) {
+        query = query.startAfter(startAfter);
+      }
+
+      const snapshot = await query.get();
 
       const results: ImageAnalysis[] = [];
       const toUpdate: any[] = [];
@@ -173,11 +182,17 @@ export const filterTescoImages = functions.runWith({
         console.log(`Updated ${toUpdate.length} products with flagged images`);
       }
 
+      // Get last document ID for pagination
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      const lastDocId = lastDoc ? lastDoc.id : null;
+
       res.json({
         success: true,
         analyzed: results.length,
         kept: results.filter(r => r.shouldKeep).length,
         rejected: results.filter(r => !r.shouldKeep).length,
+        lastDocId,
+        hasMore: snapshot.size === batchSize,
         dryRun,
         results,
       });

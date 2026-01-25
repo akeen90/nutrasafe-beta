@@ -70,7 +70,11 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Load initial data
+  const hasLoadedRef = React.useRef(false);
+
   const loadData = useCallback(async () => {
+    if (hasLoadedRef.current) return; // Prevent multiple loads
+    hasLoadedRef.current = true;
     setLoading(true, 'Loading food database...');
     setLoadingProgress(0);
 
@@ -124,12 +128,13 @@ const AppContent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [setFoods, setLoading, setLoadingProgress, setStats]);
+  }, [setLoading, setLoadingProgress, setStats, setFoods]);
 
-  // Initial load
+  // Initial load (run once on mount)
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Save dirty foods
   const handleSave = useCallback(async () => {

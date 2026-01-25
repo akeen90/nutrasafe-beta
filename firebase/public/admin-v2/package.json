@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "cp index.src.html index.html && vite",
     "build": "cp index.src.html index.html && tsc && vite build && cp dist/index.html . && rm -rf assets && cp -r dist/assets .",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directs --max-warnings 0"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",

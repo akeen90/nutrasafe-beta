@@ -117,6 +117,38 @@ NutraSafe follows a **premium, emotion-first design language** that emphasizes c
 11. ✅ **Data Preservation**: Complete ingredient and photo preservation during verification process
 12. ✅ **Favorites System**: Stable sheet presentation with .id() prevents dismissal when unfavoriting foods
 
+## 🐛 Debugging Protocol
+
+### When UI Changes Don't Appear
+If you've made changes but they're not showing in the app, **DO NOT assume it's a build cache issue**. Follow this protocol:
+
+1. **Trace the execution path** - Find which component is ACTUALLY being rendered
+   ```bash
+   # Find where a view is instantiated (not just defined)
+   grep -r "ViewName(" "NutraSafe Beta/Views/" --include="*.swift"
+   ```
+
+2. **Check for duplicate/unused components** - Multiple versions of the same view often exist
+   - Look for `*Legacy`, `*Old`, `*Redesigned`, `Clean*`, `Modern*` variants
+   - The newest code might be in an unused component
+
+3. **Verify the call chain** - From ContentView → Tab → Section → Row
+   - ContentView.swift: Which tab view is called?
+   - Tab view: Which main view is called?
+   - Main view: Which row/cell component is used in ForEach?
+
+4. **Common gotchas in this codebase:**
+   - `UseByTabView` calls `UseByExpiryView` which uses `CleanUseByRow` (not `ModernExpiryRow`)
+   - Multiple "redesigned" views exist but may not be wired up
+   - After reverts, old component names might be restored
+
+### What to Say to Claude
+If Claude is going in circles:
+- "Stop guessing. Trace the actual code path being executed."
+- "Find which component is ACTUALLY being rendered, not which exists in the file."
+- "Grep for where this view is instantiated/called."
+- "The code exists but isn't showing - find what's being called instead."
+
 ## 🛠️ Development Commands
 
 ### iOS Development

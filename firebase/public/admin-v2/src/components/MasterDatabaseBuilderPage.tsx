@@ -49,10 +49,11 @@ interface BuilderStats {
 }
 
 export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [selectedIndices, setSelectedIndices] = useState<Set<string>>(new Set(ALGOLIA_INDICES));
+  const [selectedIndices, setSelectedIndices] = useState<Set<string>>(() => new Set(ALGOLIA_INDICES));
   const [isPulling, setIsPulling] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<BuilderStats>({
     totalScanned: 0,
@@ -65,31 +66,281 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
-  const [testMode, setTestMode] = useState(true); // Limit to 1000 per index for testing
+  const [testMode, setTestMode] = useState(false); // Default to full scan - use checkbox to enable test mode
   const [indexStats, setIndexStats] = useState<Record<string, { count: number; error?: string }>>({});
+  const [singleIndexMode, setSingleIndexMode] = useState(false);
+  const [selectedSingleIndex, setSelectedSingleIndex] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchField, setSearchField] = useState<'all' | 'brand' | 'name' | 'barcode'>('all');
 
-  const addLog = (message: string) => {
+  const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [...prev.slice(-100), `${timestamp}: ${message}`]);
     console.log(message);
+  }, []);
+
+  // Calculate Levenshtein distance for fuzzy string matching
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    try {
+      // Validate inputs
+      if (!str1 || !str2 || typeof str1 !== 'string' || typeof str2 !== 'string') {
+        return Math.max(str1?.length || 0, str2?.length || 0);
+      }
+
+      // Limit string length to prevent memory issues
+      const maxLen = 1000;
+      const s1 = str1.length > maxLen ? str1.substring(0, maxLen) : str1;
+      const s2 = str2.length > maxLen ? str2.substring(0, maxLen) : str2;
+
+      const matrix: number[][] = [];
+
+      for (let i = 0; i <= s2.length; i++) {
+        matrix[i] = [i];
+      }
+
+      for (let j = 0; j <= s1.length; j++) {
+        matrix[0][j] = j;
+      }
+
+      for (let i = 1; i <= s2.length; i++) {
+        for (let j = 1; j <= s1.length; j++) {
+          if (s2.charAt(i - 1) === s1.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j - 1] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j] + 1
+            );
+          }
+        }
+      }
+
+      return matrix[s2.length][s1.length];
+    } catch {
+      return Math.max(str1?.length || 0, str2?.length || 0);
+    }
   };
 
-  // Normalize product name for matching
-  const normalizeProductKey = (product: Product): string => {
-    const name = (product.name || product.foodName || '').toLowerCase().trim();
-    const brand = (product.brandName || product.brand || '').toLowerCase().trim();
-    const size = (product.servingSize || '').toLowerCase().replace(/[^0-9]/g, '');
-    const unit = (product.servingUnit || '').toLowerCase().substring(0, 2);
+  // Normalize text for comparison
+  const normalizeText = (text: string): string => {
+    try {
+      if (!text || typeof text !== 'string') return '';
+      return text
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, '')
+        .replace(/\s+/g, ' ');
+    } catch {
+      return '';
+    }
+  };
 
-    return `${brand}_${name}_${size}${unit}`.replace(/\s+/g, '-');
+  // Calculate similarity score between two products (0-100)
+  interface SimilarityResult {
+    score: number;
+    reasons: string[];
+  }
+
+  const calculateSimilarity = (p1: Product, p2: Product): SimilarityResult => {
+    // Defensive checks
+    if (!p1 || !p2) {
+      return { score: 0, reasons: ['Invalid product(s)'] };
+    }
+
+    let score = 0;
+    const reasons: string[] = [];
+
+    try {
+      // 1. Barcode match = 100% certainty (strongest signal)
+      // Extract all barcodes from both products
+      const barcodes1 = typeof p1.barcode === 'string'
+        ? [p1.barcode]
+        : Array.isArray(p1.barcode) ? p1.barcode.filter(b => b && typeof b === 'string') : [];
+      const barcodes2 = typeof p2.barcode === 'string'
+        ? [p2.barcode]
+        : Array.isArray(p2.barcode) ? p2.barcode.filter(b => b && typeof b === 'string') : [];
+
+      // Check if ANY barcode from p1 matches ANY barcode from p2
+      const matchingBarcode = barcodes1.find(b1 => b1 && barcodes2.includes(b1));
+
+      if (matchingBarcode) {
+        score = 100;
+        reasons.push(`Exact barcode match: ${matchingBarcode}`);
+        return { score, reasons }; // Barcode match is definitive
+      }
+    } catch (err) {
+      // Non-fatal, continue with other signals
+    }
+
+    // 2. Brand name matching (with fuzzy tolerance) - 30 points
+    try {
+      const brand1 = normalizeText(p1.brandName || p1.brand || '');
+      const brand2 = normalizeText(p2.brandName || p2.brand || '');
+
+      if (brand1 && brand2) {
+        if (brand1 === brand2) {
+          score += 30;
+          reasons.push('Exact brand match');
+        } else {
+          // Fuzzy brand match (allow minor spelling differences)
+          const distance = levenshteinDistance(brand1, brand2);
+          const maxLength = Math.max(brand1.length, brand2.length);
+          if (maxLength > 0) {
+            const similarity = 1 - (distance / maxLength);
+
+            if (similarity >= 0.8) {
+              const fuzzyScore = Math.round(similarity * 30);
+              score += fuzzyScore;
+              reasons.push(`Fuzzy brand match (${Math.round(similarity * 100)}% similar)`);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Non-fatal, skip brand matching
+    }
+
+    // 3. Food name matching (with fuzzy tolerance) - 40 points
+    try {
+      const name1 = normalizeText(p1.name || p1.foodName || '');
+      const name2 = normalizeText(p2.name || p2.foodName || '');
+
+      if (name1 && name2) {
+        if (name1 === name2) {
+          score += 40;
+          reasons.push('Exact name match');
+        } else {
+          // Fuzzy name match
+          const distance = levenshteinDistance(name1, name2);
+          const maxLength = Math.max(name1.length, name2.length);
+          if (maxLength > 0) {
+            const similarity = 1 - (distance / maxLength);
+
+            if (similarity >= 0.7) {
+              const fuzzyScore = Math.round(similarity * 40);
+              score += fuzzyScore;
+              reasons.push(`Fuzzy name match (${Math.round(similarity * 100)}% similar)`);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Non-fatal, skip name matching
+    }
+
+    // 4. Macro comparison - 30 points
+    try {
+      const hasValidMacros = (p: Product): boolean => {
+        try {
+          const cals = p.calories || 0;
+          const prot = p.protein || 0;
+          const carbs = p.carbs || 0;
+          const fat = p.fat || 0;
+
+          // Check if macros are reasonable (not impossibly high)
+          if (cals > 900 || prot > 100 || carbs > 100 || fat > 100) {
+            return false;
+          }
+
+          // Check if calorie calculation is roughly correct (protein*4 + carbs*4 + fat*9)
+          const calculatedCals = (prot * 4) + (carbs * 4) + (fat * 9);
+          const diff = Math.abs(cals - calculatedCals);
+          const tolerance = Math.max(calculatedCals * 0.2, 1); // 20% tolerance, min 1
+
+          return diff <= tolerance;
+        } catch {
+          return false;
+        }
+      };
+
+      const macrosMatch = (p1: Product, p2: Product): number => {
+        try {
+          const fields = [
+            { key: 'calories', tolerance: 0.1 },
+            { key: 'protein', tolerance: 0.1 },
+            { key: 'carbs', tolerance: 0.1 },
+            { key: 'fat', tolerance: 0.1 },
+          ];
+
+          let matches = 0;
+          let validFields = 0;
+          for (const field of fields) {
+            const v1 = (p1 as any)[field.key] || 0;
+            const v2 = (p2 as any)[field.key] || 0;
+
+            if (v1 === 0 && v2 === 0) continue;
+
+            validFields++;
+            const diff = Math.abs(v1 - v2);
+            const avg = (v1 + v2) / 2;
+
+            if (avg > 0 && diff <= avg * field.tolerance) {
+              matches++;
+            }
+          }
+
+          return validFields > 0 ? matches / validFields : 0;
+        } catch {
+          return 0;
+        }
+      };
+
+      const macroSimilarity = macrosMatch(p1, p2);
+      if (macroSimilarity >= 0.75) {
+        const macroScore = Math.round(macroSimilarity * 30);
+        score += macroScore;
+        reasons.push(`Macros match (${Math.round(macroSimilarity * 100)}% similar)`);
+      }
+
+      // Bonus: If one has invalid macros but everything else matches well, note it
+      if (score >= 50) {
+        const p1Valid = hasValidMacros(p1);
+        const p2Valid = hasValidMacros(p2);
+
+        if (p1Valid && !p2Valid) {
+          reasons.push('p1 has valid macros, p2 has invalid macros');
+        } else if (!p1Valid && p2Valid) {
+          reasons.push('p2 has valid macros, p1 has invalid macros');
+        }
+      }
+    } catch (err) {
+      // Non-fatal, skip macro matching
+    }
+
+    return { score, reasons };
+  };
+
+  // Check if macros are valid
+  const hasValidMacros = (product: Product): boolean => {
+    const cals = product.calories || 0;
+    const prot = product.protein || 0;
+    const carbs = product.carbs || 0;
+    const fat = product.fat || 0;
+
+    // Check if macros are reasonable (not impossibly high)
+    if (cals > 900 || prot > 100 || carbs > 100 || fat > 100) {
+      return false;
+    }
+
+    // Check if calorie calculation is roughly correct (protein*4 + carbs*4 + fat*9)
+    const calculatedCals = (prot * 4) + (carbs * 4) + (fat * 9);
+    const diff = Math.abs(cals - calculatedCals);
+    const tolerance = calculatedCals * 0.2; // 20% tolerance
+
+    return diff <= tolerance;
   };
 
   // Score product quality (0-100)
   const scoreProduct = (product: Product): number => {
-    let score = 0;
+    try {
+      if (!product) return 0;
 
-    // UK content check (0-40 points)
-    const ukAnalysis = filterUKProducts([{
+      let score = 0;
+
+      // UK content check (0-30 points)
+      try {
+        const ukAnalysis = filterUKProducts([{
       id: product.objectID,
       objectID: product.objectID,
       name: product.name || product.foodName || '',
@@ -106,56 +357,91 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
       analysisProgress: 0,
     }], 0);
 
-    const ukScore = ukAnalysis.ukProducts.length > 0 ? 40 : 0;
-    score += ukScore;
+        const ukScore = ukAnalysis.ukProducts.length > 0 ? 30 : 0;
+        score += ukScore;
+      } catch {
+        // UK analysis failed, skip this score component
+      }
 
-    // Completeness (0-30 points)
-    const fields = [
-      product.ingredients,
-      product.imageUrl,
-      product.calories,
-      product.protein,
-      product.carbs,
-      product.fat,
-      product.fiber,
-      product.sugar,
-      product.sodium,
-      product.servingSize,
-    ];
-    const filledFields = fields.filter(f => f !== null && f !== undefined && f !== '').length;
-    score += (filledFields / fields.length) * 30;
+      // Valid macros (0-20 points) - CRITICAL
+      try {
+        if (hasValidMacros(product)) {
+          score += 20;
+        }
+      } catch {
+        // Skip macro validation
+      }
 
-    // Has barcode (10 points)
-    if (product.barcode && (Array.isArray(product.barcode) ? product.barcode.length > 0 : product.barcode.length > 0)) {
-      score += 10;
+      // Completeness (0-20 points)
+      try {
+        const fields = [
+          product.ingredients,
+          product.imageUrl,
+          product.calories,
+          product.protein,
+          product.carbs,
+          product.fat,
+          product.fiber,
+          product.sugar,
+          product.sodium,
+          product.servingSize,
+        ];
+        const filledFields = fields.filter(f => f !== null && f !== undefined && f !== '').length;
+        score += (filledFields / fields.length) * 20;
+      } catch {
+        // Skip completeness scoring
+      }
+
+      // Has barcode (10 points)
+      try {
+        if (product.barcode && (Array.isArray(product.barcode) ? product.barcode.length > 0 : product.barcode.length > 0)) {
+          score += 10;
+        }
+      } catch {
+        // Skip barcode check
+      }
+
+      // Has image (10 points)
+      try {
+        if (product.imageUrl && typeof product.imageUrl === 'string' && product.imageUrl.trim().length > 0) {
+          score += 10;
+        }
+      } catch {
+        // Skip image check
+      }
+
+      // Index priority (10 points)
+      try {
+        const indexPriority: Record<string, number> = {
+          'verified_foods': 10,
+          'uk_foods_cleaned': 9,
+          'tesco_products': 8,
+          'manual_foods': 7,
+          'ai_enhanced': 6,
+          'foods': 5,
+          'user_added': 4,
+          'ai_manually_added': 3,
+          'fast_foods_database': 2,
+          'generic_database': 1,
+        };
+        score += (indexPriority[product.sourceIndex] || 0);
+      } catch {
+        // Skip index priority
+      }
+
+      return Math.round(score);
+    } catch {
+      return 0; // Complete failure, return 0 score
     }
-
-    // Has image (10 points)
-    if (product.imageUrl && product.imageUrl.trim().length > 0) {
-      score += 10;
-    }
-
-    // Index priority (10 points)
-    const indexPriority: Record<string, number> = {
-      'verified_foods': 10,
-      'uk_foods_cleaned': 9,
-      'tesco_products': 8,
-      'manual_foods': 7,
-      'ai_enhanced': 6,
-      'foods': 5,
-      'user_added': 4,
-      'ai_manually_added': 3,
-      'fast_foods_database': 2,
-      'generic_database': 1,
-    };
-    score += (indexPriority[product.sourceIndex] || 0);
-
-    return Math.round(score);
   };
 
   // Step 1: Pull all data - ONE INDEX AT A TIME to avoid 10MB limit
   const pullAllData = useCallback(async () => {
-    if (selectedIndices.size === 0) {
+    if (singleIndexMode && !selectedSingleIndex) {
+      addLog('❌ No index selected');
+      return;
+    }
+    if (!singleIndexMode && selectedIndices.size === 0) {
       addLog('❌ No indices selected');
       return;
     }
@@ -167,10 +453,12 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
 
     addLog('📥 Starting data pull (one index at a time)...');
     if (testMode) {
-      addLog('🧪 TEST MODE: 1000 products per index');
+      addLog('🧪 TEST MODE ENABLED: Limited to 1000 products per index');
+    } else {
+      addLog('📊 FULL SCAN MODE: Pulling ALL products from selected indices');
     }
 
-    const indicesToScan = Array.from(selectedIndices);
+    const indicesToScan = singleIndexMode ? [selectedSingleIndex] : Array.from(selectedIndices);
     const allFetchedProducts: Product[] = [];
     const allStats: Record<string, { count: number; error?: string }> = {};
 
@@ -187,8 +475,18 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
         let indexProducts: any[] = [];
         let totalForIndex = 0;
 
-        // Paginate through the index
-        while (hasMore) {
+        // Paginate through the index (with safety limits)
+        const MAX_ITERATIONS = 2000; // Safety: max 10M products (2000 * 5000)
+        let iterations = 0;
+
+        while (hasMore && iterations < MAX_ITERATIONS) {
+          iterations++;
+
+          // Log progress every 5 iterations (25k products)
+          if (iterations > 1 && iterations % 5 === 0) {
+            addLog(`  → ${indexName}: ${indexProducts.length.toLocaleString()} products pulled, fetching more...`);
+          }
+
           const response = await fetch(`${FUNCTIONS_BASE}/browseAllIndices`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -196,7 +494,7 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
               indices: [indexName],
               offset,
               pageSize: PAGE_SIZE,
-              limit: testMode ? 1000 : undefined,
+              limit: testMode ? 1000 : undefined, // No limit when testMode is false
             }),
           });
 
@@ -210,23 +508,60 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
 
           if (result.success && result.products) {
             const products = result.products || [];
-            indexProducts.push(...products);
-            totalForIndex = result.pagination?.total || indexProducts.length;
+            const pagination = result.pagination || {};
 
-            // Show progress for large indices
-            if (offset > 0) {
-              addLog(`  → ${indexProducts.length.toLocaleString()} / ${totalForIndex.toLocaleString()} products...`);
+            // Debug logging
+            console.log(`[${indexName}] Page ${iterations}: Got ${products.length} products, hasMore=${pagination.hasMore}, total=${pagination.total}`);
+
+            // Safety: If we got no products, stop pagination even if hasMore is true
+            if (products.length === 0) {
+              addLog(`  ✓ ${indexName}: Reached end of index (0 products returned)`);
+              hasMore = false;
+              break;
             }
 
-            // Check if there's more data
-            hasMore = result.pagination?.hasMore === true;
-            offset += PAGE_SIZE;
+            // Safety: If we got less than PAGE_SIZE, this is likely the last page
+            if (products.length < PAGE_SIZE) {
+              addLog(`  ✓ ${indexName}: Last page (${products.length} products)`);
+              hasMore = false;
+            }
+
+            indexProducts.push(...products);
+            totalForIndex = pagination?.total || indexProducts.length;
+
+            // Update progress in real-time (update UI every page)
+            const progressPct = Math.floor(((i + (indexProducts.length / Math.max(totalForIndex, 1))) / indicesToScan.length) * 100);
+            setProgress(progressPct);
+
+            // Show progress for EVERY page to confirm it's working
+            const pct = totalForIndex > 0 ? Math.round((indexProducts.length / totalForIndex) * 100) : 0;
+            addLog(`  → Page ${iterations}: ${indexProducts.length.toLocaleString()} / ${totalForIndex.toLocaleString()} (${pct}%) - hasMore=${pagination.hasMore}`);
+
+            // Check if there's more data from backend
+            if (!pagination.hasMore) {
+              addLog(`  ✓ ${indexName}: Backend says no more data`);
+              hasMore = false;
+            } else {
+              hasMore = true;
+              offset += PAGE_SIZE;
+            }
+
+            // Safety: If we've reached the expected total, stop
+            if (totalForIndex > 0 && indexProducts.length >= totalForIndex) {
+              addLog(`  ✓ ${indexName}: Reached total count (${indexProducts.length} >= ${totalForIndex})`);
+              hasMore = false;
+            }
 
           } else {
             addLog(`❌ ${indexName}: ${result.error || 'Failed'}`);
             allStats[indexName] = { count: totalForIndex, error: result.error || 'Failed' };
             break;
           }
+        }
+
+        // Warn if we hit the safety limit
+        if (iterations >= MAX_ITERATIONS) {
+          addLog(`⚠️ ${indexName}: Hit safety limit (${MAX_ITERATIONS} iterations), stopping pagination`);
         }
 
         // Add all products from this index
@@ -252,7 +587,7 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     } finally {
       setIsPulling(false);
     }
-  }, [selectedIndices, testMode]);
+  }, [selectedIndices, testMode, singleIndexMode, selectedSingleIndex, addLog]);
 
   // Step 2: Scan for duplicates (on already-pulled data)
   const scanForDuplicates = useCallback(async () => {
@@ -269,83 +604,208 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     try {
       setProgress(10);
 
-      // Filter out foreign products (>5% US spelling in ingredients)
-      addLog('🇬🇧 Filtering out non-UK products (US spelling, foreign brands, foreign characters)...');
-      const ukFilterResult = filterUKProducts(
-        allProducts.map(p => ({
-          id: p.objectID,
-          objectID: p.objectID,
-          name: p.name || p.foodName || '',
-          brandName: p.brandName || p.brand || null,
-          ingredients: p.ingredients || null,
-          barcode: typeof p.barcode === 'string' ? p.barcode : p.barcode?.[0] || null,
-          currentImageUrl: p.imageUrl || null,
-          sourceIndex: p.sourceIndex,
-          selected: false,
-          searchResults: [],
-          selectedImageUrl: null,
-          analysis: null,
-          status: 'pending',
-          analysisProgress: 0,
-        })),
-        40 // Min 40% UK confidence
-      );
+      // In single-index mode, skip UK filtering - just scan for duplicates within the index
+      const productsToScan = singleIndexMode ? allProducts : (() => {
+        // Filter out foreign products (>5% US spelling in ingredients)
+        addLog('🇬🇧 Filtering out non-UK products (US spelling, foreign brands, foreign characters)...');
+        const ukFilterResult = filterUKProducts(
+          allProducts.map(p => ({
+            id: p.objectID,
+            objectID: p.objectID,
+            name: p.name || p.foodName || '',
+            brandName: p.brandName || p.brand || null,
+            ingredients: p.ingredients || null,
+            barcode: typeof p.barcode === 'string' ? p.barcode : p.barcode?.[0] || null,
+            currentImageUrl: p.imageUrl || null,
+            sourceIndex: p.sourceIndex,
+            selected: false,
+            searchResults: [],
+            selectedImageUrl: null,
+            analysis: null,
+            status: 'pending',
+            analysisProgress: 0,
+          })),
+          40 // Min 40% UK confidence
+        );
 
-      const ukProducts = allProducts.filter(p =>
-        ukFilterResult.ukProducts.some(uk => uk.objectID === p.objectID)
-      );
+        const ukProducts = allProducts.filter(p =>
+          ukFilterResult.ukProducts.some(uk => uk.objectID === p.objectID)
+        );
 
-      addLog(`✅ Kept ${ukProducts.length} UK products, filtered ${allProducts.length - ukProducts.length} foreign products`);
+        addLog(`✅ Kept ${ukProducts.length} UK products, filtered ${allProducts.length - ukProducts.length} foreign products`);
+        return ukProducts;
+      })();
+
       setProgress(70);
 
-      // Group duplicates
-      addLog('🔍 Detecting duplicates...');
-      const groupMap = new Map<string, Product[]>();
+      // Detect duplicates using multi-signal similarity (>80% confidence)
+      addLog('🔍 Detecting duplicates with multi-signal matching...');
+      addLog('  → Using: Barcode (100%), Brand name (30%), Food name (40%), Macros (30%)');
+      addLog('  → Minimum confidence threshold: 80%');
 
-      ukProducts.forEach(product => {
-        const key = normalizeProductKey(product);
-        if (!groupMap.has(key)) {
-          groupMap.set(key, []);
-        }
-        groupMap.get(key)!.push(product);
-      });
-
-      // Filter to only groups with duplicates
+      const processedIds = new Set<string>();
       const duplicates: DuplicateGroup[] = [];
-      groupMap.forEach((products, key) => {
-        if (products.length > 1) {
-          // Collect all barcodes
+      let comparisonCount = 0;
+      const totalProducts = productsToScan.length;
+
+      // Compare all products pairwise with error handling
+      let errorCount = 0;
+      const startTime = Date.now();
+
+      for (let i = 0; i < productsToScan.length; i++) {
+        // Update progress based on products processed (not comparisons)
+        if (i % 100 === 0) {
+          const progressPct = 70 + Math.round((i / totalProducts) * 30); // 70-100%
+          setProgress(progressPct);
+
+          // Log progress every 1000 products with speed estimate
+          if (i > 0 && i % 1000 === 0) {
+            const elapsed = (Date.now() - startTime) / 1000; // seconds
+            const rate = Math.round(i / elapsed);
+            const remaining = totalProducts - i;
+            const eta = Math.round(remaining / rate);
+            addLog(`  → Scanned ${i.toLocaleString()} / ${totalProducts.toLocaleString()} products (${rate}/sec, ~${eta}s remaining)`);
+          }
+        }
+        try {
+          // Skip if already processed
+          if (processedIds.has(productsToScan[i].objectID)) continue;
+
+          // Validate product
+          const product1 = productsToScan[i];
+          if (!product1 || !product1.objectID) {
+            addLog(`⚠️ Skipping invalid product at index ${i}`);
+            continue;
+          }
+
+          const group: Product[] = [product1];
           const allBarcodes: string[] = [];
-          products.forEach(p => {
-            if (p.barcode) {
-              if (Array.isArray(p.barcode)) {
-                allBarcodes.push(...p.barcode);
-              } else {
-                allBarcodes.push(p.barcode);
+
+          // Collect all barcodes from first product
+          try {
+            const barcode1 = product1.barcode;
+            if (typeof barcode1 === 'string' && barcode1.trim()) {
+              allBarcodes.push(barcode1.trim());
+            } else if (Array.isArray(barcode1)) {
+              allBarcodes.push(...barcode1.filter((b): b is string => typeof b === 'string' && b.trim().length > 0).map(b => b.trim()));
+            }
+          } catch (err) {
+            addLog(`⚠️ Error collecting barcodes for ${product1.objectID}`);
+          }
+
+          for (let j = i + 1; j < productsToScan.length; j++) {
+            try {
+              // Skip if already processed (don't count as comparison)
+              if (processedIds.has(productsToScan[j].objectID)) continue;
+
+              // Validate second product
+              const product2 = productsToScan[j];
+              if (!product2 || !product2.objectID) continue;
+
+              // Only count valid comparisons
+              comparisonCount++;
+
+              // Progress logging every 10k comparisons
+              if (comparisonCount % 10000 === 0) {
+                const pct = 70 + Math.round((i / totalProducts) * 30);
+                addLog(`  → Progress: ${pct}% (Product ${i.toLocaleString()} / ${totalProducts.toLocaleString()}, ${comparisonCount.toLocaleString()} comparisons, ${errorCount} errors)`);
+                // Allow UI to update
+                await new Promise(resolve => setTimeout(resolve, 0));
+              }
+
+              // Calculate similarity with error handling
+              let similarity;
+              try {
+                similarity = calculateSimilarity(product1, product2);
+              } catch (err) {
+                errorCount++;
+                if (errorCount <= 10) {
+                  addLog(`⚠️ Error comparing ${product1.objectID} vs ${product2.objectID}: ${err}`);
+                }
+                continue;
+              }
+
+              // Only group if similarity >= 80%
+              if (similarity && similarity.score >= 80) {
+                group.push(product2);
+                processedIds.add(product2.objectID);
+
+                // Collect all barcodes from matched product
+                try {
+                  const barcode2 = product2.barcode;
+                  if (typeof barcode2 === 'string' && barcode2.trim()) {
+                    const bc = barcode2.trim();
+                    if (!allBarcodes.includes(bc)) {
+                      allBarcodes.push(bc);
+                    }
+                  } else if (Array.isArray(barcode2)) {
+                    barcode2
+                      .filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
+                      .map(b => b.trim())
+                      .forEach(bc => {
+                        if (!allBarcodes.includes(bc)) {
+                          allBarcodes.push(bc);
+                        }
+                      });
+                  }
+                } catch (err) {
+                  // Non-fatal, just skip barcode collection
+                }
+              }
+            } catch (err) {
+              errorCount++;
+              if (errorCount <= 10) {
+                addLog(`⚠️ Error in inner loop at j=${j}: ${err}`);
               }
             }
-          });
+          }
 
-          // Score each product
-          const scoredProducts = products.map(p => ({
-            product: p,
-            score: scoreProduct(p),
-          }));
+          // Only create a group if we found duplicates
+          if (group.length > 1) {
+            processedIds.add(product1.objectID);
 
-          // Sort by score (highest first)
-          scoredProducts.sort((a, b) => b.score - a.score);
-          const bestProduct = scoredProducts[0].product;
+            try {
+              // Score each product in the group
+              const scoredProducts = group.map(p => {
+                try {
+                  return {
+                    product: p,
+                    score: scoreProduct(p),
+                  };
+                } catch (err) {
+                  return {
+                    product: p,
+                    score: 0,
+                  };
+                }
+              });
 
-          duplicates.push({
-            key,
-            products,
-            bestProduct,
-            allBarcodes: [...new Set(allBarcodes)], // Remove duplicates
-            score: scoredProducts[0].score,
-          });
+              // Sort by score (highest first)
+              scoredProducts.sort((a, b) => b.score - a.score);
+              const bestProduct = scoredProducts[0].product;
+
+              duplicates.push({
+                key: `group-${i}`,
+                products: group,
+                bestProduct,
+                allBarcodes: [...new Set(allBarcodes)], // Remove duplicates
+                score: scoredProducts[0].score,
+              });
+            } catch (err) {
+              addLog(`⚠️ Error creating duplicate group for ${product1.objectID}: ${err}`);
+            }
+          }
+        } catch (err) {
+          errorCount++;
+          addLog(`⚠️ Error processing product at index ${i}: ${err}`);
         }
-      });
+      }
 
+      if (errorCount > 0) {
+        addLog(`⚠️ Total comparison errors: ${errorCount}`);
+      }
+
+      // Sort by number of duplicates (most duplicates first)
       duplicates.sort((a, b) => b.products.length - a.products.length);
 
       addLog(`✅ Found ${duplicates.length} duplicate groups`);
@@ -357,8 +817,8 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
         totalScanned: allProducts.length,
         duplicateGroups: duplicates.length,
         productsToMerge: totalMerges,
-        filteredForeign: allProducts.length - ukProducts.length,
-        finalMasterCount: ukProducts.length - totalMerges + duplicates.length,
+        filteredForeign: singleIndexMode ? 0 : (allProducts.length - productsToScan.length),
+        finalMasterCount: productsToScan.length - totalMerges + duplicates.length,
         processing: false,
       });
       setProgress(100);
@@ -369,7 +829,159 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     } finally {
       setIsScanning(false);
     }
-  }, [allProducts]);
+  }, [allProducts, singleIndexMode, addLog]);
+
+  // Merge all duplicates and update the source index (single-index mode)
+  const mergeAllDuplicates = useCallback(async () => {
+    if (!singleIndexMode || !selectedSingleIndex) {
+      addLog('❌ This function only works in single-index mode');
+      return;
+    }
+
+    if (duplicateGroups.length === 0) {
+      addLog('❌ No duplicates to merge. Scan first.');
+      return;
+    }
+
+    setIsMerging(true);
+    setProgress(0);
+    addLog('🔄 Merging all duplicates and updating database...');
+
+    try {
+      const cleanedProducts: any[] = [];
+      const processedIds = new Set<string>();
+      const idsToDelete: string[] = [];
+
+      // Step 1: Create merged products from duplicate groups
+      addLog(`📋 Processing ${duplicateGroups.length} duplicate groups...`);
+      for (let i = 0; i < duplicateGroups.length; i++) {
+        const group = duplicateGroups[i];
+        const best = group.bestProduct!;
+
+        // Mark all products in this group as processed
+        group.products.forEach(p => {
+          processedIds.add(p.objectID);
+          // Mark duplicates for deletion (except the best one)
+          if (p.objectID !== best.objectID) {
+            idsToDelete.push(p.objectID);
+          }
+        });
+
+        // Create merged product with all barcodes
+        const mergedProduct = {
+          ...best,
+          objectID: best.objectID,
+          barcodes: group.allBarcodes, // Array of all barcodes
+          barcode: group.allBarcodes[0], // Primary barcode
+          mergedFrom: group.products
+            .filter(p => p.objectID !== best.objectID)
+            .map(p => ({
+              objectID: p.objectID,
+              sourceIndex: p.sourceIndex,
+            })),
+          isMerged: true,
+          mergedAt: new Date().toISOString(),
+          qualityScore: group.score,
+        };
+
+        cleanedProducts.push(mergedProduct);
+        setProgress(Math.round((i / duplicateGroups.length) * 30)); // 0-30%
+      }
+
+      addLog(`✅ Created ${cleanedProducts.length} merged products`);
+      addLog(`🗑️ Marking ${idsToDelete.length} duplicates for deletion`);
+
+      // Step 2: Add products that weren't duplicates
+      addLog(`📋 Adding non-duplicate products...`);
+      let addedCount = 0;
+      for (const product of allProducts) {
+        if (!processedIds.has(product.objectID)) {
+          cleanedProducts.push({
+            ...product,
+            objectID: product.objectID,
+            barcodes: product.barcode ? (Array.isArray(product.barcode) ? product.barcode : [product.barcode]) : [],
+            barcode: Array.isArray(product.barcode) ? product.barcode[0] : product.barcode,
+            isMerged: false,
+          });
+          addedCount++;
+        }
+      }
+
+      addLog(`✅ Added ${addedCount} non-duplicate products`);
+      setProgress(50);
+
+      // Step 3: Update Algolia index
+      addLog(`📤 Updating ${selectedSingleIndex} index...`);
+
+      // Delete duplicates first
+      if (idsToDelete.length > 0) {
+        const deleteBatchSize = 100;
+        const deleteBatches = Math.ceil(idsToDelete.length / deleteBatchSize);
+
+        for (let i = 0; i < deleteBatches; i++) {
+          const start = i * deleteBatchSize;
+          const end = Math.min((i + 1) * deleteBatchSize, idsToDelete.length);
+          const batch = idsToDelete.slice(start, end);
+
+          const response = await fetch(`${FUNCTIONS_BASE}/deleteFromIndex`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              indexName: selectedSingleIndex,
+              objectIDs: batch
+            }),
+          });
+
+          if (!response.ok) {
+            addLog(`⚠️ Failed to delete batch ${i + 1}/${deleteBatches}`);
+          } else {
+            addLog(`  → Deleted batch ${i + 1}/${deleteBatches}`);
+          }
+
+          setProgress(50 + Math.round((i / deleteBatches) * 20)); // 50-70%
+        }
+      }
+
+      // Upload cleaned/merged products
+      const uploadBatchSize = 100;
+      const uploadBatches = Math.ceil(cleanedProducts.length / uploadBatchSize);
+
+      for (let i = 0; i < uploadBatches; i++) {
+        const start = i * uploadBatchSize;
+        const end = Math.min((i + 1) * uploadBatchSize, cleanedProducts.length);
+        const batch = cleanedProducts.slice(start, end);
+
+        const response = await fetch(`${FUNCTIONS_BASE}/updateAlgoliaIndex`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            indexName: selectedSingleIndex,
+            products: batch
+          }),
+        });
+
+        if (!response.ok) {
+          addLog(`⚠️ Failed to upload batch ${i + 1}/${uploadBatches}`);
+        } else {
+          addLog(`  → Uploaded batch ${i + 1}/${uploadBatches}`);
+        }
+
+        setProgress(70 + Math.round((i / uploadBatches) * 30)); // 70-100%
+      }
+
+      setProgress(100);
+      addLog(`✅ Successfully merged duplicates and updated ${selectedSingleIndex}!`);
+      addLog(`📊 Final count: ${cleanedProducts.length.toLocaleString()} products (removed ${idsToDelete.length} duplicates)`);
+
+      // Clear duplicate groups since they're merged
+      setDuplicateGroups([]);
+
+    } catch (error) {
+      addLog(`❌ Error merging duplicates: ${error}`);
+    } finally {
+      setIsMerging(false);
+    }
+  }, [duplicateGroups, allProducts, singleIndexMode, selectedSingleIndex, addLog]);
 
   // Build master database
   const buildMasterDatabase = useCallback(async () => {
@@ -500,7 +1112,36 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     } finally {
       setIsBuilding(false);
     }
-  }, [duplicateGroups, allProducts]);
+  }, [duplicateGroups, allProducts, addLog]);
+
+  // Filter products based on search query and selected field
+  const filteredProducts = React.useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allProducts;
+    }
+
+    const queryLower = searchQuery.toLowerCase().trim();
+
+    return allProducts.filter(product => {
+      const name = (product.name || product.foodName || '').toLowerCase();
+      const brand = (product.brand || product.brandName || '').toLowerCase();
+      const barcode = Array.isArray(product.barcode)
+        ? product.barcode.join(' ').toLowerCase()
+        : (product.barcode || '').toLowerCase();
+
+      switch (searchField) {
+        case 'brand':
+          return brand.includes(queryLower);
+        case 'name':
+          return name.includes(queryLower);
+        case 'barcode':
+          return barcode.includes(queryLower);
+        case 'all':
+        default:
+          return name.includes(queryLower) || brand.includes(queryLower) || barcode.includes(queryLower);
+      }
+    });
+  }, [allProducts, searchQuery, searchField]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -516,31 +1157,93 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Master Database Builder</h1>
               <p className="text-sm text-gray-500">
-                Step 1: Pull all data → Step 2: Scan for duplicates → Step 3: Build master database
+                {singleIndexMode
+                  ? 'Single-Index Mode: Pull → Scan → Merge duplicates within one index'
+                  : 'Multi-Index Mode: Pull → Scan → Build master database from multiple indices'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm cursor-pointer hover:bg-gray-100">
+            <label className="flex items-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm cursor-pointer hover:bg-purple-100 border border-purple-200">
+              <input
+                type="checkbox"
+                checked={singleIndexMode}
+                onChange={() => {
+                  setSingleIndexMode(!singleIndexMode);
+                  setAllProducts([]);
+                  setDuplicateGroups([]);
+                  setLogs([]);
+                }}
+                className="w-4 h-4 text-purple-600 rounded"
+              />
+              <span className="font-medium">Single-Index Mode</span>
+            </label>
+
+            <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer border-2 transition-all ${
+              testMode
+                ? 'bg-yellow-50 text-yellow-800 border-yellow-300 hover:bg-yellow-100'
+                : 'bg-green-50 text-green-800 border-green-300 hover:bg-green-100'
+            }`}>
               <input
                 type="checkbox"
                 checked={testMode}
                 onChange={() => setTestMode(!testMode)}
                 className="w-4 h-4 text-primary-600 rounded"
               />
-              <span className="font-medium">Test Mode (1000/index)</span>
+              <span className="font-medium">
+                {testMode ? '🧪 Test Mode (1k/index)' : '✅ Full Scan (ALL products)'}
+              </span>
             </label>
 
             {allProducts.length > 0 && !isPulling && (
-              <div className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
-                {allProducts.length.toLocaleString()} products loaded
-              </div>
+              <>
+                <div className="flex gap-2 items-center">
+                  <select
+                    value={searchField}
+                    onChange={(e) => setSearchField(e.target.value as 'all' | 'brand' | 'name' | 'barcode')}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="all">All Fields</option>
+                    <option value="brand">Brand</option>
+                    <option value="name">Name</option>
+                    <option value="barcode">Barcode</option>
+                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={`Search by ${searchField === 'all' ? 'any field' : searchField}...`}
+                      className="px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
+                  {searchQuery ? (
+                    <>
+                      {filteredProducts.length.toLocaleString()} / {allProducts.length.toLocaleString()} products
+                    </>
+                  ) : (
+                    <>{allProducts.length.toLocaleString()} products loaded</>
+                  )}
+                </div>
+              </>
             )}
 
             <button
               onClick={pullAllData}
-              disabled={isPulling || isScanning || isBuilding || selectedIndices.size === 0}
+              disabled={isPulling || isScanning || isBuilding || isMerging || (singleIndexMode ? !selectedSingleIndex : selectedIndices.size === 0)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
             >
               {isPulling ? (
@@ -553,12 +1256,12 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
               )}
-              Pull All Data
+              {singleIndexMode ? 'Pull Index' : 'Pull All Data'}
             </button>
 
             <button
               onClick={scanForDuplicates}
-              disabled={isPulling || isScanning || isBuilding || allProducts.length === 0}
+              disabled={isPulling || isScanning || isBuilding || isMerging || allProducts.length === 0}
               className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
             >
               {isScanning ? (
@@ -574,28 +1277,48 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
               Scan for Duplicates
             </button>
 
-            <button
-              onClick={buildMasterDatabase}
-              disabled={isPulling || isScanning || isBuilding || duplicateGroups.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
-            >
-              {isBuilding ? (
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-              )}
-              Build Master Database
-            </button>
+            {singleIndexMode ? (
+              <button
+                onClick={mergeAllDuplicates}
+                disabled={isPulling || isScanning || isBuilding || isMerging || duplicateGroups.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 font-medium"
+              >
+                {isMerging ? (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                )}
+                Merge All Duplicates
+              </button>
+            ) : (
+              <button
+                onClick={buildMasterDatabase}
+                disabled={isPulling || isScanning || isBuilding || isMerging || duplicateGroups.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+              >
+                {isBuilding ? (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                )}
+                Build Master Database
+              </button>
+            )}
           </div>
         </div>
 
         {/* Progress */}
-        {(isPulling || isScanning || isBuilding) && (
+        {(isPulling || isScanning || isBuilding || isMerging) && (
           <div className="mt-4">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -613,54 +1336,81 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
         <div className="flex-1 overflow-auto p-6">
           {/* Index selector */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Indices to Scan</h2>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {ALGOLIA_INDICES.map(index => (
-                <label
-                  key={index}
-                  className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedIndices.has(index)
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {singleIndexMode ? 'Select Index to Clean' : 'Select Indices to Scan'}
+            </h2>
+
+            {singleIndexMode ? (
+              <div className="space-y-3">
+                <select
+                  value={selectedSingleIndex}
+                  onChange={(e) => setSelectedSingleIndex(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedIndices.has(index)}
-                    onChange={() => {
-                      setSelectedIndices(prev => {
-                        const next = new Set(prev);
-                        if (next.has(index)) {
-                          next.delete(index);
-                        } else {
-                          next.add(index);
-                        }
-                        return next;
-                      });
-                    }}
-                    className="w-4 h-4 text-primary-600 rounded"
-                  />
-                  <span className="text-sm font-medium text-gray-700">{index.replace(/_/g, ' ')}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSelectedIndices(new Set(ALGOLIA_INDICES))}
-                className="px-3 py-1.5 text-sm text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => setSelectedIndices(new Set())}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-              >
-                Clear All
-              </button>
-              <span className="px-3 py-1.5 text-sm text-gray-500">
-                {selectedIndices.size} of {ALGOLIA_INDICES.length} selected
-              </span>
-            </div>
+                  <option value="">-- Select an index --</option>
+                  {ALGOLIA_INDICES.map(index => (
+                    <option key={index} value={index}>
+                      {index.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+                {selectedSingleIndex && (
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-700">
+                    <strong>Selected:</strong> {selectedSingleIndex.replace(/_/g, ' ')}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {ALGOLIA_INDICES.map(index => (
+                    <label
+                      key={index}
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        selectedIndices.has(index)
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedIndices.has(index)}
+                        onChange={() => {
+                          setSelectedIndices(prev => {
+                            const next = new Set(prev);
+                            if (next.has(index)) {
+                              next.delete(index);
+                            } else {
+                              next.add(index);
+                            }
+                            return next;
+                          });
+                        }}
+                        className="w-4 h-4 text-primary-600 rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-700">{index.replace(/_/g, ' ')}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedIndices(new Set(ALGOLIA_INDICES))}
+                    className="px-3 py-1.5 text-sm text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={() => setSelectedIndices(new Set())}
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Clear All
+                  </button>
+                  <span className="px-3 py-1.5 text-sm text-gray-500">
+                    {selectedIndices.size} of {ALGOLIA_INDICES.length} selected
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Index Stats (if available) */}
@@ -722,6 +1472,66 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
               </div>
             </div>
           </div>
+
+          {/* Filtered products list */}
+          {searchQuery && filteredProducts.length > 0 && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Search Results ({filteredProducts.length.toLocaleString()} products)
+                <span className="ml-2 text-sm font-normal text-blue-600">
+                  {searchField === 'all' ? 'All Fields' : searchField.charAt(0).toUpperCase() + searchField.slice(1)}: "{searchQuery}"
+                </span>
+              </h2>
+              <div className="space-y-3 max-h-96 overflow-auto">
+                {filteredProducts.slice(0, 100).map((product, idx) => (
+                  <div key={idx} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
+                          {product.name || product.foodName}
+                        </div>
+                        <div className="text-sm text-gray-600 truncate">
+                          {product.brand || product.brandName || 'No brand'}
+                        </div>
+                        <div className="flex gap-3 mt-1">
+                          <span className="text-xs text-gray-500">
+                            Index: {product.sourceIndex}
+                          </span>
+                          {product.calories && (
+                            <span className="text-xs text-gray-500">
+                              {product.calories} kcal
+                            </span>
+                          )}
+                        </div>
+                        {product.barcode && (
+                          <div className="text-xs text-gray-400 mt-1 font-mono">
+                            {Array.isArray(product.barcode) ? product.barcode.join(', ') : product.barcode}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0">
+                        {product.imageUrl && (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name || product.foodName}
+                            className="w-16 h-16 object-cover rounded"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredProducts.length > 100 && (
+                  <div className="text-center text-sm text-gray-500 py-3">
+                    Showing first 100 of {filteredProducts.length.toLocaleString()} results
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Duplicate groups preview */}
           {duplicateGroups.length > 0 && (

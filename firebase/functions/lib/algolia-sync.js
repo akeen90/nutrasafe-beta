@@ -850,6 +850,10 @@ function prepareTescoForAlgolia(data) {
         department: data.department || "",
         superDepartment: data.superDepartment || "",
         imageUrl: data.imageUrl || "",
+        // Image quality flags (from Vision AI filtering)
+        imageQuality: data.imageQuality || undefined,
+        imageFlags: data.imageFlags || undefined,
+        flaggedAt: data.flaggedAt || undefined,
         // Metadata - extract numeric serving size from string like "250ml" or "30g"
         servingSize: data.servingSize || "per 100g",
         servingSizeG: (() => {

@@ -25,9 +25,32 @@ struct FoodDetailServingView: View {
     @Binding var gramsAmount: String
 
     @Environment(\.colorScheme) var colorScheme
-    
+
     private var portionUnitLabel: String {
         food.isLiquidCategory ? "ml" : "g"
+    }
+
+    // Detect if this is an oil product
+    private var isOilProduct: Bool {
+        let nameLower = food.name.lowercased()
+
+        // Exclude foods that have "oil" as an ingredient or preparation method, not the main product
+        // E.g., "Mackerel in Olive Oil", "Sardines in Oil", "Tuna in Sunflower Oil"
+        let excludedPatterns = [
+            "fish oil", "cod liver",
+            "in oil", "in olive oil", "in sunflower oil", "in vegetable oil",
+            "mackerel", "sardine", "tuna", "salmon", "anchov", "herring",
+            "fillet", "fish", "seafood"
+        ]
+
+        for pattern in excludedPatterns {
+            if nameLower.contains(pattern) {
+                return false
+            }
+        }
+
+        // Only treat as oil if it's actually an oil product (olive oil, vegetable oil, etc.)
+        return nameLower.contains("oil")
     }
 
     var body: some View {
@@ -87,6 +110,11 @@ struct FoodDetailServingView: View {
                 // Per-unit foods: single intuitive card
                 perUnitCard
             } else {
+                // Special handling for oils: add tablespoon option first
+                if isOilProduct {
+                    tablespoonCard
+                }
+
                 // Per-100g foods: portion options as cards
                 let effectiveQuery = food.name
                 if food.hasAnyPortionOptions(forQuery: effectiveQuery) {
@@ -126,6 +154,54 @@ struct FoodDetailServingView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
                     Text("\(Int(food.calories)) kcal")
+                        .font(.system(size: 12))
+                        .foregroundColor(palette.textSecondary)
+                }
+
+                Spacer()
+
+                // Selection indicator
+                selectionIndicator(isSelected: isSelected)
+            }
+            .padding(10)
+            .background(cardBackground(isSelected: isSelected))
+            .overlay(cardBorder(isSelected: isSelected))
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // MARK: - Tablespoon Card (for oils)
+
+    private var tablespoonCard: some View {
+        let portionName = "1 tablespoon"
+        let servingGrams = 15.0 // Standard tablespoon of oil is ~15g
+        let isSelected = selectedPortionName == portionName
+        let multiplier = servingGrams / 100.0
+        let portionCalories = food.calories * multiplier
+
+        return Button(action: {
+            selectedPortionName = portionName
+            servingAmount = String(format: "%.0f", servingGrams)
+            servingUnit = "g"
+            gramsAmount = String(format: "%.0f", servingGrams)
+        }) {
+            HStack(spacing: 10) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? palette.accent.opacity(0.12) : palette.tertiary.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "drop.fill")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
+                }
+
+                // Description
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("\(Int(servingGrams))g (1 tablespoon)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+                    Text("\(Int(portionCalories)) kcal")
                         .font(.system(size: 12))
                         .foregroundColor(palette.textSecondary)
                 }

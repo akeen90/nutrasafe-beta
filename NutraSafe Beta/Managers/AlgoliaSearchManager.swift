@@ -427,17 +427,17 @@ final class AlgoliaSearchManager {
     }
 
     // Index names with priority - lower number = higher priority
-    // TIER 0: Admin-verified (highest quality)
+    // TIER 0: Generic foods (consumer_foods - broad ingredient coverage)
     // TIER 1: Branded/retail sources (Tesco, etc)
-    // TIER 2: AI-enhanced sources
-    // TIER 3: Generic foods (consumer_foods - only boosted for generic searches)
+    // TIER 2: UK Foods Cleaned (master database)
+    // TIER 3: AI-enhanced and verified sources
     // Results are deduplicated, so items from lower-priority indices only appear if not in higher-priority ones
     private var indices: [(String, Int)] {
         return [
-            ("tesco_products", 0),       // TIER 0: Tesco UK (official supermarket data - highest priority)
-            ("consumer_foods", 1),       // TIER 1: Generic foods (broad coverage)
-            ("verified_foods", 2),       // TIER 2: Admin-verified foods (human verified)
-            ("uk_foods_cleaned", 3),     // TIER 3: UK Foods Cleaned (59k records)
+            ("consumer_foods", 0),       // TIER 0: Generic foods (highest priority - broad coverage)
+            ("tesco_products", 1),       // TIER 1: Tesco UK (official supermarket data)
+            ("uk_foods_cleaned", 2),     // TIER 2: UK Foods Cleaned (master database - 72k records)
+            ("verified_foods", 3),       // TIER 3: Admin-verified foods (human verified)
             ("ai_enhanced", 4),          // TIER 4: AI-enhanced foods (AI verified with human approval)
             ("ai_manually_added", 5),    // TIER 5: AI manually added foods (from AI scanner)
             ("user_added", 6),           // TIER 6: User's custom foods
@@ -941,8 +941,9 @@ final class AlgoliaSearchManager {
             // SOURCE TIER BONUS
             if let source = result.source {
                 switch source {
-                case "tesco_products": score += 400
-                case "uk_foods_cleaned": score += 350
+                case "consumer_foods": score += 400     // Highest priority
+                case "tesco_products": score += 350     // Second priority
+                case "uk_foods_cleaned": score += 300   // Third priority
                 case "foods": score += 200
                 case "fast_foods_database": score += 150
                 default: score += 50
@@ -1235,6 +1236,13 @@ final class AlgoliaSearchManager {
             // Bonus for verified items
             if item.result.isVerified {
                 score += 200
+            }
+
+            // BONUS for having a product image - prioritize visual results
+            // Products with images appear more professional and help users identify items quickly
+            // This gives a STRONG boost to ensure images appear at the top of results
+            if let imageUrl = item.result.imageUrl, !imageUrl.isEmpty {
+                score += 5000  // Strong boost to float image results to top (higher than most other bonuses)
             }
 
             // TIER 1 PRIORITY: Tesco products get significant boost (official UK supermarket data)
@@ -1655,15 +1663,16 @@ final class AlgoliaSearchManager {
                 }
             }
 
-            // Extract product image URL (filter out Tesco images)
+            // Extract product image URL (filter out flagged images)
             let rawImageUrl = hit["imageUrl"] as? String
+            let imageQuality = hit["imageQuality"] as? String
             let imageUrl: String? = {
-                guard let url = rawImageUrl?.lowercased() else { return nil }
-                // Block Tesco image URLs
-                if url.contains("tesco.com") || url.contains("tescolabs.") || url.contains(".tesco.") {
+                guard let url = rawImageUrl else { return nil }
+                // Block images marked as flagged (overlay text, freshness labels, etc.)
+                if imageQuality == "flagged" {
                     return nil
                 }
-                return rawImageUrl
+                return url
             }()
 
             return FoodSearchResult(

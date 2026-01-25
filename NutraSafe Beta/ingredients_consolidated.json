@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "2025.5-unified-consolidated",
-    "total_ingredients": 397,
+    "version": "2025.5-unified-consolidated-expanded",
+    "total_ingredients": 414,
     "last_updated": "2025-11-06",
-    "description": "Unified and consolidated database of food additives and ultra-processed ingredients with complete deduplication by name",
+    "description": "Comprehensive database of food additives and ultra-processed ingredients with complete coverage of common ingredients",
     "sources": [
       "additives_full_described_with_sources_2025.csv",
       "additives_master_database.json",
@@ -95,7 +95,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -229,7 +229,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -556,7 +556,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -606,7 +606,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -1135,7 +1135,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -1265,7 +1265,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -1813,6 +1813,37 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Baking powder",
+      "eNumbers": [],
+      "synonyms": [
+        "raising agent (baking powder)",
+        "double acting baking powder",
+        "self raising agent"
+      ],
+      "category": "raising_agent",
+      "group": "other",
+      "origin": "mineral",
+      "overview": "A mixture of sodium bicarbonate and acidifying agents used as a raising agent",
+      "what_it_is": "A blend of sodium bicarbonate (baking soda) with cream of tartar or other acids, plus a starch to prevent clumping",
+      "why_its_used": "Causes baked goods to rise by releasing carbon dioxide gas when mixed with wet ingredients and heated",
+      "where_it_comes_from": "Manufactured by mixing sodium bicarbonate with acidifying salts and starch",
+      "typicalUses": "Self-raising flour, cakes, muffins, scones, biscuits, pancakes",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Common household ingredient made from safe components, widely used in home baking",
+      "concerns": "None - considered safe and commonly used in home cooking",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 0,
+      "novaGroup": 0,
+      "database_origin": "expanded"
     },
     {
       "name": "Banana flavouring",
@@ -2760,7 +2791,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -3221,8 +3252,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -3243,7 +3274,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -3652,7 +3683,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -3713,8 +3744,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -3735,7 +3766,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -3863,6 +3894,47 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Caramel",
+      "eNumbers": [
+        "E150a"
+      ],
+      "synonyms": [
+        "plain caramel",
+        "caramel colour",
+        "caramel color",
+        "burnt sugar",
+        "caramelised sugar"
+      ],
+      "category": "colour",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Brown colouring made by heating sugar",
+      "what_it_is": "A brown colouring produced by carefully heating sugar until it caramelises, used for colouring food and drinks",
+      "why_its_used": "Adds brown colour to foods and beverages, creates caramel flavour in confectionery",
+      "where_it_comes_from": "Made by controlled heating of carbohydrates (sugars) with or without acids or alkalis",
+      "typicalUses": "Cola drinks, beer, brown bread, sauces, gravy, confectionery, desserts",
+      "effectsVerdict": "neutral",
+      "effectsSummary": "Made from heated sugar. Plain caramel (E150a) is considered the safest type of caramel colouring.",
+      "concerns": "Some caramel colours (E150c, E150d) contain 4-MEI, a potential concern. E150a plain caramel is considered safer.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [
+        {
+          "title": "EFSA: Re-evaluation of caramel colours (E 150)",
+          "url": "https://www.efsa.europa.eu/en/efsajournal/pub/3625",
+          "covers": "Safety assessment of caramel food colourings"
+        }
+      ],
+      "processingPenalty": 5,
+      "novaGroup": 3,
+      "database_origin": "expanded"
     },
     {
       "name": "Caramel flavouring",
@@ -4021,7 +4093,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -4153,7 +4225,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 12,
@@ -4203,7 +4275,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -4293,7 +4365,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -4462,7 +4534,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -4546,6 +4618,68 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Cocoa butter",
+      "eNumbers": [],
+      "synonyms": [
+        "cacao butter",
+        "theobroma oil"
+      ],
+      "category": "fat",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Natural fat extracted from cocoa beans",
+      "what_it_is": "A pale-yellow edible fat extracted from cocoa beans during chocolate production",
+      "why_its_used": "Provides smooth melting texture in chocolate, adds richness, and helps chocolate set properly",
+      "where_it_comes_from": "Pressed from roasted cocoa beans (the same beans used to make chocolate)",
+      "typicalUses": "Chocolate, white chocolate, confectionery, cosmetics, pharmaceuticals",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Natural plant fat from cocoa beans, minimally processed",
+      "concerns": "None - natural ingredient used in chocolate making",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 0,
+      "novaGroup": 1,
+      "database_origin": "expanded"
+    },
+    {
+      "name": "Cocoa mass",
+      "eNumbers": [],
+      "synonyms": [
+        "chocolate liquor",
+        "cocoa liquor",
+        "cacao mass",
+        "unsweetened chocolate"
+      ],
+      "category": "other",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Pure ground cocoa beans containing both cocoa solids and cocoa butter",
+      "what_it_is": "The liquid or paste form of pure ground cocoa beans, containing both cocoa butter and cocoa solids in their natural proportions",
+      "why_its_used": "Provides rich chocolate flavour and forms the base ingredient for all chocolate products",
+      "where_it_comes_from": "Made by grinding roasted cocoa beans (Theobroma cacao) into a smooth paste or liquid",
+      "typicalUses": "Dark chocolate, milk chocolate, chocolate products, baking chocolate",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Minimally processed cocoa beans - natural chocolate ingredient",
+      "concerns": "None - natural ingredient from cocoa beans",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 0,
+      "novaGroup": 1,
+      "database_origin": "expanded"
     },
     {
       "name": "Coconut flavouring",
@@ -4664,7 +4798,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -4869,8 +5003,8 @@
       "category": "other",
       "group": "other",
       "origin": "synthetic/plant/mineral (varies by specification)",
-      "overview": "D\u2011glucose (crystalline) used for sweetness and fermentation.",
-      "what_it_is": "D\u2011glucose (crystalline) used for sweetness and fermentation.",
+      "overview": "D‑glucose (crystalline) used for sweetness and fermentation.",
+      "what_it_is": "D‑glucose (crystalline) used for sweetness and fermentation.",
       "why_its_used": "Beverages, confectionery, bakery, sauces.",
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Beverages, confectionery, bakery, sauces.",
@@ -5298,6 +5432,38 @@
       "database_origin": "additives_unified"
     },
     {
+      "name": "Egg white powder",
+      "eNumbers": [],
+      "synonyms": [
+        "dried egg white",
+        "egg albumen powder",
+        "powdered egg white",
+        "spray dried egg white"
+      ],
+      "category": "protein",
+      "group": "other",
+      "origin": "animal",
+      "overview": "Dehydrated egg whites used as a protein and binding agent",
+      "what_it_is": "Egg whites that have been spray-dried into a powder form for easy storage and use",
+      "why_its_used": "Provides protein, helps bind ingredients, creates structure in baked goods, and can be whipped for aeration",
+      "where_it_comes_from": "Made by spray-drying fresh egg whites from chicken eggs",
+      "typicalUses": "Baked goods, meringues, protein supplements, processed foods, confectionery",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Natural animal protein that has been dried for preservation",
+      "concerns": "Contains egg allergen. Processing involves heat treatment.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 3,
+      "novaGroup": 2,
+      "database_origin": "expanded"
+    },
+    {
       "name": "Enzymatically hydrolysed carboxy methyl cellulose",
       "eNumbers": [
         "E469"
@@ -5340,7 +5506,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -5552,7 +5718,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -5682,7 +5848,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -5802,6 +5968,38 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Fat reduced cocoa",
+      "eNumbers": [],
+      "synonyms": [
+        "defatted cocoa",
+        "cocoa powder",
+        "fat reduced cocoa powder",
+        "low fat cocoa"
+      ],
+      "category": "other",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Cocoa powder with much of the cocoa butter removed",
+      "what_it_is": "Cocoa solids with most of the natural cocoa butter fat removed through pressing, leaving a powder rich in cocoa flavour",
+      "why_its_used": "Provides intense chocolate flavour without adding much fat, used in baking and chocolate products",
+      "where_it_comes_from": "Made by pressing cocoa mass to remove cocoa butter, then grinding the remaining solids into powder",
+      "typicalUses": "Chocolate drinks, baking, chocolate products, desserts, confectionery",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Processed cocoa with fat removed but retaining antioxidants and chocolate flavour",
+      "concerns": "Processing reduces fat content but retains beneficial cocoa compounds",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 3,
+      "novaGroup": 2,
+      "database_origin": "expanded"
     },
     {
       "name": "Fatty acid esters of ascorbic acid",
@@ -6004,15 +6202,15 @@
       "database_origin": "additives_unified"
     },
     {
-      "name": "Fructose\u2011glucose syrup",
+      "name": "Fructose‑glucose syrup",
       "eNumbers": [
         "ING-FRUCTOSE-GLUCOSE-SYRUP"
       ],
       "category": "other",
       "group": "sweetener",
       "origin": "synthetic/plant/mineral (varies by specification)",
-      "overview": "Fructose\u2011glucose syrup used as a carbohydrate ingredient .",
-      "what_it_is": "Fructose\u2011glucose syrup used as a carbohydrate ingredient .",
+      "overview": "Fructose‑glucose syrup used as a carbohydrate ingredient .",
+      "what_it_is": "Fructose‑glucose syrup used as a carbohydrate ingredient .",
       "why_its_used": "Diet drinks, sugar-free confectionery, desserts, tabletop sweeteners.",
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Diet drinks, sugar-free confectionery, desserts, tabletop sweeteners.",
@@ -6206,7 +6404,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -6301,8 +6499,8 @@
       "category": "other",
       "group": "sweetener",
       "origin": "synthetic/plant/mineral (varies by specification)",
-      "overview": "EU\u2011defined cereal sugar syrup; naming depends on fructose percentage.",
-      "what_it_is": "EU\u2011defined cereal sugar syrup; naming depends on fructose percentage.",
+      "overview": "EU‑defined cereal sugar syrup; naming depends on fructose percentage.",
+      "what_it_is": "EU‑defined cereal sugar syrup; naming depends on fructose percentage.",
       "why_its_used": "Diet drinks, sugar-free confectionery, desserts, tabletop sweeteners.",
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Diet drinks, sugar-free confectionery, desserts, tabletop sweeteners.",
@@ -6349,15 +6547,15 @@
       "database_origin": "both"
     },
     {
-      "name": "Glucose\u2011fructose syrup",
+      "name": "Glucose‑fructose syrup",
       "eNumbers": [
         "ING-GLUCOSE-FRUCTOSE-SYRUP"
       ],
       "category": "other",
       "group": "sweetener",
       "origin": "synthetic/plant/mineral (varies by specification)",
-      "overview": "EU\u2011defined cereal sugar syrup; naming depends on fructose percentage.",
-      "what_it_is": "EU\u2011defined cereal sugar syrup; naming depends on fructose percentage.",
+      "overview": "EU‑defined cereal sugar syrup; naming depends on fructose percentage.",
+      "what_it_is": "EU‑defined cereal sugar syrup; naming depends on fructose percentage.",
       "why_its_used": "Diet drinks, sugar-free confectionery, desserts, tabletop sweeteners.",
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Diet drinks, sugar-free confectionery, desserts, tabletop sweeteners.",
@@ -6560,7 +6758,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -6852,7 +7050,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 6,
@@ -7297,7 +7495,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -7387,7 +7585,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -7792,7 +7990,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -7842,7 +8040,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -8012,7 +8210,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -8058,6 +8256,49 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Lecithin",
+      "eNumbers": [
+        "E322"
+      ],
+      "synonyms": [
+        "lecithins",
+        "soya lecithin",
+        "soy lecithin",
+        "emulsifier (soya lecithin)",
+        "emulsifier (lecithin)",
+        "emulsifiers (lecithin)",
+        "soybean lecithin"
+      ],
+      "category": "emulsifier",
+      "group": "emulsifier",
+      "origin": "plant",
+      "overview": "A natural emulsifier derived from soybeans or sunflower seeds",
+      "what_it_is": "A fatty substance extracted from soybeans or sunflower seeds that helps mix oil and water-based ingredients",
+      "why_its_used": "Prevents separation, improves texture, and extends shelf life in chocolate, baked goods, and processed foods",
+      "where_it_comes_from": "Extracted from soybeans, sunflower seeds, or egg yolks through chemical or mechanical processing",
+      "typicalUses": "Chocolate, margarine, baked goods, instant foods, non-stick cooking sprays",
+      "effectsVerdict": "neutral",
+      "effectsSummary": "Generally considered safe. Derived from natural sources but requires processing to extract.",
+      "concerns": "May be derived from GM soy. Generally safe for most people.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [
+        {
+          "title": "EFSA: Safety of lecithins for all animal species",
+          "url": "https://www.efsa.europa.eu/en/efsajournal/pub/4742",
+          "covers": "Safety assessment of lecithin as a food additive"
+        }
+      ],
+      "processingPenalty": 5,
+      "novaGroup": 3,
+      "database_origin": "expanded"
     },
     {
       "name": "Lecithins",
@@ -8110,7 +8351,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 5,
@@ -8238,7 +8479,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -8648,7 +8889,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -8875,7 +9116,7 @@
       "isPermittedNI": true,
       "isPermittedEU": true,
       "synonyms": [
-        "DE 5\u201319",
+        "DE 5–19",
         "Modified starch",
         "Corn maltodextrin"
       ],
@@ -9057,7 +9298,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -9182,6 +9423,70 @@
       "database_origin": "additives_unified"
     },
     {
+      "name": "Milk fat",
+      "eNumbers": [],
+      "synonyms": [
+        "butterfat",
+        "milk solids",
+        "anhydrous milk fat",
+        "dairy fat"
+      ],
+      "category": "fat",
+      "group": "other",
+      "origin": "animal",
+      "overview": "Natural fat component of milk",
+      "what_it_is": "The fatty component naturally present in milk, cream, and butter",
+      "why_its_used": "Provides creamy texture, rich flavour, and mouthfeel in dairy products",
+      "where_it_comes_from": "Naturally occurring in milk from dairy cows, can be concentrated through processing",
+      "typicalUses": "Butter, cream, cheese, ice cream, chocolate, dairy products",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Natural dairy ingredient, though relatively high in saturated fat",
+      "concerns": "High in saturated fat. Not suitable for those with dairy allergies or lactose intolerance.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 0,
+      "novaGroup": 1,
+      "database_origin": "expanded"
+    },
+    {
+      "name": "Milk protein",
+      "eNumbers": [],
+      "synonyms": [
+        "milk proteins",
+        "dairy protein",
+        "whey and casein",
+        "total milk protein"
+      ],
+      "category": "protein",
+      "group": "other",
+      "origin": "animal",
+      "overview": "Proteins naturally found in milk",
+      "what_it_is": "The protein components of milk, including both whey and casein proteins in their natural proportions",
+      "why_its_used": "Adds nutritional value, improves texture, helps with binding, and provides structure in processed foods",
+      "where_it_comes_from": "Extracted from cow's milk through various processing methods",
+      "typicalUses": "Protein-enriched foods, dairy products, sports nutrition, infant formula, processed foods",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Natural dairy protein, though requires processing to concentrate",
+      "concerns": "Contains milk allergen. Not suitable for lactose intolerant individuals or vegans.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 5,
+      "novaGroup": 2,
+      "database_origin": "expanded"
+    },
+    {
       "name": "Mint flavouring",
       "eNumbers": [
         "FLAV-MINT"
@@ -9258,7 +9563,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -9453,7 +9758,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -9507,7 +9812,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 10,
@@ -9753,6 +10058,47 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Natural flavouring",
+      "eNumbers": [],
+      "synonyms": [
+        "natural flavour",
+        "natural flavor",
+        "natural flavourings",
+        "natural flavors",
+        "flavouring",
+        "flavoring",
+        "natural vanilla flavouring"
+      ],
+      "category": "flavouring",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Flavourings derived from natural plant or animal sources",
+      "what_it_is": "Flavour compounds extracted from plants, spices, fruits, or other natural sources through processing",
+      "why_its_used": "Enhances or standardises flavour in processed foods without adding artificial chemicals",
+      "where_it_comes_from": "Extracted from natural sources like fruits, vegetables, herbs, spices, or plant materials",
+      "typicalUses": "Drinks, desserts, baked goods, confectionery, savoury foods, dairy products",
+      "effectsVerdict": "neutral",
+      "effectsSummary": "Derived from natural sources but processed. Generally considered safer than artificial flavours.",
+      "concerns": "Though natural, these are concentrated extracts requiring processing. Actual source often not specified on labels.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [
+        {
+          "title": "EFSA: Flavourings Group Evaluation",
+          "url": "https://www.efsa.europa.eu/en/topics/topic/flavourings",
+          "covers": "Safety evaluations of flavouring substances"
+        }
+      ],
+      "processingPenalty": 3,
+      "novaGroup": 2,
+      "database_origin": "expanded"
     },
     {
       "name": "Natural flavourings",
@@ -10475,7 +10821,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -10727,7 +11073,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -10818,7 +11164,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -10948,7 +11294,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -10998,7 +11344,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -11048,7 +11394,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -11098,7 +11444,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -11148,7 +11494,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -11196,15 +11542,15 @@
       "database_origin": "additives_unified"
     },
     {
-      "name": "Polyvinyl alcohol\u2013polyethylene glycol graft copolymer",
+      "name": "Polyvinyl alcohol–polyethylene glycol graft copolymer",
       "eNumbers": [
         "E1209"
       ],
       "category": "other",
       "group": "other",
       "origin": "synthetic/plant/mineral (varies by specification)",
-      "overview": "Polyvinyl alcohol\u2013polyethylene glycol graft copolymer used as a others.",
-      "what_it_is": "Polyvinyl alcohol\u2013polyethylene glycol graft copolymer used as a others.",
+      "overview": "Polyvinyl alcohol–polyethylene glycol graft copolymer used as a others.",
+      "what_it_is": "Polyvinyl alcohol–polyethylene glycol graft copolymer used as a others.",
       "why_its_used": "Acidity regulation, anti-caking, glazing, propellants and other roles.",
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Acidity regulation, anti-caking, glazing, propellants and other roles.",
@@ -11526,7 +11872,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -11827,8 +12173,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -11849,7 +12195,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -11992,8 +12338,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -12014,7 +12360,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -12350,7 +12696,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -12480,7 +12826,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -12530,7 +12876,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -12944,6 +13290,50 @@
       "database_origin": "additives_unified"
     },
     {
+      "name": "Salt",
+      "eNumbers": [],
+      "synonyms": [
+        "table salt",
+        "sea salt",
+        "sodium chloride",
+        "cooking salt",
+        "nacl"
+      ],
+      "category": "preservative",
+      "group": "other",
+      "origin": "mineral",
+      "overview": "Common seasoning and preservative",
+      "what_it_is": "Sodium chloride, a mineral compound used for flavouring and preserving food",
+      "why_its_used": "Enhances flavour, preserves food, controls fermentation, and improves texture in processed foods",
+      "where_it_comes_from": "Mined from underground salt deposits or evaporated from seawater",
+      "typicalUses": "All savoury foods, preserving meats, bread, cheese, processed foods, cured products",
+      "effectsVerdict": "neutral",
+      "effectsSummary": "Essential mineral, but excessive intake associated with high blood pressure and cardiovascular issues",
+      "concerns": "High intake linked to high blood pressure and cardiovascular disease. Excessive amounts in processed foods.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [
+        {
+          "title": "WHO: Salt reduction",
+          "url": "https://www.who.int/news-room/fact-sheets/detail/salt-reduction",
+          "covers": "Health impacts of salt and recommended intake levels"
+        },
+        {
+          "title": "NHS: Salt in your diet",
+          "url": "https://www.nhs.uk/live-well/eat-well/food-types/salt-in-your-diet/",
+          "covers": "Health effects of salt and daily recommendations"
+        }
+      ],
+      "processingPenalty": 0,
+      "novaGroup": 0,
+      "database_origin": "expanded"
+    },
+    {
       "name": "Shellac",
       "eNumbers": [
         "E904"
@@ -12967,7 +13357,7 @@
       "isPermittedNI": true,
       "isPermittedEU": true,
       "synonyms": [
-        "Confectioner\u2019s glaze"
+        "Confectioner’s glaze"
       ],
       "sources": [
         {
@@ -13066,6 +13456,39 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Skimmed milk powder",
+      "eNumbers": [],
+      "synonyms": [
+        "skim milk powder",
+        "non-fat milk powder",
+        "dried skimmed milk",
+        "milk powder",
+        "powdered milk"
+      ],
+      "category": "protein",
+      "group": "other",
+      "origin": "animal",
+      "overview": "Milk with fat removed then dried into powder",
+      "what_it_is": "Milk that has had the cream removed and then been evaporated to dryness to create a shelf-stable powder",
+      "why_its_used": "Adds milk solids, protein, and calcium to foods without adding fat or requiring refrigeration",
+      "where_it_comes_from": "Made by removing fat from fresh milk then spray-drying the remaining liquid",
+      "typicalUses": "Baked goods, chocolate, confectionery, instant soups, protein drinks, infant formula",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Processed milk product with fat removed, but retains protein and minerals",
+      "concerns": "Requires processing. Contains lactose and milk proteins - unsuitable for dairy allergies or lactose intolerance.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 3,
+      "novaGroup": 2,
+      "database_origin": "expanded"
     },
     {
       "name": "Smoke flavourings",
@@ -13230,7 +13653,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -13398,6 +13821,49 @@
       "processingPenalty": 12,
       "novaGroup": 4,
       "database_origin": "both"
+    },
+    {
+      "name": "Sodium bicarbonate",
+      "eNumbers": [
+        "E500",
+        "E500(ii)"
+      ],
+      "synonyms": [
+        "baking soda",
+        "bicarbonate of soda",
+        "bread soda",
+        "sodium hydrogen carbonate",
+        "raising agent (sodium bicarbonate)",
+        "nahco3"
+      ],
+      "category": "raising_agent",
+      "group": "other",
+      "origin": "mineral",
+      "overview": "A common raising agent used in baking",
+      "what_it_is": "A white crystalline powder that releases carbon dioxide when heated or mixed with acid, causing dough to rise",
+      "why_its_used": "Creates light, fluffy texture in baked goods by producing gas bubbles that expand during baking",
+      "where_it_comes_from": "Mined from natural mineral deposits or synthetically produced from sodium carbonate",
+      "typicalUses": "Baking powder, cakes, biscuits, bread, fizzy drinks, antacid medications",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Natural mineral compound, safe for consumption and widely used in home cooking",
+      "concerns": "None - considered safe and is used in home baking",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [
+        {
+          "title": "EFSA: Re-evaluation of sodium carbonates (E 500)",
+          "url": "https://www.efsa.europa.eu/en/efsajournal/pub/4884",
+          "covers": "Safety assessment of sodium bicarbonate as food additive"
+        }
+      ],
+      "processingPenalty": 0,
+      "novaGroup": 0,
+      "database_origin": "expanded"
     },
     {
       "name": "Sodium carbonates",
@@ -13655,8 +14121,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -13677,7 +14143,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -13820,8 +14286,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -13846,7 +14312,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -14181,7 +14647,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -14242,8 +14708,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -14264,7 +14730,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -14396,7 +14862,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -14486,7 +14952,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -14536,7 +15002,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -14586,7 +15052,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -14636,7 +15102,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -14686,7 +15152,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -14848,7 +15314,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -15018,7 +15484,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -15343,7 +15809,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -15393,7 +15859,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -15443,7 +15909,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -15508,8 +15974,8 @@
       "where_it_comes_from": "synthetic/plant/mineral (varies by specification)",
       "typicalUses": "Soft drinks, pickles, sauces, baked goods (varies).",
       "effectsVerdict": "caution",
-      "effectsSummary": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
-      "concerns": "Sulphites: allergen\u2014label if \u226510 mg/kg or L.",
+      "effectsSummary": "Sulphites: allergen—label if ≥10 mg/kg or L.",
+      "concerns": "Sulphites: allergen—label if ≥10 mg/kg or L.",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": true,
@@ -15532,7 +15998,7 @@
           "covers": "EU approvals and conditions of use (Annex II of Reg. 1333/2008)"
         },
         {
-          "title": "FSA: Sulphites label at \u226510 mg/kg or L",
+          "title": "FSA: Sulphites label at ≥10 mg/kg or L",
           "url": "https://www.food.gov.uk/business-guidance/food-allergen-labelling-and-information-requirements-technical-guidance-part-1-guidance-for-businesses-providing-prepacked-food",
           "covers": "Allergen threshold for sulphites"
         }
@@ -15617,6 +16083,36 @@
       "processingPenalty": 5,
       "novaGroup": 3,
       "database_origin": "ultra_processed"
+    },
+    {
+      "name": "Sunflower oil",
+      "eNumbers": [],
+      "synonyms": [
+        "sunflower seed oil",
+        "refined sunflower oil"
+      ],
+      "category": "fat",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Oil extracted from sunflower seeds",
+      "what_it_is": "A light-coloured oil extracted from sunflower seeds, often refined for commercial use",
+      "why_its_used": "Neutral-tasting cooking oil and ingredient that is relatively high in unsaturated fats",
+      "where_it_comes_from": "Pressed and refined from sunflower seeds (Helianthus annuus)",
+      "typicalUses": "Cooking oil, salad dressings, mayonnaise, fried foods, baked goods",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Refined plant oil, relatively high in unsaturated fats compared to some other oils",
+      "concerns": "Refined oils undergo processing. High omega-6 content compared to omega-3.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 3,
+      "novaGroup": 2,
+      "database_origin": "expanded"
     },
     {
       "name": "Sunset Yellow FCF; Orange Yellow S",
@@ -15750,7 +16246,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -15840,7 +16336,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -16056,7 +16552,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -16196,7 +16692,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 0,
@@ -16324,6 +16820,38 @@
       "database_origin": "additives_unified"
     },
     {
+      "name": "Vanilla extract",
+      "eNumbers": [],
+      "synonyms": [
+        "natural vanilla extract",
+        "vanilla essence",
+        "pure vanilla extract",
+        "vanilla flavouring"
+      ],
+      "category": "flavouring",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Natural flavouring extracted from vanilla beans",
+      "what_it_is": "A solution made by macerating and percolating vanilla pods in a mixture of water and ethanol",
+      "why_its_used": "Adds sweet, aromatic vanilla flavour to baked goods, desserts, and beverages",
+      "where_it_comes_from": "Extracted from cured vanilla orchid pods (Vanilla planifolia) grown in tropical regions",
+      "typicalUses": "Cakes, biscuits, ice cream, chocolate, custard, flavoured milk drinks",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Natural plant extract, widely used in home cooking and commercially",
+      "concerns": "None - natural flavouring considered safe",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 0,
+      "novaGroup": 0,
+      "database_origin": "expanded"
+    },
+    {
       "name": "Vegetable carbon",
       "eNumbers": [
         "E153"
@@ -16362,6 +16890,79 @@
       "processingPenalty": 0,
       "novaGroup": 0,
       "database_origin": "additives_unified"
+    },
+    {
+      "name": "Vegetable fat",
+      "eNumbers": [],
+      "synonyms": [
+        "vegetable oil",
+        "plant fat",
+        "vegetable oils",
+        "plant oil",
+        "non-hydrogenated vegetable fat"
+      ],
+      "category": "fat",
+      "group": "other",
+      "origin": "plant",
+      "overview": "Fats extracted from various plant sources",
+      "what_it_is": "Fats extracted from plants such as palm, coconut, rapeseed, sunflower, or other oil-bearing crops",
+      "why_its_used": "Provides texture, mouthfeel, and shelf stability in processed foods at lower cost than butter",
+      "where_it_comes_from": "Extracted and refined from various plant sources including palm, coconut, sunflower, rapeseed seeds or fruits",
+      "typicalUses": "Baked goods, confectionery, spreads, fried foods, processed snacks",
+      "effectsVerdict": "neutral",
+      "effectsSummary": "Plant-derived fats that are refined and processed. Quality depends on source and processing method.",
+      "concerns": "Often refined and may be high in saturated fat (palm, coconut). Processing level varies. Check for hydrogenation.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [
+        {
+          "title": "NHS: Different fats - the facts",
+          "url": "https://www.nhs.uk/live-well/eat-well/food-types/different-fats-nutrition/",
+          "covers": "Health impacts of different types of fats"
+        }
+      ],
+      "processingPenalty": 8,
+      "novaGroup": 3,
+      "database_origin": "expanded"
+    },
+    {
+      "name": "Whey powder",
+      "eNumbers": [],
+      "synonyms": [
+        "dried whey",
+        "milk whey powder",
+        "whey solids",
+        "lactose and protein from whey (from milk)",
+        "lactose and protein from whey",
+        "whey powder (from milk)"
+      ],
+      "category": "protein",
+      "group": "other",
+      "origin": "animal",
+      "overview": "Dried whey - the liquid remaining after milk has been curdled and strained",
+      "what_it_is": "The dried powder form of whey, the watery part of milk that separates from the curds during cheese making",
+      "why_its_used": "Adds protein, improves texture, enhances browning, and provides a source of lactose in processed foods",
+      "where_it_comes_from": "By-product of cheese and yogurt production, spray-dried into powder form",
+      "typicalUses": "Baked goods, confectionery, processed cheese, protein supplements, infant formula",
+      "effectsVerdict": "safe",
+      "effectsSummary": "Dairy by-product that undergoes processing. Natural source of protein and lactose.",
+      "concerns": "Contains lactose - unsuitable for lactose intolerant individuals. Dairy allergen.",
+      "hasChildWarning": false,
+      "hasPKUWarning": false,
+      "hasSulphitesAllergenLabel": false,
+      "hasPolyolsWarning": false,
+      "isPermittedGB": true,
+      "isPermittedNI": true,
+      "isPermittedEU": true,
+      "sources": [],
+      "processingPenalty": 5,
+      "novaGroup": 2,
+      "database_origin": "expanded"
     },
     {
       "name": "Whey protein isolate",
@@ -16441,7 +17042,7 @@
         {
           "title": "Reg. (EU) 2023/1428: E471 tighter limits",
           "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A32023R1428",
-          "covers": "Amended limits (metals, 3\u2011MCPD, glycidyl esters) for E471"
+          "covers": "Amended limits (metals, 3‑MCPD, glycidyl esters) for E471"
         }
       ],
       "processingPenalty": 8,

@@ -46,6 +46,7 @@
 		6522431C8ACB43E0B081B459 /* NutraSafe Beta/Utils/NutritionValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE8FF1321AD41AE8218BF92 /* NutraSafe Beta/Utils/NutritionValidator.swift */; };
 		6E87137381554C34FDC70BAE /* NutraSafeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B4B31B7774BE3AE3988004 /* NutraSafeComponents.swift */; };
 		6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */ = {isa = PBXBuildFile; fileRef = 9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */; };
+		339815FB4B854B9ABFE4557E77BC3F13 /* ingredients_comprehensive.json in Resources */ = {isa = PBXBuildFile; fileRef = 865485DE144543A4B6190ACA582146C8 /* ingredients_comprehensive.json */; };
 		71B4756E80AC49019B62DD26BC7FC2D9 /* NutraSafe Beta/ultra_processed_ingredients.json in Resources */ = {isa = PBXBuildFile; fileRef = D0FEC9B4AA084ED5BF9A4E53858FE767 /* NutraSafe Beta/ultra_processed_ingredients.json */; };
 		72A23DAA2D85142593865470 /* UseByQuickAddRedesigned.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3356CF9900A78308205C6568 /* UseByQuickAddRedesigned.swift */; };
 		73C56727E489A7AACBFA399E /* DiarySegmentedControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA14171316486136D376E50 /* DiarySegmentedControl.swift */; };
@@ -240,6 +241,7 @@
 		9DE8FF1321AD41AE8218BF92 /* NutraSafe Beta/Utils/NutritionValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/NutritionValidator.swift"; sourceTree = SOURCE_ROOT; };
 		9EA14171316486136D376E50 /* DiarySegmentedControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiarySegmentedControl.swift; path = "NutraSafe Beta/Views/Components/DiarySegmentedControl.swift"; sourceTree = "<group>"; };
 		9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = ingredients_consolidated.json; sourceTree = "<group>"; };
+		865485DE144543A4B6190ACA582146C8 /* ingredients_comprehensive.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = ingredients_comprehensive.json; sourceTree = "<group>"; };
 		A1234567890123456789012000 /* NutraSafe Beta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NutraSafe Beta.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1234567890123456789012001 /* NutraSafeBetaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutraSafeBetaApp.swift; sourceTree = "<group>"; };
 		A1234567890123456789012002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -640,6 +642,7 @@
 				CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */,
 				CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */,
 				9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */,
+				865485DE144543A4B6190ACA582146C8 /* ingredients_comprehensive.json */,
 				956ECB7D602D71885046D54F /* Managers */,
 				374281A658B7D6C8808007C2 /* ViewModels */,
 				D076EFF139B57BE85EDAEE04 /* Services */,
@@ -880,6 +883,7 @@
 				ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */,
 				41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */,
 				6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */,
+				339815FB4B854B9ABFE4557E77BC3F13 /* ingredients_comprehensive.json in Resources */,
 				71B4756E80AC49019B62DD26BC7FC2D9 /* NutraSafe Beta/ultra_processed_ingredients.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

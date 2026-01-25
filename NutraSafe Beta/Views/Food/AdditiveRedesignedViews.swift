@@ -110,7 +110,8 @@ struct AnalyzedAdditive: Identifiable {
     let affectsUserSensitivity: Bool
     let sensitivityName: String?
     let isVitaminOrMineral: Bool
-    let whatYouNeedToKnow: [String]  // Health-focused claims (concise)
+    let whatYouNeedToKnow: [String]  // Health-focused claims (concise) - LEGACY
+    let keyPoints: [AdditiveKeyPoint]?  // NEW: Severity-coded bullet points
     let scientificBackground: String  // Long-form scientific explanation
 }
 
@@ -707,7 +708,29 @@ struct RedesignedAdditiveRow: View {
             if isExpanded {
                 VStack(alignment: .leading, spacing: 14) {
                     // "What I need to know" - Key health claims (always visible)
-                    if !additive.whatYouNeedToKnow.isEmpty {
+                    // NEW: Use keyPoints with individual severity colors if available
+                    if let keyPoints = additive.keyPoints, !keyPoints.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What I need to know")
+                                .font(AppTypography.sectionTitle(13))
+                                .foregroundColor(palette.textPrimary)
+
+                            ForEach(keyPoints, id: \.text) { point in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Circle()
+                                        .fill(point.color)  // Individual severity color
+                                        .frame(width: 6, height: 6)
+                                        .padding(.top, 6)
+
+                                    Text(point.text)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(palette.textPrimary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                    } else if !additive.whatYouNeedToKnow.isEmpty {
+                        // LEGACY: Fall back to old format with uniform color
                         VStack(alignment: .leading, spacing: 8) {
                             Text("What I need to know")
                                 .font(AppTypography.sectionTitle(13))
@@ -938,67 +961,87 @@ class AdditiveAnalyzer {
             // Only add generic fallback if we have absolutely no other info
             if whyFlagged.isEmpty {
                 // Use effects summary from database if available
-                if !additive.effectsSummary.isEmpty {
-                    whyFlagged.append(additive.effectsSummary)
+                if let effectsSummary = additive.effectsSummary, !effectsSummary.isEmpty {
+                    whyFlagged.append(effectsSummary)
                 } else {
                     // Last resort generic message
                     whyFlagged.append("No detailed information available")
                 }
             }
 
-            // Build "What you need to know" - concise health claims
+            // COMPREHENSIVE FIELDS - Use new database fields if available
             var healthClaims: [String] = []
-
-            // Add key health-focused bullet points based on risk level and flags
-            if additive.hasChildWarning {
-                healthClaims.append("May affect children's activity and attention")
-            }
-            if additive.hasPKUWarning {
-                healthClaims.append("Not suitable for people with phenylketonuria (PKU)")
-            }
-            if additive.hasSulphitesAllergenLabel {
-                healthClaims.append("Contains sulphites (allergen)")
-            }
-
-            // Add verdict-specific claims
-            if additive.effectsVerdict == .avoid {
-                healthClaims.append("Some studies suggest limiting intake")
-            } else if additive.effectsVerdict == .caution {
-                healthClaims.append("Some people may wish to avoid")
-            }
-
-            // Fallback for vitamins/minerals
-            if isVitaminOrMineral(additive) && healthClaims.isEmpty {
-                healthClaims.append("Added for nutritional value")
-            }
-
-            // Build scientific background from overview (the long detailed explanation)
-            // This is what currently shows in the long descriptions
             var scientificBg = ""
-            if !additive.overview.isEmpty {
-                scientificBg = additive.overview
-            } else if !additive.effectsSummary.isEmpty {
-                // Fallback to effects summary if no overview
-                scientificBg = additive.effectsSummary
+            var shortDesc = ""
+            var whatIsIt = ""
+
+            // Try comprehensive fields first (new database)
+            if let comprehensiveHealthClaims = additive.whatYouNeedToKnow, !comprehensiveHealthClaims.isEmpty {
+                healthClaims = comprehensiveHealthClaims
+            } else {
+                // Fallback: Build health claims from flags (old database)
+                if additive.hasChildWarning {
+                    healthClaims.append("May affect children's activity and attention")
+                }
+                if additive.hasPKUWarning {
+                    healthClaims.append("Not suitable for people with phenylketonuria (PKU)")
+                }
+                if additive.hasSulphitesAllergenLabel {
+                    healthClaims.append("Contains sulphites (allergen)")
+                }
+                if additive.effectsVerdict == .avoid {
+                    healthClaims.append("Some studies suggest limiting intake")
+                } else if additive.effectsVerdict == .caution {
+                    healthClaims.append("Some people may wish to avoid")
+                }
+                if isVitaminOrMineral(additive) && healthClaims.isEmpty {
+                    healthClaims.append("Added for nutritional value")
+                }
             }
 
-            // Add typical uses if available
-            if !additive.typicalUses.isEmpty && !scientificBg.isEmpty {
-                scientificBg += "\n\nTypical uses: \(additive.typicalUses)"
+            // Try comprehensive fullDescription first
+            if let fullDesc = additive.fullDescription, !fullDesc.isEmpty {
+                scientificBg = fullDesc
+            } else if let overview = additive.overview, !overview.isEmpty {
+                scientificBg = overview
+            } else if let summary = additive.effectsSummary, !summary.isEmpty {
+                scientificBg = summary
+            }
+
+            // Add typical uses if available and not already in description
+            if let uses = additive.typicalUses, !uses.isEmpty, !scientificBg.isEmpty, !scientificBg.contains(uses) {
+                scientificBg += "\n\nTypical uses: \(uses)"
+            } else if let whyUsed = additive.whyItsUsed, !whyUsed.isEmpty, !scientificBg.contains(whyUsed) {
+                scientificBg += "\n\nUsed in: \(whyUsed)"
+            }
+
+            // Short description - try comprehensive first
+            if let whereFrom = additive.whereItComesFrom, !whereFrom.isEmpty {
+                shortDesc = whereFrom
+            } else {
+                shortDesc = override?.originSummary ?? additive.origin.rawValue
+            }
+
+            // What it is - try comprehensive first
+            if let whatItIsComp = additive.whatItIs, !whatItIsComp.isEmpty {
+                whatIsIt = whatItIsComp
+            } else {
+                whatIsIt = override?.whatItIs ?? "A food additive used in processing."
             }
 
             let analyzed = AnalyzedAdditive(
                 name: override?.displayName ?? additive.name,
                 eNumber: additive.eNumber,
                 riskLevel: riskLevel,
-                shortDescription: override?.originSummary ?? additive.origin.rawValue,
-                whatItIs: override?.whatItIs ?? "A food additive used in processing.",
+                shortDescription: shortDesc,
+                whatItIs: whatIsIt,
                 origin: additive.origin.rawValue,
                 whyFlagged: whyFlagged,
                 affectsUserSensitivity: affectsSensitivity,
                 sensitivityName: sensitivityName,
                 isVitaminOrMineral: isVitaminOrMineral(additive),
                 whatYouNeedToKnow: healthClaims,
+                keyPoints: additive.keyPoints,  // NEW: Pass through severity-coded keyPoints
                 scientificBackground: scientificBg
             )
 
@@ -1085,6 +1128,7 @@ class AdditiveAnalyzer {
                 sensitivityName: nil,
                 isVitaminOrMineral: false,
                 whatYouNeedToKnow: healthClaims,
+                keyPoints: nil,  // Ultra-processed ingredients don't have keyPoints yet
                 scientificBackground: scientificBg
             )
 
