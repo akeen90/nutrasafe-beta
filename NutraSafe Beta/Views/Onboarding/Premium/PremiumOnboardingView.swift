@@ -210,6 +210,10 @@ struct BreathScreen: View {
     let onContinue: () -> Void
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
+    private var isIPad: Bool {
+        isIPad
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
@@ -217,22 +221,22 @@ struct BreathScreen: View {
             // Headline - larger on iPad
             VStack(spacing: 12) {
                 Text("Your body")
-                    .font(.system(size: horizontalSizeClass == .regular ? 44 : 34, weight: .bold, design: .serif))
+                    .font(.system(size: isIPad ? 44 : 34, weight: .bold, design: .serif))
                     .foregroundColor(Color(white: 0.2))
 
                 Text("already knows.")
-                    .font(.system(size: horizontalSizeClass == .regular ? 44 : 34, weight: .bold, design: .serif))
+                    .font(.system(size: isIPad ? 44 : 34, weight: .bold, design: .serif))
                     .foregroundColor(Color(white: 0.2))
             }
             .padding(.bottom, 40)
 
             // Breathing blob - larger on iPad
             BreathingBlob(palette: palette)
-                .frame(height: horizontalSizeClass == .regular ? 360 : 280)
+                .frame(height: isIPad ? 360 : 280)
 
             // Subtext
             Text("We're here to help you listen.")
-                .font(.system(size: horizontalSizeClass == .regular ? 20 : 17, weight: .regular))
+                .font(.system(size: isIPad ? 20 : 17, weight: .regular))
                 .foregroundColor(Color(white: 0.4))
                 .italic()
                 .padding(.top, 40)
@@ -266,28 +270,28 @@ struct MirrorScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: horizontalSizeClass == .regular ? 100 : 60)
+            Spacer().frame(height: isIPad ? 100 : 60)
 
             // Headline - larger on iPad
             VStack(spacing: 8) {
                 Text("What would change")
-                    .font(.system(size: horizontalSizeClass == .regular ? 36 : 28, weight: .bold, design: .serif))
+                    .font(.system(size: isIPad ? 36 : 28, weight: .bold, design: .serif))
                     .foregroundColor(Color(white: 0.2))
 
                 Text("if you truly understood")
-                    .font(.system(size: horizontalSizeClass == .regular ? 36 : 28, weight: .bold, design: .serif))
+                    .font(.system(size: isIPad ? 36 : 28, weight: .bold, design: .serif))
                     .foregroundColor(Color(white: 0.2))
 
                 Text("what you eat?")
-                    .font(.system(size: horizontalSizeClass == .regular ? 36 : 28, weight: .bold, design: .serif))
+                    .font(.system(size: isIPad ? 36 : 28, weight: .bold, design: .serif))
                     .foregroundColor(Color(white: 0.2))
             }
             .multilineTextAlignment(.center)
-            .padding(.horizontal, horizontalSizeClass == .regular ? 60 : 24)
+            .padding(.horizontal, isIPad ? 60 : 24)
 
             // Subtext
             Text("Choose what resonates most.")
-                .font(.system(size: horizontalSizeClass == .regular ? 18 : 15, weight: .regular))
+                .font(.system(size: isIPad ? 18 : 15, weight: .regular))
                 .foregroundColor(Color(white: 0.5))
                 .padding(.top, 12)
 

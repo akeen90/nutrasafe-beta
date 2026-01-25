@@ -152,6 +152,8 @@ class OnboardingManager: ObservableObject {
     /// Reset onboarding (for restart from Settings)
     func resetOnboarding() {
         UserDefaults.standard.set(false, forKey: hasCompletedKey)
+        UserDefaults.standard.set(false, forKey: hasCompletedPreAuthKey)
+        UserDefaults.standard.set(false, forKey: hasCompletedPermissionsKey)
         UserDefaults.standard.set(false, forKey: hasSeenWelcomeKey)
         // Note: We don't reset disclaimer acceptance - user has already agreed
         // Note: We don't reset gender/birthday - those are user profile data
