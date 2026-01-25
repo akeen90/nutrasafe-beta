@@ -17,7 +17,22 @@ struct UseByMainViewRedesigned: View {
 
     // User intent palette
     private var palette: OnboardingPalette {
-        OnboardingPalette.forCurrentUser(colorScheme: colorScheme)
+        let savedIntent = UserDefaults.standard.string(forKey: "userIntent")
+        let intent = UserIntent(rawValue: savedIntent ?? "safer")
+        return OnboardingPalette.forIntent(intent)
+    }
+
+    // Text colors based on color scheme
+    private var textPrimary: Color {
+        colorScheme == .dark ? Color.white : Color.black
+    }
+
+    private var textSecondary: Color {
+        colorScheme == .dark ? Color.white.opacity(0.7) : Color.black.opacity(0.6)
+    }
+
+    private var textTertiary: Color {
+        colorScheme == .dark ? Color.white.opacity(0.5) : Color.black.opacity(0.4)
     }
 
     // Search state
@@ -54,7 +69,7 @@ struct UseByMainViewRedesigned: View {
                     .font(.system(size: 32, weight: .bold, design: .serif))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [palette.textPrimary, palette.textPrimary.opacity(0.8)],
+                            colors: [textPrimary, textPrimary.opacity(0.8)],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -62,7 +77,7 @@ struct UseByMainViewRedesigned: View {
 
                 Text("Never waste food. Know what needs eating soon.")
                     .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(palette.textSecondary)
+                    .foregroundColor(textSecondary)
                     .lineSpacing(4)
             }
             .padding(.horizontal, 24)
@@ -72,13 +87,13 @@ struct UseByMainViewRedesigned: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(
-                        isSearchFocused ? palette.accent : palette.textTertiary
+                        isSearchFocused ? palette.accent : textTertiary
                     )
 
                 TextField("Search to add...", text: $searchQuery)
                     .textFieldStyle(.plain)
                     .font(.system(size: 17, weight: .regular))
-                    .foregroundColor(palette.textPrimary)
+                    .foregroundColor(textPrimary)
                     .focused($isSearchFocused)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -93,7 +108,7 @@ struct UseByMainViewRedesigned: View {
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(palette.textTertiary)
+                            .foregroundColor(textTertiary)
                     }
                 }
 
@@ -146,7 +161,7 @@ struct UseByMainViewRedesigned: View {
     private var insightCards: some View {
         HStack(spacing: 12) {
             // Total items - clean stat
-            InsightCard(
+            UseByInsightCard(
                 value: "\(sortedItems.count)",
                 label: sortedItems.count == 1 ? "item" : "items",
                 icon: "refrigerator.fill",
@@ -155,7 +170,7 @@ struct UseByMainViewRedesigned: View {
 
             // Urgent/this week - adaptive messaging
             if !urgentItems.isEmpty {
-                InsightCard(
+                UseByInsightCard(
                     value: "\(urgentItems.count)",
                     label: urgentItems.count == 1 ? "needs using" : "need using",
                     icon: "exclamationmark.triangle.fill",
@@ -163,7 +178,7 @@ struct UseByMainViewRedesigned: View {
                     subtitle: "Use today"
                 )
             } else if !thisWeekItems.isEmpty {
-                InsightCard(
+                UseByInsightCard(
                     value: "\(thisWeekItems.count)",
                     label: "this week",
                     icon: "clock.fill",
@@ -171,7 +186,7 @@ struct UseByMainViewRedesigned: View {
                     subtitle: "Plan ahead"
                 )
             } else if !sortedItems.isEmpty {
-                InsightCard(
+                UseByInsightCard(
                     value: "✓",
                     label: "all good",
                     icon: "checkmark.circle.fill",
@@ -191,7 +206,7 @@ struct UseByMainViewRedesigned: View {
             HStack(alignment: .bottom) {
                 Text("Your Items")
                     .font(.system(size: 24, weight: .semibold, design: .serif))
-                    .foregroundColor(palette.textPrimary)
+                    .foregroundColor(textPrimary)
 
                 Spacer()
 
@@ -216,9 +231,15 @@ struct UseByMainViewRedesigned: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(sortedItems, id: \.id) { item in
-                        PremiumUseByRow(item: item, palette: palette)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 6)
+                        PremiumUseByItemRow(
+                            item: item,
+                            palette: palette,
+                            textPrimary: textPrimary,
+                            textSecondary: textSecondary,
+                            textTertiary: textTertiary
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
                     }
                 }
             }
@@ -255,11 +276,11 @@ struct UseByMainViewRedesigned: View {
             VStack(spacing: 8) {
                 Text("Your fresh start")
                     .font(.system(size: 22, weight: .semibold, design: .serif))
-                    .foregroundColor(palette.textPrimary)
+                    .foregroundColor(textPrimary)
 
                 Text("Search above to add items and track\nwhat needs eating soon")
                     .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(palette.textSecondary)
+                    .foregroundColor(textSecondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
             }
@@ -306,7 +327,7 @@ struct UseByMainViewRedesigned: View {
                             .tint(palette.accent)
                         Text("Searching...")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(palette.textSecondary)
+                            .foregroundColor(textSecondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 32)
@@ -315,15 +336,15 @@ struct UseByMainViewRedesigned: View {
                     VStack(spacing: 12) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 32, weight: .light))
-                            .foregroundColor(palette.textTertiary.opacity(0.5))
+                            .foregroundColor(textTertiary.opacity(0.5))
 
                         Text("No foods found")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(palette.textSecondary)
+                            .foregroundColor(textSecondary)
 
                         Text("Try a different search term")
                             .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(palette.textTertiary)
+                            .foregroundColor(textTertiary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 32)
@@ -335,7 +356,12 @@ struct UseByMainViewRedesigned: View {
                                 showingFoodDetail = food
                                 isSearchFocused = false
                             } label: {
-                                SearchResultRow(food: food, palette: palette)
+                                SearchResultRow(
+                                    food: food,
+                                    palette: palette,
+                                    textPrimary: textPrimary,
+                                    textTertiary: textTertiary
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -466,7 +492,7 @@ struct UseByMainViewRedesigned: View {
 
 // MARK: - Insight Card (Clean Stat Display)
 
-private struct InsightCard: View {
+private struct UseByInsightCard: View {
     let value: String
     let label: String
     let icon: String
@@ -520,7 +546,7 @@ private struct InsightCard: View {
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.tertiary)
+                        .foregroundColor(.secondary.opacity(0.7))
                 }
             }
         }
@@ -548,9 +574,12 @@ private struct InsightCard: View {
 
 // MARK: - Premium Use By Row (Clean Item Card)
 
-private struct PremiumUseByRow: View {
+private struct PremiumUseByItemRow: View {
     let item: UseByInventoryItem
     let palette: OnboardingPalette
+    let textPrimary: Color
+    let textSecondary: Color
+    let textTertiary: Color
     @State private var showingDetail = false
 
     private var freshnessColor: Color {
@@ -576,36 +605,27 @@ private struct PremiumUseByRow: View {
             showingDetail = true
         } label: {
             HStack(spacing: 14) {
-                // Food image or icon
-                if let imageData = item.imageData,
-                   let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 60, height: 60)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(
-                            LinearGradient(
-                                colors: [palette.accent.opacity(0.15), palette.accent.opacity(0.08)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                // Food icon placeholder
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        LinearGradient(
+                            colors: [palette.accent.opacity(0.15), palette.accent.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .frame(width: 60, height: 60)
-                        .overlay(
-                            Image(systemName: "fork.knife")
-                                .font(.system(size: 24, weight: .light))
-                                .foregroundColor(palette.accent.opacity(0.6))
-                        )
-                }
+                    )
+                    .frame(width: 60, height: 60)
+                    .overlay(
+                        Image(systemName: "fork.knife")
+                            .font(.system(size: 24, weight: .light))
+                            .foregroundColor(palette.accent.opacity(0.6))
+                    )
 
                 // Item details
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.name)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(palette.textPrimary)
+                        .foregroundColor(textPrimary)
                         .lineLimit(1)
 
                     // Freshness indicator
@@ -616,7 +636,7 @@ private struct PremiumUseByRow: View {
 
                         Text(freshnessText)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(palette.textSecondary)
+                            .foregroundColor(textSecondary)
                     }
                 }
 
@@ -625,7 +645,7 @@ private struct PremiumUseByRow: View {
                 // Chevron
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(textTertiary)
             }
             .padding(14)
             .background(
@@ -637,10 +657,10 @@ private struct PremiumUseByRow: View {
                     )
             )
         }
-        .buttonStyle(ScaleButtonStyle())
+        .buttonStyle(UseByScaleButtonStyle())
         .fullScreenCover(isPresented: $showingDetail) {
             // Detail view for editing/deleting item
-            UseByItemDetailView(item: item)
+            UseByDetailSheet(item: item)
         }
     }
 }
@@ -650,6 +670,8 @@ private struct PremiumUseByRow: View {
 private struct SearchResultRow: View {
     let food: FoodSearchResult
     let palette: OnboardingPalette
+    let textPrimary: Color
+    let textTertiary: Color
 
     var body: some View {
         HStack(spacing: 12) {
@@ -666,13 +688,13 @@ private struct SearchResultRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(food.name)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(palette.textPrimary)
+                    .foregroundColor(textPrimary)
                     .lineLimit(1)
 
                 if let brand = food.brand {
                     Text(brand)
                         .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(palette.textTertiary)
+                        .foregroundColor(textTertiary)
                         .lineLimit(1)
                 }
             }
@@ -698,7 +720,7 @@ private struct SearchResultRow: View {
 
 // MARK: - Scale Button Style
 
-private struct ScaleButtonStyle: ButtonStyle {
+private struct UseByScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
@@ -708,7 +730,7 @@ private struct ScaleButtonStyle: ButtonStyle {
 
 // MARK: - Use By Item Detail View (Placeholder)
 
-private struct UseByItemDetailView: View {
+private struct UseByDetailSheet: View {
     let item: UseByInventoryItem
     @Environment(\.dismiss) var dismiss
 
