@@ -174,40 +174,65 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     const allStats: Record<string, { count: number; error?: string }> = {};
 
     try {
-      // Call Cloud Function ONCE PER INDEX to keep responses small
+      // Call Cloud Function with pagination to handle large indices
+      const PAGE_SIZE = 5000; // Request 5k products at a time
+
       for (let i = 0; i < indicesToScan.length; i++) {
         const indexName = indicesToScan[i];
         addLog(`📦 Pulling ${indexName}...`);
 
-        const response = await fetch(`${FUNCTIONS_BASE}/browseAllIndices`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            indices: [indexName], // ONE index at a time
-            limit: testMode ? 1000 : undefined,
-          }),
-        });
+        let offset = 0;
+        let hasMore = true;
+        let indexProducts: any[] = [];
+        let totalForIndex = 0;
 
-        if (!response.ok) {
-          addLog(`❌ ${indexName}: HTTP ${response.status}`);
-          allStats[indexName] = { count: 0, error: `HTTP ${response.status}` };
-          continue;
+        // Paginate through the index
+        while (hasMore) {
+          const response = await fetch(`${FUNCTIONS_BASE}/browseAllIndices`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              indices: [indexName],
+              offset,
+              pageSize: PAGE_SIZE,
+              limit: testMode ? 1000 : undefined,
+            }),
+          });
+
+          if (!response.ok) {
+            addLog(`❌ ${indexName}: HTTP ${response.status}`);
+            allStats[indexName] = { count: totalForIndex, error: `HTTP ${response.status}` };
+            break;
+          }
+
+          const result = await response.json();
+
+          if (result.success && result.products) {
+            const products = result.products || [];
+            indexProducts.push(...products);
+            totalForIndex = result.pagination?.total || indexProducts.length;
+
+            // Show progress for large indices
+            if (offset > 0) {
+              addLog(`  → ${indexProducts.length.toLocaleString()} / ${totalForIndex.toLocaleString()} products...`);
+            }
+
+            // Check if there's more data
+            hasMore = result.pagination?.hasMore === true;
+            offset += PAGE_SIZE;
+
+          } else {
+            addLog(`❌ ${indexName}: ${result.error || 'Failed'}`);
+            allStats[indexName] = { count: totalForIndex, error: result.error || 'Failed' };
+            break;
+          }
         }
 
-        const result = await response.json();
-
-        if (result.success && result.products) {
-          const products = result.products || [];
-          allFetchedProducts.push(...products);
-
-          const stats = result.indexStats || {};
-          Object.assign(allStats, stats);
-
-          const count = products.length;
-          addLog(`✅ ${indexName}: ${count.toLocaleString()} products`);
-        } else {
-          addLog(`❌ ${indexName}: ${result.error || 'Failed'}`);
-          allStats[indexName] = { count: 0, error: result.error || 'Failed' };
+        // Add all products from this index
+        if (indexProducts.length > 0) {
+          allFetchedProducts.push(...indexProducts);
+          allStats[indexName] = { count: indexProducts.length };
+          addLog(`✅ ${indexName}: ${indexProducts.length.toLocaleString()} products`);
         }
 
         // Update progress
