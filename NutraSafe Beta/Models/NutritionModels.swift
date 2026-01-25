@@ -1274,10 +1274,17 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return dbPortions
         }
 
-        // 2. CRITICAL FIX: For oils, ALWAYS use preset portions (tablespoon-based) regardless of servingSizeG
-        // Oils in database often have 200ml servingSizeG which is incorrect for typical usage
-        if detectedCategory == .oil {
+        // 2. CRITICAL FIX: For certain categories, ALWAYS use preset portions regardless of servingSizeG
+        // Database servings are often box/bottle sizes, not typical consumption portions
+        switch detectedCategory {
+        case .oil:
+            // Oils: Database shows 200ml+ (bottle size), users need tablespoon portions (15ml)
             return presetPortions
+        case .cereal:
+            // Cereals: Database shows 500g+ (box size), users need bowl portions (30-45g)
+            return presetPortions
+        default:
+            break
         }
 
         // 3. If food has a real serving size (not default 100g), use that plus extras for drinks
