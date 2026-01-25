@@ -1163,6 +1163,52 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         return false
     }
 
+    /// Smart serving size that extracts from product name when servingSizeG is generic 100g
+    /// Only uses extracted sizes when they're reasonable serving sizes (not package sizes)
+    /// Example: "Chocolate Bar 38G" → 38g ✅  |  "Chocolate Truffles 480G" → 100g (package size)
+    var actualServingSize: Double {
+        // If we have a specific serving size (not the generic 100g), use it
+        if let g = servingSizeG, g > 0 && g != 100 {
+            return g
+        }
+
+        // If servingSizeG is 100 (generic default), try to extract from product name
+        // BUT only use if it's a reasonable SERVING size, not a PACKAGE size
+        let nameLower = name.lowercased()
+
+        // Regex to match sizes like "38g", "200g", "330ml", "1.5l"
+        let sizePatterns = [
+            #"(\d+(?:\.\d+)?)\s*g\b"#,        // "38g", "200 g"
+            #"(\d+(?:\.\d+)?)\s*ml\b"#,       // "330ml", "500 ml"
+            #"(\d+(?:\.\d+)?)\s*l\b"#         // "1.5l", "2 l"
+        ]
+
+        for pattern in sizePatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+               let match = regex.firstMatch(in: nameLower, options: [], range: NSRange(location: 0, length: nameLower.count)),
+               let range = Range(match.range(at: 1), in: nameLower),
+               var size = Double(String(nameLower[range])) {
+
+                // Convert liters to ml (grams)
+                if pattern.contains("l\\\\b") && !pattern.contains("ml") {
+                    size = size * 1000
+                }
+
+                // CRITICAL: Only use extracted size if it's a reasonable serving, not package size
+                // Single-serve items: chocolate bars (20-100g), snacks (20-150g), drinks (150-500ml)
+                // Package sizes (ignore these): chocolate boxes (200-500g), multipacks (500g+), large bottles (1L+)
+                let maxReasonableServing: Double = 200.0  // 200g/ml is max for single-serve
+                if size <= maxReasonableServing {
+                    return size
+                }
+                // If > 200g, it's likely a package size, ignore it and use default 100g
+            }
+        }
+
+        // Fallback to 100g if no valid serving size found in name
+        return servingSizeG ?? 100.0
+    }
+
     // MARK: - Fasting Philosophy Helpers
 
     /// Determines if this food is allowed during a fast based on the user's drinks philosophy

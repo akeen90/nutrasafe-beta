@@ -79,9 +79,9 @@ struct FoodSearchResultRow: View {
     let onAdd: () -> Void
     
     // Calculate per-serving calories from per-100g values
-    // PERFORMANCE: Uses pre-parsed servingSizeG instead of regex on every render
+    // SMART SERVING: Uses actualServingSize which extracts from name (e.g., "38G") when servingSizeG is generic 100g
     private var perServingCalories: Double {
-        let servingSize = food.servingSizeG ?? 100.0
+        let servingSize = food.actualServingSize
         return food.calories * (servingSize / 100.0)
     }
 

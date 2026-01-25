@@ -2176,12 +2176,11 @@ struct AdditiveScoreHeader: View {
     }
 
     private var gradeInitial: String {
-        if summary.totalAdditives == 0 { return "✓" }
-        switch summary.score {
-        case 80...100: return "A"
-        case 60..<80: return "B"
-        case 40..<60: return "C"
-        default: return "D"
+        // Show checkmark if no additives, otherwise show the count
+        if summary.totalAdditives == 0 {
+            return "✓"
+        } else {
+            return "\(summary.totalAdditives)"
         }
     }
 
