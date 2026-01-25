@@ -274,6 +274,7 @@ struct PersonalDetailsScreen: View {
             heightFieldFocused = false
             weightFieldFocused = false
         }
+        .keyboardDismissButton()
     }
 
     private func savePersonalDetails() {

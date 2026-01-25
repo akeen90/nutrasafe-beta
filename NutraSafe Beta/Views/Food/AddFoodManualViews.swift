@@ -892,6 +892,7 @@ struct ManualFoodDetailEntryView: View {
                 }
             }
             .background(AppAnimatedBackground())
+            .keyboardDismissButton()
         }
     }
 

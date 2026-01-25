@@ -28,6 +28,7 @@ struct ManualReactionFoodEntryView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .keyboardDismissButton()
         .navigationTitle("Add Manually")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarItems(

@@ -298,6 +298,7 @@ struct SignInView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .keyboardDismissButton()
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -558,6 +559,7 @@ struct SignUpView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .keyboardDismissButton()
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -755,6 +757,7 @@ struct PasswordResetView: View {
                     }
                 }
             }
+            .keyboardDismissButton()
         }
         .alert("Success", isPresented: $showingSuccess) {
             Button("OK") {

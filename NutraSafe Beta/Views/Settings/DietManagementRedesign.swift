@@ -151,6 +151,7 @@ struct DietManagementRedesigned: View {
                 .padding(.top, DesignTokens.Spacing.md)
             }
             .scrollDismissesKeyboard(.interactively)
+            .keyboardDismissButton()
             .scrollContentBackground(.hidden)
             .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Your Nutrition")
@@ -1335,6 +1336,7 @@ struct BMRCalculatorRedesigned: View {
                 .padding(.top, DesignTokens.Spacing.md)
             }
             .scrollDismissesKeyboard(.interactively)
+            .keyboardDismissButton()
             .scrollContentBackground(.hidden)
             .background(AppAnimatedBackground().ignoresSafeArea())
             .navigationTitle("Energy Calculator")
