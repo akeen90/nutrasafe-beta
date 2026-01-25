@@ -25,6 +25,7 @@ struct PersonalDetailsScreen: View {
     @State private var isEditingWeight = false
     @FocusState private var heightFieldFocused: Bool
     @FocusState private var weightFieldFocused: Bool
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     // Height range (100cm - 250cm)
     private let heightRange: ClosedRange<Double> = 100...250
@@ -119,7 +120,7 @@ struct PersonalDetailsScreen: View {
                                 Slider(value: $state.heightCm, in: heightRange, step: 1)
                                     .accentColor(state.palette.primary)
 
-                                // Tappable text field
+                                // Tappable text field - larger on iPad
                                 Button {
                                     heightText = "\(Int(state.heightCm))"
                                     isEditingHeight = true
@@ -129,9 +130,14 @@ struct PersonalDetailsScreen: View {
                                         TextField("", text: $heightText)
                                             .keyboardType(.numberPad)
                                             .multilineTextAlignment(.center)
-                                            .font(.system(size: 15, weight: .medium))
+                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
                                             .foregroundColor(Color(white: 0.3))
-                                            .frame(width: 50)
+                                            .frame(width: horizontalSizeClass == .regular ? 80 : 50)
+                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.7))
+                                            )
                                             .focused($heightFieldFocused)
                                             .onChange(of: heightFieldFocused) { _, focused in
                                                 if !focused {
@@ -143,15 +149,20 @@ struct PersonalDetailsScreen: View {
                                             }
                                     } else {
                                         Text("\(Int(state.heightCm))")
-                                            .font(.system(size: 15, weight: .medium))
+                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
                                             .foregroundColor(Color(white: 0.3))
-                                            .frame(width: 50)
+                                            .frame(width: horizontalSizeClass == .regular ? 80 : 50)
+                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.5))
+                                            )
                                     }
                                 }
                                 .buttonStyle(.plain)
 
                                 Text("cm")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
                                     .foregroundColor(Color(white: 0.5))
                             }
 
@@ -175,7 +186,7 @@ struct PersonalDetailsScreen: View {
                                 Slider(value: $state.weightKg, in: weightRange, step: 0.5)
                                     .accentColor(state.palette.primary)
 
-                                // Tappable text field
+                                // Tappable text field - larger on iPad
                                 Button {
                                     weightText = String(format: "%.1f", state.weightKg)
                                     isEditingWeight = true
@@ -185,9 +196,14 @@ struct PersonalDetailsScreen: View {
                                         TextField("", text: $weightText)
                                             .keyboardType(.decimalPad)
                                             .multilineTextAlignment(.center)
-                                            .font(.system(size: 15, weight: .medium))
+                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
                                             .foregroundColor(Color(white: 0.3))
-                                            .frame(width: 55)
+                                            .frame(width: horizontalSizeClass == .regular ? 90 : 55)
+                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.7))
+                                            )
                                             .focused($weightFieldFocused)
                                             .onChange(of: weightFieldFocused) { _, focused in
                                                 if !focused {
@@ -199,15 +215,20 @@ struct PersonalDetailsScreen: View {
                                             }
                                     } else {
                                         Text(String(format: "%.1f", state.weightKg))
-                                            .font(.system(size: 15, weight: .medium))
+                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
                                             .foregroundColor(Color(white: 0.3))
-                                            .frame(width: 55)
+                                            .frame(width: horizontalSizeClass == .regular ? 90 : 55)
+                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.5))
+                                            )
                                     }
                                 }
                                 .buttonStyle(.plain)
 
                                 Text("kg")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
                                     .foregroundColor(Color(white: 0.5))
                             }
 

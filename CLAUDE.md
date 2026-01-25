@@ -149,6 +149,194 @@ If Claude is going in circles:
 - "Grep for where this view is instantiated/called."
 - "The code exists but isn't showing - find what's being called instead."
 
+## 🚫 ANTI-LOOP PATTERNS (CRITICAL!)
+
+**NEVER write code with infinite loops.** Always add safety limits, break conditions, and progress tracking.
+
+### Known Loop Issues (FIXED - Don't repeat!)
+
+#### 1. React Component Re-render Loops
+**Problem:** Component recreates functions on every render, triggering React Fast Refresh infinitely.
+
+❌ **BAD:**
+```typescript
+// DON'T: Function recreated every render
+const MyComponent = () => {
+  loadDataRef.current = async () => {
+    // ... async work
+  };
+
+  const loadData = useCallback(() => loadDataRef.current?.(), []);
+
+  useEffect(() => loadData(), []); // Calls new function each render!
+}
+```
+
+✅ **GOOD:**
+```typescript
+// DO: Wrap in useCallback with dependencies
+const MyComponent = () => {
+  const loadData = useCallback(async () => {
+    // ... async work
+  }, [dependency1, dependency2]); // Stable reference
+
+  useEffect(() => loadData(), []); // Calls once
+}
+```
+
+**Files affected:** `firebase/public/admin-v2/src/App.tsx`, `MasterDatabaseBuilderPage.tsx`
+
+#### 2. Pagination Loops (Backend API)
+**Problem:** `hasMore: true` returned even when no data left, causing infinite pagination.
+
+❌ **BAD:**
+```typescript
+while (hasMore) {
+  const result = await fetchPage(offset);
+  hasMore = result.hasMore; // If backend always says true = infinite loop!
+  offset += pageSize;
+}
+```
+
+✅ **GOOD:**
+```typescript
+const MAX_ITERATIONS = 2000; // Safety limit
+let iterations = 0;
+
+while (hasMore && iterations < MAX_ITERATIONS) {
+  iterations++;
+  const result = await fetchPage(offset);
+
+  // Safety: Stop if no products returned
+  if (result.products.length === 0) {
+    hasMore = false;
+    break;
+  }
+
+  // Safety: Stop if less than full page (last page)
+  if (result.products.length < pageSize) {
+    hasMore = false;
+  }
+
+  hasMore = result.hasMore;
+  offset += pageSize;
+}
+
+if (iterations >= MAX_ITERATIONS) {
+  console.warn('Hit safety limit');
+}
+```
+
+**Files affected:** `firebase/public/admin-v2/src/components/MasterDatabaseBuilderPage.tsx`
+
+#### 3. O(n²) Algorithm Performance (Not a Loop, But Acts Like One)
+**Problem:** Comparing every product with every other product = 2.6 billion comparisons for 72k items.
+
+❌ **BAD:**
+```typescript
+// O(n²) - Would take 16+ hours for 72k items!
+for (let i = 0; i < products.length; i++) {
+  for (let j = i + 1; j < products.length; j++) {
+    if (similar(products[i], products[j])) {
+      // ...
+    }
+  }
+}
+```
+
+✅ **GOOD:**
+```typescript
+// O(n) - Use hash-based bucketing
+const barcodeIndex = new Map<string, Product[]>();
+const nameIndex = new Map<string, Product[]>();
+
+// Build indices (O(n))
+for (const product of products) {
+  const barcode = product.barcode;
+  if (!barcodeIndex.has(barcode)) barcodeIndex.set(barcode, []);
+  barcodeIndex.get(barcode).push(product);
+
+  const nameKey = product.name.substring(0, 15);
+  if (!nameIndex.has(nameKey)) nameIndex.set(nameKey, []);
+  nameIndex.get(nameKey).push(product);
+}
+
+// Find duplicates within buckets (only compare similar items)
+for (const [barcode, items] of barcodeIndex) {
+  if (items.length > 1) {
+    // Only compare items with same barcode (small group)
+    // ...
+  }
+}
+```
+
+**Files affected:** `firebase/public/admin-v2/src/components/MasterDatabaseBuilderPage.tsx`
+
+#### 4. Vite Dev Server HMR Loops
+**Problem:** Build process modifies watched files, triggering reload, which re-runs build, etc.
+
+❌ **BAD:**
+```json
+// package.json - build modifies index.html which dev watches
+{
+  "dev": "vite",
+  "build": "vite build && cp dist/index.html ."
+}
+```
+
+✅ **GOOD:**
+```json
+// Copy source HTML before dev starts, ignore built files
+{
+  "dev": "cp index.src.html index.html && vite",
+  "build": "cp index.src.html index.html && vite build && cp dist/index.html ."
+}
+```
+
+```typescript
+// vite.config.ts - Ignore built files
+export default defineConfig({
+  server: {
+    watch: {
+      ignored: [
+        '**/dist/**',
+        '**/assets/**',
+        '**/index.html' // Ignore production index.html
+      ]
+    }
+  }
+})
+```
+
+**Files affected:** `firebase/public/admin-v2/package.json`, `vite.config.ts`
+
+### Loop Prevention Checklist
+
+Before writing ANY loop, pagination, or async iteration:
+
+- [ ] **Add MAX_ITERATIONS** safety limit (1000-2000 for large datasets)
+- [ ] **Check for empty results** - Stop if API returns 0 items
+- [ ] **Check for partial page** - Stop if results < pageSize (last page)
+- [ ] **Add progress logging** every 100-1000 iterations to show it's working
+- [ ] **Add elapsed time tracking** to estimate completion
+- [ ] **Use `await new Promise(resolve => setTimeout(resolve, 0))`** every N iterations to allow UI updates
+- [ ] **Consider algorithm complexity** - Is there an O(n) or O(n log n) alternative to O(n²)?
+- [ ] **Wrap functions in useCallback** with proper dependencies (React)
+- [ ] **Initialize state with functions** `useState(() => initialValue)` not `useState(initialValue)` (React)
+- [ ] **Ignore build artifacts** in file watchers (Vite, Webpack, etc.)
+
+### When You See "Loading..." for Too Long
+
+If something is loading for >30 seconds:
+
+1. **Open browser console** (F12) - Look for errors or infinite requests
+2. **Check Network tab** - Is the same request firing repeatedly?
+3. **Check for while/for loops** - Do they have break conditions?
+4. **Check algorithm complexity** - Is it O(n²) or worse?
+5. **Add console.log with timestamps** - Confirm progress or detect stuck state
+
+**If you create a loop issue:** Document it here immediately so future Claude doesn't repeat it!
+
 ## 🛠️ Development Commands
 
 ### iOS Development

@@ -72,12 +72,145 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
   const [selectedSingleIndex, setSelectedSingleIndex] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchField, setSearchField] = useState<'all' | 'brand' | 'name' | 'barcode'>('all');
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [...prev.slice(-100), `${timestamp}: ${message}`]);
     console.log(message);
   }, []);
+
+  // Select all filtered products
+  const handleSelectAll = useCallback(() => {
+    // Filter products based on current search
+    const filtered = searchQuery
+      ? allProducts.filter(product => {
+          const query = searchQuery.toLowerCase().trim();
+          const name = (product.name || product.foodName || '').toLowerCase();
+          const brand = (product.brand || product.brandName || '').toLowerCase();
+          const barcode = Array.isArray(product.barcode)
+            ? product.barcode.join(' ').toLowerCase()
+            : (product.barcode || '').toLowerCase();
+
+          if (searchField === 'all') {
+            return name.includes(query) || brand.includes(query) || barcode.includes(query);
+          } else if (searchField === 'brand') {
+            return brand.includes(query);
+          } else if (searchField === 'name') {
+            return name.includes(query);
+          } else if (searchField === 'barcode') {
+            return barcode.includes(query);
+          }
+          return false;
+        })
+      : allProducts;
+
+    const ids = new Set(filtered.map(p => p.objectID));
+    setSelectedProductIds(ids);
+  }, [searchQuery, searchField, allProducts]);
+
+  // Deselect all
+  const handleDeselectAll = useCallback(() => {
+    setSelectedProductIds(new Set());
+  }, []);
+
+  // Toggle individual product selection
+  const toggleProductSelection = useCallback((productId: string) => {
+    setSelectedProductIds(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Delete selected products
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedProductIds.size === 0) {
+      alert('No products selected');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to DELETE ${selectedProductIds.size} product(s)? This action CANNOT be undone!`
+    );
+
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    addLog(`🗑️ Deleting ${selectedProductIds.size} selected products...`);
+
+    try {
+      // Group products by source index for deletion
+      const productsByIndex = new Map<string, string[]>();
+
+      for (const productId of selectedProductIds) {
+        const product = allProducts.find(p => p.objectID === productId);
+        if (product) {
+          const indexName = product.sourceIndex;
+          if (!productsByIndex.has(indexName)) {
+            productsByIndex.set(indexName, []);
+          }
+          productsByIndex.get(indexName)!.push(productId);
+        }
+      }
+
+      let totalDeleted = 0;
+      let totalFailed = 0;
+
+      // Delete from each index
+      for (const [indexName, objectIDs] of productsByIndex) {
+        addLog(`  → Deleting ${objectIDs.length} products from ${indexName}...`);
+
+        const response = await fetch(`${FUNCTIONS_BASE}/deleteFromIndex`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            indexName,
+            objectIDs,
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            totalDeleted += objectIDs.length;
+            addLog(`  ✅ Deleted ${objectIDs.length} from ${indexName}`);
+          } else {
+            totalFailed += objectIDs.length;
+            addLog(`  ❌ Failed to delete from ${indexName}: ${result.error}`);
+          }
+        } else {
+          totalFailed += objectIDs.length;
+          addLog(`  ❌ Failed to delete from ${indexName}: HTTP ${response.status}`);
+        }
+      }
+
+      // Remove deleted products from local state
+      if (totalDeleted > 0) {
+        const deletedIds = new Set(selectedProductIds);
+        const remainingProducts = allProducts.filter(p => !deletedIds.has(p.objectID));
+        setAllProducts(remainingProducts);
+        setSelectedProductIds(new Set());
+
+        addLog(`✅ Successfully deleted ${totalDeleted} products`);
+        if (totalFailed > 0) {
+          addLog(`⚠️ Failed to delete ${totalFailed} products`);
+        }
+      } else {
+        addLog(`❌ No products were deleted`);
+      }
+    } catch (error) {
+      addLog(`❌ Error deleting products: ${error}`);
+      alert('Error deleting products. Check logs for details.');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedProductIds, allProducts, addLog]);
 
   // Calculate Levenshtein distance for fuzzy string matching
   const levenshteinDistance = (str1: string, str2: string): number => {
@@ -638,172 +771,146 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
 
       setProgress(70);
 
-      // Detect duplicates using multi-signal similarity (>80% confidence)
-      addLog('🔍 Detecting duplicates with multi-signal matching...');
-      addLog('  → Using: Barcode (100%), Brand name (30%), Food name (40%), Macros (30%)');
-      addLog('  → Minimum confidence threshold: 80%');
+      // OPTIMIZED: Use hash-based bucketing to avoid O(n²) comparisons
+      addLog('🔍 OPTIMIZED duplicate detection (hash-based bucketing)...');
+      addLog('  → Building barcode and name indices...');
 
       const processedIds = new Set<string>();
       const duplicates: DuplicateGroup[] = [];
-      let comparisonCount = 0;
-      const totalProducts = productsToScan.length;
-
-      // Compare all products pairwise with error handling
-      let errorCount = 0;
       const startTime = Date.now();
 
-      for (let i = 0; i < productsToScan.length; i++) {
-        // Update progress based on products processed (not comparisons)
-        if (i % 100 === 0) {
-          const progressPct = 70 + Math.round((i / totalProducts) * 30); // 70-100%
-          setProgress(progressPct);
+      // Step 1: Build indices (O(n) - fast!)
+      const barcodeIndex = new Map<string, Product[]>();
+      const nameIndex = new Map<string, Product[]>();
 
-          // Log progress every 1000 products with speed estimate
-          if (i > 0 && i % 1000 === 0) {
-            const elapsed = (Date.now() - startTime) / 1000; // seconds
-            const rate = Math.round(i / elapsed);
-            const remaining = totalProducts - i;
-            const eta = Math.round(remaining / rate);
-            addLog(`  → Scanned ${i.toLocaleString()} / ${totalProducts.toLocaleString()} products (${rate}/sec, ~${eta}s remaining)`);
+      for (const product of productsToScan) {
+        // Index by barcode
+        const barcodes = typeof product.barcode === 'string'
+          ? [product.barcode]
+          : Array.isArray(product.barcode) ? product.barcode : [];
+
+        for (const barcode of barcodes) {
+          if (barcode && typeof barcode === 'string') {
+            const bc = barcode.trim();
+            if (!barcodeIndex.has(bc)) barcodeIndex.set(bc, []);
+            barcodeIndex.get(bc)!.push(product);
           }
         }
-        try {
-          // Skip if already processed
-          if (processedIds.has(productsToScan[i].objectID)) continue;
 
-          // Validate product
-          const product1 = productsToScan[i];
-          if (!product1 || !product1.objectID) {
-            addLog(`⚠️ Skipping invalid product at index ${i}`);
-            continue;
+        // Index by normalized name (for fuzzy matching)
+        const name = normalizeText(product.name || product.foodName || '');
+        if (name) {
+          const nameKey = name.substring(0, 15); // First 15 chars as key
+          if (!nameIndex.has(nameKey)) nameIndex.set(nameKey, []);
+          nameIndex.get(nameKey)!.push(product);
+        }
+      }
+
+      addLog(`  ✓ Barcode index: ${barcodeIndex.size.toLocaleString()} unique codes`);
+      addLog(`  ✓ Name index: ${nameIndex.size.toLocaleString()} buckets`);
+      addLog('  → Finding duplicates (compares only similar products)...');
+
+      setProgress(75);
+
+      // Step 2: Find duplicates within buckets (much faster!)
+      const processedPairs = new Set<string>();
+      let bucketsProcessed = 0;
+      const totalBuckets = barcodeIndex.size + nameIndex.size;
+
+      // Process barcode matches (exact duplicates - highest priority)
+      for (const [barcode, products] of barcodeIndex) {
+        if (products.length > 1) {
+          const validProducts = products.filter(p => p && p.objectID && !processedIds.has(p.objectID));
+
+          if (validProducts.length > 1) {
+            for (const p of validProducts) processedIds.add(p.objectID);
+
+            const scoredProducts = validProducts.map(p => ({ product: p, score: scoreProduct(p) }));
+            scoredProducts.sort((a, b) => b.score - a.score);
+
+            duplicates.push({
+              key: `barcode-${barcode}`,
+              products: validProducts,
+              bestProduct: scoredProducts[0].product,
+              allBarcodes: [barcode],
+              score: scoredProducts[0].score,
+            });
           }
+        }
 
-          const group: Product[] = [product1];
-          const allBarcodes: string[] = [];
+        bucketsProcessed++;
+        if (bucketsProcessed % 500 === 0) {
+          const pct = 75 + Math.round((bucketsProcessed / totalBuckets) * 20);
+          setProgress(pct);
+          const elapsed = (Date.now() - startTime) / 1000;
+          const rate = Math.round(bucketsProcessed / elapsed);
+          addLog(`  → ${bucketsProcessed.toLocaleString()} / ${totalBuckets.toLocaleString()} buckets (${rate}/sec, ${duplicates.length} groups)`);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
 
-          // Collect all barcodes from first product
-          try {
-            const barcode1 = product1.barcode;
-            if (typeof barcode1 === 'string' && barcode1.trim()) {
-              allBarcodes.push(barcode1.trim());
-            } else if (Array.isArray(barcode1)) {
-              allBarcodes.push(...barcode1.filter((b): b is string => typeof b === 'string' && b.trim().length > 0).map(b => b.trim()));
-            }
-          } catch (err) {
-            addLog(`⚠️ Error collecting barcodes for ${product1.objectID}`);
-          }
+      // Process name matches (fuzzy duplicates)
+      for (const [nameKey, products] of nameIndex) {
+        if (products.length > 1) {
+          for (let i = 0; i < products.length; i++) {
+            const p1 = products[i];
+            if (!p1 || !p1.objectID || processedIds.has(p1.objectID)) continue;
 
-          for (let j = i + 1; j < productsToScan.length; j++) {
-            try {
-              // Skip if already processed (don't count as comparison)
-              if (processedIds.has(productsToScan[j].objectID)) continue;
+            const group: Product[] = [p1];
+            const allBarcodes: string[] = [];
 
-              // Validate second product
-              const product2 = productsToScan[j];
-              if (!product2 || !product2.objectID) continue;
+            const bc1 = typeof p1.barcode === 'string' ? [p1.barcode] : Array.isArray(p1.barcode) ? p1.barcode : [];
+            allBarcodes.push(...bc1.filter(b => b && typeof b === 'string').map(b => b.trim()));
 
-              // Only count valid comparisons
-              comparisonCount++;
+            for (let j = i + 1; j < products.length; j++) {
+              const p2 = products[j];
+              if (!p2 || !p2.objectID || processedIds.has(p2.objectID)) continue;
 
-              // Progress logging every 10k comparisons
-              if (comparisonCount % 10000 === 0) {
-                const pct = 70 + Math.round((i / totalProducts) * 30);
-                addLog(`  → Progress: ${pct}% (Product ${i.toLocaleString()} / ${totalProducts.toLocaleString()}, ${comparisonCount.toLocaleString()} comparisons, ${errorCount} errors)`);
-                // Allow UI to update
-                await new Promise(resolve => setTimeout(resolve, 0));
-              }
+              const pairKey = [p1.objectID, p2.objectID].sort().join('|');
+              if (processedPairs.has(pairKey)) continue;
+              processedPairs.add(pairKey);
 
-              // Calculate similarity with error handling
-              let similarity;
-              try {
-                similarity = calculateSimilarity(product1, product2);
-              } catch (err) {
-                errorCount++;
-                if (errorCount <= 10) {
-                  addLog(`⚠️ Error comparing ${product1.objectID} vs ${product2.objectID}: ${err}`);
-                }
-                continue;
-              }
+              const similarity = calculateSimilarity(p1, p2);
+              if (similarity.score >= 80) {
+                group.push(p2);
+                processedIds.add(p2.objectID);
 
-              // Only group if similarity >= 80%
-              if (similarity && similarity.score >= 80) {
-                group.push(product2);
-                processedIds.add(product2.objectID);
-
-                // Collect all barcodes from matched product
-                try {
-                  const barcode2 = product2.barcode;
-                  if (typeof barcode2 === 'string' && barcode2.trim()) {
-                    const bc = barcode2.trim();
-                    if (!allBarcodes.includes(bc)) {
-                      allBarcodes.push(bc);
-                    }
-                  } else if (Array.isArray(barcode2)) {
-                    barcode2
-                      .filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
-                      .map(b => b.trim())
-                      .forEach(bc => {
-                        if (!allBarcodes.includes(bc)) {
-                          allBarcodes.push(bc);
-                        }
-                      });
-                  }
-                } catch (err) {
-                  // Non-fatal, just skip barcode collection
-                }
-              }
-            } catch (err) {
-              errorCount++;
-              if (errorCount <= 10) {
-                addLog(`⚠️ Error in inner loop at j=${j}: ${err}`);
+                const bc2 = typeof p2.barcode === 'string' ? [p2.barcode] : Array.isArray(p2.barcode) ? p2.barcode : [];
+                bc2.filter(b => b && typeof b === 'string').map(b => b.trim()).forEach(bc => {
+                  if (!allBarcodes.includes(bc)) allBarcodes.push(bc);
+                });
               }
             }
-          }
 
-          // Only create a group if we found duplicates
-          if (group.length > 1) {
-            processedIds.add(product1.objectID);
-
-            try {
-              // Score each product in the group
-              const scoredProducts = group.map(p => {
-                try {
-                  return {
-                    product: p,
-                    score: scoreProduct(p),
-                  };
-                } catch (err) {
-                  return {
-                    product: p,
-                    score: 0,
-                  };
-                }
-              });
-
-              // Sort by score (highest first)
+            if (group.length > 1) {
+              processedIds.add(p1.objectID);
+              const scoredProducts = group.map(p => ({ product: p, score: scoreProduct(p) }));
               scoredProducts.sort((a, b) => b.score - a.score);
-              const bestProduct = scoredProducts[0].product;
 
               duplicates.push({
-                key: `group-${i}`,
+                key: `name-${nameKey}-${i}`,
                 products: group,
-                bestProduct,
-                allBarcodes: [...new Set(allBarcodes)], // Remove duplicates
+                bestProduct: scoredProducts[0].product,
+                allBarcodes: [...new Set(allBarcodes)],
                 score: scoredProducts[0].score,
               });
-            } catch (err) {
-              addLog(`⚠️ Error creating duplicate group for ${product1.objectID}: ${err}`);
             }
           }
-        } catch (err) {
-          errorCount++;
-          addLog(`⚠️ Error processing product at index ${i}: ${err}`);
+        }
+
+        bucketsProcessed++;
+        if (bucketsProcessed % 500 === 0) {
+          const pct = 75 + Math.round((bucketsProcessed / totalBuckets) * 20);
+          setProgress(pct);
+          const elapsed = (Date.now() - startTime) / 1000;
+          const rate = Math.round(bucketsProcessed / elapsed);
+          addLog(`  → ${bucketsProcessed.toLocaleString()} / ${totalBuckets.toLocaleString()} buckets (${rate}/sec, ${duplicates.length} groups)`);
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
 
-      if (errorCount > 0) {
-        addLog(`⚠️ Total comparison errors: ${errorCount}`);
-      }
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      addLog(`✅ OPTIMIZED scan: ${totalTime}s (vs. 16+ hours with old O(n²) algorithm!)`)
 
       // Sort by number of duplicates (most duplicates first)
       duplicates.sort((a, b) => b.products.length - a.products.length);
@@ -1238,6 +1345,48 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
                     <>{allProducts.length.toLocaleString()} products loaded</>
                   )}
                 </div>
+
+                {/* Bulk actions when there are filtered products */}
+                {searchQuery && filteredProducts.length > 0 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={selectedProductIds.size === filteredProducts.length ? handleDeselectAll : handleSelectAll}
+                      className="px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium border border-indigo-200"
+                    >
+                      {selectedProductIds.size === filteredProducts.length ? 'Deselect All' : `Select All (${filteredProducts.length})`}
+                    </button>
+
+                    {selectedProductIds.size > 0 && (
+                      <>
+                        <div className="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-200">
+                          {selectedProductIds.size} selected
+                        </div>
+                        <button
+                          onClick={handleDeleteSelected}
+                          disabled={isDeleting}
+                          className="px-3 py-2 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 rounded-lg text-sm font-medium flex items-center gap-2"
+                        >
+                          {isDeleting ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Delete Selected
+                            </>
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
@@ -1529,6 +1678,54 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
                     Showing first 100 of {filteredProducts.length.toLocaleString()} results
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Search results with selection */}
+          {searchQuery && filteredProducts.length > 0 && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Search Results ({filteredProducts.length} products)
+              </h2>
+              <div className="space-y-2 max-h-96 overflow-auto">
+                {filteredProducts.map((product) => (
+                  <label
+                    key={product.objectID}
+                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedProductIds.has(product.objectID)
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedProductIds.has(product.objectID)}
+                      onChange={() => toggleProductSelection(product.objectID)}
+                      className="w-5 h-5 text-indigo-600 rounded mt-0.5 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 truncate">
+                        {product.name || product.foodName || 'Unnamed Product'}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate">
+                        {product.brandName || product.brand || 'No brand'}
+                      </div>
+                      <div className="flex gap-2 mt-1 flex-wrap">
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                          {product.sourceIndex}
+                        </span>
+                        {(typeof product.barcode === 'string' ? [product.barcode] : product.barcode || [])
+                          .filter(b => b)
+                          .map((barcode, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-mono">
+                              {barcode}
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
           )}

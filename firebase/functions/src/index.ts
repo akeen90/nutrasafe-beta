@@ -41,6 +41,9 @@ export { auditMissingIngredients } from './audit-missing-ingredients';
 export { recognizeFood } from './recognize-food';
 export { scanProductComplete } from './scan-product-complete';
 export { inferMealIngredients } from './infer-meal-ingredients';
+export { deleteGenericFoods } from './delete-generic-foods';
+export { searchGenericOliveOil } from './search-generic-olive-oil';
+export { deleteSpecificItem } from './delete-specific-item';
 
 // Algolia integration (auto-sync on document write + manual sync functions)
 export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, syncTescoProductToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';

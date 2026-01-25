@@ -50,6 +50,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let processingGrade: String?
     let processingLabel: String?
     let barcode: String?
+    let gtin: String? // GTIN-14 code (used by Tesco, can be converted to/from barcode)
     let micronutrientProfile: MicronutrientProfile?
     let portions: [PortionOption]? // Available portion sizes (e.g., McNuggets 6pc, 9pc, 20pc)
     let source: String? // Source index (e.g., "tesco_products", "uk_foods_cleaned") for tier-based ranking
@@ -61,7 +62,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let suggestedServingUnit: String? // "g" or "ml"
     let suggestedServingDescription: String? // e.g., "per bar", "per portion", "per 25ml measure"
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, imageUrl: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, gtin: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, imageUrl: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -85,6 +86,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingGrade = processingGrade
         self.processingLabel = processingLabel
         self.barcode = barcode
+        self.gtin = gtin
         self.micronutrientProfile = micronutrientProfile
         self.portions = portions
         self.source = source
@@ -122,6 +124,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case processingGrade
         case processingLabel
         case barcode
+        case gtin
         case micronutrientProfile
         case isPerUnit = "per_unit_nutrition"
         case portions
@@ -246,6 +249,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingGrade = try? c.decode(String.self, forKey: .processingGrade)
         self.processingLabel = try? c.decode(String.self, forKey: .processingLabel)
         self.barcode = try? c.decode(String.self, forKey: .barcode)
+        self.gtin = try? c.decode(String.self, forKey: .gtin)
         self.micronutrientProfile = try? c.decode(MicronutrientProfile.self, forKey: .micronutrientProfile)
         self.isPerUnit = try? c.decode(Bool.self, forKey: .isPerUnit)
         self.portions = try? c.decode([PortionOption].self, forKey: .portions)

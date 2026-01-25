@@ -955,6 +955,29 @@ final class AlgoliaSearchManager {
                 score += 250
             }
 
+            // SMART IMAGE BOOST/PENALTY: Context-aware prioritization
+            // For branded product searches (1-2 words like "twix"), users want to see product photos
+            // Solution: BOOST items WITH images, PENALIZE items WITHOUT images
+            let hasImage = result.imageUrl != nil && !result.imageUrl!.isEmpty
+
+            if queryWords.count <= 2 {
+                // Generic search: user wants to see product variants with photos
+                if hasImage {
+                    // Items WITH images get massive boost to show first
+                    score += 50000
+                } else {
+                    // Items WITHOUT images get massive penalty - user wants visual results
+                    // This ensures "Twix" without image ranks below "Twix Chocolate Bar" with image
+                    score -= 40000
+                }
+            } else {
+                // Specific search (3+ words): user knows what they want, images are nice but optional
+                if hasImage {
+                    score += 500  // Small boost for images
+                }
+                // No penalty for missing images on specific searches - exact match matters more
+            }
+
             // === INTENT-SPECIFIC SCORING ===
 
             switch normalizedQuery.intent {
@@ -1037,11 +1060,9 @@ final class AlgoliaSearchManager {
             return (result: result, score: score, tier: tier)
         }
 
-        // Sort by tier first, then by score within tier
+        // Sort by final score only (tier value already included in score)
+        // This allows image boost/penalty to override tier boundaries
         let sorted = scored.sorted { a, b in
-            if a.tier != b.tier {
-                return a.tier < b.tier  // Lower tier = higher priority
-            }
             return a.score > b.score  // Higher score = higher priority
         }
 
@@ -1236,13 +1257,6 @@ final class AlgoliaSearchManager {
             // Bonus for verified items
             if item.result.isVerified {
                 score += 200
-            }
-
-            // BONUS for having a product image - prioritize visual results
-            // Products with images appear more professional and help users identify items quickly
-            // This gives a STRONG boost to ensure images appear at the top of results
-            if let imageUrl = item.result.imageUrl, !imageUrl.isEmpty {
-                score += 5000  // Strong boost to float image results to top (higher than most other bonuses)
             }
 
             // TIER 1 PRIORITY: Tesco products get significant boost (official UK supermarket data)
@@ -1787,10 +1801,24 @@ final class AlgoliaSearchManager {
     }
 
     private func searchBarcodeInIndices(_ barcode: String) async throws -> FoodSearchResult? {
-        // TIER-BASED BARCODE SEARCH: Prioritize Tesco, then UK Foods, then others
+        // BARCODE → GTIN CONVERSION: Testing showed 26.7% match rate
+        // Tesco uses GTIN-14 = "0" + EAN-13 barcode (just a leading zero!)
+        // Example: Barcode 5000119018663 → GTIN 05000119018663
+        let barcodeIndices: [(String, Int)] = [
+            ("tesco_products", 0),       // TIER 0: Tesco UK (convert barcode → GTIN-14, official data + photos)
+            ("uk_foods_cleaned", 1),     // TIER 1: UK Foods Cleaned (72k products, 100% barcode coverage)
+            ("verified_foods", 2),       // TIER 2: Admin-verified foods
+            ("ai_enhanced", 3),          // TIER 3: AI-enhanced foods
+            ("ai_manually_added", 4),    // TIER 4: AI manually added
+            ("user_added", 5),           // TIER 5: User's custom foods
+            ("foods", 6),                // TIER 6: Original foods database
+            ("fast_foods_database", 7)   // TIER 7: Fast foods
+            // Note: consumer_foods excluded (raw ingredients don't have barcodes)
+        ]
+
         // Search all indices in parallel but return the highest priority match
         return await withTaskGroup(of: (Int, FoodSearchResult?).self) { group in
-            for (indexName, priority) in indices {
+            for (indexName, priority) in barcodeIndices {
                 group.addTask {
                     let result = try? await self.searchIndexByBarcode(indexName: indexName, barcode: barcode)
                     return (priority, result)
@@ -1824,10 +1852,23 @@ final class AlgoliaSearchManager {
         request.setValue(searchKey, forHTTPHeaderField: "X-Algolia-API-Key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // GTIN CONVERSION: Tesco uses GTIN-14 (0 + EAN-13)
+        // Convert EAN-13 barcode to GTIN-14 for Tesco searches
+        let searchQuery: String
+        if indexName == "tesco_products" && barcode.count == 13 {
+            // Add leading zero to convert EAN-13 → GTIN-14
+            searchQuery = "0" + barcode
+        } else if indexName == "tesco_products" && barcode.count == 12 {
+            // UPC-A → GTIN-14 (add two leading zeros)
+            searchQuery = "00" + barcode
+        } else {
+            searchQuery = barcode
+        }
+
         // Use text query search instead of filters since barcode may not be a filterable attribute
         // Barcode is numeric so it will match exactly when searched as text
         let params: [String: Any] = [
-            "query": barcode,
+            "query": searchQuery,
             "hitsPerPage": 5,  // Get a few results in case barcode appears in other fields
             "getRankingInfo": false,
             "attributesToRetrieve": ["*"]
@@ -1842,8 +1883,12 @@ final class AlgoliaSearchManager {
 
         let results = try parseResponse(data, source: indexName)
 
-        // Find exact barcode match (text query may return multiple results)
-        let exactMatch = results.first { $0.barcode == barcode }
+        // Find exact match - check both barcode and gtin fields
+        // Tesco products use "gtin" field (GTIN-14), other sources use "barcode" (EAN-13/UPC-A)
+        // searchQuery is already converted to GTIN-14 for Tesco searches
+        let exactMatch = results.first { result in
+            result.barcode == searchQuery || result.gtin == searchQuery
+        }
 
         return exactMatch
     }

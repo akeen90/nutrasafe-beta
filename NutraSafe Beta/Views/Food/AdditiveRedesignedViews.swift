@@ -146,7 +146,7 @@ struct AdditiveSafetyBadge: View {
 
     private func gradeBadge(analysis: AdditiveAnalysisResult) -> some View {
         HStack(spacing: 12) {
-            // Grade indicator - color-coded circle with icon or letter
+            // Grade indicator - color-coded circle with count or checkmark
             ZStack {
                 Circle()
                     .fill(analysis.grade.color)
@@ -158,9 +158,9 @@ struct AdditiveSafetyBadge: View {
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.white)
                 } else {
-                    // Letter grade for products with additives
-                    Text(analysis.grade.rawValue)
-                        .font(.system(size: 22, weight: .black, design: .rounded))
+                    // Count of additives instead of letter grade
+                    Text("\(analysis.totalCount)")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
                         .foregroundColor(.white)
                 }
             }
@@ -826,20 +826,27 @@ struct RedesignedAdditiveRow: View {
 
 struct AdditiveMiniGradeBadge: View {
     let grade: AdditiveGrade
+    let totalCount: Int
     let watchCount: Int
     let hasPersonalAlert: Bool
 
     var body: some View {
         HStack(spacing: 4) {
-            // Grade letter in colored circle
+            // Count in colored circle (or checkmark if none)
             ZStack {
                 Circle()
                     .fill(grade.color)
                     .frame(width: 20, height: 20)
 
-                Text(grade.rawValue)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white)
+                if grade == .none {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                } else {
+                    Text("\(totalCount)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                }
             }
 
             // Summary text
@@ -1335,9 +1342,9 @@ class AdditiveAnalyzer {
 
             // Mini badges
             HStack(spacing: 12) {
-                AdditiveMiniGradeBadge(grade: .none, watchCount: 0, hasPersonalAlert: false)
-                AdditiveMiniGradeBadge(grade: .average, watchCount: 1, hasPersonalAlert: false)
-                AdditiveMiniGradeBadge(grade: .poor, watchCount: 3, hasPersonalAlert: true)
+                AdditiveMiniGradeBadge(grade: .none, totalCount: 0, watchCount: 0, hasPersonalAlert: false)
+                AdditiveMiniGradeBadge(grade: .average, totalCount: 2, watchCount: 1, hasPersonalAlert: false)
+                AdditiveMiniGradeBadge(grade: .poor, totalCount: 8, watchCount: 3, hasPersonalAlert: true)
             }
             .padding(.horizontal)
 

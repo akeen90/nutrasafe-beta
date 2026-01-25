@@ -1797,11 +1797,23 @@ struct FoodDetailViewFromSearch: View {
             cachedIngredientsStatus = getIngredientsStatus()
             recomputeDetectedNutrients()
 
+            // CRITICAL FIX: Run additive analysis synchronously BEFORE displaying NutraSafe grade
+            // This ensures the totalCount includes BOTH E-numbers AND ultra-processed ingredients
+            // Previously, the grade used food.additives?.count (E-numbers only) while analysis
+            // was still running, showing "additives 2" when there were actually 7
+            if let ingredients = cachedIngredients, !ingredients.isEmpty {
+                AdditiveAnalyzer.shared.analyze(ingredients: ingredients, userSensitivities: []) { analysis in
+                    additiveAnalysis = analysis
+                    // Invalidate cached grade since it depends on additive analysis
+                    cachedNutraSafeGrade = nil
+                }
+            }
+
             // Load user allergens from cache (instant) and detect if present in this food
             Task {
                 await loadAndDetectUserAllergensOptimized()
 
-                // Run redesigned additive analysis after allergens are loaded
+                // Re-run additive analysis with user sensitivities after allergens are loaded
                 await runAdditiveAnalysis()
             }
 

@@ -180,6 +180,9 @@ function transformOpenFoodFactsProduct(offProduct: any): any {
   const rawName = offProduct.product_name || offProduct.product_name_en || 'Unknown Product';
   const rawBrand = offProduct.brands || null;
 
+  // Extract product image URL (OpenFoodFacts provides multiple image fields)
+  const imageUrl = offProduct.image_url || offProduct.image_front_url || offProduct.image_front_small_url || null;
+
   return {
     id: `off-${barcode}`,
     name: capitalizeWords(rawName),
@@ -194,6 +197,7 @@ function transformOpenFoodFactsProduct(offProduct: any): any {
     sodium: nutriments.sodium_100g ? { per100g: nutriments.sodium_100g * 1000 } : (nutriments.salt_100g ? { per100g: nutriments.salt_100g * 1000 } : null),
     servingDescription: 'per 100g',
     ingredients: ingredientsText, // Return as string - iOS app will split it
+    imageUrl: imageUrl, // Include product image from OpenFoodFacts
     additives: [],
     processingScore: 0,
     processingGrade: 'A',
@@ -372,9 +376,31 @@ export const searchFoods = functions
       // Handle multiple field names (Tesco uses 'title', standard uses 'foodName')
       const foodName = data.foodName || data.title || data.name || '';
       const brandName = data.brandName || data.brand || '';
-      
+      const imageUrl = data.imageUrl || null;
+
       // Calculate relevance score for ranking
-      const relevanceScore = calculateRelevance(foodName, brandName, query, queryWords);
+      let relevanceScore = calculateRelevance(foodName, brandName, query, queryWords);
+
+      // DEBUG: Log image URL status for twix products
+      if (query.toLowerCase().includes('twi')) {
+        console.log(`📸 ${foodName}: imageUrl=${imageUrl ? 'YES' : 'NO'}, baseScore=${relevanceScore}`);
+      }
+
+      // SMART IMAGE BOOST: Balance visual results with search relevance
+      // - Generic searches (1-2 words like "twix") → BIG boost (users want to see variants)
+      // - Specific searches (3+ words like "twix fingers biscuit") → SMALL boost (users want exact match)
+      if (imageUrl && imageUrl.length > 0) {
+        if (queryWords.length <= 2) {
+          // Generic search: prioritize images heavily to show product variants
+          relevanceScore += 20000; // Big boost for short queries
+          if (query.toLowerCase().includes('twi')) {
+            console.log(`  ✅ Applied +20000 boost → finalScore=${relevanceScore}`);
+          }
+        } else {
+          // Specific search: still prefer images but don't override exact matches
+          relevanceScore += 500; // Small boost for specific queries
+        }
+      }
       
       // Analyze ingredients for additives and processing score
       let additiveAnalysis = null;
@@ -472,13 +498,16 @@ export const searchFoods = functions
         
         // Include micronutrient profile for vitamins/minerals display
         micronutrientProfile: data.micronutrientProfile || null,
-        
+
+        // Include product image URL for visual search results
+        imageUrl: imageUrl,
+
         // Include additive analysis using comprehensive 400+ database
         additives: additiveAnalysis || [],
         processingScore: processingInfo?.score || 0,
         processingGrade: processingInfo?.grade || 'A',
         processingLabel: processingInfo?.label || 'Minimal processing',
-        
+
         // Add relevance score for sorting
         _relevance: relevanceScore
       };
@@ -555,13 +584,41 @@ export const searchFoods = functions
             }
           }
 
-          return transformed;
+          // Calculate relevance score for OpenFoodFacts results
+          let relevanceScore = calculateRelevance(transformed.name, transformed.brand || '', query, queryWords);
+
+          // Apply same image boost logic as internal results
+          if (transformed.imageUrl && transformed.imageUrl.length > 0) {
+            if (queryWords.length <= 2) {
+              relevanceScore += 20000; // Generic search boost
+            } else {
+              relevanceScore += 500; // Specific search boost
+            }
+          }
+
+          // Add _relevance for sorting
+          return { ...transformed, _relevance: relevanceScore };
         });
 
       console.log(`✅ Found ${offResults.length} unique UK English products from OpenFoodFacts (${offProducts.length - offResults.length} duplicates filtered)`);
 
-      // Merge results: internal results first (verified/trusted), then OpenFoodFacts
-      const mergedResults = [...filteredResults, ...offResults].slice(0, 20);
+      // CRITICAL FIX: Re-add _relevance to filteredResults for proper sorting
+      const filteredWithRelevance = allResults
+        .filter(result => {
+          const nameMatch = matchesQuery(result.name, query, queryWords);
+          const brandMatch = result.brand ? matchesQuery(result.brand, query, queryWords) : false;
+          return nameMatch || brandMatch;
+        });
+
+      // Merge and sort ALL results by relevance (internal + OpenFoodFacts)
+      const mergedResults = [...filteredWithRelevance, ...offResults]
+        .sort((a, b) => b._relevance - a._relevance) // Sort by relevance descending
+        .slice(0, 20) // Limit to top 20
+        .map(result => {
+          // Remove internal relevance score from final results
+          const { _relevance, ...cleanResult } = result;
+          return cleanResult;
+        });
 
       console.log(`📊 Returning ${mergedResults.length} total results (${filteredResults.length} internal + ${offResults.length} OpenFoodFacts)`);
 
