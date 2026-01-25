@@ -94,6 +94,7 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
       objectID: product.objectID,
       name: product.name || product.foodName || '',
       brandName: product.brandName || product.brand || null,
+      ingredients: product.ingredients || null,
       barcode: typeof product.barcode === 'string' ? product.barcode : product.barcode?.[0] || null,
       currentImageUrl: product.imageUrl || null,
       sourceIndex: product.sourceIndex,
@@ -268,14 +269,15 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     try {
       setProgress(10);
 
-      // Filter out foreign products (>10% foreign content)
-      addLog('🇬🇧 Filtering out products with >10% foreign content...');
+      // Filter out foreign products (>5% US spelling in ingredients)
+      addLog('🇬🇧 Filtering out non-UK products (US spelling, foreign brands, foreign characters)...');
       const ukFilterResult = filterUKProducts(
         allProducts.map(p => ({
           id: p.objectID,
           objectID: p.objectID,
           name: p.name || p.foodName || '',
           brandName: p.brandName || p.brand || null,
+          ingredients: p.ingredients || null,
           barcode: typeof p.barcode === 'string' ? p.barcode : p.barcode?.[0] || null,
           currentImageUrl: p.imageUrl || null,
           sourceIndex: p.sourceIndex,
@@ -286,7 +288,7 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
           status: 'pending',
           analysisProgress: 0,
         })),
-        10 // Max 10% foreign content
+        40 // Min 40% UK confidence
       );
 
       const ukProducts = allProducts.filter(p =>
@@ -371,8 +373,8 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
 
   // Build master database
   const buildMasterDatabase = useCallback(async () => {
-    if (duplicateGroups.length === 0) {
-      addLog('❌ No duplicate groups to merge. Run scan first.');
+    if (allProducts.length === 0) {
+      addLog('❌ No products to build from. Pull data first.');
       return;
     }
 
@@ -382,11 +384,16 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
 
     try {
       const masterProducts: any[] = [];
+      const processedIds = new Set<string>();
 
-      // Process each duplicate group
+      // Step 1: Process duplicate groups and merge them
+      addLog(`📋 Merging ${duplicateGroups.length} duplicate groups...`);
       for (let i = 0; i < duplicateGroups.length; i++) {
         const group = duplicateGroups[i];
         const best = group.bestProduct!;
+
+        // Mark all products in this group as processed
+        group.products.forEach(p => processedIds.add(p.objectID));
 
         // Create merged product with all barcodes
         const mergedProduct = {
@@ -404,10 +411,60 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
         };
 
         masterProducts.push(mergedProduct);
-        setProgress(Math.round((i / duplicateGroups.length) * 100));
+        setProgress(Math.round((i / duplicateGroups.length) * 50)); // 0-50%
       }
 
-      addLog(`✅ Created ${masterProducts.length} merged products`);
+      addLog(`✅ Created ${masterProducts.length} merged products from duplicate groups`);
+
+      // Step 2: Add all products that were NOT in any duplicate group
+      addLog(`📋 Adding non-duplicate products...`);
+      const ukProducts = allProducts.filter(p => {
+        // Check if this product passed UK filtering
+        const ukAnalysis = filterUKProducts([{
+          id: p.objectID,
+          objectID: p.objectID,
+          name: p.name || p.foodName || '',
+          brandName: p.brandName || p.brand || null,
+          ingredients: p.ingredients || null,
+          barcode: typeof p.barcode === 'string' ? p.barcode : p.barcode?.[0] || null,
+          currentImageUrl: p.imageUrl || null,
+          sourceIndex: p.sourceIndex,
+          selected: false,
+          searchResults: [],
+          selectedImageUrl: null,
+          analysis: null,
+          status: 'pending',
+          analysisProgress: 0,
+        }], 40);
+
+        return ukAnalysis.ukProducts.length > 0;
+      });
+
+      let addedCount = 0;
+      for (let i = 0; i < ukProducts.length; i++) {
+        const product = ukProducts[i];
+
+        // Skip if already processed in a duplicate group
+        if (processedIds.has(product.objectID)) {
+          continue;
+        }
+
+        // Add as-is (not a duplicate)
+        masterProducts.push({
+          ...product,
+          objectID: product.objectID,
+          barcodes: product.barcode ? (Array.isArray(product.barcode) ? product.barcode : [product.barcode]) : [],
+          barcode: Array.isArray(product.barcode) ? product.barcode[0] : product.barcode,
+          isMerged: false,
+        });
+
+        addedCount++;
+        if (addedCount % 5000 === 0) {
+          setProgress(50 + Math.round((i / ukProducts.length) * 30)); // 50-80%
+        }
+      }
+
+      addLog(`✅ Added ${addedCount} non-duplicate products`);
       addLog('📤 Uploading to Firestore...');
 
       // Upload to Firestore in batches
@@ -435,14 +492,15 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
       }
 
       setProgress(100);
-      addLog('✅ Master database built and uploaded to Firestore!');
+      addLog(`✅ Master database built and uploaded to Firestore!`);
+      addLog(`📊 Total products in master database: ${masterProducts.length.toLocaleString()}`);
 
     } catch (error) {
       addLog(`❌ Error building master database: ${error}`);
     } finally {
       setIsBuilding(false);
     }
-  }, [duplicateGroups]);
+  }, [duplicateGroups, allProducts]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50">

@@ -82,3 +82,9 @@ export { validateFoodsFromDatabase, getValidationStats, getValidationProgress, r
 
 // Food image upload and processing
 export { uploadFoodImage, batchUploadFoodImages } from './upload-food-image';
+
+// Tesco image quality filtering
+export { filterTescoImages, getTescoImageStats } from './filter-tesco-images';
+
+// Master database sync to Algolia
+export { clearAlgoliaIndex, syncMasterDatabaseToAlgolia, getMasterDatabaseStats } from './sync-master-database';

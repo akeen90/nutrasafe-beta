@@ -89,7 +89,8 @@ export interface ProductAnalysis {
  */
 export function analyzeProductOrigin(
   productName: string,
-  brandName?: string | null
+  brandName?: string | null,
+  ingredients?: string | null
 ): ProductAnalysis {
   const fullText = `${brandName || ''} ${productName}`.toLowerCase();
   const flags: string[] = [];
@@ -121,6 +122,46 @@ export function analyzeProductOrigin(
 
   if (usSpellingCount > 0) {
     confidence -= usSpellingCount * 15; // Each US spelling reduces confidence
+  }
+
+  // Check ingredients for US spelling (CRITICAL FILTER)
+  if (ingredients && typeof ingredients === 'string') {
+    const ingredientText = ingredients.toLowerCase();
+
+    // Parse ingredients into individual words (remove common separators)
+    const words = ingredientText
+      .replace(/[,()[\].:;]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 2); // Ignore very short words
+
+    let ingredientUSSpellingCount = 0;
+    const usWordsFound: string[] = [];
+
+    for (const pattern of US_SPELLING_PATTERNS) {
+      const matches = ingredientText.match(pattern.us);
+      if (matches) {
+        ingredientUSSpellingCount += matches.length;
+        usWordsFound.push(...matches);
+      }
+    }
+
+    if (words.length > 0) {
+      const usSpellingPercentage = (ingredientUSSpellingCount / words.length) * 100;
+
+      if (usSpellingPercentage > 5) {
+        // More than 5% US spelling in ingredients - REJECT
+        confidence = 0; // Force rejection
+        flags.push(`REJECT: ${Math.round(usSpellingPercentage)}% of ingredients use US spelling (${ingredientUSSpellingCount}/${words.length} words: ${usWordsFound.join(', ')})`);
+      } else if (usSpellingPercentage > 2) {
+        // 2-5% US spelling - suspicious
+        confidence -= 25;
+        flags.push(`Ingredients contain ${Math.round(usSpellingPercentage)}% US spelling (${ingredientUSSpellingCount}/${words.length} words: ${usWordsFound.join(', ')})`);
+      } else if (ingredientUSSpellingCount > 0) {
+        // <2% US spelling - minor penalty
+        confidence -= 10;
+        flags.push(`Some US spelling in ingredients: ${usWordsFound.join(', ')}`);
+      }
+    }
   }
 
   // Check for foreign language characters
@@ -215,7 +256,7 @@ export function analyzeProductOrigin(
  * Filter products to only UK products
  * Returns filtered list and statistics
  */
-export function filterUKProducts<T extends { name: string; brandName?: string | null }>(
+export function filterUKProducts<T extends { name: string; brandName?: string | null; ingredients?: string | null }>(
   products: T[],
   confidenceThreshold: number = 40
 ): {
@@ -233,7 +274,11 @@ export function filterUKProducts<T extends { name: string; brandName?: string | 
   const nonUkProducts: T[] = [];
 
   for (const product of products) {
-    const analysis = analyzeProductOrigin(product.name, product.brandName);
+    const analysis = analyzeProductOrigin(
+      product.name,
+      product.brandName,
+      product.ingredients || null
+    );
 
     if (analysis.confidence >= confidenceThreshold) {
       ukProducts.push(product);

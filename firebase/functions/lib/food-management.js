@@ -1461,127 +1461,80 @@ exports.browseAllIndices = functions.runWith({
 }).https.onRequest((req, res) => {
     cors(req, res, async () => {
         try {
-            const { indices, limit } = req.body;
+            const { indices, limit, offset = 0, pageSize = 5000 } = req.body;
             if (!indices || !Array.isArray(indices) || indices.length === 0) {
                 res.status(400).json({ success: false, error: 'Indices array is required' });
                 return;
             }
-            const jobId = `browse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            const db = admin.firestore();
-            // Create job document with 'processing' status
-            await db.collection('browseJobs').doc(jobId).set({
-                status: 'processing',
-                totalProducts: 0,
-                totalBatches: 0,
-                batchSize: 500,
-                indexStats: {},
-                indices,
-                limit: limit || null,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+            // Only support ONE index at a time with pagination
+            if (indices.length > 1) {
+                res.status(400).json({ success: false, error: 'Only one index supported per request. Use pagination for large indices.' });
+                return;
+            }
+            const indexName = indices[0];
+            console.log(`📦 Browsing all records from 1 indices...`);
+            console.log(`📦 Browsing ${indexName}...`);
+            const adminKey = getAlgoliaAdminKey();
+            if (!adminKey) {
+                res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+                return;
+            }
+            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+            const allProducts = [];
+            let browseCount = 0;
+            const indexLimit = limit || Infinity;
+            await client.browseObjects({
+                indexName,
+                browseParams: {
+                    query: '',
+                    hitsPerPage: 1000,
+                },
+                aggregator: (response) => {
+                    const hits = response.hits || [];
+                    for (const hit of hits) {
+                        // Skip products before offset
+                        if (browseCount < offset) {
+                            browseCount++;
+                            continue;
+                        }
+                        // Stop if we've reached page size
+                        if (allProducts.length >= pageSize) {
+                            throw new Error('PAGE_LIMIT_REACHED');
+                        }
+                        // Stop if we've reached global limit
+                        if (limit && browseCount >= indexLimit) {
+                            throw new Error('LIMIT_REACHED');
+                        }
+                        allProducts.push({
+                            ...hit,
+                            sourceIndex: indexName,
+                        });
+                        browseCount++;
+                    }
+                    if (browseCount % 10000 === 0) {
+                        console.log(`  → Browsed ${browseCount.toLocaleString()} records from ${indexName}...`);
+                    }
+                },
+            }).catch((err) => {
+                if (err.message !== 'LIMIT_REACHED' && err.message !== 'PAGE_LIMIT_REACHED')
+                    throw err;
             });
-            // Return job ID immediately - work continues in background
+            console.log(`✅ ${indexName}: ${browseCount.toLocaleString()} total products`);
+            console.log(`📊 Total products browsed: ${browseCount.toLocaleString()}`);
             res.json({
                 success: true,
-                jobId,
-                message: 'Job started, check status endpoint for progress',
+                products: allProducts,
+                indexStats: {
+                    [indexName]: { count: browseCount }
+                },
+                pagination: {
+                    offset,
+                    pageSize,
+                    returned: allProducts.length,
+                    total: browseCount,
+                    hasMore: allProducts.length === pageSize,
+                },
             });
-            // Continue processing in background (no await - don't block response)
-            (async () => {
-                try {
-                    console.log(`📦 [${jobId}] Browsing records from ${indices.length} indices...${limit ? ` (limit: ${limit} per index)` : ''}`);
-                    const allProducts = [];
-                    const indexStats = {};
-                    const adminKey = getAlgoliaAdminKey();
-                    if (!adminKey) {
-                        throw new Error('Algolia admin key not configured');
-                    }
-                    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
-                    const BATCH_SIZE = 500;
-                    // Browse each index
-                    for (const indexName of indices) {
-                        console.log(`📦 [${jobId}] Browsing ${indexName}...`);
-                        try {
-                            let browseCount = 0;
-                            const indexLimit = limit || Infinity;
-                            await client.browseObjects({
-                                indexName,
-                                browseParams: {
-                                    query: '',
-                                    hitsPerPage: 1000,
-                                },
-                                aggregator: (response) => {
-                                    const hits = response.hits || [];
-                                    for (const hit of hits) {
-                                        if (limit && browseCount >= indexLimit) {
-                                            throw new Error('LIMIT_REACHED');
-                                        }
-                                        allProducts.push({
-                                            ...hit,
-                                            sourceIndex: indexName,
-                                        });
-                                        browseCount++;
-                                        // Store batch every 500 products (8MB chunks)
-                                        if (allProducts.length % BATCH_SIZE === 0) {
-                                            const batchNum = Math.floor(allProducts.length / BATCH_SIZE) - 1;
-                                            const batchData = allProducts.slice(batchNum * BATCH_SIZE, (batchNum + 1) * BATCH_SIZE);
-                                            // Fire and forget - don't await
-                                            db.collection('browseJobs').doc(jobId).collection('batches').doc(`batch_${batchNum}`).set({
-                                                products: batchData,
-                                                batchNumber: batchNum,
-                                                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                                            }).catch(err => console.error(`Error storing batch ${batchNum}:`, err));
-                                        }
-                                    }
-                                    if (browseCount % 10000 === 0) {
-                                        console.log(`  → [${jobId}] Browsed ${browseCount.toLocaleString()} from ${indexName}...`);
-                                    }
-                                },
-                            }).catch((err) => {
-                                if (err.message !== 'LIMIT_REACHED')
-                                    throw err;
-                            });
-                            console.log(`✅ [${jobId}] ${indexName}: ${browseCount.toLocaleString()} products`);
-                            indexStats[indexName] = { count: browseCount };
-                        }
-                        catch (indexError) {
-                            if (indexError.message !== 'LIMIT_REACHED') {
-                                console.error(`❌ [${jobId}] Error browsing ${indexName}:`, indexError.message);
-                                indexStats[indexName] = { count: 0, error: indexError.message };
-                            }
-                        }
-                    }
-                    // Store final batch if any remaining
-                    const remainingCount = allProducts.length % BATCH_SIZE;
-                    if (remainingCount > 0) {
-                        const lastBatchNum = Math.floor(allProducts.length / BATCH_SIZE);
-                        const lastBatchData = allProducts.slice(lastBatchNum * BATCH_SIZE);
-                        await db.collection('browseJobs').doc(jobId).collection('batches').doc(`batch_${lastBatchNum}`).set({
-                            products: lastBatchData,
-                            batchNumber: lastBatchNum,
-                            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                        });
-                    }
-                    const totalBatches = Math.ceil(allProducts.length / BATCH_SIZE);
-                    // Update job to completed
-                    await db.collection('browseJobs').doc(jobId).update({
-                        status: 'completed',
-                        totalProducts: allProducts.length,
-                        totalBatches,
-                        indexStats,
-                        completedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    });
-                    console.log(`✅ [${jobId}] Job completed: ${allProducts.length.toLocaleString()} products in ${totalBatches} batches`);
-                }
-                catch (bgError) {
-                    console.error(`❌ [${jobId}] Background job error:`, bgError);
-                    await db.collection('browseJobs').doc(jobId).update({
-                        status: 'failed',
-                        error: bgError.message,
-                        failedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    });
-                }
-            })();
         }
         catch (error) {
             console.error('❌ Browse all indices error:', error);
