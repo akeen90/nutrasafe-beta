@@ -134,7 +134,6 @@
 		F3DF752EB2C082AE0AB0A804 /* StrictMicronutrientValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428A9D43EB8D032F3AFC9F39 /* StrictMicronutrientValidator.swift */; };
 		F5DFF32B3432CF2A5E39C270 /* UseByAddRedesigned.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16DF1087D3777C4ED64F9567 /* UseByAddRedesigned.swift */; };
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
-		FAA5308D615C46F7B48AEE78 /* ReactionLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */; };
 		FASTHIST0001BUILD /* FastingHistoryDropdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTHIST0001FILE /* FastingHistoryDropdown.swift */; };
 		FASTMGR0001BUILD /* FastingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTMGR0001FILE /* FastingManager.swift */; };
 		FASTNOTMGR001BLD /* FastingNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTNOTMGR001REF /* FastingNotificationManager.swift */; };
@@ -159,6 +158,7 @@
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* SubscriptionManager.swift */; };
 		WELCOMESCREEN001BUILD /* WelcomeScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WELCOMESCREEN001FILE /* WelcomeScreenView.swift */; };
+	LASHHH39YGUIU5SBCPWAERQ5 /* LogReactionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CSKS9ELV5F5UETE3K0ERLGGZ /* LogReactionSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -303,7 +303,6 @@
 		DEBOUNCER001REF /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/Debouncer.swift; sourceTree = "<group>"; };
 		DIETREDESIGN001FILE /* DietManagementRedesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietManagementRedesign.swift; sourceTree = "<group>"; };
 		E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = micronutrients_ingredients_v6.db; sourceTree = "<group>"; };
-		E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/ReactionLogView.swift"; sourceTree = SOURCE_ROOT; };
 		E4E289D96672BF3F6322CE44 /* FastingConfirmationSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingConfirmationSheet.swift; sourceTree = "<group>"; };
 		EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryDailySummaryCard.swift; sourceTree = "<group>"; };
 		EE66DFC8777762545539ED47 /* DiaryMetricCards.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryMetricCards.swift"; sourceTree = SOURCE_ROOT; };
@@ -335,6 +334,7 @@
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
 		WELCOMESCREEN001FILE /* WelcomeScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeScreenView.swift; sourceTree = "<group>"; };
+	CSKS9ELV5F5UETE3K0ERLGGZ /* LogReactionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Food/LogReactionSheet.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -625,7 +625,6 @@
 				3A54BFFF132CC2A8F263644F /* MicronutrientDatabase.swift */,
 				0D000C42332246F4A41D879A /* ReactionLogModels.swift */,
 				2748185AC3934123A2EE1CEC /* ReactionLogManager.swift */,
-				E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */,
 				CF1C3CB3424C495E9408953D /* ReactionPDFExporter.swift */,
 				CACHEMGR001FILE /* CacheManager.swift */,
 				9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */,
@@ -957,6 +956,7 @@
 				E54E166E108D612FC8163C1F /* AdditiveHistoricalView.swift in Sources */,
 				59D0F3E5614E7E4490E26820 /* AdditivePatternView.swift in Sources */,
 				F10BA9CAF86B4921A3EDDBEC /* AdditivePatternViewRedesigned.swift in Sources */,
+				LASHHH39YGUIU5SBCPWAERQ5 /* LogReactionSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

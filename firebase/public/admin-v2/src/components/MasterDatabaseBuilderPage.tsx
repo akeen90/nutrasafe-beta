@@ -65,6 +65,8 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
+  const [testMode, setTestMode] = useState(true); // Limit to 1000 per index for testing
+  const [indexStats, setIndexStats] = useState<Record<string, { count: number; error?: string }>>({});
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -168,6 +170,9 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
 
     try {
       setProgress(10);
+      if (testMode) {
+        addLog('🧪 TEST MODE: Limiting to 1000 products per index');
+      }
       addLog('🔄 Calling Cloud Function to browse all records...');
 
       // Call Cloud Function to browse all indices
@@ -178,6 +183,7 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
         },
         body: JSON.stringify({
           indices: indicesToScan,
+          limit: testMode ? 1000 : undefined, // Limit for testing
         }),
       });
 
@@ -195,13 +201,55 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
         throw new Error(result.error || 'Failed to browse indices');
       }
 
-      const pulledProducts = result.products || [];
-      addLog(`📊 Total products pulled: ${pulledProducts.length.toLocaleString()}`);
+      const { jobId, totalProducts, totalBatches, indexStats: stats } = result;
 
-      setAllProducts(pulledProducts);
+      addLog(`📊 Total products found: ${totalProducts.toLocaleString()}`);
+      addLog(`📦 Fetching ${totalBatches} batches from Firestore...`);
+
+      // Log per-index stats
+      Object.entries(stats || {}).forEach(([index, stat]: [string, any]) => {
+        if (stat.error) {
+          addLog(`  ❌ ${index}: ${stat.error}`);
+        } else {
+          addLog(`  ✅ ${index}: ${stat.count.toLocaleString()} products`);
+        }
+      });
+
+      setIndexStats(stats || {});
+
+      // Fetch batches from Firestore
+      const allFetchedProducts: Product[] = [];
+
+      for (let i = 0; i < totalBatches; i++) {
+        const batchResponse = await fetch(
+          `${FUNCTIONS_BASE}/getBrowseJobData?jobId=${jobId}&batchNumber=${i}`
+        );
+
+        if (!batchResponse.ok) {
+          addLog(`⚠️ Failed to fetch batch ${i + 1}/${totalBatches}`);
+          continue;
+        }
+
+        const batchResult = await batchResponse.json();
+        if (batchResult.success && batchResult.products) {
+          allFetchedProducts.push(...batchResult.products);
+
+          // Update progress
+          const batchProgress = 50 + Math.round((i + 1) / totalBatches * 50);
+          setProgress(batchProgress);
+
+          if ((i + 1) % 10 === 0 || i === totalBatches - 1) {
+            addLog(`  → Fetched ${i + 1}/${totalBatches} batches (${allFetchedProducts.length.toLocaleString()} products)`);
+          }
+        }
+      }
+
+      addLog(`✅ Retrieved ${allFetchedProducts.length.toLocaleString()} products total`);
+
+      setAllProducts(allFetchedProducts);
       setStats(prev => ({
         ...prev,
-        totalScanned: pulledProducts.length,
+        totalScanned: allFetchedProducts.length,
       }));
       setProgress(100);
       addLog('✅ Data pull complete! Ready to scan for duplicates.');
@@ -407,6 +455,16 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
           </div>
 
           <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm cursor-pointer hover:bg-gray-100">
+              <input
+                type="checkbox"
+                checked={testMode}
+                onChange={() => setTestMode(!testMode)}
+                className="w-4 h-4 text-primary-600 rounded"
+              />
+              <span className="font-medium">Test Mode (1000/index)</span>
+            </label>
+
             {allProducts.length > 0 && !isPulling && (
               <div className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
                 {allProducts.length.toLocaleString()} products loaded
@@ -537,6 +595,39 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
               </span>
             </div>
           </div>
+
+          {/* Index Stats (if available) */}
+          {Object.keys(indexStats).length > 0 && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Index Pull Results</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(indexStats).map(([indexName, stat]) => (
+                  <div
+                    key={indexName}
+                    className={`rounded-lg p-3 ${
+                      stat.error ? 'bg-red-50' : 'bg-green-50'
+                    }`}
+                  >
+                    <div className={`text-xl font-bold ${
+                      stat.error ? 'text-red-900' : 'text-green-900'
+                    }`}>
+                      {stat.error ? '❌' : stat.count.toLocaleString()}
+                    </div>
+                    <div className={`text-xs ${
+                      stat.error ? 'text-red-700' : 'text-green-700'
+                    }`}>
+                      {indexName.replace(/_/g, ' ')}
+                    </div>
+                    {stat.error && (
+                      <div className="text-xs text-red-600 mt-1 truncate" title={stat.error}>
+                        {stat.error}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">

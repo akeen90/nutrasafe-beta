@@ -742,6 +742,122 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const resumeProcessing = () => { pauseRef.current = false; setIsPaused(false); addLog('Resumed'); };
   const stopProcessing = () => { abortRef.current = true; setIsProcessing(false); setIsPaused(false); addLog('Stopped'); };
 
+  // Search images using each food's OWN barcode instead of product name
+  const startBarcodeImageSearch = useCallback(async () => {
+    if (!apiConfigured) {
+      addLog('⚠️ SearchAPI not configured. Please set SERP_API_KEY in .env');
+      return;
+    }
+
+    setIsProcessing(true);
+    pauseRef.current = false;
+    abortRef.current = false;
+
+    const selectedFoods = foods.filter(f => f.selected);
+    const toProcess = selectedFoods.length > 0
+      ? selectedFoods
+      : foods.filter(f => f.status === 'pending');
+
+    if (toProcess.length === 0) {
+      addLog('No foods to process!');
+      setIsProcessing(false);
+      return;
+    }
+
+    addLog(`🔎 Starting barcode-based image search for ${toProcess.length} food(s)`);
+
+    for (let i = 0; i < toProcess.length; i++) {
+      if (abortRef.current) {
+        addLog('Search stopped by user');
+        break;
+      }
+
+      const food = toProcess[i];
+
+      // Use food's own barcode
+      if (!food.barcode) {
+        addLog(`[${i + 1}/${toProcess.length}] ⚠️ ${food.name} - No barcode, skipping`);
+        setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'failed' as const, error: 'No barcode' } : f));
+        continue;
+      }
+
+      addLog(`[${i + 1}/${toProcess.length}] ${food.name} - Using barcode: ${food.barcode}`);
+
+      // Update status to searching
+      setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'searching' as const } : f));
+
+      try {
+        // Search using THIS FOOD'S barcode
+        const results = await searchSerpApiImages(food.barcode, food.brandName || undefined);
+
+        if (results.length === 0) {
+          addLog(`  ❌ No results found`);
+          setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'no_results' as const } : f));
+        } else {
+          addLog(`  ✓ Found ${results.length} images`);
+
+          // Analyze images
+          setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'analyzing' as const, searchResults: results } : f));
+
+          const analyses = await Promise.all(
+            results.map(img => analyzeImageQuality(img.url))
+          );
+
+          const bestResult = analyses
+            .map((analysis, idx) => ({ analysis, result: results[idx] }))
+            .sort((a, b) => b.analysis.qualityScore - a.analysis.qualityScore)[0];
+
+          if (bestResult && bestResult.analysis.qualityScore >= 50) {
+            addLog(`  ✅ Best image: ${bestResult.analysis.qualityScore}% confidence`);
+            setFoods(prev => prev.map(f =>
+              f.id === food.id
+                ? {
+                    ...f,
+                    status: 'ready' as const,
+                    selectedImageUrl: bestResult.result.url,
+                    analysis: bestResult.analysis,
+                    confidence: bestResult.analysis.qualityScore
+                  }
+                : f
+            ));
+          } else {
+            addLog(`  ⚠️ Low quality images (best: ${bestResult?.analysis.qualityScore || 0}%)`);
+            setFoods(prev => prev.map(f =>
+              f.id === food.id
+                ? {
+                    ...f,
+                    status: 'ready' as const,
+                    analysis: bestResult?.analysis || null,
+                    confidence: bestResult?.analysis.qualityScore || 0
+                  }
+                : f
+            ));
+          }
+        }
+      } catch (error) {
+        addLog(`  ❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setFoods(prev => prev.map(f =>
+          f.id === food.id
+            ? { ...f, status: 'failed' as const, error: 'Search failed' }
+            : f
+        ));
+      }
+
+      // Update stats
+      setFoods(prev => {
+        updateStats(prev);
+        return prev;
+      });
+
+      // Delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    addLog('Barcode image search complete');
+    setIsProcessing(false);
+    setIsPaused(false);
+  }, [foods, apiConfigured, addLog]);
+
   // Filter foods by status and search query
   const getFilteredFoods = useCallback(() => {
     let filtered = foods;
@@ -842,6 +958,21 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
             {!isProcessing ? (
               <>
+                {/* Search by Product Barcode */}
+                {foods.length > 0 && (
+                  <button
+                    onClick={startBarcodeImageSearch}
+                    disabled={isLoading || !apiConfigured || (selectedCount === 0 && pendingCount === 0)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    title="Search for images using each food's barcode instead of product name"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    {selectedCount > 0 ? `Search by Barcode (${selectedCount})` : `Search All by Barcode (${pendingCount})`}
+                  </button>
+                )}
+
                 <button
                   onClick={startBatchSearch}
                   disabled={isLoading || !apiConfigured || (selectedCount === 0 && pendingCount === 0)}
