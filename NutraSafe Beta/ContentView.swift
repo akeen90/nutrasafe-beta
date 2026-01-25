@@ -729,6 +729,7 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
             .environmentObject(sharedFastingViewModelWrapper)
+            .keyboardDismissButton()
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
             LogReactionSheet(selectedDayRange: .threeDays)

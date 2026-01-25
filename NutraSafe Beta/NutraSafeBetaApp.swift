@@ -150,6 +150,7 @@ struct NutraSafeBetaApp: App {
                 .environmentObject(firebaseManager)
                 .environmentObject(healthKitManager)
                 .environmentObject(subscriptionManager)
+                .keyboardDismissButton()
                 .preferredColorScheme(appearanceMode.colorScheme)
         }
     }

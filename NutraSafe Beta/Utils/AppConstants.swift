@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Combine
 
 // MARK: - App Design Constants
 // Unified design system extending onboarding patterns across the app
@@ -837,4 +838,52 @@ extension UIApplication {
 /// Programmatically dismiss the keyboard from anywhere
 func dismissKeyboard() {
     UIApplication.shared.endEditing()
+}
+
+// MARK: - Keyboard Observer
+
+/// Global keyboard observer for tracking keyboard visibility across the app
+class KeyboardObserver: ObservableObject {
+    static let shared = KeyboardObserver()
+
+    @Published var keyboardHeight: CGFloat = 0
+    @Published var isKeyboardVisible: Bool = false
+
+    private init() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+
+        // Filter out floating/split keyboards on iPad (they're too small to position against)
+        guard keyboardFrame.height > 100 else { return }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            keyboardHeight = keyboardFrame.height
+            isKeyboardVisible = true
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            keyboardHeight = 0
+            isKeyboardVisible = false
+        }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 }

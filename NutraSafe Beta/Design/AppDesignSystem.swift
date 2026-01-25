@@ -1111,3 +1111,97 @@ struct NutraSafeHeader: View {
 // - NutraSafeSecondaryButton for secondary actions
 // - .glassCard() for cards
 // - AppAnimatedBackground for screen backgrounds
+// - .keyboardDismissButton() for keyboard dismissal
+
+// MARK: - Keyboard Dismiss Button
+
+/// Design tokens for keyboard dismiss button
+private struct KeyboardDismissButtonTokens {
+    static let size: CGFloat = 48
+    static let iconSize: CGFloat = 20
+    static let cornerRadius: CGFloat = 24  // Perfect circle
+    static let borderWidth: CGFloat = 1.5
+    static let shadowRadius: CGFloat = 8
+    static let shadowY: CGFloat = 4
+    static let shadowOpacity: Double = 0.15
+
+    // Spacing
+    static let trailingPadding: CGFloat = 16
+    static let keyboardOffset: CGFloat = 1  // Gap above keyboard (1pt = very tight, 8pt = comfortable)
+
+    // Animation
+    static let pressScale: CGFloat = 0.92
+    static let animationDuration: Double = 0.3
+    static let springDamping: Double = 0.7
+
+    // Colors
+    static let borderOpacity: Double = 0.6
+    static let backgroundTintOpacity: Double = 0.12
+}
+
+/// Premium keyboard dismiss button with user-adaptive colors
+struct KeyboardDismissButton: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isPressed = false
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        Button(action: {
+            // Haptic feedback
+            let impactMed = UIImpactFeedbackGenerator(style: .light)
+            impactMed.impactOccurred()
+
+            // Dismiss keyboard
+            dismissKeyboard()
+        }) {
+            // Just the icon, no background
+            Image(systemName: "keyboard.chevron.compact.down")
+                .font(.system(size: KeyboardDismissButtonTokens.iconSize, weight: .semibold))
+                .foregroundColor(palette.accent)
+                .frame(width: KeyboardDismissButtonTokens.size, height: KeyboardDismissButtonTokens.size)
+        }
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityLabel("Dismiss keyboard")
+        .accessibilityHint("Double tap to hide the keyboard")
+    }
+}
+
+/// Button style for tactile press feedback
+private struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? KeyboardDismissButtonTokens.pressScale : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+/// ViewModifier that adds keyboard dismiss button to any view
+struct KeyboardDismissModifier: ViewModifier {
+    @ObservedObject private var keyboardObserver = KeyboardObserver.shared
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if keyboardObserver.isKeyboardVisible {
+                    HStack {
+                        Spacer()
+                        KeyboardDismissButton()
+                            .padding(.trailing, KeyboardDismissButtonTokens.trailingPadding)
+                    }
+                    .padding(.bottom, keyboardObserver.keyboardHeight + KeyboardDismissButtonTokens.keyboardOffset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .ignoresSafeArea()
+                }
+            }
+    }
+}
+
+extension View {
+    /// Adds a premium keyboard dismiss button that appears when keyboard is visible
+    func keyboardDismissButton() -> some View {
+        modifier(KeyboardDismissModifier())
+    }
+}
