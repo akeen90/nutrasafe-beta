@@ -212,6 +212,7 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
 struct FoodReactionsView: View {
     @Binding var selectedTab: TabItem
     @ObservedObject private var reactionManager = ReactionManager.shared
+    @ObservedObject private var logManager = ReactionLogManager.shared
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
     @State private var showingPaywall = false
@@ -588,6 +589,11 @@ struct FoodReactionsView: View {
             guard !hasLoadedOnce else { return }
             hasLoadedOnce = true
             reactionManager.reloadIfAuthenticated()
+
+            // Load trigger analysis data for pattern insights
+            Task {
+                await logManager.loadReactionLogs()
+            }
         }
         .alert("Error", isPresented: $reactionManager.showingError) {
             Button("OK", role: .cancel) {
