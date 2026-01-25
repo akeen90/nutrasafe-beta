@@ -634,6 +634,7 @@ struct FoodReactionSummaryCard: View {
     @Binding var selectedTab: TabItem
     @State private var showingLogReaction = false
     @EnvironmentObject var reactionManager: ReactionManager
+    @ObservedObject private var logManager = ReactionLogManager.shared
 
     // MARK: - Computed Insights
 
@@ -708,6 +709,42 @@ struct FoodReactionSummaryCard: View {
             .sorted { $0.name < $1.name } // Alphabetical for consistency
 
         return topAllergens.isEmpty ? nil : topAllergens
+    }
+
+    /// Top ingredient trigger from detailed trigger analysis with percentage and foods
+    /// Uses crossReactionFrequency data for accurate pattern detection
+    private var topIngredientTrigger: (name: String, percentage: Int, foods: [String])? {
+        guard !logManager.reactionLogs.isEmpty else { return nil }
+
+        // Find the ingredient with the highest cross-reaction frequency
+        var ingredientData: [String: (percentage: Double, foods: Set<String>)] = [:]
+
+        for log in logManager.reactionLogs {
+            guard let analysis = log.triggerAnalysis else { continue }
+
+            for ingredient in analysis.topIngredients.prefix(5) {
+                let name = ingredient.ingredientName
+                let currentData = ingredientData[name] ?? (percentage: 0, foods: Set<String>())
+
+                // Take max percentage (not sum)
+                let newPercentage = max(currentData.percentage, ingredient.crossReactionFrequency)
+
+                // Collect all foods that contain this ingredient
+                var allFoods = currentData.foods
+                allFoods.formUnion(ingredient.contributingFoodNames)
+
+                ingredientData[name] = (percentage: newPercentage, foods: allFoods)
+            }
+        }
+
+        // Find the ingredient with the highest percentage
+        guard let topIngredient = ingredientData.max(by: { $0.value.percentage < $1.value.percentage }),
+              topIngredient.value.percentage >= 30 else { return nil }
+
+        let percentage = Int(topIngredient.value.percentage)
+        let foods = Array(topIngredient.value.foods.prefix(3)) // Limit to 3 foods for readability
+
+        return (name: topIngredient.key, percentage: percentage, foods: foods)
     }
 
     // UK's 14 Major Allergens detection for summary card
@@ -796,9 +833,15 @@ struct FoodReactionSummaryCard: View {
             insight += ", \(timingPhrase)"
         }
 
-        // Add trigger context if available
-        if let allergens = topAllergenTriggers, let first = allergens.first, first.count >= 3 {
-            insight += ". Foods containing \(first.name.lowercased()) appear frequently before your symptoms"
+        // Add trigger context if available - focus on INGREDIENT pattern with percentage
+        if let trigger = topIngredientTrigger {
+            insight += ". \(trigger.name) appears in \(trigger.percentage)% of reactions"
+
+            // Show which specific foods contained it (up to 3 for readability)
+            if !trigger.foods.isEmpty {
+                let foodList = trigger.foods.prefix(2).joined(separator: ", ")
+                insight += " (in \(foodList))"
+            }
         }
 
         return insight + "."
@@ -870,10 +913,10 @@ struct FoodReactionSummaryCard: View {
                                 )
                             }
 
-                            // Trigger chip
-                            if let allergens = topAllergenTriggers, let first = allergens.first, first.count >= 2 {
+                            // Trigger chip - show ingredient with percentage
+                            if let trigger = topIngredientTrigger {
                                 insightContextChip(
-                                    label: "\(first.name) signal",
+                                    label: "\(trigger.name) \(trigger.percentage)%",
                                     color: .orange.opacity(0.9)
                                 )
                             }
