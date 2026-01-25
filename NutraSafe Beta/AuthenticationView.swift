@@ -296,8 +296,8 @@ struct SignInView: View {
                         .frame(height: 50)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollDismissesKeyboard(.interactively)
         .keyboardDismissButton()
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
@@ -557,8 +557,8 @@ struct SignUpView: View {
                         .frame(height: 50)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollDismissesKeyboard(.interactively)
         .keyboardDismissButton()
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
