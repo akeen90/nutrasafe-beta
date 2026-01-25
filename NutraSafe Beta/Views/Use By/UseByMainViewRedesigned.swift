@@ -13,10 +13,11 @@ import SwiftUI
 struct UseByMainViewRedesigned: View {
     @Environment(\.colorScheme) var colorScheme
     @ObservedObject private var dataManager = UseByDataManager.shared
+    @Binding var selectedTab: TabItem
 
     // User intent palette
-    private var palette: AppPalette {
-        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    private var palette: OnboardingPalette {
+        OnboardingPalette.forCurrentUser(colorScheme: colorScheme)
     }
 
     // Search state
@@ -98,7 +99,7 @@ struct UseByMainViewRedesigned: View {
 
                 Divider()
                     .frame(height: 24)
-                    .overlay(palette.tertiary.opacity(0.3))
+                    .background(palette.tertiary.opacity(0.3))
 
                 Button(action: { showingBarcodeScanner = true }) {
                     Image(systemName: "barcode.viewfinder")
@@ -215,7 +216,7 @@ struct UseByMainViewRedesigned: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(sortedItems, id: \.id) { item in
-                        PremiumUseByRow(item: item)
+                        PremiumUseByRow(item: item, palette: palette)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 6)
                     }
@@ -330,10 +331,10 @@ struct UseByMainViewRedesigned: View {
                     // Results list (max 6 results)
                     LazyVStack(spacing: 0) {
                         ForEach(searchResults.prefix(6), id: \.id) { food in
-                            Button(action: {
+                            Button {
                                 showingFoodDetail = food
                                 isSearchFocused = false
-                            }) {
+                            } label: {
                                 SearchResultRow(food: food, palette: palette)
                             }
                             .buttonStyle(.plain)
@@ -364,7 +365,7 @@ struct UseByMainViewRedesigned: View {
                 colors: [
                     palette.background,
                     palette.background.opacity(0.95),
-                    colorScheme == .dark ? Color.black : Color(.systemBackground)
+                    colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -446,7 +447,9 @@ struct UseByMainViewRedesigned: View {
 
         Task {
             do {
-                let results = try await AlgoliaSearchManager.shared.search(query: query)
+                // Use existing search manager
+                let manager = AlgoliaSearchManager.shared
+                let results = try await manager.search(query: query)
                 await MainActor.run {
                     searchResults = results
                     isSearching = false
@@ -547,12 +550,8 @@ private struct InsightCard: View {
 
 private struct PremiumUseByRow: View {
     let item: UseByInventoryItem
-    @Environment(\.colorScheme) var colorScheme
+    let palette: OnboardingPalette
     @State private var showingDetail = false
-
-    private var palette: AppPalette {
-        AppPalette.forCurrentUser(colorScheme: colorScheme)
-    }
 
     private var freshnessColor: Color {
         let days = item.daysUntilExpiry
@@ -573,7 +572,9 @@ private struct PremiumUseByRow: View {
     }
 
     var body: some View {
-        Button(action: { showingDetail = true }) {
+        Button {
+            showingDetail = true
+        } label: {
             HStack(spacing: 14) {
                 // Food image or icon
                 if let imageData = item.imageData,
@@ -648,7 +649,7 @@ private struct PremiumUseByRow: View {
 
 private struct SearchResultRow: View {
     let food: FoodSearchResult
-    let palette: AppPalette
+    let palette: OnboardingPalette
 
     var body: some View {
         HStack(spacing: 12) {
