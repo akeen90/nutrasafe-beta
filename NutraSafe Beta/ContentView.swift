@@ -5453,7 +5453,6 @@ struct AddFoodMainView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.adaptiveBackground)
-                    .transition(.opacity)
                 } else if !canAddMore {
                     // At limit - show upgrade prompt
                     DiaryLimitReachedView(
@@ -5559,6 +5558,11 @@ struct AddFoodMainView: View {
                 keyboardVisible = false
             }
         }
+        .onDisappear {
+            // Clean up keyboard observers
+            NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
+            NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+        }
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
@@ -5575,7 +5579,9 @@ struct AddFoodMainView: View {
             let hasAccess = subscriptionManager.hasAccess
             if hasAccess {
                 // Subscriber - skip loading state entirely
-                withAnimation(.easeOut(duration: 0.15)) {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
                     canAddMore = true
                     currentDayEntryCount = 0
                     isCheckingLimit = false
@@ -5587,14 +5593,18 @@ struct AddFoodMainView: View {
             do {
                 let count = try await FirebaseManager.shared.countFoodEntries(for: Date())
                 let limit = SubscriptionManager.freeDiaryEntriesPerDay
-                withAnimation(.easeOut(duration: 0.15)) {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
                     currentDayEntryCount = count
                     canAddMore = count < limit
                     isCheckingLimit = false
                 }
             } catch {
                 // On error, allow adding (fail open)
-                withAnimation(.easeOut(duration: 0.15)) {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
                     canAddMore = true
                     isCheckingLimit = false
                 }
