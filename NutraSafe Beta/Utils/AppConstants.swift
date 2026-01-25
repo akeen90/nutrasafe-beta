@@ -858,6 +858,12 @@ class KeyboardObserver: ObservableObject {
         )
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(keyboardWillChangeFrame),
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(keyboardWillHide),
             name: UIResponder.keyboardWillHideNotification,
             object: nil
@@ -873,6 +879,20 @@ class KeyboardObserver: ObservableObject {
         withAnimation(.easeInOut(duration: 0.3)) {
             keyboardHeight = keyboardFrame.height
             isKeyboardVisible = true
+        }
+    }
+
+    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+
+        // Filter out floating/split keyboards on iPad
+        guard keyboardFrame.height > 100 else { return }
+
+        // Only update if keyboard is visible (don't respond to keyboard appearing/disappearing)
+        guard isKeyboardVisible else { return }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            keyboardHeight = keyboardFrame.height
         }
     }
 
