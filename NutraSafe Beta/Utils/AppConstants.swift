@@ -888,11 +888,10 @@ class KeyboardObserver: ObservableObject {
         // Filter out floating/split keyboards on iPad
         guard keyboardFrame.height > 100 else { return }
 
-        // Only update if keyboard is visible (don't respond to keyboard appearing/disappearing)
-        guard isKeyboardVisible else { return }
-
-        withAnimation(.easeInOut(duration: 0.3)) {
+        // Update keyboard height when it changes (e.g., switching between email and password fields)
+        withAnimation(.easeInOut(duration: 0.25)) {
             keyboardHeight = keyboardFrame.height
+            isKeyboardVisible = true
         }
     }
 
