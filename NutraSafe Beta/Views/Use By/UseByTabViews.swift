@@ -324,49 +324,23 @@ struct UseByTabView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 8)
             } else if !searchResults.isEmpty {
-                LazyVStack(spacing: 8) {
-                    ForEach(searchResults.prefix(8), id: \.id) { food in
-                        Button(action: {
-                            // Dismiss keyboard before navigating
-                            isSearchFieldFocused = false
-                            showingFoodDetailForSearch = food
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(food.name)
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-
-                                    if let brand = food.brand, !brand.isEmpty {
-                                        Text(brand)
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                }
-
-                                Spacer()
-
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(.orange)
+                // Modern scrollable search results with images
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 10) {
+                        ForEach(searchResults, id: \.id) { food in
+                            Button(action: {
+                                // Dismiss keyboard before navigating
+                                isSearchFieldFocused = false
+                                showingFoodDetailForSearch = food
+                            }) {
+                                modernSearchResultCard(food)
                             }
-                            .padding(12)
-                            .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
-                            .cornerRadius(10)
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
-
-                    if searchResults.count > 8 {
-                        Text("\(searchResults.count - 8) more results...")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.top, 4)
-                    }
+                    .padding(.bottom, 16)
                 }
+                .frame(maxHeight: 400) // Limit height but allow scrolling
             } else if !searchQuery.isEmpty && searchQuery.count >= 2 {
                 // No results message
                 VStack(spacing: 8) {
@@ -421,6 +395,98 @@ struct UseByTabView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Modern Search Result Card
+
+    private func modernSearchResultCard(_ food: FoodSearchResult) -> some View {
+        HStack(spacing: 12) {
+            // Product image or placeholder
+            Group {
+                if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            searchPlaceholderImage
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 56, height: 56)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        case .failure:
+                            searchPlaceholderImage
+                        @unknown default:
+                            searchPlaceholderImage
+                        }
+                    }
+                } else {
+                    searchPlaceholderImage
+                }
+            }
+            .frame(width: 56, height: 56)
+
+            // Food details
+            VStack(alignment: .leading, spacing: 4) {
+                Text(food.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(palette.textPrimary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if let brand = food.brand, !brand.isEmpty {
+                    Text(brand)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(palette.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            // Add button
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 24))
+                .foregroundColor(palette.accent)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : .white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.04),
+                    lineWidth: 1
+                )
+        )
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.03),
+            radius: 4,
+            x: 0,
+            y: 2
+        )
+    }
+
+    private var searchPlaceholderImage: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.accent.opacity(0.12),
+                        palette.accent.opacity(0.06)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Image(systemName: "takeoutbag.and.cup.and.straw.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(palette.accent.opacity(0.5))
+                    .symbolRenderingMode(.hierarchical)
+            )
     }
 
     // MARK: - Search Helper
