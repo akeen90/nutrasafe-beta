@@ -475,70 +475,112 @@ struct UseBySearchFlowRedesigned: View {
 
     private var resultsListView: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 0) {
+            LazyVStack(spacing: 12) {
                 ForEach(results, id: \.id) { food in
                     Button {
                         selectedFood = food
                         showingFoodDetail = true
                     } label: {
-                        resultRow(food)
+                        modernResultCard(food)
                     }
                     .buttonStyle(PlainButtonStyle())
-
-                    if food.id != results.last?.id {
-                        Divider()
-                            .padding(.leading, 76)
-                    }
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
             .padding(.bottom, 32)
         }
         .scrollDismissesKeyboard(.interactively)
     }
 
-    private func resultRow(_ food: FoodSearchResult) -> some View {
-        HStack(spacing: 16) {
-            // Product placeholder icon
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            palette.accent.opacity(0.2),
-                            palette.accent.opacity(0.1)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 52, height: 52)
-                .overlay(
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(palette.accent)
-                )
+    private func modernResultCard(_ food: FoodSearchResult) -> some View {
+        HStack(spacing: 14) {
+            // Product image or placeholder
+            Group {
+                if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            placeholderImage
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 64, height: 64)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        case .failure:
+                            placeholderImage
+                        @unknown default:
+                            placeholderImage
+                        }
+                    }
+                } else {
+                    placeholderImage
+                }
+            }
+            .frame(width: 64, height: 64)
 
-            VStack(alignment: .leading, spacing: 5) {
+            // Food details
+            VStack(alignment: .leading, spacing: 6) {
                 Text(food.name)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(appPalette.textPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
                 if let brand = food.brand, !brand.isEmpty {
                     Text(brand)
-                        .font(.system(size: 14))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(appPalette.textSecondary)
+                        .lineLimit(1)
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
+            // Chevron
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(appPalette.textTertiary)
         }
-        .padding(.vertical, 14)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : .white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    Color.primary.opacity(colorScheme == .dark ? 0.1 : 0.06),
+                    lineWidth: 1
+                )
+        )
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.04),
+            radius: 6,
+            x: 0,
+            y: 2
+        )
+    }
+
+    private var placeholderImage: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.accent.opacity(0.15),
+                        palette.accent.opacity(0.08)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Image(systemName: "takeoutbag.and.cup.and.straw.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(palette.accent.opacity(0.6))
+                    .symbolRenderingMode(.hierarchical)
+            )
     }
 
     // MARK: - Search Logic
