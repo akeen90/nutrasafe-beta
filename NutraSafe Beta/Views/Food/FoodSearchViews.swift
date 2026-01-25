@@ -598,8 +598,8 @@ struct FoodSearchResultRowEnhanced: View {
             }
             .onDisappear {
                 print("[FoodDetailViewFromSearch] onDisappear - fullScreenCover dismissed")
-                // Reload favorites after sheet closes to pick up any changes
-                foodDetailSheetOpen = false
+                // NOTE: Don't set foodDetailSheetOpen here - it's already synchronized via onChange(of: showingFoodDetail)
+                // Setting it here creates a race condition requiring double-tap to dismiss
             }
             .id(food.id) // Stable ID prevents dismissal when parent view redraws
         }
