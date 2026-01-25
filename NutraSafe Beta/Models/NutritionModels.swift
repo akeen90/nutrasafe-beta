@@ -1274,7 +1274,13 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return dbPortions
         }
 
-        // 2. If food has a real serving size (not default 100g), use that plus extras for drinks
+        // 2. CRITICAL FIX: For oils, ALWAYS use preset portions (tablespoon-based) regardless of servingSizeG
+        // Oils in database often have 200ml servingSizeG which is incorrect for typical usage
+        if detectedCategory == .oil {
+            return presetPortions
+        }
+
+        // 3. If food has a real serving size (not default 100g), use that plus extras for drinks
         if let servingG = servingSizeG, servingG > 0 && servingG != 100 {
             let unit = isLiquidCategory ? "ml" : "g"
             let caloriesForServing = calories * (servingG / 100)
@@ -1299,29 +1305,29 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             ]
         }
 
-        // 3. If classification says use safe output, do not suggest presets (custom only)
+        // 4. If classification says use safe output, do not suggest presets (custom only)
         if confidence.usesSafeOutput {
             return []
         }
 
-        // 4. Per-unit items don't need presets
+        // 5. Per-unit items don't need presets
         if isPerUnit == true {
             return []
         }
 
-        // 5. Fast food items don't need presets
+        // 6. Fast food items don't need presets
         let brandLower = (brand?.lowercased() ?? "").replacingOccurrences(of: "'", with: "'")
         let nameLower = name.lowercased().replacingOccurrences(of: "'", with: "'")
         if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
             return []
         }
 
-        // 6. Fallback: Only show local category presets if detected, otherwise no presets
+        // 7. Fallback: Only show local category presets if detected, otherwise no presets
         if detectedCategory != .other {
             return presetPortions
         }
 
-        // 7. Firebase category-based portions (only when confident and detectable)
+        // 8. Firebase category-based portions (only when confident and detectable)
         if hasFirebaseCategoryPortions {
             let options = firebaseCategoryPortions
             if !options.isEmpty {
@@ -1428,9 +1434,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         // MARK: - Generic Food Presets
         case .oil:
             return [
-                PortionOption(name: "1 tsp (5g)", calories: caloriesPer100 * 0.05, serving_g: 5),
-                PortionOption(name: "1 tbsp (14g)", calories: caloriesPer100 * 0.14, serving_g: 14),
-                PortionOption(name: "2 tbsp (28g)", calories: caloriesPer100 * 0.28, serving_g: 28)
+                PortionOption(name: "1 tsp (5ml)", calories: caloriesPer100 * 0.05, serving_g: 5),
+                PortionOption(name: "1 tbsp (15ml)", calories: caloriesPer100 * 0.15, serving_g: 15),
+                PortionOption(name: "2 tbsp (30ml)", calories: caloriesPer100 * 0.30, serving_g: 30)
             ]
         case .butter:
             return [

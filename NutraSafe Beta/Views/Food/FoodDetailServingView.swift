@@ -36,9 +36,10 @@ struct FoodDetailServingView: View {
 
         // Exclude foods that have "oil" as an ingredient or preparation method, not the main product
         // E.g., "Mackerel in Olive Oil", "Sardines in Oil", "Tuna in Sunflower Oil"
+        // CRITICAL: Use word-boundary patterns to avoid false matches (e.g., "virgin olive oil" containing "in olive oil")
         let excludedPatterns = [
             "fish oil", "cod liver",
-            "in oil", "in olive oil", "in sunflower oil", "in vegetable oil",
+            " in oil", " in olive oil", " in sunflower oil", " in vegetable oil",  // Space prefix prevents "virgin olive oil" match
             "mackerel", "sardine", "tuna", "salmon", "anchov", "herring",
             "fillet", "fish", "seafood"
         ]

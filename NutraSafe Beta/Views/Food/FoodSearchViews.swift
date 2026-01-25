@@ -197,14 +197,14 @@ struct FoodSearchResultRowEnhanced: View {
     // Calculate standard serving calories for display
     // Uses first portion from portionsForQuery to ensure consistent serving size
     private var standardServingCalories: Int {
+        // For oils, ALWAYS default to tablespoon (15ml/15g) regardless of isPerUnit
+        if isOilProduct {
+            return Int(food.calories * 15.0 / 100.0)
+        }
+
         if food.isPerUnit == true {
             return Int(food.calories)
         } else {
-            // For oils, default to tablespoon (15ml/15g)
-            if isOilProduct {
-                return Int(food.calories * 15.0 / 100.0)
-            }
-
             // Use query-aware portions to get the default serving size
             let portions = food.portionsForQuery(food.name)
             if let defaultPortion = portions.first {
@@ -222,14 +222,14 @@ struct FoodSearchResultRowEnhanced: View {
     // Get standard serving size description - use first preset portion if available
     // Uses query-aware method to properly handle composite dishes
     private var standardServingDesc: String {
+        // For oils, ALWAYS default to tablespoon regardless of isPerUnit
+        if isOilProduct {
+            return "1 tablespoon"
+        }
+
         if food.isPerUnit == true {
             return "1 serving"
         } else {
-            // For oils, default to tablespoon
-            if isOilProduct {
-                return "1 tablespoon"
-            }
-
             // Use query-aware portions first for consistency with calories
             let portions = food.portionsForQuery(food.name)
             if let firstPortion = portions.first {
@@ -248,14 +248,14 @@ struct FoodSearchResultRowEnhanced: View {
     // Get the actual serving weight for nutrition calculation
     // Uses query-aware method to properly handle composite dishes
     private var standardServingWeight: Double {
+        // For oils, ALWAYS default to tablespoon (15ml/15g) regardless of isPerUnit
+        if isOilProduct {
+            return 15.0
+        }
+
         if food.isPerUnit == true {
             return 100.0 // Per-unit foods use full values
         } else {
-            // For oils, default to tablespoon (15ml/15g)
-            if isOilProduct {
-                return 15.0
-            }
-
             // Use query-aware portions first for consistency
             let portions = food.portionsForQuery(food.name)
             if let firstPortion = portions.first {
@@ -280,9 +280,10 @@ struct FoodSearchResultRowEnhanced: View {
         let nameLower = food.name.lowercased()
 
         // Exclude foods that have "oil" as an ingredient or preparation method, not the main product
+        // CRITICAL: Use word-boundary patterns to avoid false matches (e.g., "virgin olive oil" containing "in olive oil")
         let excludedPatterns = [
             "fish oil", "cod liver",
-            "in oil", "in olive oil", "in sunflower oil", "in vegetable oil",
+            " in oil", " in olive oil", " in sunflower oil", " in vegetable oil",  // Space prefix prevents "virgin olive oil" match
             "mackerel", "sardine", "tuna", "salmon", "anchov", "herring",
             "fillet", "fish", "seafood"
         ]
