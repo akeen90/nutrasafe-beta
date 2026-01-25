@@ -1,10 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is an admin
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // Foods collection - main collection
-    // Allow unauthenticated access for database manager tool
+    // Public read access for app searches, write restricted to authenticated admins only
     match /foods/{foodId} {
-      allow read, write: if true;
+      allow read: if true;  // Public read for search functionality
+      allow write: if isAdmin();  // Only admins can modify food database
     }
 
     // Users can only access their own data
@@ -18,33 +25,47 @@ service cloud.firestore {
     }
 
     // User-added foods collection (manually entered foods)
-    // Allow unauthenticated access for database manager tool
+    // Public read access, authenticated users can create/update their own, admins can modify all
     match /userAdded/{foodId} {
-      allow read, write: if true;
+      allow read: if true;  // Public read for search functionality
+      allow create: if request.auth != null;  // Authenticated users can add foods
+      allow update: if request.auth != null &&
+                      (resource.data.userId == request.auth.uid || isAdmin());  // Owner or admin can update
+      allow delete: if isAdmin();  // Only admins can delete
     }
 
     // AI manually added foods collection (foods found via "Find with AI" feature)
-    // Allow unauthenticated access for database manager tool
+    // Public read access, authenticated users can create/update their own, admins can modify all
     match /aiManuallyAdded/{foodId} {
-      allow read, write: if true;
+      allow read: if true;  // Public read for search functionality
+      allow create: if request.auth != null;  // Authenticated users can add foods
+      allow update: if request.auth != null &&
+                      (resource.data.userId == request.auth.uid || isAdmin());  // Owner or admin can update
+      allow delete: if isAdmin();  // Only admins can delete
     }
 
     // AI enhanced foods collection (foods enhanced from detail page)
-    // Allow unauthenticated access for database manager tool
+    // Public read access, authenticated users can create/update their own, admins can modify all
     match /aiEnhanced/{foodId} {
-      allow read, write: if true;
+      allow read: if true;  // Public read for search functionality
+      allow create: if request.auth != null;  // Authenticated users can add foods
+      allow update: if request.auth != null &&
+                      (resource.data.userId == request.auth.uid || isAdmin());  // Owner or admin can update
+      allow delete: if isAdmin();  // Only admins can delete
     }
 
     // Verified foods collection (admin-managed, high-quality verified foods)
-    // Allow unauthenticated access for database manager tool
+    // Public read access, write restricted to authenticated admins only
     match /verifiedFoods/{foodId} {
-      allow read, write: if true;
+      allow read: if true;  // Public read for search functionality
+      allow write: if isAdmin();  // Only admins can modify
     }
 
     // Cleansed foods collection (foods that have been cleaned/validated)
-    // Allow unauthenticated access for database manager tool
+    // Public read access, write restricted to authenticated admins only
     match /cleansedFoods/{foodId} {
-      allow read, write: if true;
+      allow read: if true;  // Public read for search functionality
+      allow write: if isAdmin();  // Only admins can modify
     }
 
     // Public read access for app configuration
@@ -53,19 +74,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Cookie consent logging - allow public writes for GDPR compliance
-    match /cookie_consents/{consentId} {
-      allow create: if true;
-      allow read: if false;
-      allow update, delete: if false;
-    }
-
     // Fasting plans - users can only access their own plans
     match /fasting_plans/{planId} {
-      allow read, write: if request.auth != null &&
-                          request.resource.data.user_id == request.auth.uid;
-      allow read: if request.auth != null &&
-                    resource.data.user_id == request.auth.uid;
+      // Allow create if the user_id matches the authenticated user
+      allow create: if request.auth != null &&
+                     request.resource.data.user_id == request.auth.uid;
+      // Allow read, update, delete only if user owns the document
+      // Legacy null user_id documents removed - all must have proper user_id
+      allow read, update, delete: if request.auth != null &&
+                                    resource.data.user_id == request.auth.uid;
     }
 
     // Fasting sessions - users can only access their own sessions
@@ -76,17 +93,45 @@ service cloud.firestore {
                     resource.data.user_id == request.auth.uid;
     }
 
-    // Fasting notifications - users can only access notifications for their sessions
+    // Fasting notifications - users can only access their own notifications
     match /fasting_notifications/{notificationId} {
-      allow read, write: if request.auth != null &&
-                          request.resource.data.session_id != null;
-      allow read: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow create: if request.auth != null &&
+                      request.resource.data.user_id == request.auth.uid;
+      allow read, update, delete: if request.auth != null &&
+                                    resource.data.user_id == request.auth.uid;
     }
 
     // Fasting settings - users can only access their own settings
     match /fasting_settings/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Cookie consent collection - allow anonymous writes for GDPR compliance logging
+    match /cookie_consents/{consentId} {
+      // Allow anyone to create consent records (website visitors)
+      allow create: if request.resource.data.keys().hasAll(['choice', 'timestamp', 'userAgent']) &&
+                      request.resource.data.choice in ['accepted', 'rejected'] &&
+                      request.resource.data.timestamp is timestamp;
+      // No read or update access (write-only for privacy)
+      allow read, update, delete: if false;
+    }
+
+    // System collection - admin-only access for build progress tracking
+    match /system/{document} {
+      allow read: if isAdmin();  // Admins can read build progress
+      allow write: if false;  // Only server-side (Cloud Functions) can write
+    }
+
+    // Tesco products collection - public read, admin write
+    match /tescoProducts/{productId} {
+      allow read: if true;  // Public read for search functionality
+      allow write: if isAdmin();  // Only admins can modify
+    }
+
+    // Admins collection - allow read for admin check
+    match /admins/{adminId} {
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      allow write: if false;  // Only server can modify admin list
     }
   }
 }
