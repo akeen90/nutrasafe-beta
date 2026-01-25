@@ -200,7 +200,11 @@ struct UseByTabView: View {
                                     .padding(.horizontal, 16)
                             }
 
-                            UseByMainViewRedesigned(selectedTab: $selectedTab)
+                            UseByExpiryView(
+                                showingScanner: $showingScanner,
+                                showingCamera: $showingCamera,
+                                selectedTab: $selectedTab
+                            )
                             .frame(maxWidth: .infinity)
                         }
                         .padding(.bottom, 80)
