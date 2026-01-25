@@ -1127,7 +1127,7 @@ private struct KeyboardDismissButtonTokens {
 
     // Spacing
     static let trailingPadding: CGFloat = 16
-    static let keyboardOffset: CGFloat = 1  // Gap above keyboard (1pt = very tight, 8pt = comfortable)
+    static let keyboardOffset: CGFloat = 12  // Gap above keyboard - increased from 1pt to prevent obscuring
 
     // Animation
     static let pressScale: CGFloat = 0.92
@@ -1191,9 +1191,11 @@ struct KeyboardDismissModifier: ViewModifier {
                         KeyboardDismissButton()
                             .padding(.trailing, KeyboardDismissButtonTokens.trailingPadding)
                     }
-                    .padding(.bottom, keyboardObserver.keyboardHeight + KeyboardDismissButtonTokens.keyboardOffset)
+                    // Use max() to ensure button stays above keyboard even during keyboard height transitions
+                    .padding(.bottom, max(0, keyboardObserver.keyboardHeight + KeyboardDismissButtonTokens.keyboardOffset))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
+                    .allowsHitTesting(true)  // Ensure button can always be tapped
                 }
             }
     }
