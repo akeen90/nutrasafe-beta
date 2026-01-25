@@ -376,6 +376,9 @@ struct FoodDetailViewFromSearch: View {
     // PERFORMANCE: Cache ingredients list to prevent re-computation on every render
     @State private var cachedIngredients: [String]? = nil
 
+    // PERFORMANCE: Cache standardized ingredients to prevent expensive regex operations
+    @State private var cachedStandardizedIngredients: [String]? = nil
+
     // PERFORMANCE: Cache ingredients status to prevent re-computation on every render
     @State private var cachedIngredientsStatus: IngredientsStatus? = nil
 
@@ -1055,6 +1058,14 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private func getIngredientsList() -> [String]? {
+        // PERFORMANCE: Return cached standardized ingredients if available
+        if let cached = cachedStandardizedIngredients {
+            return cached
+        }
+
+        // Build ingredients list (will be standardized and cached)
+        var rawIngredients: [String]?
+
         if let enhancedText = enhancedIngredientsText, !enhancedText.isEmpty {
             // Split enhanced ingredients text into array
             let enhancedIngredients = enhancedText
@@ -1062,44 +1073,56 @@ struct FoodDetailViewFromSearch: View {
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
             if !enhancedIngredients.isEmpty {
-                return enhancedIngredients.map { standardizeToUKSpelling($0) }
+                rawIngredients = enhancedIngredients
             }
         }
 
         // PRIORITY 2: Try to get ingredients from displayFood (uses enriched or original)
-        if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
+        if rawIngredients == nil, let ingredients = displayFood.ingredients, !ingredients.isEmpty {
             let realIngredients = ingredients.filter { ingredient in
                 !ingredient.contains("Processing ingredient image...") && !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
             if !realIngredients.isEmpty {
-                return realIngredients.map { standardizeToUKSpelling($0) }
+                rawIngredients = realIngredients
             }
         }
 
         // Check for user-verified ingredients first (from photo verification)
-        let foodKey = "\(food.name)|\(food.brand ?? "")"
-        let userVerifiedFoods = UserDefaults.standard.array(forKey: "userVerifiedFoods") as? [String] ?? []
+        if rawIngredients == nil {
+            let foodKey = "\(food.name)|\(food.brand ?? "")"
+            let userVerifiedFoods = UserDefaults.standard.array(forKey: "userVerifiedFoods") as? [String] ?? []
 
-        if userVerifiedFoods.contains(foodKey) {
-            // Try to get the clean ingredients array first (from Gemini AI extraction)
-            if let userIngredientsArray = UserDefaults.standard.array(forKey: "userIngredientsArray_\(foodKey)") as? [String] {
-                return userIngredientsArray.map { standardizeToUKSpelling($0) }
-            }
-            // Fallback to clean ingredients text, split by comma
-            else if let userIngredientsText = UserDefaults.standard.string(forKey: "userIngredients_\(foodKey)") {
-                return userIngredientsText.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.map { standardizeToUKSpelling($0) }
+            if userVerifiedFoods.contains(foodKey) {
+                // Try to get the clean ingredients array first (from Gemini AI extraction)
+                if let userIngredientsArray = UserDefaults.standard.array(forKey: "userIngredientsArray_\(foodKey)") as? [String] {
+                    rawIngredients = userIngredientsArray
+                }
+                // Fallback to clean ingredients text, split by comma
+                else if let userIngredientsText = UserDefaults.standard.string(forKey: "userIngredients_\(foodKey)") {
+                    rawIngredients = userIngredientsText.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                }
             }
         }
 
         // If no user-verified ingredients, check for submitted pending ingredients
-        let submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
+        if rawIngredients == nil {
+            let foodKey = "\(food.name)|\(food.brand ?? "")"
+            let submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
 
-        if submittedFoods.contains(foodKey) {
-            // Get submitted ingredients from local storage
-            if let submittedData = UserDefaults.standard.data(forKey: "submittedIngredients_\(foodKey)"),
-               let ingredients = try? JSONDecoder().decode([String].self, from: submittedData) {
-                return ingredients.map { standardizeToUKSpelling($0) }
+            if submittedFoods.contains(foodKey) {
+                // Get submitted ingredients from local storage
+                if let submittedData = UserDefaults.standard.data(forKey: "submittedIngredients_\(foodKey)"),
+                   let ingredients = try? JSONDecoder().decode([String].self, from: submittedData) {
+                    rawIngredients = ingredients
+                }
             }
+        }
+
+        // Standardize and cache the results (expensive operation done once)
+        if let raw = rawIngredients {
+            let standardized = raw.map { standardizeToUKSpelling($0) }
+            cachedStandardizedIngredients = standardized
+            return standardized
         }
 
         // If no ingredients found, return nil
@@ -1840,6 +1863,7 @@ struct FoodDetailViewFromSearch: View {
         .onChange(of: food.id) {
             // Invalidate all caches when food changes (e.g., switching between search and diary)
             cachedIngredients = nil
+            cachedStandardizedIngredients = nil
             cachedIngredientsStatus = nil
             cachedAdditives = nil
             cachedNutritionScore = nil
@@ -1851,6 +1875,7 @@ struct FoodDetailViewFromSearch: View {
         .onChange(of: enhancedIngredientsText) {
             // Invalidate caches when enhanced ingredients data changes
             cachedIngredients = nil
+            cachedStandardizedIngredients = nil
             cachedIngredientsStatus = nil
             cachedAdditives = nil
             cachedNutraSafeGrade = nil  // Grade depends on ingredients
@@ -3767,6 +3792,7 @@ struct FoodDetailViewFromSearch: View {
         // PERFORMANCE: Invalidate caches and reset initialization flag to allow re-initialization
         await MainActor.run {
             cachedIngredients = nil
+            cachedStandardizedIngredients = nil
             cachedIngredientsStatus = nil
             cachedAdditives = nil
             cachedNutritionScore = nil

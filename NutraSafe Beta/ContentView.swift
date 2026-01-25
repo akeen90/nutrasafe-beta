@@ -465,15 +465,23 @@ struct ContentView: View {
 
     // PERFORMANCE: Pre-render all tabs in background for instant switching
     private func preloadAllTabsInBackground() {
-        // Wait 1.5 seconds after app launch to avoid impacting startup
-        Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+        // Stagger tab loading to prevent memory spike and reduce UI jank
+        Task(priority: .utility) {
+            // First tab (.diary) is already loaded on launch
 
-            await MainActor.run {
-                let tabsToPreload = TabItem.allCases.filter { $0 != .add }
-                // Pre-load all tabs except .add (modal)
-                visitedTabs = Set(tabsToPreload)
-            }
+            // Load .progress tab after 500ms
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            await MainActor.run { visitedTabs.insert(.weight) }
+
+            // Load .food (health) tab after 800ms total
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run { visitedTabs.insert(.food) }
+
+            // Load .useBy tab after 1.1s total
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run { visitedTabs.insert(.useBy) }
+
+            // .add tab is modal-only, never preload
         }
     }
 
@@ -852,18 +860,7 @@ struct ContentView: View {
 
             // PRIORITY 2: Background preload other tabs IN PARALLEL (non-blocking)
             Task(priority: .utility) {
-                // Load user height for weight tracking
-                do {
-                    let settings = try await FirebaseManager.shared.getUserSettings()
-                    if let height = settings.height {
-                        await MainActor.run {
-                            userHeight = height
-                        }
-                    }
-                } catch {
-                                    }
-
-                // All requests run in parallel using async let
+                // All requests run in parallel using async let (single settings fetch)
                 async let weightsTask = FirebaseManager.shared.getWeightHistory()
                 async let useByTask: [UseByInventoryItem] = FirebaseManager.shared.getUseByItems()
                 async let reactionsTask = FirebaseManager.shared.getReactions()
@@ -878,6 +875,11 @@ struct ContentView: View {
                     let settings = try await settingsTask
                     _ = await nutrientsTask
                     await MainActor.run {
+                        // Set user height from settings
+                        if let height = settings.height {
+                            userHeight = height
+                        }
+
                         if let uid = FirebaseManager.shared.currentUser?.uid {
                             ReactionManager.shared.preload(reactions, for: uid)
                             // Start nutrient tracking with user-scoped caching
@@ -885,8 +887,9 @@ struct ContentView: View {
                         }
                         FirebaseManager.shared.preloadWeightData(history: weights, height: settings.height, goalWeight: settings.goalWeight)
                     }
-                                    } catch {
-                                    }
+                } catch {
+                    // Silent failure for background preload
+                }
             }
 
             // Initialize shared FastingViewModel for diary-fasting integration
