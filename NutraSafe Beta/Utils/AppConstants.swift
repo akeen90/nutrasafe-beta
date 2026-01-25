@@ -876,9 +876,11 @@ class KeyboardObserver: ObservableObject {
         // Filter out floating/split keyboards on iPad (they're too small to position against)
         guard keyboardFrame.height > 100 else { return }
 
-        withAnimation(.easeInOut(duration: 0.3)) {
-            keyboardHeight = keyboardFrame.height
-            isKeyboardVisible = true
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.keyboardHeight = keyboardFrame.height
+                self.isKeyboardVisible = true
+            }
         }
     }
 
@@ -889,16 +891,20 @@ class KeyboardObserver: ObservableObject {
         guard keyboardFrame.height > 100 else { return }
 
         // Update keyboard height when it changes (e.g., switching between email and password fields)
-        withAnimation(.easeInOut(duration: 0.25)) {
-            keyboardHeight = keyboardFrame.height
-            isKeyboardVisible = true
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                self.keyboardHeight = keyboardFrame.height
+                self.isKeyboardVisible = true
+            }
         }
     }
 
     @objc private func keyboardWillHide(_ notification: Notification) {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            keyboardHeight = 0
-            isKeyboardVisible = false
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.keyboardHeight = 0
+                self.isKeyboardVisible = false
+            }
         }
     }
 
