@@ -211,7 +211,7 @@ struct BreathScreen: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     private var isIPad: Bool {
-        isIPad
+        horizontalSizeClass == .regular
     }
 
     var body: some View {
@@ -267,6 +267,10 @@ struct MirrorScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+
+    private var isIPad: Bool {
+        horizontalSizeClass == .regular
+    }
 
     var body: some View {
         VStack(spacing: 0) {
