@@ -471,15 +471,15 @@ struct ContentView: View {
 
             // Load .progress tab after 500ms
             try? await Task.sleep(nanoseconds: 500_000_000)
-            await MainActor.run { visitedTabs.insert(.weight) }
+            _ = await MainActor.run { visitedTabs.insert(.weight) }
 
             // Load .food (health) tab after 800ms total
             try? await Task.sleep(nanoseconds: 300_000_000)
-            await MainActor.run { visitedTabs.insert(.food) }
+            _ = await MainActor.run { visitedTabs.insert(.food) }
 
             // Load .useBy tab after 1.1s total
             try? await Task.sleep(nanoseconds: 300_000_000)
-            await MainActor.run { visitedTabs.insert(.useBy) }
+            _ = await MainActor.run { visitedTabs.insert(.useBy) }
 
             // .add tab is modal-only, never preload
         }
