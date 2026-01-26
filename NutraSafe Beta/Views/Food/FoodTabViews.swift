@@ -859,7 +859,37 @@ struct FoodReactionSummaryCard: View {
             return insight + "."
         }
 
-        // Fallback if no ingredient trigger identified
+        // Fallback: Check for allergen triggers from suspected ingredients
+        if let allergenTriggers = topAllergenTriggers, !allergenTriggers.isEmpty {
+            var insight = "You've been experiencing \(symptom.symptom.lowercased())"
+
+            // Add timing context inline
+            if let timing = peakTiming {
+                let timingPhrase: String
+                switch timing.lowercased() {
+                case "morning": timingPhrase = "in the mornings"
+                case "afternoon": timingPhrase = "in the afternoons"
+                case "evening": timingPhrase = "in the evenings"
+                case "night": timingPhrase = "at night"
+                default: timingPhrase = "throughout the day"
+                }
+                insight += " \(timingPhrase)"
+            }
+
+            // Mention the allergen trigger(s)
+            if allergenTriggers.count == 1 {
+                insight += ". \(allergenTriggers[0].name) appears in \(allergenTriggers[0].count) of your reactions"
+            } else if allergenTriggers.count == 2 {
+                insight += ". \(allergenTriggers[0].name) and \(allergenTriggers[1].name) each appear in \(allergenTriggers[0].count) reactions"
+            } else {
+                let allergenList = allergenTriggers.prefix(3).map { $0.name }.joined(separator: ", ")
+                insight += ". Common triggers include \(allergenList)"
+            }
+
+            return insight + "."
+        }
+
+        // Final fallback if no triggers identified yet
         var insight = "You've been experiencing \(symptom.symptom.lowercased())"
 
         // Add timing context inline
@@ -875,7 +905,7 @@ struct FoodReactionSummaryCard: View {
             insight += " \(timingPhrase)"
         }
 
-        insight += ". We're still learning what might be causing it"
+        insight += ". Keep tracking to identify patterns"
 
         return insight + "."
     }
