@@ -181,6 +181,14 @@ struct FoodSearchResultRowEnhanced: View {
     @State private var isPressed = false
     @State private var showingQuickAddConfirmation = false
     @State private var quickAddMealType = ""
+
+    // High calorie warning states
+    @State private var showingHighCalorieWarning = false
+    @State private var pendingMealType: String = ""
+    @State private var showingServingEditor = false
+    @State private var editedServingSize: String = ""
+    @FocusState private var servingEditorFocused: Bool
+
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -771,6 +779,176 @@ struct FoodSearchResultRowEnhanced: View {
                 }
             }
         )
+        .sheet(isPresented: $showingHighCalorieWarning) {
+            highCalorieWarningSheet
+        }
+    }
+
+    // High calorie warning threshold (calories)
+    private let highCalorieThreshold: Double = 600
+
+    // Calculate calories for a given serving size
+    private func caloriesForServing(_ grams: Double) -> Int {
+        return Int(food.calories * grams / 100.0)
+    }
+
+    // High calorie warning sheet
+    private var highCalorieWarningSheet: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Warning header
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 44))
+                        .foregroundColor(.orange)
+
+                    Text("High Calories")
+                        .font(.system(size: 24, weight: .bold))
+
+                    Text("That's **\(standardServingCalories) kcal** for \(standardServingDesc)")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 24)
+                .padding(.horizontal, 24)
+
+                // Helpful tip
+                Text("Check the packet to confirm the serving size is correct.")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 16)
+
+                Spacer()
+
+                // Serving editor (shown when user taps Edit)
+                if showingServingEditor {
+                    VStack(spacing: 16) {
+                        Text("Enter serving size")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 8) {
+                            TextField("", text: $editedServingSize)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 28, weight: .bold))
+                                .multilineTextAlignment(.center)
+                                .frame(width: 100)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                                .focused($servingEditorFocused)
+
+                            Text(portionUnitLabel)
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+
+                        // Live calorie preview
+                        if let grams = Double(editedServingSize), grams > 0 {
+                            Text("\(caloriesForServing(grams)) kcal")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+
+                Spacer()
+
+                // Action buttons
+                VStack(spacing: 12) {
+                    if showingServingEditor {
+                        // Confirm edited serving
+                        Button {
+                            if let grams = Double(editedServingSize), grams > 0 {
+                                showingHighCalorieWarning = false
+                                showingServingEditor = false
+                                quickAddFoodWithCustomServing(to: pendingMealType, grams: grams)
+                            }
+                        } label: {
+                            Text("Add \(Double(editedServingSize) ?? 0 > 0 ? "\(caloriesForServing(Double(editedServingSize) ?? 0)) kcal" : "")")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Double(editedServingSize) ?? 0 > 0 ? Color.green : Color.gray)
+                                )
+                        }
+                        .disabled(Double(editedServingSize) ?? 0 <= 0)
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showingServingEditor = false
+                            }
+                        } label: {
+                            Text("Cancel")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        // It's correct - add as is
+                        Button {
+                            showingHighCalorieWarning = false
+                            performQuickAdd(to: pendingMealType)
+                        } label: {
+                            Text("It's Correct")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Color.green)
+                                )
+                        }
+
+                        // Edit serving size
+                        Button {
+                            editedServingSize = String(format: "%.0f", standardServingWeight)
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showingServingEditor = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                servingEditorFocused = true
+                            }
+                        } label: {
+                            Text("Edit Serving Size")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(AppPalette.standard.accent)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(AppPalette.standard.accent, lineWidth: 2)
+                                )
+                        }
+
+                        // Cancel
+                        Button {
+                            showingHighCalorieWarning = false
+                            showingServingEditor = false
+                        } label: {
+                            Text("Cancel")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 34)
+            }
+            .navigationBarHidden(true)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 
     // Quick add confirmation toast
@@ -794,11 +972,33 @@ struct FoodSearchResultRowEnhanced: View {
         .zIndex(100)
     }
 
-    // Quick add food to diary at standard serving size
+    // Quick add food to diary - checks for high calories first (skips per-unit items)
     private func quickAddFood(to mealType: String) {
         // Dismiss keyboard
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 
+        // Skip high calorie warning for per-unit items (eggs, apples, etc.)
+        // These are already validated as single items
+        if food.isPerUnit == true {
+            performQuickAdd(to: mealType)
+            return
+        }
+
+        // Check if calories exceed threshold
+        let calories = Double(standardServingCalories)
+        if calories >= highCalorieThreshold {
+            // Show warning sheet
+            pendingMealType = mealType
+            showingServingEditor = false
+            showingHighCalorieWarning = true
+        } else {
+            // Under threshold, add directly
+            performQuickAdd(to: mealType)
+        }
+    }
+
+    // Actually perform the quick add (called after warning confirmation or when under threshold)
+    private func performQuickAdd(to mealType: String) {
         // Calculate nutrition at standard serving size using the computed serving weight
         let servingMultiplier: Double
         if food.isPerUnit == true {
@@ -807,7 +1007,19 @@ struct FoodSearchResultRowEnhanced: View {
             servingMultiplier = standardServingWeight / 100.0
         }
 
-        // Create diary entry at standard serving
+        addFoodToDiary(mealType: mealType, servingMultiplier: servingMultiplier, servingDesc: standardServingDesc)
+    }
+
+    // Quick add with custom serving size (from editor)
+    private func quickAddFoodWithCustomServing(to mealType: String, grams: Double) {
+        let servingMultiplier = grams / 100.0
+        let customServingDesc = "\(Int(grams))\(portionUnitLabel)"
+
+        addFoodToDiary(mealType: mealType, servingMultiplier: servingMultiplier, servingDesc: customServingDesc)
+    }
+
+    // Shared diary entry creation logic
+    private func addFoodToDiary(mealType: String, servingMultiplier: Double, servingDesc: String) {
         // Analyze additives from ingredients if available (like FoodDetailViewFromSearch does)
         let additivesToSave: [NutritionAdditiveInfo]?
         if let ingredients = food.ingredients, !ingredients.isEmpty {
@@ -852,7 +1064,7 @@ struct FoodSearchResultRowEnhanced: View {
             fiber: food.fiber * servingMultiplier,
             sugar: food.sugar * servingMultiplier,
             sodium: food.sodium * servingMultiplier,
-            servingDescription: standardServingDesc,
+            servingDescription: servingDesc,
             quantity: 1.0,
             time: mealType.capitalized,
             processedScore: food.processingGrade,
