@@ -1886,9 +1886,7 @@ struct AppPreferencesSection: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
-    @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage("useByNotificationsEnabled") private var useByNotificationsEnabled = true
-    @AppStorage("fastingNotificationsEnabled") private var fastingNotificationsEnabled = true
     @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
 
     @EnvironmentObject var healthKitManager: HealthKitManager
@@ -1999,9 +1997,7 @@ struct AppPreferencesSection: View {
         }
         .fullScreenCover(isPresented: $showingNotificationSettings) {
             NotificationSettingsView(
-                notificationsEnabled: $notificationsEnabled,
-                useByNotificationsEnabled: $useByNotificationsEnabled,
-                fastingNotificationsEnabled: $fastingNotificationsEnabled
+                useByNotificationsEnabled: $useByNotificationsEnabled
             )
         }
         .fullScreenCover(isPresented: $showingDataPrivacy) {
@@ -3561,9 +3557,7 @@ struct MicronutrientDisplayView: View {
 
 struct NotificationSettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Binding var notificationsEnabled: Bool
     @Binding var useByNotificationsEnabled: Bool
-    @Binding var fastingNotificationsEnabled: Bool
 
     @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
     @State private var showingPermissionAlert = false
@@ -3878,7 +3872,6 @@ struct NotificationSettingsView: View {
             } else {
                 permissionStatus = .denied
                 useByNotificationsEnabled = false
-                fastingNotificationsEnabled = false
             }
             await checkNotificationPermission()
         }

@@ -15,12 +15,12 @@ struct FastingNotificationSettings: Codable {
     var endNotificationEnabled: Bool = true
     var stageNotificationsEnabled: Bool = true
 
-    // Individual stage toggles
-    var stage4hEnabled: Bool = true   // Post-meal processing complete
-    var stage8hEnabled: Bool = true   // Fuel switching
-    var stage12hEnabled: Bool = true  // Fat mobilisation
-    var stage16hEnabled: Bool = true  // Mild ketosis
-    var stage20hEnabled: Bool = true  // Autophagy potential
+    // Individual stage toggles (only 12h enabled by default)
+    var stage4hEnabled: Bool = false  // Post-meal processing complete
+    var stage8hEnabled: Bool = false  // Fuel switching
+    var stage12hEnabled: Bool = true  // Fat mobilisation (default on)
+    var stage16hEnabled: Bool = false // Mild ketosis
+    var stage20hEnabled: Bool = false // Autophagy potential
 
     static var `default`: FastingNotificationSettings {
         FastingNotificationSettings()
@@ -361,40 +361,49 @@ class FastingNotificationManager {
 
     /// Schedule stage notifications throughout the fast
     private func scheduleStageNotifications(for plan: FastingPlan, startingOn startDate: Date) async throws {
-        // Only schedule a single stage: "Fat burning" (default at 12h) to stay well under the iOS 64 notification cap.
-        let fatBurnHours = 12
+        guard settings.stageNotificationsEnabled else { return }
 
-        guard settings.stageNotificationsEnabled,
-              settings.stage12hEnabled,
-              fatBurnHours < plan.durationHours else { return }
-
-        let stageDate = startDate.addingTimeInterval(TimeInterval(fatBurnHours * 3600))
-
-        // Only schedule if the stage time is in the future
-        guard stageDate > Date() else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Fat burning phase"
-        content.body = "You’re ~\(fatBurnHours) hours in. Fat mobilisation is underway—stay hydrated and plan your break."
-        content.sound = .default
-        content.categoryIdentifier = fastStageCategoryId
-
-        content.userInfo = [
-            "type": "fasting",
-            "fastingType": "stage",
-            "planId": plan.id ?? "",
-            "planName": plan.displayName,
-            "stageHours": fatBurnHours
+        // Define all fasting stages with their messages
+        let stages: [(hours: Int, enabled: Bool, title: String, body: String)] = [
+            (4, settings.stage4hEnabled, "Post-meal processing complete", "You're 4 hours in. Your body has finished digesting—fuel switching begins soon."),
+            (8, settings.stage8hEnabled, "Fuel switching activated", "You're 8 hours in. Your body is transitioning to burning stored energy."),
+            (12, settings.stage12hEnabled, "Fat burning phase", "You're 12 hours in. Fat mobilisation is underway—stay hydrated."),
+            (16, settings.stage16hEnabled, "Mild ketosis reached", "You're 16 hours in. Your body is now efficiently burning fat for fuel."),
+            (20, settings.stage20hEnabled, "Autophagy potential", "You're 20 hours in. Cellular cleanup processes may be activating.")
         ]
 
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: stageDate)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        for stage in stages {
+            // Skip if this stage is disabled or exceeds the plan duration
+            guard stage.enabled, stage.hours < plan.durationHours else { continue }
 
-        let identifier = "fast_stage_\(plan.id ?? "")_\(fatBurnHours)h_\(startDate.timeIntervalSince1970)"
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            let stageDate = startDate.addingTimeInterval(TimeInterval(stage.hours * 3600))
 
-        try await notificationCenter.add(request)
+            // Only schedule if the stage time is in the future
+            guard stageDate > Date() else { continue }
+
+            let content = UNMutableNotificationContent()
+            content.title = stage.title
+            content.body = stage.body
+            content.sound = .default
+            content.categoryIdentifier = fastStageCategoryId
+
+            content.userInfo = [
+                "type": "fasting",
+                "fastingType": "stage",
+                "planId": plan.id ?? "",
+                "planName": plan.displayName,
+                "stageHours": stage.hours
+            ]
+
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: stageDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+
+            let identifier = "fast_stage_\(plan.id ?? "")_\(stage.hours)h_\(startDate.timeIntervalSince1970)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+            try await notificationCenter.add(request)
+        }
     }
 
     // MARK: - Cancel Notifications
@@ -430,7 +439,10 @@ class FastingNotificationManager {
         identifiersToRemove.append("fast_start_\(planId)_\(startTimestamp)")
         identifiersToRemove.append("fast_end_\(planId)_\(startTimestamp)")
         identifiersToRemove.append("fast_reminder_\(planId)_\(startTimestamp)")
-        identifiersToRemove.append("fast_stage_\(planId)_12h_\(startTimestamp)")
+        // Cancel all stage notifications (4h, 8h, 12h, 16h, 20h)
+        for hours in [4, 8, 12, 16, 20] {
+            identifiersToRemove.append("fast_stage_\(planId)_\(hours)h_\(startTimestamp)")
+        }
 
         notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
 
@@ -475,7 +487,10 @@ class FastingNotificationManager {
             validIdentifiers.insert("fast_start_\(planId)_\(startTimestamp)")
             validIdentifiers.insert("fast_end_\(planId)_\(startTimestamp)")
             validIdentifiers.insert("fast_reminder_\(planId)_\(startTimestamp)")
-            validIdentifiers.insert("fast_stage_\(planId)_12h_\(startTimestamp)")
+            // Include all stage notification identifiers (4h, 8h, 12h, 16h, 20h)
+            for hours in [4, 8, 12, 16, 20] {
+                validIdentifiers.insert("fast_stage_\(planId)_\(hours)h_\(startTimestamp)")
+            }
         }
 
         // Find orphaned notifications (ones that don't match any active session)

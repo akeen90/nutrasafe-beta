@@ -89,6 +89,41 @@ NutraSafe follows a **premium, emotion-first design language** that emphasizes c
 - Hardcode colors (use theme system)
 - Add features without considering emotional impact
 
+## 🌐 Website Development Standards
+
+### CRITICAL: Every New Page MUST Include
+
+When creating or updating website pages in `/firebase/public/`, **ALWAYS** include:
+
+1. **Cookie Consent Script**
+   ```html
+   <script src="/cookie-consent.js" defer></script>
+   ```
+   - Add before closing `</head>` tag
+   - Required for GDPR compliance and analytics opt-in
+
+2. **Analytics Tracking**
+   - Google Analytics is loaded via cookie-consent.js after user consent
+   - No additional tags needed if cookie-consent.js is included
+
+3. **Consistent Navigation**
+   - **Header navigation** must link to: Features, How It Works, Blog, Resources, Download
+   - **Footer** must include all site sections for discoverability
+   - New pages MUST be added to sitemap.xml
+   - Link to new pages from relevant existing pages (internal linking)
+
+### Page Checklist
+Before deploying any new page, verify:
+- [ ] Cookie consent script included
+- [ ] Page added to sitemap.xml
+- [ ] Internal links from related pages
+- [ ] Header/footer navigation present
+- [ ] Mobile responsive
+- [ ] Meta tags (title, description, og:image)
+- [ ] Canonical URL set
+
+**Why this matters:** Consistent navigation improves SEO (internal linking), user experience (easy discovery), and compliance (cookie consent).
+
 ## 🏗️ Architecture
 
 ### iOS App (SwiftUI)
@@ -119,14 +154,36 @@ NutraSafe follows a **premium, emotion-first design language** that emphasizes c
 
 ## 🐛 Debugging Protocol
 
-### When UI Changes Don't Appear
-If you've made changes but they're not showing in the app, **DO NOT assume it's a build cache issue**. Follow this protocol:
+### ⚠️ CRITICAL: Always Verify Active Components First
+**Before making ANY changes or checking functionality**, you MUST:
 
-1. **Trace the execution path** - Find which component is ACTUALLY being rendered
+1. **Find what's actually being used** - This codebase has many duplicate/legacy views
    ```bash
    # Find where a view is instantiated (not just defined)
    grep -r "ViewName(" "NutraSafe Beta/Views/" --include="*.swift"
    ```
+
+2. **Trace the full call chain** - Don't assume the obvious file is the active one
+   - Start from ContentView.swift or the entry point
+   - Follow each navigation/presentation to the actual view being displayed
+   - Verify with grep that the component you're editing is actually instantiated
+
+3. **Common naming patterns for duplicates:**
+   - `*Legacy`, `*Old`, `*Redesigned`, `*Clean`, `*Modern`, `*New`, `*V2`
+   - The file you think is active might be dead code
+   - The "redesigned" version might not be wired up yet
+
+**Example verification:**
+```bash
+# Wrong: Assuming NotificationSettingsView is used
+# Right: Verify it's actually called
+grep -r "NotificationSettingsView" "NutraSafe Beta/" --include="*.swift" | grep -v "struct NotificationSettingsView"
+```
+
+### When UI Changes Don't Appear
+If you've made changes but they're not showing in the app, **DO NOT assume it's a build cache issue**. Follow this protocol:
+
+1. **Trace the execution path** - Find which component is ACTUALLY being rendered
 
 2. **Check for duplicate/unused components** - Multiple versions of the same view often exist
    - Look for `*Legacy`, `*Old`, `*Redesigned`, `Clean*`, `Modern*` variants
@@ -361,6 +418,72 @@ firebase deploy --only hosting
 # Test locally
 firebase serve
 ```
+
+### Admin Dashboard Deployment (CRITICAL)
+
+When deploying the admin v2 dashboard (`/firebase/public/admin-v2/`):
+
+1. **Build the dashboard**
+   ```bash
+   cd firebase/public/admin-v2
+   npm run build
+   ```
+
+2. **Deploy to Firebase**
+   ```bash
+   cd firebase
+   firebase deploy --only hosting
+   ```
+
+3. **ALWAYS VERIFY THE DEPLOYMENT** (REQUIRED)
+   - **DO NOT** say deployment is complete until you've verified the dashboard loads
+   - Use WebFetch to check `https://nutrasafe-705c7.web.app/admin-v2/`
+   - Confirm you see "NutraSafe Food Database Manager" title
+   - Confirm no critical errors appear
+   - If the page shows a loading spinner, that's normal (it takes a moment to initialize)
+
+   Example verification:
+   ```
+   WebFetch url: https://nutrasafe-705c7.web.app/admin-v2/
+   prompt: "Check if the page loads successfully and verify there are no critical errors."
+   ```
+
+### Admin Dashboard Dev Server (CRITICAL)
+
+When starting the dev server for admin v2 (`/firebase/public/admin-v2/`):
+
+1. **Start the dev server**
+   ```bash
+   cd /Users/aaronkeen/Documents/My\ Apps/NutraSafe/firebase/public/admin-v2
+   npm run dev
+   ```
+
+2. **ALWAYS VERIFY THE DEV SERVER ISN'T STUCK** (REQUIRED)
+   - **DO NOT** say dev server is running until you've verified it's actually serving content
+   - The server should start within 5-10 seconds and show a URL like `http://localhost:5173/admin-v2/`
+   - **Check for stuck/spinning states**: Look for error messages or infinite loading
+   - Verify the server responds by checking the URL with curl:
+
+   ```bash
+   # Let dev server start
+   sleep 3
+
+   # Check if it's serving content (should see HTML with "NutraSafe" and "root")
+   curl -s http://localhost:5173/admin-v2/ | head -60 | grep -E "NutraSafe|root"
+   ```
+
+3. **Common Issues**
+   - **Port in use**: Vite will automatically try another port (5174, 5175, etc.) - this is normal
+   - **Spinning/stuck**: If curl returns nothing or hangs, the server is stuck - kill it and restart
+   - **Build errors**: Check the terminal output for TypeScript or build errors
+   - **Old processes**: Use `pkill -f "vite.*admin-v2"` to kill lingering processes
+
+4. **How to verify it's working**
+   - ✅ Terminal shows: `VITE v5.x.x ready in XXXms` and a localhost URL
+   - ✅ curl returns HTML containing "NutraSafe Food Database Manager"
+   - ✅ Opening the URL in browser shows the loading spinner or the app
+   - ❌ curl returns nothing or connection refused = server is stuck/not running
+   - ❌ Terminal shows continuous errors or warnings = build issues
 
 ### Security Checklist
 - [ ] API keys in `.env` only
