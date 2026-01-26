@@ -412,6 +412,23 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     notExamples: ['Lasagne Sheets', 'Dried Lasagne Pasta'],
   },
   {
+    id: 'chicken_ready_meal',
+    name: 'Chicken Ready Meal',
+    description: 'Chicken-based ready meals - satay, kiev, hunter\'s chicken, etc.',
+    keywords: ['satay chicken', 'hunter\'s chicken', 'hunters chicken', 'chicken kiev', 'chicken dinner', 'chicken and rice', 'chicken with rice', 'roast chicken meal', 'chicken casserole ready meal', 'lemon chicken', 'teriyaki chicken', 'honey chicken', 'garlic chicken'],
+    excludeKeywords: ['raw chicken', 'chicken breast', 'chicken thigh', 'chicken drumstick'],
+    defaultServingG: 400,
+    servingSizes: [
+      { name: 'Small portion', grams: 300 },
+      { name: 'Standard portion', grams: 400 },
+      { name: 'Large portion', grams: 450 },
+    ],
+    toleranceMin: 280,
+    toleranceMax: 500,
+    examples: ['Tesco Finest Satay Chicken With Jasmine Rice', 'Chicken Kiev', 'Hunter\'s Chicken', 'Lemon & Herb Chicken'],
+    notExamples: ['Raw Chicken Breast', 'Chicken Thighs', 'Fresh Chicken'],
+  },
+  {
     id: 'curry_ready_meal',
     name: 'Curry (Ready Meal)',
     description: 'Indian curry ready meals - tikka masala, korma, jalfrezi',
@@ -2136,6 +2153,11 @@ function parseSmartResponse(
         const category = FOOD_CATEGORIES.find(c => c.id === aiResult.cat);
         const categoryId = category ? aiResult.cat : 'other';
         const categoryName = category?.name || 'Other / Uncategorized';
+
+        // Debug: Log if category not found
+        if (!category) {
+          console.warn(`⚠️ Unknown category ID from AI: "${aiResult.cat}" for food: ${food.name}`);
+        }
 
         // Get pack size from name
         const packSizeG = extractPackSizeFromName(food.name);

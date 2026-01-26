@@ -1333,7 +1333,7 @@ export const batchSaveFoodCategories = functions
 
         // Update Firestore if this index has a backing collection
         if (firestoreCollection) {
-          const batch = db.batch();
+          let batch = db.batch();
           let batchCount = 0;
 
           for (const data of updateData) {
@@ -1357,6 +1357,7 @@ export const batchSaveFoodCategories = functions
             if (batchCount >= 500) {
               await batch.commit();
               results.firestoreUpdated += batchCount;
+              batch = db.batch(); // Create a NEW batch after committing
               batchCount = 0;
             }
           }

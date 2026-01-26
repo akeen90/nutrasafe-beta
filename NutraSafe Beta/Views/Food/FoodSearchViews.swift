@@ -282,23 +282,14 @@ struct FoodSearchResultRowEnhanced: View {
         }
     }
 
-    // Get standard serving size description - use first preset portion if available
-    // SMART SERVING: Uses database servingDescription first, then category defaults, then actualServingSize
+    // Get standard serving size description - MUST match standardServingCalories logic exactly
+    // CONSISTENCY: Uses same priority as standardServingCalories to ensure displayed serving matches calories
     private var standardServingDesc: String {
         let nameLower = food.name.lowercased()
         let brandLower = (food.brand ?? "").lowercased()
 
-        // PRIORITY 1: Use database servingDescription if available and meaningful
-        // This is the most reliable source - "Per Slice (38g)", "1 can (330ml)", etc.
-        if let dbDesc = food.servingDescription, !dbDesc.isEmpty {
-            let descLower = dbDesc.lowercased()
-            // Skip generic "per 100g" descriptions - those aren't helpful
-            if !descLower.contains("per 100g") && !descLower.contains("per 100 g") {
-                return dbDesc
-            }
-        }
-
-        // PRIORITY 2: Use database servingSizeG if available and valid (format it nicely)
+        // PRIORITY 1: Use database servingSizeG if available, valid, and not default 100g
+        // This MUST match standardServingCalories priority 1 to keep display and calories in sync
         // VALIDATION: Reject implausible serving sizes (<10g or >500g per serving)
         if let dbServingSize = food.servingSizeG, dbServingSize >= 10 && dbServingSize <= 500 && dbServingSize != 100 {
             return food.formattedServingSize(dbServingSize)
@@ -634,28 +625,11 @@ struct FoodSearchResultRowEnhanced: View {
                                 .foregroundColor(.secondary.opacity(0.5))
                         }
 
-                        // Show default serving size (e.g., "15ml")
-                        if let defaultText = defaultServingText {
-                            Text(defaultText)
-                                .font(.system(size: 13, weight: .regular))
-                                .foregroundColor(.secondary.opacity(0.8))
-                                .lineLimit(1)
-
-                            // For oils, don't show standardServingDesc since defaultServingText already shows it
-                            if !isOilProduct {
-                                Text("•")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary.opacity(0.5))
-                            }
-                        }
-
-                        // Only show standardServingDesc if not an oil product (oils already show "15ml")
-                        if !isOilProduct {
-                            Text(standardServingDesc)
-                                .font(.system(size: 13, weight: .regular))
-                                .foregroundColor(.secondary.opacity(0.8))
-                                .lineLimit(1)
-                        }
+                        // Show single serving description (database value, category default, or calculated)
+                        Text(standardServingDesc)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .lineLimit(1)
                     }
 
                     // Note: NutraSafe unified score is shown on food detail view

@@ -294,6 +294,17 @@ export const FoodCategorizerPage: React.FC<{ onBack: () => void }> = ({ onBack }
         sourceIndex: foodSourceMap.get(r.foodId),
       }));
 
+      // Debug: Log the results
+      console.log('📊 Categorization complete:', {
+        totalResults: reviewableResults.length,
+        sampleResults: reviewableResults.slice(0, 5).map(r => ({
+          foodName: r.foodName,
+          categoryId: r.categoryId,
+          categoryName: r.categoryName,
+        })),
+        uniqueCategories: [...new Set(reviewableResults.map(r => r.categoryId))],
+      });
+
       setResults(reviewableResults);
       setBatchStats(result);
     } catch (error) {
