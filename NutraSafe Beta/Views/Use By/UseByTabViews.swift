@@ -2272,6 +2272,10 @@ struct ModernExpiryRow: View {
 
         Task {
             try? await FirebaseManager.shared.deleteUseByItem(itemId: item.id)
+
+            // Cancel use-by notifications for this item
+            UseByNotificationManager.shared.cancelNotifications(for: item.id)
+
             NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
         }
     }
@@ -4721,6 +4725,10 @@ struct CleanUseByRow: View {
     private func markAsUsed() {
         Task {
             try? await FirebaseManager.shared.deleteUseByItem(itemId: item.id)
+
+            // Cancel use-by notifications for this item
+            UseByNotificationManager.shared.cancelNotifications(for: item.id)
+
             NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
         }
     }

@@ -226,6 +226,9 @@ class FirebaseManager: ObservableObject {
             ReactionManager.shared.clearData()
         }
 
+        // Cancel all Use By notifications to prevent cross-account notification leakage
+        UseByNotificationManager.shared.cancelAllNotifications()
+
         Task { @MainActor in
             self.currentUser = nil
             self.isAuthenticated = false
@@ -1341,6 +1344,9 @@ class FirebaseManager: ObservableObject {
             }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
+        // Use the parameter to avoid unused warning, or just ignore it
+        _ = barcode
+        
         // SQLite database has been deprecated and removed.
         // TODO: Implement Cloud/API barcode lookup if needed.
         return []
