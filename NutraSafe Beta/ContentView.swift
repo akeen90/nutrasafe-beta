@@ -5535,14 +5535,17 @@ struct AddFoodMainView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
+                        print("[AddFoodMainView] Close button tapped - dismissing")
                         isPresented = false
                     }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 22, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .symbolRenderingMode(.hierarchical)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
-                    .zIndex(1000)
-                    .allowsHitTesting(true)
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }

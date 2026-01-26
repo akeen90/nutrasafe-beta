@@ -81,6 +81,10 @@ struct FoodSearchResultRow: View {
     // Calculate per-serving calories from per-100g values
     // SMART SERVING: Uses actualServingSize which extracts from name (e.g., "38G") when servingSizeG is generic 100g
     private var perServingCalories: Double {
+        // If isPerUnit, calories are already for full unit
+        if food.isPerUnit == true {
+            return food.calories
+        }
         let servingSize = food.actualServingSize
         return food.calories * (servingSize / 100.0)
     }
@@ -367,6 +371,11 @@ struct FoodSearchResultRowEnhanced: View {
     // Get the actual serving weight for nutrition calculation
     // SMART SERVING: Uses database servingSizeG first, then category defaults, then actualServingSize
     private var standardServingWeight: Double {
+        // PRIORITY 0: If isPerUnit, always return 1 (values are already for full unit, not per 100g)
+        if food.isPerUnit == true {
+            return 1.0
+        }
+
         let nameLower = food.name.lowercased()
         let brandLower = (food.brand ?? "").lowercased()
 
@@ -747,11 +756,6 @@ struct FoodSearchResultRowEnhanced: View {
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 8, y: 3)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .onChange(of: showingFoodDetail) { oldValue, newValue in
-            print("[FoodSearchResultRowEnhanced] showingFoodDetail changed: \(oldValue) -> \(newValue)")
-            // Notify parent that sheet state changed
-            foodDetailSheetOpen = newValue
-        }
         .fullScreenCover(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
                 print("[FoodSearchResultRowEnhanced] FoodDetail onComplete called with tab: \(tab)")
@@ -764,11 +768,17 @@ struct FoodSearchResultRowEnhanced: View {
             // Note: presentationBackground is handled by FoodDetailViewFromSearch internally
             .onAppear {
                 print("[FoodDetailViewFromSearch] onAppear - fullScreenCover presented")
+                // Set parent sheet state AFTER the sheet fully appears
+                DispatchQueue.main.async {
+                    foodDetailSheetOpen = true
+                }
             }
             .onDisappear {
                 print("[FoodDetailViewFromSearch] onDisappear - fullScreenCover dismissed")
-                // NOTE: Don't set foodDetailSheetOpen here - it's already synchronized via onChange(of: showingFoodDetail)
-                // Setting it here creates a race condition requiring double-tap to dismiss
+                // Set parent sheet state AFTER the sheet fully disappears
+                DispatchQueue.main.async {
+                    foodDetailSheetOpen = false
+                }
             }
             .id(food.id) // Stable ID prevents dismissal when parent view redraws
         }
@@ -1015,7 +1025,13 @@ struct FoodSearchResultRowEnhanced: View {
 
     // Quick add with custom serving size (from editor)
     private func quickAddFoodWithCustomServing(to mealType: String, grams: Double) {
-        let servingMultiplier = grams / 100.0
+        // If isPerUnit, the values are already for the full unit - don't multiply
+        let servingMultiplier: Double
+        if food.isPerUnit == true {
+            servingMultiplier = grams  // e.g., 1.5 burgers = 1.5x
+        } else {
+            servingMultiplier = grams / 100.0  // e.g., 150g = 1.5x per-100g values
+        }
         let customServingDesc = "\(Int(grams))\(portionUnitLabel)"
 
         addFoodToDiary(mealType: mealType, servingMultiplier: servingMultiplier, servingDesc: customServingDesc)
