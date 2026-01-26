@@ -1518,12 +1518,13 @@ final class AlgoliaSearchManager {
                 }
             }
 
-            // Use extracted value if:
+            // Use extracted value ONLY if:
             // 1. We don't have a servingSizeG at all, OR
-            // 2. We have 100 (the useless default), OR
-            // 3. The extracted value is more specific (e.g., name says 330ml but data says 100)
+            // 2. We have 100 (the useless default)
+            // IMPORTANT: Do NOT override a good database servingSizeG (like 15g for ketchup)
+            // with package size extracted from name (like 342g bottle)
             if let extracted = extractedFromName {
-                if servingSizeG == nil || servingSizeG == 100 || (servingSizeG != extracted && extracted != 100) {
+                if servingSizeG == nil || servingSizeG == 100 {
                     servingSizeG = extracted
 
                     // Also update serving description to be more accurate

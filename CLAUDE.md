@@ -341,10 +341,12 @@ If something is loading for >30 seconds:
 
 ### iOS Development
 ```bash
-# Build iOS app
+# Build iOS app (always try OS=26.0 first, fallback to 18.6 if not available)
 cd "/Users/aaronkeen/Documents/My Apps/NutraSafe"
-xcodebuild -project NutraSafeBeta.xcodeproj -scheme "NutraSafe Beta" -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6' build
+xcodebuild -project NutraSafeBeta.xcodeproj -scheme "NutraSafe Beta" -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=26.0' build
 ```
+
+**Note:** Always try iOS 26.0 simulator first. If that fails, fall back to OS=18.6.
 
 ### Firebase Development
 ```bash

@@ -167,83 +167,15 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         } else {
-            // Per-100g food: Use standard logic
-            // Priority 1: Use servingSizeG if available (most reliable)
-            if let sizeG = food.servingSizeG, sizeG > 0 {
-                initialServingSize = String(format: "%.0f", sizeG)
-            } else if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
-                // Priority 2: Extract from serving description
-                // More flexible patterns to handle various formats including UK supermarket styles
-
-                // Patterns to match numbers followed by g, ml, or gram/ml
-                // IMPORTANT: Order matters - more specific patterns first (parenthetical grams highest priority)
-                // to correctly handle "1 portion (150g)" -> 150, not 1
-                // Each tuple is (pattern, unit) so we set the correct unit when matching
-                let patternsWithUnits: [(pattern: String, unit: String)] = [
-                    (#"\((\d+(?:\.\d+)?)\s*g\)"#, "g"),           // "(150g)", "(30 g)" - parenthetical grams (HIGHEST PRIORITY)
-                    (#"(\d+(?:\.\d+)?)\s*g\s*\)"#, "g"),          // "150g)" at end of parenthetical
-                    (#"\((\d+(?:\.\d+)?)\s*ml\)"#, "ml"),         // "(330ml)" - parenthetical ml
-                    (#"(\d+(?:\.\d+)?)\s*ml\s*\)"#, "ml"),        // "330ml)" at end of parenthetical
-                    (#"(\d+(?:\.\d+)?)\s*g\s+serving"#, "g"),     // "150g serving", "30 g serving"
-                    (#"(\d+(?:\.\d+)?)\s*ml\s+serving"#, "ml"),   // "330ml serving"
-                    (#"serving[:\s]+(\d+(?:\.\d+)?)\s*g\b"#, "g"),// "serving: 30g", "serving 30g"
-                    (#"serving[:\s]+(\d+(?:\.\d+)?)\s*ml\b"#, "ml"),// "serving: 330ml"
-                    (#"=\s*(\d+(?:\.\d+)?)\s*g\b"#, "g"),         // "= 225g", "1 pack = 450g"
-                    (#"=\s*(\d+(?:\.\d+)?)\s*ml\b"#, "ml"),       // "= 330ml"
-                    (#"(\d+(?:\.\d+)?)\s*g\s+pack"#, "g"),        // "225g pack"
-                    (#"(\d+(?:\.\d+)?)\s*ml\s+pack"#, "ml"),      // "330ml pack"
-                    (#"pack\s*[=:]\s*(\d+(?:\.\d+)?)\s*g"#, "g"), // "pack = 450g", "pack: 450g"
-                    (#"pack\s*[=:]\s*(\d+(?:\.\d+)?)\s*ml"#, "ml"),// "pack = 330ml"
-                    (#"(\d+(?:\.\d+)?)\s*grams?\b"#, "g"),        // "225 grams", "30gram"
-                    (#"(\d+(?:\.\d+)?)\s*ml\b"#, "ml"),           // "330ml" for drinks
-                    (#"(\d+(?:\.\d+)?)\s*millilitres?\b"#, "ml"), // "330 millilitres"
-                    (#"^(\d+(?:\.\d+)?)\s*g$"#, "g"),             // "30g" exactly
-                    (#"^(\d+(?:\.\d+)?)\s*ml$"#, "ml"),           // "330ml" exactly
-                    (#"(\d+(?:\.\d+)?)\s*g\b"#, "g"),             // "30g" with word boundary (avoids "1 portion")
-                ]
-
-                for (pattern, unit) in patternsWithUnits {
-                    if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-                       let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
-                       let range = Range(match.range(at: 1), in: servingDesc),
-                       let extractedValue = Double(servingDesc[range]) {
-                        // Sanity check: serving size should be reasonable (5-2000 for ml, 5-500 for g)
-                        // Skip values that are exactly 100 as that's likely "per 100g" reference
-                        let maxValue = unit == "ml" ? 2000.0 : 500.0
-                        if extractedValue >= 5 && extractedValue <= maxValue && extractedValue != 100 {
-                            initialServingSize = String(format: "%.0f", extractedValue)
-                            initialUnit = unit
-                            break
-                        }
-                    }
-                }
-                // Fallback for specific per-unit foods only (NOT generic "serving" mentions)
-                // Only treat as per-unit if description explicitly describes a countable food item
-                if initialServingSize == "100" {
-                    let lower = servingDesc.lowercased()
-
-                    // Only convert to per-unit for SPECIFIC countable food items, NOT generic "serving"
-                    // These are foods that are naturally counted (1 burger, 1 slice, 1 piece)
-                    let perUnitFoodWords = ["burger", "pizza", "sandwich", "wrap", "taco", "burrito", "slice", "piece", "bar", "biscuit", "cookie"]
-
-                    if lower.hasPrefix("1 ") {
-                        let unitCandidate = lower.split(separator: " ").dropFirst().joined(separator: " ")
-                        // Only use per-unit if it's a specific countable food, not generic "serving"/"portion"
-                        if !unitCandidate.isEmpty && perUnitFoodWords.contains(where: { unitCandidate.contains($0) }) {
-                            initialServingSize = "1"
-                            initialUnit = String(unitCandidate)
-                        }
-                        // Otherwise keep default 100g - don't convert "1 serving" to per-unit
-                    }
-                    // Don't do the generic "contains serving/portion" fallback anymore
-                    // Regular per-100g foods should stay as 100g default
-                }
-            }
-
-            // If unit is still default "g" but food is a liquid category, use "ml"
-            if initialUnit == "g" && food.isLiquidCategory {
+            // Per-100g food: SIMPLIFIED - just use servingSizeG from database
+            // Never extract from product names or serving descriptions (they contain package sizes)
+            if let servingG = food.servingSizeG, servingG > 0 && servingG != 100 {
+                initialServingSize = String(format: "%.0f", servingG)
+                initialUnit = food.isLiquidCategory ? "ml" : "g"
+            } else if food.isLiquidCategory {
                 initialUnit = "ml"
             }
+            // If no servingSizeG, keep default 100g
         }
 
         // Initialize all serving size state variables with the determined value
@@ -268,12 +200,25 @@ struct FoodDetailViewFromSearch: View {
             self._selectedPortionName = State(initialValue: "__custom__")
         }
 
-        // If portions are available, still use first portion values for the custom row
-        if let portions = food.portions, !portions.isEmpty {
-            self._servingAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
-            self._gramsAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
-            // Set appropriate unit based on food category (ml for drinks, g for food)
-            self._servingUnit = State(initialValue: food.isLiquidCategory ? "ml" : "g")
+        // SMART SERVING: Only use portionsForQuery if we DON'T have a good servingSizeG
+        // The database servingSizeG (e.g., 15g for ketchup) is the source of truth
+        // Only fall back to portionsForQuery for items without proper serving data
+        let hasGoodServingSize = food.servingSizeG != nil && food.servingSizeG != 100 && food.servingSizeG! > 0
+        if !hasGoodServingSize {
+            let smartPortions = food.portionsForQuery(food.name)
+            if !smartPortions.isEmpty {
+                // Filter out portions that would result in >700 calories (package sizes)
+                let reasonablePortions = smartPortions.filter { portion in
+                    let portionCalories = food.calories * (portion.serving_g / 100.0)
+                    return portionCalories <= 700
+                }
+                if let firstPortion = reasonablePortions.first ?? smartPortions.first {
+                    self._servingAmount = State(initialValue: String(format: "%.0f", firstPortion.serving_g))
+                    self._gramsAmount = State(initialValue: String(format: "%.0f", firstPortion.serving_g))
+                    // Set appropriate unit based on food category (ml for drinks, g for food)
+                    self._servingUnit = State(initialValue: food.isLiquidCategory ? "ml" : "g")
+                }
+            }
         }
     }
 
@@ -1569,11 +1514,12 @@ struct FoodDetailViewFromSearch: View {
 
                             // Only auto-detect serving size for non per-unit foods
                             if !isPerUnit, servingAmount == "1" && (servingUnit == "g" || servingUnit == "ml") {
-                                // PRIORITY 1: Use servingSizeG if available (most reliable)
-                                if let sizeG = food.servingSizeG, sizeG > 0 {
-                                    servingAmount = String(format: "%.0f", sizeG)
+                                // PRIORITY 1: Use smart actualServingSize (handles sauces, 700 cal threshold, package size detection)
+                                let smartSize = food.actualServingSize
+                                if smartSize > 0 {
+                                    servingAmount = String(format: "%.0f", smartSize)
                                     servingUnit = appropriateUnit
-                                    gramsAmount = String(format: "%.0f", sizeG)  // Also update gramsAmount
+                                    gramsAmount = String(format: "%.0f", smartSize)  // Also update gramsAmount
                                 } else {
                                     // PRIORITY 2: Extract from serving description
                                     let description = food.servingDescription ?? "100g"
@@ -2403,7 +2349,8 @@ struct FoodDetailViewFromSearch: View {
             additives: additivesToSave,  // Use fresh analyzed additives instead of displayFood.additives
             barcode: displayFood.barcode,
             micronutrientProfile: nil,  // FIX: Don't save fake macro-based estimates
-            isPerUnit: food.isPerUnit
+            isPerUnit: food.isPerUnit,
+            imageUrl: displayFood.imageUrl
         )
 
         // Add to diary using DiaryDataManager
@@ -3965,7 +3912,12 @@ struct FoodDetailViewFromSearch: View {
                     // This prevents "salmon en croute" from getting "small fillet" suggestions
                     let effectiveQuery = food.name // Use food name as query for classification
                     if food.hasAnyPortionOptions(forQuery: effectiveQuery) {
-                        let portions = food.portionsForQuery(effectiveQuery)
+                        // FILTER OUT portions that result in >700 calories (package sizes, not servings)
+                        let allPortions = food.portionsForQuery(effectiveQuery)
+                        let portions = allPortions.filter { portion in
+                            let portionCalories = food.calories * (portion.serving_g / 100.0)
+                            return portionCalories <= 700
+                        }
                         ForEach(portions) { portion in
                             let isSelected = selectedPortionName == portion.name
                             let multiplier = portion.serving_g / 100.0
@@ -4968,7 +4920,8 @@ struct FoodDetailViewFromSearch: View {
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
             additives: food.additives,
-            barcode: food.barcode
+            barcode: food.barcode,
+            imageUrl: food.imageUrl
         )
         
         switch originalMealType {
@@ -5036,9 +4989,10 @@ struct FoodDetailViewFromSearch: View {
             processedScore: nutraSafeGrade.grade,
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
-            additives: food.additives
+            additives: food.additives,
+            imageUrl: food.imageUrl
         )
-        
+
         switch selectedMeal {
         case "Breakfast":
             updatedBreakfast.append(updatedFoodItem)
@@ -5065,7 +5019,7 @@ struct FoodDetailViewFromSearch: View {
     private func addNewFoodItem() {
         let diaryManager = DiaryDataManager.shared
         let currentDate = isEditingMode ? getEditingDate() : Date()
-        
+
         let newFoodItem = DiaryFoodItem(
             name: food.name,
             calories: Int(adjustedCalories),
@@ -5076,7 +5030,8 @@ struct FoodDetailViewFromSearch: View {
             processedScore: nutraSafeGrade.grade,
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
-            additives: food.additives
+            additives: food.additives,
+            imageUrl: food.imageUrl
         )
         
         let (breakfast, lunch, dinner, snacks) = diaryManager.getFoodData(for: currentDate)

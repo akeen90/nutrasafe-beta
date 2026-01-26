@@ -1167,46 +1167,14 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// Only uses extracted sizes when they're reasonable serving sizes (not package sizes)
     /// Example: "Chocolate Bar 38G" → 38g ✅  |  "Chocolate Truffles 480G" → 100g (package size)
     var actualServingSize: Double {
-        // If we have a specific serving size (not the generic 100g), use it
+        // SIMPLIFIED: Only use servingSizeG from database, never extract from product name
+        // Product names often contain package sizes (342g bottle) not serving sizes
+        // The database servingSizeG field is the source of truth for serving size
         if let g = servingSizeG, g > 0 && g != 100 {
             return g
         }
-
-        // If servingSizeG is 100 (generic default), try to extract from product name
-        // BUT only use if it's a reasonable SERVING size, not a PACKAGE size
-        let nameLower = name.lowercased()
-
-        // Regex to match sizes like "38g", "200g", "330ml", "1.5l"
-        let sizePatterns = [
-            #"(\d+(?:\.\d+)?)\s*g\b"#,        // "38g", "200 g"
-            #"(\d+(?:\.\d+)?)\s*ml\b"#,       // "330ml", "500 ml"
-            #"(\d+(?:\.\d+)?)\s*l\b"#         // "1.5l", "2 l"
-        ]
-
-        for pattern in sizePatterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
-               let match = regex.firstMatch(in: nameLower, options: [], range: NSRange(location: 0, length: nameLower.count)),
-               let range = Range(match.range(at: 1), in: nameLower),
-               var size = Double(String(nameLower[range])) {
-
-                // Convert liters to ml (grams)
-                if pattern.contains("l\\\\b") && !pattern.contains("ml") {
-                    size = size * 1000
-                }
-
-                // CRITICAL: Only use extracted size if it's a reasonable serving, not package size
-                // Single-serve items: chocolate bars (20-100g), snacks (20-150g), drinks (150-500ml)
-                // Package sizes (ignore these): chocolate boxes (200-500g), multipacks (500g+), large bottles (1L+)
-                let maxReasonableServing: Double = 200.0  // 200g/ml is max for single-serve
-                if size <= maxReasonableServing {
-                    return size
-                }
-                // If > 200g, it's likely a package size, ignore it and use default 100g
-            }
-        }
-
-        // Fallback to 100g if no valid serving size found in name
-        return servingSizeG ?? 100.0
+        // Fallback to 100g if no specific serving size in database
+        return 100.0
     }
 
     // MARK: - Fasting Philosophy Helpers
@@ -1319,13 +1287,10 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     func portionsForQuery(_ query: String) -> [PortionOption] {
         let confidence = servingConfidence(forQuery: query)
 
-        // 1. Database portions always take priority
-        if let dbPortions = portions, !dbPortions.isEmpty {
-            return dbPortions
-        }
-
-        // 2. CRITICAL FIX: For certain categories, ALWAYS use preset portions regardless of servingSizeG
-        // Database servings are often box/bottle sizes, not typical consumption portions
+        // 1. CRITICAL FIX: For certain categories, ALWAYS use preset portions
+        // Database servings are often bottle/box sizes (342g ketchup bottle, 500g cereal box)
+        // Users need typical consumption portions (15g tablespoon, 45g bowl)
+        // This MUST come BEFORE database portions check to override bad database data
         switch detectedCategory {
         case .oil:
             // Oils: Database shows 200ml+ (bottle size), users need tablespoon portions (15ml)
@@ -1333,8 +1298,16 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case .cereal:
             // Cereals: Database shows 500g+ (box size), users need bowl portions (30-45g)
             return presetPortions
+        case .condiment:
+            // Condiments (ketchup, mayo, etc.): Database shows bottle size (342g), users need tablespoon (15g)
+            return presetPortions
         default:
             break
+        }
+
+        // 2. Database portions for other categories
+        if let dbPortions = portions, !dbPortions.isEmpty {
+            return dbPortions
         }
 
         // 3. If food has a real serving size (not default 100g), use that plus extras for drinks
@@ -2617,6 +2590,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
     let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
+    let imageUrl: String?
 
     // AI-Inferred Meal Analysis: For foods without known ingredient labels
     // These are ESTIMATED exposures and may be incomplete or incorrect
@@ -2653,7 +2627,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         return result
     }
 
-    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, saturatedFat: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, inferredIngredients: [InferredIngredient]? = nil) {
+    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, saturatedFat: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, imageUrl: String? = nil, inferredIngredients: [InferredIngredient]? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -2676,6 +2650,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
         self.isPerUnit = isPerUnit
+        self.imageUrl = imageUrl
         self.inferredIngredients = inferredIngredients
     }
 
@@ -2690,7 +2665,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         case id, name, brand, calories, protein, carbs, fat, fiber, sugar, sodium
         case calcium, saturatedFat, servingDescription, quantity, time
         case processedScore, sugarLevel, ingredients, additives, barcode
-        case micronutrientProfile, isPerUnit, inferredIngredients
+        case micronutrientProfile, isPerUnit, imageUrl, inferredIngredients
     }
 
     init(from decoder: Decoder) throws {
@@ -2721,6 +2696,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
         micronutrientProfile = try container.decodeIfPresent(MicronutrientProfile.self, forKey: .micronutrientProfile)
         isPerUnit = try container.decodeIfPresent(Bool.self, forKey: .isPerUnit)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         inferredIngredients = try container.decodeIfPresent([InferredIngredient].self, forKey: .inferredIngredients)
     }
 
