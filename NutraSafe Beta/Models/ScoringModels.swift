@@ -1583,7 +1583,6 @@ class ProcessingScorer {
 
         // Use comprehensive database if available
         if let comprehensiveDB = comprehensiveAdditives {
-                        var matchCount = 0
             // Check for E-numbers and additive names with word boundary detection
             for (code, additiveInfo) in comprehensiveDB {
                 // Calculate match confidence with word boundaries
@@ -1591,8 +1590,7 @@ class ProcessingScorer {
 
                 // Only include matches with confidence >= 60%
                 if confidence >= 0.6 {
-                    matchCount += 1
-                                        if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
+                    if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
                         detectedAdditives.append(additiveInfo)
 
                         // If E-number matched directly, add to eNumbers array
