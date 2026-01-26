@@ -813,13 +813,16 @@ struct FoodSearchResultRowEnhanced: View {
                 .padding(.top, 24)
                 .padding(.horizontal, 24)
 
-                // Helpful tip
-                Text("Check the packet to confirm the serving size is correct.")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                    .padding(.top, 16)
+                // Helpful tip (hidden when editor is showing to save space)
+                if !showingServingEditor {
+                    Text("Check the packet to confirm the serving size is correct.")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 32)
+                        .padding(.top, 16)
+                }
 
                 Spacer()
 
