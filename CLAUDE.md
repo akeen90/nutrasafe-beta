@@ -551,6 +551,56 @@ npm run dev &
    - **Build errors**: TypeScript errors prevent compilation - check terminal
    - **Old processes**: Kill with `pkill -f "vite.*admin-v2"` and restart
 
+### Admin Dashboard Data Loading Pattern (CRITICAL)
+
+When loading foods from Algolia indices in the admin-v2 dashboard:
+
+**⚠️ NEVER use the Algolia Search-Only API Key for bulk data loading**
+
+The search-only key (`577cc4ee3fed660318917bbb54abfb2e`) is limited to 1000 results per query and cannot browse/export all records.
+
+**✅ ALWAYS use the `browseAllIndices` Firebase Cloud Function:**
+
+```typescript
+const FUNCTIONS_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
+const PAGE_SIZE = 5000;
+
+// Paginate through each index
+let offset = 0;
+let hasMore = true;
+
+while (hasMore) {
+  const response = await fetch(`${FUNCTIONS_BASE}/browseAllIndices`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      indices: [indexName],
+      offset,
+      pageSize: PAGE_SIZE,
+    }),
+  });
+
+  const result = await response.json();
+
+  if (result.success && result.products) {
+    // Process products...
+
+    // Check pagination
+    if (products.length === 0 || products.length < PAGE_SIZE || !result.pagination?.hasMore) {
+      hasMore = false;
+    } else {
+      offset += PAGE_SIZE;
+    }
+  }
+}
+```
+
+**Why this matters:**
+- The `browseAllIndices` function has the Algolia Admin API key on the server
+- It can browse unlimited records with proper pagination
+- Always include safety limits (MAX_ITERATIONS) to prevent infinite loops
+- See `GoogleImageScraperPage.tsx` for the reference implementation
+
 ### Security Checklist
 - [ ] API keys in `.env` only
 - [ ] `.gitignore` properly configured  

@@ -127,6 +127,120 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const pauseRef = useRef(false);
   const abortRef = useRef(false);
   const ITEMS_PER_PAGE = 50;
+  const STORAGE_KEY = 'nutrasafe_image_scraper_progress';
+
+  // ========== AUTO-SAVE PROGRESS TO LOCALSTORAGE ==========
+  // Save progress whenever foods state changes (with debounce)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save current progress to localStorage
+  const saveProgress = useCallback(() => {
+    if (foods.length === 0) return;
+
+    // Only save foods that have been processed or have results
+    const progressData = {
+      savedAt: new Date().toISOString(),
+      foods: foods.map(f => ({
+        id: f.id,
+        objectID: f.objectID,
+        name: f.name,
+        brandName: f.brandName,
+        barcode: f.barcode,
+        currentImageUrl: f.currentImageUrl,
+        sourceIndex: f.sourceIndex,
+        status: f.status,
+        selectedImageUrl: f.selectedImageUrl,
+        confidence: f.confidence,
+        nutritionData: f.nutritionData,
+        nutritionStatus: f.nutritionStatus,
+        error: f.error,
+        // Don't save searchResults to keep storage small
+      })),
+      stats,
+      processingLog: processingLog.slice(-20), // Keep last 20 log entries
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progressData));
+      console.log(`💾 Progress saved: ${foods.length} foods`);
+    } catch (e) {
+      console.warn('Failed to save progress to localStorage:', e);
+    }
+  }, [foods, stats, processingLog]);
+
+  // Auto-save with debounce (save 2 seconds after last change)
+  useEffect(() => {
+    if (foods.length === 0) return;
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set new timeout
+    saveTimeoutRef.current = setTimeout(() => {
+      saveProgress();
+    }, 2000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [foods, saveProgress]);
+
+  // Load saved progress on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        const savedAt = new Date(data.savedAt);
+        const ageHours = (Date.now() - savedAt.getTime()) / (1000 * 60 * 60);
+
+        // Only restore if less than 24 hours old
+        if (ageHours < 24 && data.foods?.length > 0) {
+          console.log(`📂 Found saved progress from ${savedAt.toLocaleString()} (${data.foods.length} foods)`);
+
+          // Ask user if they want to restore
+          const shouldRestore = window.confirm(
+            `Found saved progress from ${savedAt.toLocaleString()}:\n` +
+            `• ${data.foods.length} foods loaded\n` +
+            `• ${data.foods.filter((f: any) => f.status === 'ready' || f.status === 'completed').length} ready/completed\n\n` +
+            `Restore this progress?`
+          );
+
+          if (shouldRestore) {
+            // Restore foods with default values for missing fields
+            const restoredFoods: FoodWithImage[] = data.foods.map((f: any) => ({
+              ...f,
+              selected: false,
+              calories: f.calories || undefined,
+              dontShowImage: f.dontShowImage || false,
+              searchResults: [], // Don't restore search results
+              analysis: null,
+              analysisProgress: 0,
+            }));
+
+            setFoods(restoredFoods);
+            if (data.stats) setStats(data.stats);
+            if (data.processingLog) setProcessingLog(data.processingLog);
+            setShowIndexSelector(false); // Hide selector since we loaded data
+
+            console.log(`✅ Restored ${restoredFoods.length} foods from saved progress`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load saved progress:', e);
+    }
+  }, []);
+
+  // Clear saved progress
+  const clearSavedProgress = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    console.log('🗑️ Cleared saved progress');
+  }, []);
 
   // Helper function to detect if a food is a drink based on its name
   const isDrink = (name: string): boolean => {
@@ -1648,8 +1762,35 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
           // For fast food database, send ALL fields (even if undefined) to overwrite existing data
           const isFastFood = food.sourceIndex === 'fast_foods_database';
+
+          // Build serving description for fast food items
+          let servingDesc = null;
+          if (isFastFood) {
+            // Try to extract item type from name (burger, sandwich, etc.)
+            const name = food.name.toLowerCase();
+            let itemType = 'item';
+            if (name.includes('burger')) itemType = 'burger';
+            else if (name.includes('sandwich')) itemType = 'sandwich';
+            else if (name.includes('wrap')) itemType = 'wrap';
+            else if (name.includes('salad')) itemType = 'salad';
+            else if (name.includes('fries') || name.includes('chips')) itemType = 'serving';
+            else if (name.includes('nugget')) itemType = 'serving';
+            else if (name.includes('pizza')) itemType = 'pizza';
+
+            // Include the scraped serving size if available
+            if (nutritionData.servingSize) {
+              const sizeStr = typeof nutritionData.servingSize === 'number'
+                ? `${nutritionData.servingSize}g`
+                : nutritionData.servingSize;
+              servingDesc = `${itemType} (${sizeStr})`;
+            } else {
+              servingDesc = itemType;
+            }
+          }
+
           const nutritionPayload = isFastFood ? {
             // Fast food: Send all fields to ensure complete overwrite
+            // NOTE: Nutrition values are already for the FULL UNIT (not per 100g)
             calories: nutritionData.calories ?? null,
             protein: nutritionData.protein ?? null,
             carbs: nutritionData.carbs ?? null,
@@ -1659,7 +1800,9 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             sugar: nutritionData.sugar ?? null,
             sodium: nutritionData.sodium ?? null,
             salt: nutritionData.salt ?? null,
-            servingSizeG: nutritionData.servingSize ?? null,
+            servingSizeG: 1, // Always 1 for per-unit mode (don't multiply by grams!)
+            servingDescription: servingDesc, // e.g., "burger (354g)"
+            isPerUnit: true, // Nutrition is for FULL unit, not per 100g
             ingredients: nutritionData.ingredients ?? null,
           } : {
             // Other databases: Only send fields that were found
@@ -1677,7 +1820,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           };
 
           if (isFastFood) {
-            addLog(`🍔 Fast food mode: Overwriting ALL nutrition fields`);
+            addLog(`🍔 Fast food mode: Setting isPerUnit=true, servingSizeG=1, description="${servingDesc}"`);
+            addLog(`   Nutrition values are for FULL UNIT (not per 100g) - won't be multiplied by grams`);
           }
 
           const updateResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/updateFoodNutrition', {
@@ -1851,7 +1995,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             .map((analysis, idx) => ({ analysis, result: results[idx] }))
             .sort((a, b) => b.analysis.qualityScore - a.analysis.qualityScore)[0];
 
-          if (bestResult && bestResult.analysis.qualityScore >= 50) {
+          if (bestResult && bestResult.analysis.qualityScore >= 70) {
             addLog(`  ✅ Best image: ${bestResult.analysis.qualityScore}% confidence`);
             setFoods(prev => prev.map(f =>
               f.id === food.id
@@ -1982,19 +2126,39 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
           <div className="flex items-center gap-3">
             {foods.length > 0 && !isProcessing && (
-              <button
-                onClick={() => {
-                  setFoods([]);
-                  setShowIndexSelector(true);
-                  setStats({ total: 0, completed: 0, failed: 0, noResults: 0, processing: 0 });
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Change Indices
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setFoods([]);
+                    setShowIndexSelector(true);
+                    setStats({ total: 0, completed: 0, failed: 0, noResults: 0, processing: 0 });
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Change Indices
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Clear saved progress? This will remove your saved state from browser storage.')) {
+                      clearSavedProgress();
+                      setFoods([]);
+                      setShowIndexSelector(true);
+                      setStats({ total: 0, completed: 0, failed: 0, noResults: 0, processing: 0 });
+                      setProcessingLog([]);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                  title="Clear saved progress from browser storage"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Clear Saved
+                </button>
+              </>
             )}
 
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${

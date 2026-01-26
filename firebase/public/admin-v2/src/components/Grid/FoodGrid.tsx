@@ -21,13 +21,190 @@ import { UnifiedFood, AlgoliaIndexName, ALGOLIA_INDICES } from '../../types';
 // Cloud Function for saving
 const FUNCTIONS_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
 
+// Image Preview Modal Component
+interface ImagePreviewModalProps {
+  food: UnifiedFood;
+  onClose: () => void;
+  onDelete: () => void;
+  onSaveImage: (imageUrl: string) => void;
+  isDeleting: boolean;
+  isSaving: boolean;
+}
+
+const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ food, onClose, onDelete, onSaveImage, isDeleting, isSaving }) => {
+  const [newImageUrl, setNewImageUrl] = useState(food.imageUrl || '');
+  const [previewUrl, setPreviewUrl] = useState(food.imageUrl || '');
+  const hasChanges = newImageUrl !== (food.imageUrl || '');
+
+  const handlePreview = () => {
+    setPreviewUrl(newImageUrl);
+  };
+
+  const handleSave = () => {
+    if (newImageUrl.trim()) {
+      onSaveImage(newImageUrl.trim());
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl max-w-2xl w-full mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">{food.name}</h3>
+            {food.brandName && (
+              <p className="text-sm text-gray-500">{food.brandName}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Image */}
+        <div className="p-6 bg-gray-50 flex items-center justify-center min-h-[300px]">
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt={food.name}
+              className="max-h-[400px] max-w-full object-contain rounded-lg shadow"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%23f3f4f6" width="200" height="200"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-size="14"%3EImage failed to load%3C/text%3E%3C/svg%3E';
+              }}
+            />
+          ) : (
+            <div className="text-gray-400 text-center">
+              <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p>No image</p>
+            </div>
+          )}
+        </div>
+
+        {/* Image URL Input */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={newImageUrl}
+              onChange={(e) => setNewImageUrl(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
+            <button
+              onClick={handlePreview}
+              disabled={!newImageUrl.trim()}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              Preview
+            </button>
+          </div>
+        </div>
+
+        {/* Footer with action buttons */}
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-white">
+          <div className="text-sm text-gray-500">
+            Source: <span className="font-medium">{food._sourceIndex}</span>
+          </div>
+          <div className="flex gap-2">
+            {food.imageUrl && (
+              <button
+                onClick={onDelete}
+                disabled={isDeleting || isSaving}
+                className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
+                  isDeleting || isSaving
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-red-50 text-red-600 hover:bg-red-100'
+                }`}
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete
+                  </>
+                )}
+              </button>
+            )}
+            {hasChanges && newImageUrl.trim() && (
+              <button
+                onClick={handleSave}
+                disabled={isSaving || isDeleting}
+                className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
+                  isSaving || isDeleting
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Save Image
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Store for image preview state (shared across ImageRenderer instances)
+let setImagePreviewFood: ((food: UnifiedFood | null) => void) | null = null;
+
 // Custom cell renderers
 const ImageRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) => {
   const imageUrl = params.value as string | null;
+  const food = params.data;
+
+  const handleClick = () => {
+    if (food && setImagePreviewFood) {
+      setImagePreviewFood(food);
+    }
+  };
 
   if (!imageUrl) {
     return (
-      <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded text-gray-400 text-xs">
+      <div
+        className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded text-gray-400 text-xs cursor-pointer hover:bg-gray-200"
+        onClick={handleClick}
+        title="Click to view/add image"
+      >
         No img
       </div>
     );
@@ -37,7 +214,9 @@ const ImageRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) => {
     <img
       src={imageUrl}
       alt=""
-      className="w-12 h-12 object-cover rounded"
+      className="w-12 h-12 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+      onClick={handleClick}
+      title="Click to view image"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = 'none';
       }}
@@ -119,6 +298,20 @@ const VerifiedRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) =>
   );
 };
 
+const PerUnitRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) => {
+  const isPerUnit = params.value as boolean;
+
+  return (
+    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+      isPerUnit
+        ? 'bg-purple-100 text-purple-800'
+        : 'bg-gray-100 text-gray-600'
+    }`}>
+      {isPerUnit ? 'Per Unit' : 'Per 100g'}
+    </span>
+  );
+};
+
 const FlagsRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) => {
   const flags = params.data?._reviewFlags || [];
 
@@ -175,6 +368,17 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSavesRef = useRef<Map<string, UnifiedFood>>(new Map());
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [imagePreviewFood, setImagePreviewFoodState] = useState<UnifiedFood | null>(null);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const [isSavingImage, setIsSavingImage] = useState(false);
+
+  // Share setter with ImageRenderer
+  useEffect(() => {
+    setImagePreviewFood = setImagePreviewFoodState;
+    return () => {
+      setImagePreviewFood = null;
+    };
+  }, []);
 
   const {
     getFilteredFoods,
@@ -197,6 +401,7 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
           barcode: food.barcode,
           servingSizeG: food.servingSizeG,
           servingSize: food.servingDescription, // Maps to servingDescription in backend
+          isPerUnit: food.isPerUnit, // Per-unit nutrition flag
           nutrition: {
             calories: food.calories,
             protein: food.protein,
@@ -417,6 +622,24 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
       sortable: true,
     },
     {
+      field: 'isPerUnit',
+      headerName: 'Per Unit',
+      width: 90,
+      cellRenderer: PerUnitRenderer,
+      editable: true,
+      filter: 'agSetColumnFilter',
+      filterParams: {
+        values: [true, false],
+        valueFormatter: (params: { value: boolean }) => params.value ? 'Per Unit' : 'Per 100g',
+      },
+      sortable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: [true, false],
+      },
+      valueFormatter: (params) => params.value ? 'Per Unit' : 'Per 100g',
+    },
+    {
       field: 'isVerified',
       headerName: 'Verified',
       width: 90,
@@ -525,6 +748,106 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
       params.data?._reviewFlags?.some(f => f.severity === 'error') === true,
   }), []);
 
+  // Delete image handler
+  const handleDeleteImage = useCallback(async () => {
+    if (!imagePreviewFood) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the image for "${imagePreviewFood.name}"?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    setIsDeletingImage(true);
+
+    try {
+      const payload = {
+        foodId: imagePreviewFood.objectID,
+        indexName: imagePreviewFood._sourceIndex,
+        updates: {
+          imageUrl: null, // Setting to null will delete the image
+        },
+      };
+
+      console.log('🗑️ Deleting image:', payload);
+
+      const response = await fetch(`${FUNCTIONS_BASE}/adminSaveFood`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        updateFood(imagePreviewFood._id, { imageUrl: null });
+
+        // Refresh the grid
+        if (gridApiRef.current) {
+          gridApiRef.current.refreshCells({ force: true });
+        }
+
+        setImagePreviewFoodState(null);
+        console.log('✅ Image deleted successfully');
+      } else {
+        throw new Error(result.error || 'Failed to delete image');
+      }
+    } catch (error) {
+      console.error('Delete image error:', error);
+      alert(`Failed to delete image: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsDeletingImage(false);
+    }
+  }, [imagePreviewFood, updateFood]);
+
+  // Save image handler
+  const handleSaveImage = useCallback(async (imageUrl: string) => {
+    if (!imagePreviewFood) return;
+
+    setIsSavingImage(true);
+
+    try {
+      const payload = {
+        foodId: imagePreviewFood.objectID,
+        indexName: imagePreviewFood._sourceIndex,
+        updates: {
+          imageUrl: imageUrl,
+        },
+      };
+
+      console.log('💾 Saving image:', payload);
+
+      const response = await fetch(`${FUNCTIONS_BASE}/adminSaveFood`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        updateFood(imagePreviewFood._id, { imageUrl: imageUrl });
+
+        // Refresh the grid
+        if (gridApiRef.current) {
+          gridApiRef.current.refreshCells({ force: true });
+        }
+
+        setImagePreviewFoodState(null);
+        console.log('✅ Image saved successfully');
+      } else {
+        throw new Error(result.error || 'Failed to save image');
+      }
+    } catch (error) {
+      console.error('Save image error:', error);
+      alert(`Failed to save image: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSavingImage(false);
+    }
+  }, [imagePreviewFood, updateFood]);
+
   return (
     <div className="ag-theme-alpine w-full h-full relative">
       {/* Auto-save status indicator */}
@@ -585,6 +908,18 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
         rowHeight={56}
         headerHeight={40}
       />
+
+      {/* Image Preview Modal */}
+      {imagePreviewFood && (
+        <ImagePreviewModal
+          food={imagePreviewFood}
+          onClose={() => setImagePreviewFoodState(null)}
+          onDelete={handleDeleteImage}
+          onSaveImage={handleSaveImage}
+          isDeleting={isDeletingImage}
+          isSaving={isSavingImage}
+        />
+      )}
     </div>
   );
 };

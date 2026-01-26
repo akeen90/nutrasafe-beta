@@ -100,6 +100,7 @@ export interface UnifiedFood {
 
   // Image
   imageUrl: string | null;
+  dontShowImage?: boolean;        // Flag to hide image in UI
 
   // Metadata
   category: string | null;

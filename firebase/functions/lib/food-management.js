@@ -1155,6 +1155,19 @@ exports.adminSaveFood = functions
                 updateObj.ingredients = updates.ingredients;
                 updateObj.extractedIngredients = updates.ingredients;
             }
+            // Per-unit nutrition flag (true = values are per unit, not per 100g)
+            if (updates.isPerUnit !== undefined) {
+                updateObj.isPerUnit = updates.isPerUnit;
+                updateObj.per_unit_nutrition = updates.isPerUnit; // Also set legacy field name
+            }
+            // Image URL (null or empty string = delete image)
+            if (updates.imageUrl !== undefined) {
+                updateObj.imageUrl = updates.imageUrl || null;
+                // Also set dontShowImage flag if image is being removed
+                if (!updates.imageUrl) {
+                    updateObj.dontShowImage = true;
+                }
+            }
             // Flatten nutrition data
             if (updates.nutrition) {
                 const n = updates.nutrition;

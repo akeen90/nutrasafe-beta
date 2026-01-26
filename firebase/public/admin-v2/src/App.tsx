@@ -6,6 +6,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage, MasterDatabaseBuilderPage } from './components';
+import { FoodCategorizerPage } from './components/FoodCategorizerPage';
 import { useGridStore } from './store';
 import { searchAllIndices, getIndexStats } from './services/algoliaService';
 import { batchUpdateFoods, batchDeleteFoods, moveFoodsBetweenIndices, initializeFirebase } from './services/firebaseService';
@@ -50,7 +51,7 @@ const AppContent: React.FC = () => {
   const [isDetectingDuplicates, setIsDetectingDuplicates] = useState(false);
   const [showOFFModal, setShowOFFModal] = useState(false);
   const [showDuplicatesPanel, setShowDuplicatesPanel] = useState(false);
-  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports' | 'master-builder'>('grid');
+  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports' | 'master-builder' | 'food-categorizer'>('grid');
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   // Load pending reports count and food report IDs
@@ -371,6 +372,15 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Show food categorizer page
+  if (currentView === 'food-categorizer') {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50">
+        <FoodCategorizerPage onBack={() => setCurrentView('grid')} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -394,6 +404,7 @@ const AppContent: React.FC = () => {
           onGoogleScraper={() => setCurrentView('google-scraper')}
           onReports={() => setCurrentView('reports')}
           onMasterBuilder={() => setCurrentView('master-builder')}
+          onFoodCategorizer={() => setCurrentView('food-categorizer')}
           isDetectingDuplicates={isDetectingDuplicates}
           pendingReportsCount={pendingReportsCount}
         />

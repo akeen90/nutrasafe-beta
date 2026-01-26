@@ -40,7 +40,24 @@ export const uploadFoodImage = functions
         throw new Error('Failed to fetch image');
       }
 
+      // Validate Content-Type
+      const contentType = imageResponse.headers.get('content-type');
+      if (!contentType || !contentType.startsWith('image/')) {
+        throw new Error(`Invalid content type: ${contentType} (expected image/*). URL may have returned HTML/captcha instead of image.`);
+      }
+
       const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+      // Validate buffer size (real product images should be at least 2KB)
+      if (imageBuffer.length < 2048) {
+        throw new Error(`Image too small (${imageBuffer.length} bytes). Likely not a valid image - may be HTML/captcha redirect.`);
+      }
+
+      // Validate image magic bytes (check it's actually an image, not HTML)
+      const header = imageBuffer.toString('utf8', 0, Math.min(100, imageBuffer.length));
+      if (header.includes('<!DOCTYPE') || header.includes('<html') || header.includes('<meta')) {
+        throw new Error('Downloaded content is HTML/captcha page, not an image. URL may be protected by anti-bot measures.');
+      }
 
       // Upload to Firebase Storage
       const bucket = admin.storage().bucket();

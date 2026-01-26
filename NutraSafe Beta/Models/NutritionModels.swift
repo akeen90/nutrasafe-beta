@@ -1167,6 +1167,11 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// Only uses extracted sizes when they're reasonable serving sizes (not package sizes)
     /// Example: "Chocolate Bar 38G" → 38g ✅  |  "Chocolate Truffles 480G" → 100g (package size)
     var actualServingSize: Double {
+        // If isPerUnit, return 1 (values are already for full unit, not per 100g)
+        if isPerUnit == true {
+            return 1.0
+        }
+
         // SIMPLIFIED: Only use servingSizeG from database, never extract from product name
         // Product names often contain package sizes (342g bottle) not serving sizes
         // The database servingSizeG field is the source of truth for serving size

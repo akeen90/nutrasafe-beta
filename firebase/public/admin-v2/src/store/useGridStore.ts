@@ -367,8 +367,8 @@ export const useGridStore = create<GridState>()(
           // Zero calories filter
           if (filters.zeroCalories && food.calories !== 0) return false;
 
-          // Has report filter
-          if (filters.hasReport && !state.foodReportIds.has(food._id)) return false;
+          // Has report filter (check objectID since report IDs don't include index prefix)
+          if (filters.hasReport && !state.foodReportIds.has(food.objectID)) return false;
 
           // When searching via Algolia, don't filter again by search query
           // (Algolia already did that). Only filter locally when not searching.

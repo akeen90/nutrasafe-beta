@@ -194,8 +194,10 @@ async function searchGoogleImagesViaSearchAPI(
 }
 
 /**
- * Analyze image for white background and overlays
+ * Analyze image for white/transparent background and detect unwanted elements
  * Uses browser canvas to analyze the image
+ * STRICT FILTERING: Only accepts clean product shots on white/transparent backgrounds
+ * Rejects: colored backgrounds, text overlays, people, promotional graphics
  */
 export async function analyzeImageQuality(
   imageUrl: string,
@@ -222,109 +224,261 @@ export async function analyzeImageQuality(
         canvas.height = img.height * scale;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        onProgress?.(40);
+        onProgress?.(30);
 
         // Get image data
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const pixels = imageData.data;
+        const totalPixels = pixels.length / 4;
 
-        // Analyze CENTER region for product background (not edges which may be studio background)
-        const centerPixels: number[] = [];
-        const centerSize = Math.floor(Math.min(canvas.width, canvas.height) * 0.6); // 60% of image
-        const centerX = Math.floor((canvas.width - centerSize) / 2);
-        const centerY = Math.floor((canvas.height - centerSize) / 2);
+        // ========== EDGE ANALYSIS (Background Detection) ==========
+        // Sample edges where background should be visible (top, bottom, left, right strips)
+        const edgeWidth = Math.floor(canvas.width * 0.1); // 10% from each edge
+        const edgeHeight = Math.floor(canvas.height * 0.1);
 
-        // Sample center region where the product typically is
-        for (let y = centerY; y < centerY + centerSize; y += 3) { // Sample every 3rd pixel for speed
-          for (let x = centerX; x < centerX + centerSize; x += 3) {
+        let edgeWhiteCount = 0;
+        let edgeTransparentCount = 0;
+        let edgeColoredCount = 0;
+        let edgeSkinToneCount = 0;
+        let edgeSampleCount = 0;
+
+        // Sample top and bottom strips
+        for (let y = 0; y < edgeHeight; y++) {
+          for (let x = 0; x < canvas.width; x += 2) {
             const idx = (y * canvas.width + x) * 4;
-            const r = pixels[idx];
-            const g = pixels[idx + 1];
-            const b = pixels[idx + 2];
+            analyzePixelForBackground(pixels, idx);
+          }
+        }
+        for (let y = canvas.height - edgeHeight; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x += 2) {
+            const idx = (y * canvas.width + x) * 4;
+            analyzePixelForBackground(pixels, idx);
+          }
+        }
+        // Sample left and right strips
+        for (let y = edgeHeight; y < canvas.height - edgeHeight; y += 2) {
+          for (let x = 0; x < edgeWidth; x++) {
+            const idx = (y * canvas.width + x) * 4;
+            analyzePixelForBackground(pixels, idx);
+          }
+          for (let x = canvas.width - edgeWidth; x < canvas.width; x++) {
+            const idx = (y * canvas.width + x) * 4;
+            analyzePixelForBackground(pixels, idx);
+          }
+        }
 
-            // Only sample bright pixels (potential white background)
-            if (r > 200 && g > 200 && b > 200) {
-              centerPixels.push(r, g, b);
+        function analyzePixelForBackground(pixels: Uint8ClampedArray, idx: number) {
+          const r = pixels[idx];
+          const g = pixels[idx + 1];
+          const b = pixels[idx + 2];
+          const a = pixels[idx + 3];
+          edgeSampleCount++;
+
+          // Transparent pixel (alpha < 200)
+          if (a < 200) {
+            edgeTransparentCount++;
+            return;
+          }
+
+          // White/near-white pixel (all channels > 240)
+          if (r > 240 && g > 240 && b > 240) {
+            edgeWhiteCount++;
+            return;
+          }
+
+          // Skin tone detection (could indicate people in image)
+          if (isSkinTone(r, g, b)) {
+            edgeSkinToneCount++;
+            edgeColoredCount++;
+            return;
+          }
+
+          // Colored background
+          edgeColoredCount++;
+        }
+
+        function isSkinTone(r: number, g: number, b: number): boolean {
+          // Skin tone ranges for various skin colors
+          // Light skin: R > G > B, R > 180, G > 120, B > 80
+          // Medium skin: R > G > B, R > 120, G > 80, B > 50
+          // Dark skin: R > G > B, similar ratios
+          if (r > g && g > b) {
+            const rgRatio = r / g;
+            const rbRatio = r / b;
+            // Skin typically has R/G ratio between 1.1 and 1.6
+            if (rgRatio > 1.05 && rgRatio < 1.7 && rbRatio > 1.2 && rbRatio < 2.5) {
+              // Additional check: brightness in skin range
+              const brightness = (r + g + b) / 3;
+              if (brightness > 60 && brightness < 220) {
+                return true;
+              }
+            }
+          }
+          return false;
+        }
+
+        onProgress?.(50);
+
+        // Calculate background type
+        const edgeWhiteRatio = edgeSampleCount > 0 ? edgeWhiteCount / edgeSampleCount : 0;
+        const edgeTransparentRatio = edgeSampleCount > 0 ? edgeTransparentCount / edgeSampleCount : 0;
+        const edgeCleanRatio = edgeWhiteRatio + edgeTransparentRatio;
+        const edgeSkinRatio = edgeSampleCount > 0 ? edgeSkinToneCount / edgeSampleCount : 0;
+
+        const hasWhiteBackground = edgeWhiteRatio > 0.7; // 70%+ of edges are white
+        const hasTransparentBackground = edgeTransparentRatio > 0.5; // 50%+ transparent
+        const hasCleanBackground = edgeCleanRatio > 0.75; // 75%+ white OR transparent
+        const hasSkinTones = edgeSkinRatio > 0.05; // More than 5% skin tones = likely has people
+
+        onProgress?.(60);
+
+        // ========== TEXT/OVERLAY DETECTION ==========
+        const overlayTypes: string[] = [];
+        let hasOverlay = false;
+
+        // Detect text by looking for high contrast edges (sharp transitions)
+        let highContrastEdges = 0;
+        for (let y = 1; y < canvas.height - 1; y += 2) {
+          for (let x = 1; x < canvas.width - 1; x += 2) {
+            const idx = (y * canvas.width + x) * 4;
+            const brightness = (pixels[idx] + pixels[idx + 1] + pixels[idx + 2]) / 3;
+
+            // Check adjacent pixels for sharp contrast
+            const rightIdx = idx + 4;
+            const downIdx = idx + canvas.width * 4;
+
+            if (rightIdx < pixels.length && downIdx < pixels.length) {
+              const rightBrightness = (pixels[rightIdx] + pixels[rightIdx + 1] + pixels[rightIdx + 2]) / 3;
+              const downBrightness = (pixels[downIdx] + pixels[downIdx + 1] + pixels[downIdx + 2]) / 3;
+
+              // Sharp edge = brightness difference > 100
+              if (Math.abs(brightness - rightBrightness) > 100 || Math.abs(brightness - downBrightness) > 100) {
+                highContrastEdges++;
+              }
             }
           }
         }
 
-        onProgress?.(60);
+        const highContrastRatio = highContrastEdges / (totalPixels / 4);
 
-        // Calculate average of bright center pixels
-        let avgR = 0, avgG = 0, avgB = 0;
-
-        if (centerPixels.length > 0) {
-          avgR = centerPixels.filter((_, i) => i % 3 === 0).reduce((a, b) => a + b, 0) / (centerPixels.length / 3);
-          avgG = centerPixels.filter((_, i) => i % 3 === 1).reduce((a, b) => a + b, 0) / (centerPixels.length / 3);
-          avgB = centerPixels.filter((_, i) => i % 3 === 2).reduce((a, b) => a + b, 0) / (centerPixels.length / 3);
+        // Text typically creates many high-contrast edges (letters)
+        // Product images have fewer sharp edges
+        if (highContrastRatio > 0.08) { // More than 8% high contrast = likely text
+          hasOverlay = true;
+          overlayTypes.push('Text detected');
         }
 
-        // Check if product has white background (all RGB > 235)
-        const isWhite = avgR > 235 && avgG > 235 && avgB > 235 && centerPixels.length > 100;
-        const whiteness = centerPixels.length > 0 ? (avgR + avgG + avgB) / (3 * 255) * 100 : 0;
+        onProgress?.(75);
 
-        onProgress?.(80);
+        // Detect promotional graphics (bright saturated colors in large areas)
+        let brightSaturatedCount = 0;
+        let redCount = 0;
+        let yellowCount = 0;
 
-        // Detect overlays by looking for text-like patterns
-        const overlayTypes: string[] = [];
-        let hasOverlay = false;
-
-        // Simple overlay detection: look for dark text on white background
-        let darkPixelCount = 0;
-        for (let i = 0; i < pixels.length; i += 4) {
+        for (let i = 0; i < pixels.length; i += 16) { // Sample every 4th pixel
           const r = pixels[i];
           const g = pixels[i + 1];
           const b = pixels[i + 2];
+
+          const maxC = Math.max(r, g, b);
+          const minC = Math.min(r, g, b);
+          const saturation = maxC > 0 ? (maxC - minC) / maxC : 0;
           const brightness = (r + g + b) / 3;
 
-          if (brightness < 100) darkPixelCount++;
-        }
+          // Bright saturated colors (promotional banners)
+          if (saturation > 0.5 && brightness > 150) {
+            brightSaturatedCount++;
 
-        const darkPixelRatio = darkPixelCount / (pixels.length / 4);
-
-        // If more than 5% dark pixels, likely has overlay text
-        if (darkPixelRatio > 0.05 && darkPixelRatio < 0.3) {
-          hasOverlay = true;
-          overlayTypes.push('Possible text overlay');
-        }
-
-        // Check for colorful overlays (promotional graphics)
-        let colorfulPixelCount = 0;
-        for (let i = 0; i < pixels.length; i += 4) {
-          const r = pixels[i];
-          const g = pixels[i + 1];
-          const b = pixels[i + 2];
-
-          // Check if color is saturated (not grayscale)
-          const maxChannel = Math.max(r, g, b);
-          const minChannel = Math.min(r, g, b);
-          const saturation = maxChannel - minChannel;
-
-          if (saturation > 50 && maxChannel > 100 && maxChannel < 220) {
-            colorfulPixelCount++;
+            // Count promotional colors (red, yellow - common in "SALE", "NEW", etc)
+            if (r > 200 && g < 100 && b < 100) redCount++;
+            if (r > 200 && g > 180 && b < 100) yellowCount++;
           }
         }
 
-        const colorfulRatio = colorfulPixelCount / (pixels.length / 4);
-        if (colorfulRatio > 0.15) {
+        const brightSaturatedRatio = brightSaturatedCount / (pixels.length / 16);
+        const promotionalColorRatio = (redCount + yellowCount) / (pixels.length / 16);
+
+        if (brightSaturatedRatio > 0.1) { // 10%+ bright saturated = promotional graphics
           hasOverlay = true;
-          overlayTypes.push('Colorful graphics/banner');
+          overlayTypes.push('Promotional graphics');
         }
+
+        if (promotionalColorRatio > 0.02) { // 2%+ red/yellow = promotional text/banner
+          hasOverlay = true;
+          if (!overlayTypes.includes('Promotional banner')) {
+            overlayTypes.push('Promotional banner');
+          }
+        }
+
+        // Detect people (skin tone in center of image)
+        let centerSkinCount = 0;
+        let centerSampleCount = 0;
+        const centerStartX = Math.floor(canvas.width * 0.2);
+        const centerEndX = Math.floor(canvas.width * 0.8);
+        const centerStartY = Math.floor(canvas.height * 0.2);
+        const centerEndY = Math.floor(canvas.height * 0.8);
+
+        for (let y = centerStartY; y < centerEndY; y += 3) {
+          for (let x = centerStartX; x < centerEndX; x += 3) {
+            const idx = (y * canvas.width + x) * 4;
+            centerSampleCount++;
+            if (isSkinTone(pixels[idx], pixels[idx + 1], pixels[idx + 2])) {
+              centerSkinCount++;
+            }
+          }
+        }
+
+        const centerSkinRatio = centerSampleCount > 0 ? centerSkinCount / centerSampleCount : 0;
+        const hasPeople = hasSkinTones || centerSkinRatio > 0.03; // 3%+ skin in center = likely has people
+
+        if (hasPeople) {
+          hasOverlay = true;
+          overlayTypes.push('Person/hand detected');
+        }
+
+        onProgress?.(90);
+
+        // ========== CALCULATE QUALITY SCORE ==========
+        // STRICT scoring - only clean product shots get high scores
+        let qualityScore = 0;
+
+        // Background quality (max 50 points)
+        if (hasWhiteBackground) {
+          qualityScore += 50; // Pure white background = best
+        } else if (hasTransparentBackground) {
+          qualityScore += 45; // Transparent = nearly as good
+        } else if (hasCleanBackground) {
+          qualityScore += 30; // Mostly clean
+        } else {
+          qualityScore += 0; // Colored background = not suitable
+        }
+
+        // Clean from overlays (max 40 points)
+        if (!hasOverlay) {
+          qualityScore += 40;
+        } else {
+          // Deduct based on severity
+          if (overlayTypes.includes('Text detected')) qualityScore -= 20;
+          if (overlayTypes.includes('Promotional graphics')) qualityScore -= 15;
+          if (overlayTypes.includes('Promotional banner')) qualityScore -= 15;
+          if (overlayTypes.includes('Person/hand detected')) qualityScore -= 30;
+        }
+
+        // No people bonus (max 10 points)
+        if (!hasPeople) {
+          qualityScore += 10;
+        }
+
+        // Ensure score is 0-100
+        qualityScore = Math.max(0, Math.min(100, qualityScore));
+
+        const isCleanProductShot = hasCleanBackground && !hasOverlay && !hasPeople;
 
         onProgress?.(100);
 
-        // Calculate quality score
-        let qualityScore = 0;
-        if (isWhite) qualityScore += 40;
-        qualityScore += whiteness * 0.3; // Up to 30 points for whiteness
-        if (!hasOverlay) qualityScore += 30;
-
-        const isCleanProductShot = isWhite && !hasOverlay && whiteness > 90;
-
         resolve({
-          hasWhiteBackground: isWhite,
-          backgroundConfidence: Math.round(whiteness),
+          hasWhiteBackground: hasWhiteBackground || hasTransparentBackground,
+          backgroundConfidence: Math.round(edgeCleanRatio * 100),
           hasOverlay,
           overlayTypes,
           isCleanProductShot,

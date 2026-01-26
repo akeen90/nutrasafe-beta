@@ -794,6 +794,15 @@ function prepareForAlgolia(data) {
         // Would require porting ProcessingScorer.swift logic to TypeScript
         // Current implementation: Frontend computes on-demand with NSCache
         processingGrade: data.processingGrade || "",
+        // Food category data (from AI categorization)
+        foodCategory: data.foodCategory || null,
+        foodCategoryName: data.foodCategoryName || null,
+        suggestedServingSize: data.suggestedServingSize || null,
+        suggestedServingUnit: data.suggestedServingUnit || null,
+        suggestedServingDescription: data.suggestedServingDescription || null,
+        servingValidated: data.servingValidated || false,
+        categoryConfidence: data.categoryConfidence || null,
+        categorizedAt: data.categorizedAt?._seconds || data.categorizedAt || null,
     };
 }
 /**
@@ -882,6 +891,15 @@ function prepareTescoForAlgolia(data) {
         nameLength,
         isGeneric,
         score: 0,
+        // Food category data (from AI categorization)
+        foodCategory: data.foodCategory || null,
+        foodCategoryName: data.foodCategoryName || null,
+        suggestedServingSize: data.suggestedServingSize || null,
+        suggestedServingUnit: data.suggestedServingUnit || null,
+        suggestedServingDescription: data.suggestedServingDescription || null,
+        servingValidated: data.servingValidated || false,
+        categoryConfidence: data.categoryConfidence || null,
+        categorizedAt: data.categorizedAt?._seconds || data.categorizedAt || null,
     };
 }
 //# sourceMappingURL=algolia-sync.js.map

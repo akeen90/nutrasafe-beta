@@ -78,7 +78,7 @@ export { extractUKProductData, extractWithPuppeteer, lookupTescoProduct } from '
 export { getTescoBuildProgress, startTescoBuild, pauseTescoBuild, stopTescoBuild, resetTescoDatabase, getTescoDatabaseStats, configureTescoAlgoliaIndex, syncTescoToAlgolia, scheduledTescoBuild, cleanupTescoDatabase } from './tesco-database-builder';
 
 // AI Food Categorization - categorizes foods for intelligent serving size suggestions
-export { categorizeFoods, categorizeFoodsFromDatabase, getCategorizeStats, updateFoodCategory, getCategories, getFoodsForCategorization, getCategorizationProgress, resetCategorizationProgress, fixCustomCategoryServingSizes, fixFoodServingSizes } from './categorize-foods';
+export { categorizeFoods, categorizeFoodsFromDatabase, getCategorizeStats, updateFoodCategory, getCategories, getFoodsForCategorization, getCategorizationProgress, resetCategorizationProgress, fixCustomCategoryServingSizes, fixFoodServingSizes, batchSaveFoodCategories } from './categorize-foods';
 
 // AI Data Validation - validates and cleans food data using AI knowledge
 export { validateFoodsFromDatabase, getValidationStats, getValidationProgress, resetValidationProgress, getFoodsForValidation, getMarkedForDeletion, deleteMarkedItems, unmarkForDeletion, clearMarkedForDeletion } from './validate-foods';

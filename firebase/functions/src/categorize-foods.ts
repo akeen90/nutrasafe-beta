@@ -1231,3 +1231,183 @@ export const fixFoodServingSizes = functions
     }
   });
 });
+
+/**
+ * HTTP Function: Batch save approved food categorizations
+ * Updates both Firestore (where applicable) and Algolia directly
+ * POST body: { foods: Array<{ objectID, sourceIndex, categoryId, servingSizeG, servingValidated }> }
+ */
+import { algoliasearch } from 'algoliasearch';
+
+const ALGOLIA_APP_ID = 'WK0TIF84M2';
+const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
+
+// Mapping from Algolia index to Firestore collection
+const INDEX_TO_COLLECTION: Record<string, string | null> = {
+  'verified_foods': 'verifiedFoods',
+  'foods': 'foods',
+  'manual_foods': 'manualFoods',
+  'user_added': 'userAdded',
+  'ai_enhanced': 'aiEnhanced',
+  'ai_manually_added': 'aiManuallyAdded',
+  'tesco_products': 'tescoProducts',
+  'uk_foods_cleaned': null,        // Algolia-only
+  'fast_foods_database': null,     // Algolia-only
+  'generic_database': null,        // Algolia-only
+  'consumer_foods': 'consumer_foods',
+};
+
+export const batchSaveFoodCategories = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      const { foods } = req.body;
+
+      if (!foods || !Array.isArray(foods) || foods.length === 0) {
+        res.status(400).json({ error: 'foods array is required' });
+        return;
+      }
+
+      const adminKey = getAlgoliaAdminKey();
+      if (!adminKey) {
+        res.status(500).json({ error: 'Algolia admin key not configured' });
+        return;
+      }
+
+      const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+      const db = admin.firestore();
+      const customCategories = await loadCustomCategories();
+
+      const results = {
+        total: foods.length,
+        firestoreUpdated: 0,
+        algoliaUpdated: 0,
+        errors: [] as string[],
+      };
+
+      // Group foods by source index for batch processing
+      const foodsByIndex: Record<string, typeof foods> = {};
+      for (const food of foods) {
+        const index = food.sourceIndex || 'unknown';
+        if (!foodsByIndex[index]) foodsByIndex[index] = [];
+        foodsByIndex[index].push(food);
+      }
+
+      // Process each index
+      for (const [indexName, indexFoods] of Object.entries(foodsByIndex)) {
+        const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+
+        // Get category info for each food
+        const updateData = indexFoods.map(food => {
+          const category = getCategoryById(food.categoryId, customCategories);
+          const servingInfo = getServingSizeForCategory(food.categoryId, customCategories);
+
+          // Priority: 1) passed servingSizeG from categorizer, 2) category default, 3) fallback 100g
+          // The categorizer already applies its tiered logic (validated > pack_size > category_default)
+          // so we should trust what it sends
+          const finalServingSize = food.servingSizeG && food.servingSizeG > 0
+            ? food.servingSizeG
+            : (servingInfo?.size || 100);
+
+          return {
+            objectID: food.objectID,
+            categoryId: food.categoryId,
+            categoryName: category?.name || 'Unknown',
+            servingSizeG: finalServingSize,
+            servingUnit: servingInfo?.unit || 'g',
+            servingDescription: servingInfo?.description || 'per serving',
+            servingValidated: food.servingValidated || false,
+          };
+        });
+
+        // Update Firestore if this index has a backing collection
+        if (firestoreCollection) {
+          const batch = db.batch();
+          let batchCount = 0;
+
+          for (const data of updateData) {
+            const docRef = db.collection(firestoreCollection).doc(data.objectID);
+            batch.update(docRef, {
+              foodCategory: data.categoryId,
+              foodCategoryName: data.categoryName,
+              // Update BOTH fields - servingSizeG is what the app uses for display/calculation
+              servingSizeG: data.servingSizeG,
+              serving_size_g: data.servingSizeG, // Also update snake_case version
+              suggestedServingSize: data.servingSizeG,
+              suggestedServingUnit: data.servingUnit,
+              suggestedServingDescription: data.servingDescription,
+              servingValidated: data.servingValidated,
+              categoryConfidence: 'ai_reviewed',
+              categorizedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            batchCount++;
+
+            // Firestore batches have a 500 operation limit
+            if (batchCount >= 500) {
+              await batch.commit();
+              results.firestoreUpdated += batchCount;
+              batchCount = 0;
+            }
+          }
+
+          if (batchCount > 0) {
+            await batch.commit();
+            results.firestoreUpdated += batchCount;
+          }
+
+          // Note: Algolia will be updated automatically via Firestore triggers
+          // for collections that have sync triggers
+        } else {
+          // Algolia-only index - update directly
+          const algoliaUpdates = updateData.map(data => ({
+            objectID: data.objectID,
+            foodCategory: data.categoryId,
+            foodCategoryName: data.categoryName,
+            // Update BOTH fields - servingSizeG is what the app uses for display/calculation
+            servingSizeG: data.servingSizeG,
+            serving_size_g: data.servingSizeG, // Also update snake_case version
+            suggestedServingSize: data.servingSizeG,
+            suggestedServingUnit: data.servingUnit,
+            suggestedServingDescription: data.servingDescription,
+            servingValidated: data.servingValidated,
+            categoryConfidence: 'ai_reviewed',
+            categorizedAt: new Date().toISOString(),
+          }));
+
+          // Batch update in chunks of 1000
+          const BATCH_SIZE = 1000;
+          for (let i = 0; i < algoliaUpdates.length; i += BATCH_SIZE) {
+            const batch = algoliaUpdates.slice(i, i + BATCH_SIZE);
+            await client.partialUpdateObjects({
+              indexName,
+              objects: batch,
+              createIfNotExists: false,
+            });
+            results.algoliaUpdated += batch.length;
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Saved ${results.total} food categorizations`,
+        ...results,
+      });
+
+    } catch (error: any) {
+      console.error('Batch save categories error:', error);
+      res.status(500).json({ error: error.message || 'Failed to save categories' });
+    }
+  });
+});

@@ -565,6 +565,15 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     servingDescription: 'per tablespoon',
     keywords: ['single cream', 'double cream', 'whipping cream', 'clotted cream', 'soured cream', 'creme fraiche']
   },
+  {
+    id: 'cream_alternatives',
+    name: 'Cream Alternatives',
+    description: 'Plant-based cream alternatives',
+    defaultServingSize: 30,
+    servingUnit: 'ml',
+    servingDescription: 'per tablespoon',
+    keywords: ['elmlea', 'cream alternative', 'plant cream', 'vegan cream', 'oat cream', 'soy cream']
+  },
 
   // === FRUIT & VEGETABLES ===
   {
@@ -909,6 +918,35 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     servingUnit: 'g',
     servingDescription: 'per tablet',
     keywords: ['vitamin', 'supplement', 'multivitamin', 'cod liver oil', 'omega 3', 'vitamin d', 'vitamin c', 'iron supplement', 'centrum']
+  },
+  // === FRONTEND CATEGORY ALIASES ===
+  // These categories match the frontend categorizer's simpler naming convention
+  {
+    id: 'milk',
+    name: 'Milk',
+    description: 'Milk and milk alternatives',
+    defaultServingSize: 200,
+    servingUnit: 'ml',
+    servingDescription: 'per 200ml glass',
+    keywords: []
+  },
+  {
+    id: 'cheese',
+    name: 'Cheese',
+    description: 'All cheese types',
+    defaultServingSize: 30,
+    servingUnit: 'g',
+    servingDescription: 'per 30g portion',
+    keywords: []
+  },
+  {
+    id: 'yoghurt',
+    name: 'Yoghurt',
+    description: 'Yoghurts and fromage frais',
+    defaultServingSize: 125,
+    servingUnit: 'g',
+    servingDescription: 'per pot',
+    keywords: []
   },
   {
     id: 'unknown',
