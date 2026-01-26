@@ -49,6 +49,9 @@ interface GridState {
   // Dirty tracking
   dirtyFoodIds: Set<string>;
 
+  // User reports tracking
+  foodReportIds: Set<string>; // IDs of foods that have user reports
+
   // Actions
   setFoods: (foods: UnifiedFood[]) => void;
   addFoods: (foods: UnifiedFood[]) => void;
@@ -84,6 +87,9 @@ interface GridState {
   setIsSearching: (isSearching: boolean) => void;
   clearSearch: () => void;
 
+  // User reports
+  setFoodReportIds: (ids: Set<string>) => void;
+
   // Computed
   getFilteredFoods: () => UnifiedFood[];
   getFoodById: (id: string) => UnifiedFood | undefined;
@@ -96,6 +102,8 @@ const defaultFilters: FilterState = {
   hasIssues: false,
   hasDuplicates: false,
   hasBarcode: false,
+  zeroCalories: false,
+  hasReport: false,
 };
 
 const defaultColumnOrder = [
@@ -112,6 +120,8 @@ const defaultColumnOrder = [
   'fiber',
   'sugar',
   'sodium',
+  'servingSizeG',
+  'servingDescription',
   'isVerified',
   '_reviewFlags',
   'actions',
@@ -135,6 +145,7 @@ export const useGridStore = create<GridState>()(
       redoStack: [],
       columnOrder: defaultColumnOrder,
       dirtyFoodIds: new Set(),
+      foodReportIds: new Set(),
 
       // Actions
       setFoods: (foods) =>
@@ -324,6 +335,10 @@ export const useGridStore = create<GridState>()(
       clearSearch: () =>
         set({ searchResults: [], isSearching: false }),
 
+      // User reports
+      setFoodReportIds: (ids) =>
+        set({ foodReportIds: ids }),
+
       // Computed
       getFilteredFoods: () => {
         const state = get();
@@ -348,6 +363,12 @@ export const useGridStore = create<GridState>()(
 
           // Barcode filter
           if (filters.hasBarcode && !food.barcode) return false;
+
+          // Zero calories filter
+          if (filters.zeroCalories && food.calories !== 0) return false;
+
+          // Has report filter
+          if (filters.hasReport && !state.foodReportIds.has(food._id)) return false;
 
           // When searching via Algolia, don't filter again by search query
           // (Algolia already did that). Only filter locally when not searching.

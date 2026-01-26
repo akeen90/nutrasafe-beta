@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe Blog — UK Nutrition, Calorie Counting & Food Safety Guides</title>
+    <meta name="description" content="Expert guides on calorie counting, nutrition tracking, food safety, and healthy eating in the UK. Free evidence-based advice for weight loss and better health.">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/blog/">
+    <meta name="robots" content="index, follow">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/blog/">
+    <meta property="og:title" content="NutraSafe Blog — UK Nutrition & Food Safety Guides">
+    <meta property="og:description" content="Expert guides on calorie counting, nutrition tracking, food safety, and healthy eating in the UK.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
+    <meta property="og:locale" content="en_GB">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NutraSafe Blog — UK Nutrition Guides">
+    <meta name="twitter:description" content="Expert guides on calorie counting, nutrition, and food safety in the UK.">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon-2026.png">
+
+    <meta name="theme-color" content="#3d7a7a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32-new.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-new.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --teal: #3d7a7a;
+            --teal-dark: #2d5a5a;
+            --teal-light: #5a9a9a;
+            --coral: #d4a574;
+            --sage: #7ab3a0;
+            --text-dark: #1a1a1a;
+            --text-medium: #4a4a4a;
+            --text-light: #7a7a7a;
+            --bg-start: #dce4ec;
+            --bg-end: #f5f3ef;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(255, 255, 255, 0.9);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
+            color: var(--text-dark);
+            background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        header {
+            background: rgba(220, 228, 236, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 40px rgba(0, 0, 0, 0.05);
+        }
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(61, 122, 122, 0.2);
+        }
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-medium);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--teal); }
+        .nav-cta {
+            padding: 0.75rem 1.75rem;
+            background: var(--teal);
+            color: white !important;
+            border-radius: 100px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .nav-cta:hover {
+            background: var(--teal-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(61, 122, 122, 0.3);
+        }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .hero {
+            padding: 80px 2rem 60px;
+            text-align: center;
+        }
+        .hero-content {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+            color: var(--text-dark);
+        }
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) { .hero h1 { font-size: 2.25rem; } }
+
+        .blog-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 2rem 80px;
+        }
+
+        .articles-grid {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            margin-top: 3rem;
+        }
+
+        .article-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .article-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            border-color: var(--teal-light);
+        }
+
+        .article-meta {
+            padding: 1.75rem;
+        }
+        .article-category {
+            display: inline-block;
+            padding: 0.35rem 0.9rem;
+            background: rgba(61, 122, 122, 0.1);
+            color: var(--teal);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+        .article-title {
+            font-size: 1.4rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+            line-height: 1.3;
+        }
+        .article-excerpt {
+            color: var(--text-medium);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        .article-date {
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+
+        .categories-filter {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        .category-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 100px;
+            color: var(--text-medium);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        .category-btn:hover,
+        .category-btn.active {
+            background: var(--teal);
+            color: white;
+            border-color: var(--teal);
+        }
+
+        footer {
+            background: linear-gradient(180deg, transparent 0%, rgba(61, 122, 122, 0.05) 100%);
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(4, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .footer-brand .logo { margin-bottom: 1rem; }
+        .footer-brand p {
+            color: var(--text-light);
+            line-height: 1.7;
+            font-size: 0.9rem;
+        }
+        .footer-section h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+            color: var(--text-dark);
+        }
+        .footer-section ul { list-style: none; margin: 0; padding: 0; }
+        .footer-section a {
+            color: var(--text-light);
+            text-decoration: none;
+            display: block;
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .footer-section a:hover { color: var(--teal); }
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+        @media (max-width: 968px) { .footer-content { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 640px) {
+            .footer-content { grid-template-columns: 1fr; text-align: center; }
+            .articles-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <script src="/cookie-consent.js" defer></script>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/blog/">Blog</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>NutraSafe Blog</h1>
+            <p>Evidence-based guides on calorie counting, nutrition tracking, food safety, and healthy eating in the UK.</p>
+        </div>
+    </section>
+
+    <div class="blog-container">
+        <div class="categories-filter">
+            <a href="#all" class="category-btn active" data-category="all">All Articles</a>
+            <a href="#weight-loss" class="category-btn" data-category="weight-loss">Weight Loss</a>
+            <a href="#nutrition" class="category-btn" data-category="nutrition">Nutrition Guides</a>
+            <a href="#cooking" class="category-btn" data-category="cooking">Cooking & Conversions</a>
+            <a href="#food-safety" class="category-btn" data-category="food-safety">Food Storage</a>
+            <a href="#app-guides" class="category-btn" data-category="app-guides">App Guides</a>
+        </div>
+
+        <div class="articles-grid">
+            <a href="/blog/how-to-count-calories-for-weight-loss-uk/" class="article-card" data-categories="weight-loss nutrition">
+                <div class="article-meta">
+                    <span class="article-category">Weight Loss</span>
+                    <h2 class="article-title">How to Count Calories for Weight Loss: Complete UK Guide 2026</h2>
+                    <p class="article-excerpt">Master calorie counting with our evidence-based guide. Learn exactly how to calculate your deficit, track accurately, and lose weight sustainably.</p>
+                    <span class="article-date">January 2026 • 8 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/complete-guide-to-macros-uk/" class="article-card" data-categories="nutrition">
+                <div class="article-meta">
+                    <span class="article-category">Nutrition</span>
+                    <h2 class="article-title">Complete Guide to Macros: Protein, Carbs, Fats Explained</h2>
+                    <p class="article-excerpt">Go beyond calories. Understand macronutrients and how to balance protein, carbs, and fats for your goals — whether weight loss, muscle gain, or health.</p>
+                    <span class="article-date">January 2026 • 10 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/best-food-scanner-apps-uk-2026/" class="article-card" data-categories="app-guides nutrition">
+                <div class="article-meta">
+                    <span class="article-category">App Guide</span>
+                    <h2 class="article-title">Best Food Scanner Apps UK 2026: Complete Comparison Guide</h2>
+                    <p class="article-excerpt">Compare NutraSafe, Yuka, MyFitnessPal and 4 more UK food scanner apps. Features, accuracy, cost, and which is best for your goals.</p>
+                    <span class="article-date">January 2026 • 12 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/why-am-i-not-losing-weight/" class="article-card" data-categories="weight-loss nutrition">
+                <div class="article-meta">
+                    <span class="article-category">Weight Loss</span>
+                    <h2 class="article-title">Why Am I Not Losing Weight? 12 Common Calorie Counting Mistakes</h2>
+                    <p class="article-excerpt">Fix hidden calorie counting errors sabotaging your weight loss. Portion sizes, liquid calories, weekend eating and more. Troubleshoot now.</p>
+                    <span class="article-date">January 2026 • 9 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/myfitnesspal-alternative-uk/" class="article-card" data-categories="app-guides weight-loss">
+                <div class="article-meta">
+                    <span class="article-category">App Comparison</span>
+                    <h2 class="article-title">MyFitnessPal Alternative UK: 7 Better Calorie Counters (2026)</h2>
+                    <p class="article-excerpt">Tired of MyFitnessPal ads and subscriptions? Compare 7 better UK alternatives: NutraSafe, Nutracheck, Cronometer. Free features, accurate databases.</p>
+                    <span class="article-date">January 2026 • 10 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-many-calories-should-i-eat-to-lose-weight-uk/" class="article-card" data-categories="weight-loss nutrition">
+                <div class="article-meta">
+                    <span class="article-category">Weight Loss</span>
+                    <h2 class="article-title">How Many Calories Should I Eat to Lose Weight? UK Calculator</h2>
+                    <p class="article-excerpt">Free UK calorie calculator for weight loss. Enter age, weight, height, activity to get your TDEE and calorie deficit target. Science-based.</p>
+                    <span class="article-date">January 2026 • 8 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/tesco-barcode-scanner-guide/" class="article-card" data-categories="app-guides shopping">
+                <div class="article-meta">
+                    <span class="article-category">Tesco Shopping</span>
+                    <h2 class="article-title">Tesco Barcode Scanner: Track Nutrition While Shopping</h2>
+                    <p class="article-excerpt">Free guide to scanning Tesco barcodes for nutrition info. Best apps, Clubcard compatibility, and tips for tracking calories at Tesco UK.</p>
+                    <span class="article-date">January 2026 • 7 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/sainsburys-food-scanner-guide/" class="article-card" data-categories="app-guides shopping">
+                <div class="article-meta">
+                    <span class="article-category">Sainsbury's Shopping</span>
+                    <h2 class="article-title">Sainsbury's Food Scanner: Track Nutrition with Barcode Apps</h2>
+                    <p class="article-excerpt">Guide to scanning Sainsbury's barcodes for instant nutrition info. Nectar compatibility, Taste the Difference scanning, and shopping tips.</p>
+                    <span class="article-date">January 2026 • 6 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-to-track-food-intolerances/" class="article-card" data-categories="nutrition health">
+                <div class="article-meta">
+                    <span class="article-category">Food Intolerance</span>
+                    <h2 class="article-title">How to Track Food Intolerances: Find Your Trigger Foods</h2>
+                    <p class="article-excerpt">Step-by-step guide to identifying food intolerances using elimination diet and food diary. Track symptoms, find triggers, discover patterns.</p>
+                    <span class="article-date">January 2026 • 9 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/best-food-allergy-tracker-apps-uk/" class="article-card" data-categories="app-guides health">
+                <div class="article-meta">
+                    <span class="article-category">Food Allergies</span>
+                    <h2 class="article-title">Best Food Allergy Tracker Apps UK (2026)</h2>
+                    <p class="article-excerpt">Compare best UK food allergy tracking apps. NutraSafe, Spoon Guru reviewed. Features, costs, barcode scanning, allergen warnings.</p>
+                    <span class="article-date">January 2026 • 5 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-to-track-vitamins-and-minerals/" class="article-card" data-categories="nutrition health">
+                <div class="article-meta">
+                    <span class="article-category">Nutrition</span>
+                    <h2 class="article-title">How to Track Vitamins and Minerals (Not Just Calories)</h2>
+                    <p class="article-excerpt">Learn how to track micronutrients beyond calories. Essential vitamins, minerals, daily values, best apps, and why nutrition quality matters.</p>
+                    <span class="article-date">January 2026 • 8 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/best-vitamin-tracker-apps-uk/" class="article-card" data-categories="app-guides nutrition">
+                <div class="article-meta">
+                    <span class="article-category">Nutrition Apps</span>
+                    <h2 class="article-title">Best Vitamin Tracker Apps UK (2026)</h2>
+                    <p class="article-excerpt">Compare best UK vitamin and mineral tracking apps. NutraSafe, Cronometer, MyPlate reviewed. Features, costs, micronutrient coverage.</p>
+                    <span class="article-date">January 2026 • 6 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/high-protein-low-calorie-foods-uk/" class="article-card" data-categories="nutrition weight-loss">
+                <div class="article-meta">
+                    <span class="article-category">Nutrition</span>
+                    <h2 class="article-title">20 High-Protein Low-Calorie Foods Available in UK Supermarkets</h2>
+                    <p class="article-excerpt">Fill up on fewer calories with these protein-rich foods from Tesco, Sainsbury's, Asda, and more. Perfect for weight loss and muscle retention.</p>
+                    <span class="article-date">January 2026 • 6 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-to-use-food-scanner-app/" class="article-card" data-categories="app-guides">
+                <div class="article-meta">
+                    <span class="article-category">App Guide</span>
+                    <h2 class="article-title">How to Use a Food Scanner App: Complete Beginner's Guide</h2>
+                    <p class="article-excerpt">Learn how barcode scanner apps work, which foods to scan, and how to get accurate nutrition data from UK supermarket products.</p>
+                    <span class="article-date">January 2026 • 7 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-many-grams-is-1-cup/" class="article-card" data-categories="cooking">
+                <div class="article-meta">
+                    <span class="article-category">Cooking</span>
+                    <h2 class="article-title">How Many Grams Is 1 Cup? Complete UK Conversion Guide</h2>
+                    <p class="article-excerpt">Convert cups to grams for any ingredient. Complete conversion tables for flour, sugar, butter, rice and more. Essential for following US recipes.</p>
+                    <span class="article-date">January 2026 • 4 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/what-is-a-cup-measurement/" class="article-card" data-categories="cooking">
+                <div class="article-meta">
+                    <span class="article-category">Cooking</span>
+                    <h2 class="article-title">What Is a Cup? UK Guide to Cup Measurements in Cooking</h2>
+                    <p class="article-excerpt">Understand cup measurements: 1 US cup = 240ml. Learn the difference between US and UK cups, why grams are better, and how to convert recipes.</p>
+                    <span class="article-date">January 2026 • 3 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-to-lose-water-weight/" class="article-card" data-categories="weight-loss">
+                <div class="article-meta">
+                    <span class="article-category">Weight Loss</span>
+                    <h2 class="article-title">How to Lose Water Weight Fast: 7 Evidence-Based Methods</h2>
+                    <p class="article-excerpt">Drop 1-3kg of water weight in 24-48 hours with safe, proven strategies. Reduce salt, drink more water, cut carbs and more. Quick results guide.</p>
+                    <span class="article-date">January 2026 • 5 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/can-you-freeze-hummus/" class="article-card" data-categories="food-safety">
+                <div class="article-meta">
+                    <span class="article-category">Food Storage</span>
+                    <h2 class="article-title">Can You Freeze Hummus? Complete UK Storage Guide</h2>
+                    <p class="article-excerpt">Yes, freeze hummus for up to 4 months. Learn how to freeze, thaw, and restore texture. Works for Tesco, Sainsbury's and homemade hummus.</p>
+                    <span class="article-date">January 2026 • 4 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-many-grams-in-a-tablespoon/" class="article-card" data-categories="cooking">
+                <div class="article-meta">
+                    <span class="article-category">Cooking</span>
+                    <h2 class="article-title">How Many Grams in a Tablespoon? UK Conversion Guide</h2>
+                    <p class="article-excerpt">1 tablespoon = 15ml liquid or 9-20g dry depending on ingredient. Complete conversion tables for butter, sugar, flour, oil and more.</p>
+                    <span class="article-date">January 2026 • 3 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/how-much-is-4-oz/" class="article-card" data-categories="cooking">
+                <div class="article-meta">
+                    <span class="article-category">Cooking</span>
+                    <h2 class="article-title">How Much Is 4 oz? UK Conversion Guide (Grams & ml)</h2>
+                    <p class="article-excerpt">4 oz = 113g (weight) or 120ml (liquid). Complete ounce to gram conversion table for cooking and nutrition tracking. Essential for US recipes.</p>
+                    <span class="article-date">January 2026 • 3 min read</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <div class="logo-icon">
+                        <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44" loading="lazy">
+                    </div>
+                    <span>NutraSafe</span>
+                </a>
+                <p>The food intelligence app that learns your body. Food clarity. Body clarity. Simple.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="/#features">Features</a></li>
+                    <li><a href="/#how-it-works">How It Works</a></li>
+                    <li><a href="/#faqs">FAQs</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Learn</h4>
+                <ul>
+                    <li><a href="/blog/">Blog</a></li>
+                    <li><a href="/resources.html">Resources</a></li>
+                    <li><a href="/calorie-counter-uk.html">Calorie Counter</a></li>
+                    <li><a href="/best-food-scanner-app-uk.html">Food Scanner</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Tools</h4>
+                <ul>
+                    <li><a href="/tdee-bmr-calculator.html">TDEE Calculator</a></li>
+                    <li><a href="/e-numbers.html">E-Numbers Database</a></li>
+                    <li><a href="/food-additives.html">Food Additives</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
+        </div>
+    </footer>
+
+    <script>
+        // Category filtering
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const category = btn.dataset.category;
+
+                // Update active button
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Filter articles
+                document.querySelectorAll('.article-card').forEach(card => {
+                    if (category === 'all' || card.dataset.categories.includes(category)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

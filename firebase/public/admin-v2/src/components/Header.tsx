@@ -132,6 +132,7 @@ export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelec
     'uk_foods_cleaned': 'UK Cleaned',
     'fast_foods_database': 'Fast Food',
     'generic_database': 'Generic',
+    'consumer_foods': 'Consumer',
   };
 
   return (
@@ -335,6 +336,24 @@ export const Header: React.FC<HeaderProps> = ({ onSave, onRefresh, onDeleteSelec
             className={`px-3 py-1.5 text-sm border rounded-lg ${filters.hasIssues ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
           >
             Issues
+          </button>
+
+          {/* Zero Calories Filter */}
+          <button
+            onClick={() => setFilters({ zeroCalories: !filters.zeroCalories })}
+            className={`px-3 py-1.5 text-sm border rounded-lg ${filters.zeroCalories ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+            title="Show only foods with 0 calories"
+          >
+            0 Cal
+          </button>
+
+          {/* Has Report Filter */}
+          <button
+            onClick={() => setFilters({ hasReport: !filters.hasReport })}
+            className={`px-3 py-1.5 text-sm border rounded-lg ${filters.hasReport ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+            title="Show only foods with user reports"
+          >
+            📝 Reports
           </button>
         </div>
 

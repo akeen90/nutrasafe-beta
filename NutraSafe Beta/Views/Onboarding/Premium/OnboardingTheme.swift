@@ -643,3 +643,6 @@ class PremiumOnboardingState: ObservableObject {
         }
     }
 }
+
+// MARK: - Type Alias for Legacy Code
+typealias OnboardingProfile = PremiumOnboardingState

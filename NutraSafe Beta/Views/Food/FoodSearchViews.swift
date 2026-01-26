@@ -195,8 +195,56 @@ struct FoodSearchResultRowEnhanced: View {
     }
 
     // Calculate standard serving calories for display
-    // Uses first portion from portionsForQuery to ensure consistent serving size
+    // SMART SERVING: Uses actualServingSize which handles sauces (15g), cereals (45g), bread (38g) and rejects package sizes >200g
     private var standardServingCalories: Int {
+        let nameLower = food.name.lowercased()
+        let brandLower = (food.brand ?? "").lowercased()
+
+        // PRIORITY 1: Use database servingSizeG if available, valid, and not default 100g
+        // This is the most reliable source - use it first before any category detection
+        // VALIDATION: Reject implausible serving sizes (<10g or >500g per serving)
+        // No real food has a 1g serving - that's clearly bad data
+        if let dbServingSize = food.servingSizeG, dbServingSize >= 10 && dbServingSize <= 500 && dbServingSize != 100 {
+            return Int(food.calories * dbServingSize / 100.0)
+        }
+
+        // PRIORITY 2: Category-specific defaults when no database serving size
+        let sauceKeywords = ["ketchup", "sauce", "mayo", "mayonnaise", "mustard", "relish",
+                             "dressing", "sriracha", "chutney", "pickle", "aioli", "vinegar"]
+        let cerealKeywords = ["oats", "porridge", "oatmeal", "granola", "muesli", "cornflakes",
+                              "corn flakes", "bran flakes", "weetabix", "shreddies", "cheerios",
+                              "special k", "rice krispies", "coco pops", "frosties", "cereal"]
+        // Bread keywords: include types, brands, and common variants
+        // Jason's, Warburtons, Hovis, Kingsmill are UK bread brands
+        // Sourdough, ciabatta, focaccia, brioche are bread types without "bread" in name
+        let breadKeywords = ["bread", "loaf", "slice", "toast", "baguette", "roll", "bun",
+                             "bagel", "pitta", "pita", "naan", "wrap", "tortilla", "crumpet",
+                             "muffin english", "english muffin", "sourdough", "ciabatta",
+                             "focaccia", "brioche", "jason's", "jasons", "warburton", "hovis",
+                             "kingsmill", "wholemeal", "seeded", "granary", "bloomer",
+                             "farmhouse", "tiger bread", "rye bread", "pumpernickel"]
+
+        let isSauce = sauceKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isCereal = cerealKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isBread = breadKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isCrumpet = nameLower.contains("crumpet")
+
+        if isSauce {
+            return Int(food.calories * 15.0 / 100.0)  // 1 tablespoon
+        }
+
+        if isCereal {
+            return Int(food.calories * 45.0 / 100.0)  // Medium bowl
+        }
+
+        if isCrumpet {
+            return Int(food.calories * 55.0 / 100.0)  // 1 crumpet (~55g each)
+        }
+
+        if isBread {
+            return Int(food.calories * 38.0 / 100.0)  // 1 slice (average)
+        }
+
         // For oils, ALWAYS default to tablespoon (15ml/15g) regardless of isPerUnit
         if isOilProduct {
             return Int(food.calories * 15.0 / 100.0)
@@ -209,19 +257,78 @@ struct FoodSearchResultRowEnhanced: View {
             let portions = food.portionsForQuery(food.name)
             if let defaultPortion = portions.first {
                 // Calculate calories based on the default portion size
-                return Int(food.calories * defaultPortion.serving_g / 100.0)
-            } else if let servingG = food.servingSizeG, servingG > 0 {
-                return Int(food.calories * servingG / 100.0)
+                let portionCalories = food.calories * defaultPortion.serving_g / 100.0
+                // NEVER show over 700 calories - if preset portion is too big, use actualServingSize
+                if portionCalories > 700 {
+                    return Int(food.calories * food.actualServingSize / 100.0)
+                }
+                return Int(portionCalories)
             } else {
-                // Default to 100g if no serving size
-                return Int(food.calories)
+                // Use actualServingSize which handles sauces and package size rejection
+                return Int(food.calories * food.actualServingSize / 100.0)
             }
         }
     }
 
     // Get standard serving size description - use first preset portion if available
-    // Uses query-aware method to properly handle composite dishes
+    // SMART SERVING: Uses database servingDescription first, then category defaults, then actualServingSize
     private var standardServingDesc: String {
+        let nameLower = food.name.lowercased()
+        let brandLower = (food.brand ?? "").lowercased()
+
+        // PRIORITY 1: Use database servingDescription if available and meaningful
+        // This is the most reliable source - "Per Slice (38g)", "1 can (330ml)", etc.
+        if let dbDesc = food.servingDescription, !dbDesc.isEmpty {
+            let descLower = dbDesc.lowercased()
+            // Skip generic "per 100g" descriptions - those aren't helpful
+            if !descLower.contains("per 100g") && !descLower.contains("per 100 g") {
+                return dbDesc
+            }
+        }
+
+        // PRIORITY 2: Use database servingSizeG if available and valid (format it nicely)
+        // VALIDATION: Reject implausible serving sizes (<10g or >500g per serving)
+        if let dbServingSize = food.servingSizeG, dbServingSize >= 10 && dbServingSize <= 500 && dbServingSize != 100 {
+            return food.formattedServingSize(dbServingSize)
+        }
+
+        // PRIORITY 3: Category-specific defaults when no database serving info
+        let sauceKeywords = ["ketchup", "sauce", "mayo", "mayonnaise", "mustard", "relish",
+                             "dressing", "sriracha", "chutney", "pickle", "aioli", "vinegar"]
+        let cerealKeywords = ["oats", "porridge", "oatmeal", "granola", "muesli", "cornflakes",
+                              "corn flakes", "bran flakes", "weetabix", "shreddies", "cheerios",
+                              "special k", "rice krispies", "coco pops", "frosties", "cereal"]
+        // Bread keywords: include types, brands, and common variants
+        // Jason's, Warburtons, Hovis, Kingsmill are UK bread brands
+        // Sourdough, ciabatta, focaccia, brioche are bread types without "bread" in name
+        let breadKeywords = ["bread", "loaf", "slice", "toast", "baguette", "roll", "bun",
+                             "bagel", "pitta", "pita", "naan", "wrap", "tortilla", "crumpet",
+                             "muffin english", "english muffin", "sourdough", "ciabatta",
+                             "focaccia", "brioche", "jason's", "jasons", "warburton", "hovis",
+                             "kingsmill", "wholemeal", "seeded", "granary", "bloomer",
+                             "farmhouse", "tiger bread", "rye bread", "pumpernickel"]
+
+        let isSauce = sauceKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isCereal = cerealKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isBread = breadKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isCrumpet = nameLower.contains("crumpet")
+
+        if isSauce {
+            return "1 tablespoon (15g)"
+        }
+
+        if isCereal {
+            return "Medium bowl (45g)"
+        }
+
+        if isCrumpet {
+            return "1 crumpet (55g)"
+        }
+
+        if isBread {
+            return "1 slice (38g)"
+        }
+
         // For oils, ALWAYS default to tablespoon regardless of isPerUnit
         if isOilProduct {
             return "1 tablespoon"
@@ -233,21 +340,71 @@ struct FoodSearchResultRowEnhanced: View {
             // Use query-aware portions first for consistency with calories
             let portions = food.portionsForQuery(food.name)
             if let firstPortion = portions.first {
+                // Check if portion would result in >700 cals (package size)
+                let portionCalories = food.calories * firstPortion.serving_g / 100.0
+                if portionCalories > 700 {
+                    // Use actualServingSize instead of huge package size
+                    let smartSize = food.actualServingSize
+                    return food.formattedServingSize(smartSize)
+                }
                 return firstPortion.name
-            } else if let servingG = food.servingSizeG, servingG > 0 {
-                // Use ml for drinks instead of g
-                return food.formattedServingSize(servingG)
-            } else if let desc = food.servingDescription, !desc.isEmpty {
-                return desc
             } else {
-                return "100g"
+                // Use actualServingSize which handles sauces (15g) and rejects package sizes
+                let smartSize = food.actualServingSize
+                return food.formattedServingSize(smartSize)
             }
         }
     }
 
     // Get the actual serving weight for nutrition calculation
-    // Uses query-aware method to properly handle composite dishes
+    // SMART SERVING: Uses database servingSizeG first, then category defaults, then actualServingSize
     private var standardServingWeight: Double {
+        let nameLower = food.name.lowercased()
+        let brandLower = (food.brand ?? "").lowercased()
+
+        // PRIORITY 1: Use database servingSizeG if available, valid, and not default 100g
+        // VALIDATION: Reject implausible serving sizes (<10g or >500g per serving)
+        if let dbServingSize = food.servingSizeG, dbServingSize >= 10 && dbServingSize <= 500 && dbServingSize != 100 {
+            return dbServingSize
+        }
+
+        // PRIORITY 2: Category-specific defaults when no database serving size
+        let sauceKeywords = ["ketchup", "sauce", "mayo", "mayonnaise", "mustard", "relish",
+                             "dressing", "sriracha", "chutney", "pickle", "aioli", "vinegar"]
+        let cerealKeywords = ["oats", "porridge", "oatmeal", "granola", "muesli", "cornflakes",
+                              "corn flakes", "bran flakes", "weetabix", "shreddies", "cheerios",
+                              "special k", "rice krispies", "coco pops", "frosties", "cereal"]
+        // Bread keywords: include types, brands, and common variants
+        // Jason's, Warburtons, Hovis, Kingsmill are UK bread brands
+        // Sourdough, ciabatta, focaccia, brioche are bread types without "bread" in name
+        let breadKeywords = ["bread", "loaf", "slice", "toast", "baguette", "roll", "bun",
+                             "bagel", "pitta", "pita", "naan", "wrap", "tortilla", "crumpet",
+                             "muffin english", "english muffin", "sourdough", "ciabatta",
+                             "focaccia", "brioche", "jason's", "jasons", "warburton", "hovis",
+                             "kingsmill", "wholemeal", "seeded", "granary", "bloomer",
+                             "farmhouse", "tiger bread", "rye bread", "pumpernickel"]
+
+        let isSauce = sauceKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isCereal = cerealKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isBread = breadKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+        let isCrumpet = nameLower.contains("crumpet")
+
+        if isSauce {
+            return 15.0  // 1 tablespoon
+        }
+
+        if isCereal {
+            return 45.0  // Medium bowl
+        }
+
+        if isCrumpet {
+            return 55.0  // 1 crumpet (~55g each)
+        }
+
+        if isBread {
+            return 38.0  // 1 slice (average)
+        }
+
         // For oils, ALWAYS default to tablespoon (15ml/15g) regardless of isPerUnit
         if isOilProduct {
             return 15.0
@@ -259,11 +416,15 @@ struct FoodSearchResultRowEnhanced: View {
             // Use query-aware portions first for consistency
             let portions = food.portionsForQuery(food.name)
             if let firstPortion = portions.first {
+                // NEVER use portions that result in >700 calories
+                let portionCalories = food.calories * firstPortion.serving_g / 100.0
+                if portionCalories > 700 {
+                    return food.actualServingSize
+                }
                 return firstPortion.serving_g
-            } else if let servingG = food.servingSizeG, servingG > 0 {
-                return servingG
             } else {
-                return 100.0
+                // Use actualServingSize which handles sauces (15g) and rejects package sizes
+                return food.actualServingSize
             }
         }
     }

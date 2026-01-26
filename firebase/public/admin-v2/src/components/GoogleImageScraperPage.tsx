@@ -20,6 +20,21 @@ import { ALGOLIA_INDICES } from '../types';
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 const ALGOLIA_SEARCH_KEY = '577cc4ee3fed660318917bbb54abfb2e';
 
+interface NutritionData {
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturatedFat?: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+  salt?: number;
+  servingSize?: string;
+  ingredients?: string; // Ingredient list
+  source?: string; // Where the data came from (e.g., "Open Food Facts", "Tesco", "Web Scrape")
+}
+
 interface FoodWithImage {
   id: string;
   objectID: string;
@@ -30,10 +45,20 @@ interface FoodWithImage {
   sourceIndex: string;
   selected: boolean;
 
+  // Original nutrition from database
+  calories?: number;
+
+  // Tesco-specific flags
+  dontShowImage?: boolean; // Tesco image quality flag
+
   // SerpApi search results
   searchResults: SerpApiImageResult[];
   selectedImageUrl: string | null;
   analysis: ImageAnalysisResult | null;
+
+  // Nutrition data scraping
+  nutritionData: NutritionData | null;
+  nutritionStatus: 'pending' | 'searching' | 'found' | 'not_found' | 'failed';
 
   // Processing status
   status: 'pending' | 'searching' | 'analyzing' | 'ready' | 'uploading' | 'completed' | 'failed' | 'no_results';
@@ -57,22 +82,35 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const [loadingMessage, setLoadingMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'ready' | 'selected'>('pending');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'ready' | 'selected' | 'nutrition_found' | 'nutrition_failed'>('pending');
   const [currentPage, setCurrentPage] = useState(0);
   const [stats, setStats] = useState<ProcessingStats>({
     total: 0, completed: 0, failed: 0, noResults: 0, processing: 0
   });
   const [processingLog, setProcessingLog] = useState<string[]>([]);
-  const [selectedIndices, setSelectedIndices] = useState<Set<string>>(new Set(ALGOLIA_INDICES));
+  const [selectedIndices, setSelectedIndices] = useState<Set<string>>(new Set()); // No indices selected by default
   const [showIndexSelector, setShowIndexSelector] = useState(true);
   const [apiConfigured, setApiConfigured] = useState(false);
-  const [filterUKOnly, setFilterUKOnly] = useState(true); // UK filter enabled by default
+  const [filterUKOnly, setFilterUKOnly] = useState(false); // UK filter disabled by default
+  const [filterNoImages, setFilterNoImages] = useState(false); // Show all foods by default
+  const [filterZeroCalories, setFilterZeroCalories] = useState(false); // Filter for very low calorie foods (0-5 kcal)
+  const [excludeDrinks, setExcludeDrinks] = useState(false); // Exclude drinks when filtering very low calorie
+  const [filterTescoBadImages, setFilterTescoBadImages] = useState(false); // Show all Tesco foods by default
+  const [scrapeNutrition, setScrapeNutrition] = useState(false); // Nutrition scraping disabled by default
+  const [scrapeServingSize, setScrapeServingSize] = useState(false); // Serving size scraping disabled by default
+  const [scrapeIngredients, setScrapeIngredients] = useState(false); // Ingredients scraping disabled by default
+  const [nutritionOnlyMode, setNutritionOnlyMode] = useState(false); // Nutrition scraping only (skip images)
   const [ukFilterStats, setUkFilterStats] = useState<{
     total: number;
     ukCount: number;
     nonUkCount: number;
     ukPercentage: number;
     nonUkPercentage: number;
+  } | null>(null);
+  const [imageFilterStats, setImageFilterStats] = useState<{
+    total: number;
+    withImages: number;
+    withoutImages: number;
   } | null>(null);
   const [barcodeQuery, setBarcodeQuery] = useState('');
   const [isBarcodeSearching, setIsBarcodeSearching] = useState(false);
@@ -90,9 +128,650 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const abortRef = useRef(false);
   const ITEMS_PER_PAGE = 50;
 
+  // Helper function to detect if a food is a drink based on its name
+  const isDrink = (name: string): boolean => {
+    if (!name) return false;
+    const lowerName = name.toLowerCase();
+
+    // Common drink keywords
+    const drinkKeywords = [
+      'water', 'drink', 'juice', 'soda', 'cola', 'pepsi', 'coke',
+      'tea', 'coffee', 'latte', 'cappuccino', 'espresso', 'mocha',
+      'beverage', 'smoothie', 'shake', 'milkshake', 'frappuccino',
+      'lemonade', 'squash', 'cordial', 'pop', 'fizzy',
+      'sprite', 'fanta', 'irn bru', 'ribena', 'lucozade',
+      'energy drink', 'sports drink', 'vitamin water',
+      'iced tea', 'green tea', 'black tea', 'herbal tea',
+      'hot chocolate', 'cocoa drink', 'chocolate drink',
+      'milk drink', 'flavoured milk', 'almond milk', 'oat milk', 'soy milk',
+      'protein shake', 'meal replacement drink'
+    ];
+
+    return drinkKeywords.some(keyword => lowerName.includes(keyword));
+  };
+
   const addLog = (message: string) => {
     console.log(message);
     setProcessingLog(prev => [...prev.slice(-50), `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+
+  // Scrape nutrition data from Google Search - fetches and parses actual page content
+  const scrapeNutritionData = async (food: FoodWithImage): Promise<NutritionData | null> => {
+    try {
+      const SEARCHAPI_KEY = import.meta.env.VITE_SEARCHAPI_KEY || '';
+      if (!SEARCHAPI_KEY) {
+        console.warn('SearchAPI key not configured');
+        return null;
+      }
+
+      // Build search query for nutrition - specifically request per 100g
+      let query = `${food.brandName || ''} ${food.name} nutrition per 100g`.trim();
+
+      const params = new URLSearchParams({
+        api_key: SEARCHAPI_KEY,
+        engine: 'google',
+        q: query,
+        hl: 'en',
+        gl: 'uk',
+        num: '3', // Get top 3 results
+      });
+
+      const response = await fetch(`https://www.searchapi.io/api/v1/search?${params}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+
+      if (!response.ok) {
+        console.error('SearchAPI nutrition request failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+
+      // Google often returns nutrition info in knowledge_graph or answer_box
+      const knowledgeGraph = data.knowledge_graph;
+      const answerBox = data.answer_box;
+
+      // Try to extract nutrition from knowledge graph
+      if (knowledgeGraph && knowledgeGraph.nutrition_facts) {
+        const facts = knowledgeGraph.nutrition_facts;
+        return {
+          calories: parseFloat(facts.calories) || undefined,
+          protein: parseFloat(facts.protein) || undefined,
+          carbs: parseFloat(facts.carbohydrates) || undefined,
+          fat: parseFloat(facts.fat) || undefined,
+          saturatedFat: parseFloat(facts.saturated_fat) || undefined,
+          fiber: parseFloat(facts.fiber) || undefined,
+          sugar: parseFloat(facts.sugar) || undefined,
+          sodium: parseFloat(facts.sodium) || undefined,
+          servingSize: facts.serving_size,
+          source: 'Google Knowledge Graph',
+        };
+      }
+
+      // Try to extract from answer box
+      if (answerBox && answerBox.nutrition_info) {
+        const info = answerBox.nutrition_info;
+        return {
+          calories: parseFloat(info.calories) || undefined,
+          protein: parseFloat(info.protein) || undefined,
+          carbs: parseFloat(info.carbs) || undefined,
+          fat: parseFloat(info.fat) || undefined,
+          source: 'Google Answer Box',
+        };
+      }
+
+      // Fetch and parse actual page content from top results
+      const organicResults = data.organic_results || [];
+      if (organicResults.length > 0) {
+        // Try to fetch actual page content from top 2 results
+        for (let i = 0; i < Math.min(2, organicResults.length); i++) {
+          const result = organicResults[i];
+          const pageUrl = result.link;
+
+          if (!pageUrl) continue;
+
+          try {
+            // Fetch the actual page content via CORS proxy
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(pageUrl)}`;
+            console.log(`Fetching page ${i + 1}: ${pageUrl}`);
+
+            const pageResponse = await fetch(proxyUrl, {
+              headers: {
+                'Accept': 'text/html,application/xhtml+xml,application/xml',
+              },
+            });
+
+            if (!pageResponse.ok) {
+              console.log(`Page fetch failed with status ${pageResponse.status}`);
+              continue;
+            }
+
+            const pageHtml = await pageResponse.text();
+            console.log(`Fetched ${pageHtml.length} bytes from page ${i + 1}`);
+
+            // Parse HTML to extract nutrition data
+            const nutritionData = parseNutritionFromHtml(pageHtml);
+
+            if (nutritionData && Object.keys(nutritionData).length > 2) {
+              console.log(`Successfully parsed nutrition from page ${i + 1}:`, nutritionData);
+
+              // Filter based on user preferences
+              const filteredData: Partial<NutritionData> = { source: new URL(pageUrl).hostname.replace('www.', '') };
+
+              if (scrapeNutrition) {
+                // Include all nutrition fields
+                if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
+                if (nutritionData.protein !== undefined) filteredData.protein = nutritionData.protein;
+                if (nutritionData.carbs !== undefined) filteredData.carbs = nutritionData.carbs;
+                if (nutritionData.fat !== undefined) filteredData.fat = nutritionData.fat;
+                if (nutritionData.saturatedFat !== undefined) filteredData.saturatedFat = nutritionData.saturatedFat;
+                if (nutritionData.fiber !== undefined) filteredData.fiber = nutritionData.fiber;
+                if (nutritionData.sugar !== undefined) filteredData.sugar = nutritionData.sugar;
+                if (nutritionData.sodium !== undefined) filteredData.sodium = nutritionData.sodium;
+                if (nutritionData.salt !== undefined) filteredData.salt = nutritionData.salt;
+              }
+
+              if (scrapeServingSize && nutritionData.servingSize) {
+                filteredData.servingSize = nutritionData.servingSize;
+              }
+
+              if (scrapeIngredients && nutritionData.ingredients) {
+                filteredData.ingredients = nutritionData.ingredients;
+              }
+
+              return filteredData as NutritionData;
+            } else {
+              console.log(`Insufficient nutrition data from page ${i + 1}: ${Object.keys(nutritionData || {}).length} fields`);
+            }
+          } catch (pageError) {
+            console.log(`Failed to fetch page ${i + 1}:`, pageError instanceof Error ? pageError.message : 'Unknown error');
+            continue;
+          }
+        }
+
+        // Fallback: parse from search snippets if page scraping failed
+        const combinedText = organicResults.slice(0, 3)
+          .map((r: any) => `${r.snippet || ''} ${r.title || ''}`)
+          .join(' ');
+
+        const caloriesMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*(?:calories|kcal|cal)/i);
+        const proteinMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*g?\s*protein/i);
+        const carbsMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*g?\s*(?:carb(?:ohydrate)?s?|carbs)/i);
+        const fatMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*g?\s*(?:total\s+)?fat/i);
+        const saturatedFatMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*g?\s*saturated\s*fat/i);
+        const fiberMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*g?\s*(?:fiber|fibre)/i);
+        const sugarMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*g?\s*sugar/i);
+        const sodiumMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*(?:mg|g)?\s*sodium/i);
+        const saltMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*g?\s*salt/i);
+        const servingSizeMatch = combinedText.match(/(?:serving\s+size|per\s+serving):\s*([^.,;\n]*?\d+\s*(?:g|ml|oz|fl\s*oz|cup|tbsp|tsp|litre|liter|l)[^.,;\n]*)/i);
+        const ingredientsMatch = combinedText.match(/ingredients?[:\s]+([^.]{30,500})/i);
+
+        if (caloriesMatch || proteinMatch || carbsMatch || fatMatch) {
+          const snippetData: Partial<NutritionData> = { source: 'Google Snippets' };
+
+          // Only include fields user wants
+          if (scrapeNutrition) {
+            if (caloriesMatch) snippetData.calories = parseFloat(caloriesMatch[1]);
+            if (proteinMatch) snippetData.protein = parseFloat(proteinMatch[1]);
+            if (carbsMatch) snippetData.carbs = parseFloat(carbsMatch[1]);
+            if (fatMatch) snippetData.fat = parseFloat(fatMatch[1]);
+            if (saturatedFatMatch) snippetData.saturatedFat = parseFloat(saturatedFatMatch[1]);
+            if (fiberMatch) snippetData.fiber = parseFloat(fiberMatch[1]);
+            if (sugarMatch) snippetData.sugar = parseFloat(sugarMatch[1]);
+            if (sodiumMatch) snippetData.sodium = parseFloat(sodiumMatch[1]);
+            if (saltMatch) snippetData.salt = parseFloat(saltMatch[1]);
+          }
+
+          if (scrapeServingSize && servingSizeMatch) {
+            snippetData.servingSize = servingSizeMatch[1].trim();
+          }
+
+          if (scrapeIngredients && ingredientsMatch) {
+            snippetData.ingredients = ingredientsMatch[1].trim();
+          }
+
+          return snippetData as NutritionData;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error scraping nutrition from Google:', error);
+      return null;
+    }
+  };
+
+  // Parse nutrition data from HTML page content
+  const parseNutritionFromHtml = (html: string): Partial<NutritionData> | null => {
+    console.log(`🔍 Parsing HTML: ${html.length} bytes`);
+    const lowerHtml = html.toLowerCase();
+
+    // Look for nutrition data in the HTML - very aggressive pattern matching
+    const nutritionData: Partial<NutritionData> = {};
+
+    // STEP 1: Try to extract from JSON-LD structured data (most reliable)
+    console.log(`📋 Step 1: Checking for JSON-LD structured data...`);
+    const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/gis);
+    for (const match of jsonLdMatches) {
+      try {
+        const jsonData = JSON.parse(match[1]);
+        if (jsonData.nutrition || jsonData['@type'] === 'NutritionInformation') {
+          const nutrition = jsonData.nutrition || jsonData;
+          if (nutrition.calories) nutritionData.calories = parseFloat(String(nutrition.calories).replace(/[^0-9.]/g, ''));
+          if (nutrition.proteinContent) nutritionData.protein = parseFloat(String(nutrition.proteinContent).replace(/[^0-9.]/g, ''));
+          if (nutrition.carbohydrateContent) nutritionData.carbs = parseFloat(String(nutrition.carbohydrateContent).replace(/[^0-9.]/g, ''));
+          if (nutrition.fatContent) nutritionData.fat = parseFloat(String(nutrition.fatContent).replace(/[^0-9.]/g, ''));
+          if (nutrition.saturatedFatContent) nutritionData.saturatedFat = parseFloat(String(nutrition.saturatedFatContent).replace(/[^0-9.]/g, ''));
+          if (nutrition.fiberContent) nutritionData.fiber = parseFloat(String(nutrition.fiberContent).replace(/[^0-9.]/g, ''));
+          if (nutrition.sugarContent) nutritionData.sugar = parseFloat(String(nutrition.sugarContent).replace(/[^0-9.]/g, ''));
+          if (nutrition.sodiumContent) nutritionData.sodium = parseFloat(String(nutrition.sodiumContent).replace(/[^0-9.]/g, ''));
+          if (nutrition.servingSize) nutritionData.servingSize = String(nutrition.servingSize);
+
+          // If we found good data, return early
+          if (Object.keys(nutritionData).length >= 3) {
+            console.log(`✅ Step 1 success: Found ${Object.keys(nutritionData).length} fields from JSON-LD`);
+            return nutritionData;
+          }
+        }
+      } catch (e) {
+        // Invalid JSON, continue
+      }
+    }
+    console.log(`⏭️ Step 1 complete: ${Object.keys(nutritionData).length} fields from JSON-LD (need 3+ for early return)`);
+
+    // STEP 2: Look for "per 100g" or "per serving" sections with nearby nutrition values
+    console.log(`📋 Step 2: Checking for "per 100g" sections...`);
+    // This catches nutrition tables where values are in a structured format
+    const per100gSection = lowerHtml.match(/(per\s*100\s*g[^<]*?(?:<[^>]+>[^<]*?){0,50}?(?:calories|kcal|energy|protein|fat|carb)[^<]*?(?:<[^>]+>[^<]*?){0,100})/gis);
+    if (per100gSection) {
+      const sectionText = per100gSection[0];
+      // Extract all numbers followed by units from this section
+      const matches = sectionText.matchAll(/(\w+)[:\s]*(\d+(?:\.\d+)?)\s*(g|mg|kcal)?/gi);
+      for (const match of matches) {
+        const label = match[1].toLowerCase();
+        const value = parseFloat(match[2]);
+
+        if (label.includes('calor') || label.includes('kcal') || label.includes('energy')) {
+          nutritionData.calories = value;
+        } else if (label.includes('protein')) {
+          nutritionData.protein = value;
+        } else if (label.includes('carb')) {
+          nutritionData.carbs = value;
+        } else if (label.includes('fat') && !label.includes('saturat')) {
+          nutritionData.fat = value;
+        } else if (label.includes('saturat')) {
+          nutritionData.saturatedFat = value;
+        } else if (label.includes('sugar')) {
+          nutritionData.sugar = value;
+        } else if (label.includes('fib')) {
+          nutritionData.fiber = value;
+        } else if (label.includes('sodium')) {
+          nutritionData.sodium = value;
+        } else if (label.includes('salt')) {
+          nutritionData.salt = value;
+        }
+      }
+    }
+    console.log(`⏭️ Step 2 complete: ${Object.keys(nutritionData).length} fields total`);
+
+    // STEP 2.5: Extract from HTML tables (common on product pages)
+    console.log(`📋 Step 2.5: Extracting from HTML tables...`);
+    // Look for <tr> rows with nutrition labels and values
+    const tableMatches = html.matchAll(/<tr[^>]*>(.*?)<\/tr>/gis);
+    for (const tableMatch of tableMatches) {
+      const rowHtml = tableMatch[1];
+      const rowLower = rowHtml.toLowerCase();
+
+      // Check if this row contains a nutrition label
+      const hasNutritionLabel = /calor|kcal|protein|carb|fat|sugar|fib|sodium|salt/i.test(rowLower);
+      if (!hasNutritionLabel) continue;
+
+      // Extract all numbers from the row
+      const numbers = [...rowHtml.matchAll(/(\d+(?:\.\d+)?)\s*(g|mg|kcal)?/gi)];
+      if (numbers.length === 0) continue;
+
+      // Get the primary number (usually the first significant one)
+      let value = 0;
+      for (const numMatch of numbers) {
+        const num = parseFloat(numMatch[1]);
+        if (num > 0 && num < 10000) { // Sanity check
+          value = num;
+          break;
+        }
+      }
+
+      if (value === 0) continue;
+
+      // Match to nutrient based on label in row
+      if (!nutritionData.calories && /calor|kcal|energy/i.test(rowLower)) {
+        if (value <= 900) nutritionData.calories = value;
+      } else if (!nutritionData.protein && /protein/i.test(rowLower)) {
+        if (value <= 100) nutritionData.protein = value;
+      } else if (!nutritionData.carbs && /carb/i.test(rowLower) && !/fib/i.test(rowLower)) {
+        if (value <= 100) nutritionData.carbs = value;
+      } else if (!nutritionData.fat && /\bfat\b/i.test(rowLower) && !/saturat/i.test(rowLower)) {
+        if (value <= 100) nutritionData.fat = value;
+      } else if (!nutritionData.saturatedFat && /saturat/i.test(rowLower)) {
+        if (value <= 100) nutritionData.saturatedFat = value;
+      } else if (!nutritionData.sugar && /sugar/i.test(rowLower)) {
+        if (value <= 100) nutritionData.sugar = value;
+      } else if (!nutritionData.fiber && /fib/i.test(rowLower)) {
+        if (value <= 50) nutritionData.fiber = value;
+      } else if (!nutritionData.sodium && /sodium/i.test(rowLower)) {
+        if (value <= 5000) nutritionData.sodium = value;
+      } else if (!nutritionData.salt && /\bsalt\b/i.test(rowLower) && !/unsalt/i.test(rowLower)) {
+        if (value <= 10) nutritionData.salt = value;
+      }
+    }
+
+    // Extract serving size - look for multiple patterns (if not already found)
+    if (!nutritionData.servingSize) {
+      const servingSizePatterns = [
+        /serving\s+size[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
+        /pack\s+size[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
+        /net\s+(?:weight|contents?)[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
+        /per\s+(?:pack|portion|serving)[:\s]*(\d+(?:\.\d+)?)\s*(g|ml)/gi,
+        /(?:bottle|can|pack)[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
+        /(\d+(?:\.\d+)?)\s*(g|ml|oz)\s+(?:pack|bottle|can|serving|bar|pot)/gi,
+        /serves?\s+(\d+(?:\.\d+)?)\s*(g|ml)/gi,
+        /weight[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz)/gi,
+      ];
+
+      for (const pattern of servingSizePatterns) {
+        const matches = lowerHtml.matchAll(pattern);
+        for (const match of matches) {
+          if (match[1] && match[2]) {
+            const value = parseFloat(match[1]);
+            const unit = match[2].trim();
+            // Only accept reasonable serving sizes (between 1g and 5000g/ml)
+            if (value >= 1 && value <= 5000) {
+              nutritionData.servingSize = `${value}${unit}`;
+              break;
+            }
+          }
+        }
+        if (nutritionData.servingSize) break;
+      }
+    }
+    console.log(`⏭️ Step 2.5 complete: ${Object.keys(nutritionData).length} fields total`);
+
+    // STEP 3: Aggressive pattern matching for individual nutrients
+    console.log(`📋 Step 3: Aggressive pattern matching for nutrients...`);
+    // Calories - look for various patterns (if not already found)
+    if (!nutritionData.calories) {
+      const calPatterns = [
+        /calories[:\s]*(\d+(?:\.\d+)?)/gi,
+        /(\d+(?:\.\d+)?)\s*(?:kcal|calories|cal)(?:\s*\/?\s*100\s*g)?/gi,
+        /energy[:\s]*(\d+(?:\.\d+)?)\s*kcal/gi,
+        /per\s*100\s*g[:\s]*(\d+(?:\.\d+)?)\s*cal/gi,
+        /(\d+(?:\.\d+)?)\s*kj\s*\/\s*(\d+(?:\.\d+)?)\s*kcal/gi, // "2000kj / 478kcal"
+      ];
+      for (const pattern of calPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          const numMatch = match[0].match(/(\d+(?:\.\d+)?)\s*kcal/i) || match;
+          if (numMatch && numMatch[1]) {
+            const value = parseFloat(numMatch[1]);
+            // Sanity check: calories per 100g should be 0-900
+            if (value > 0 && value <= 900) {
+              nutritionData.calories = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.calories) break;
+      }
+    }
+
+    // Protein
+    if (!nutritionData.protein) {
+      const proteinPatterns = [
+        /protein[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /(\d+(?:\.\d+)?)\s*g\s*protein/gi,
+        /protein[:\s<>]*(\d+(?:\.\d+)?)/gi, // More flexible - captures "Protein<td>15</td>"
+      ];
+      for (const pattern of proteinPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 100) { // Sanity check
+              nutritionData.protein = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.protein) break;
+      }
+    }
+
+    // Carbs
+    if (!nutritionData.carbs) {
+      const carbPatterns = [
+        /carbohydrate[s]?[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /carbs[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /(\d+(?:\.\d+)?)\s*g\s*carb/gi,
+        /carbohydrate[s]?[:\s<>]*(\d+(?:\.\d+)?)/gi,
+      ];
+      for (const pattern of carbPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 100) {
+              nutritionData.carbs = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.carbs) break;
+      }
+    }
+
+    // Fat (total fat, not saturated)
+    if (!nutritionData.fat) {
+      const fatPatterns = [
+        /(?:total\s+)?fat[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /(\d+(?:\.\d+)?)\s*g\s*(?:total\s+)?fat/gi,
+        /(?:total\s+)?fat[:\s<>]*(\d+(?:\.\d+)?)/gi,
+      ];
+      for (const pattern of fatPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          // Skip if it's part of "saturated fat"
+          if (match[0].toLowerCase().includes('saturat')) continue;
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 100) {
+              nutritionData.fat = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.fat) break;
+      }
+    }
+
+    // Saturated Fat
+    if (!nutritionData.saturatedFat) {
+      const satFatPatterns = [
+        /saturated[s]?\s*fat[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /saturates[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /of\s*which\s*saturates[:\s]*(\d+(?:\.\d+)?)/gi,
+        /saturated[s]?\s*fat[:\s<>]*(\d+(?:\.\d+)?)/gi,
+      ];
+      for (const pattern of satFatPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 100) {
+              nutritionData.saturatedFat = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.saturatedFat) break;
+      }
+    }
+
+    // Sugar
+    if (!nutritionData.sugar) {
+      const sugarPatterns = [
+        /sugar[s]?[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /(\d+(?:\.\d+)?)\s*g\s*sugar/gi,
+        /of\s*which\s*sugars[:\s]*(\d+(?:\.\d+)?)/gi,
+        /sugar[s]?[:\s<>]*(\d+(?:\.\d+)?)/gi,
+      ];
+      for (const pattern of sugarPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 100) {
+              nutritionData.sugar = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.sugar) break;
+      }
+    }
+
+    // Fiber/Fibre
+    if (!nutritionData.fiber) {
+      const fiberPatterns = [
+        /fib[re]{2}[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /(\d+(?:\.\d+)?)\s*g\s*fib[re]{2}/gi,
+        /fib[re]{2}[:\s<>]*(\d+(?:\.\d+)?)/gi,
+        /dietary\s*fib[re]{2}[:\s]*(\d+(?:\.\d+)?)/gi,
+      ];
+      for (const pattern of fiberPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 50) {
+              nutritionData.fiber = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.fiber) break;
+      }
+    }
+
+    // Sodium (in mg)
+    if (!nutritionData.sodium) {
+      const sodiumPatterns = [
+        /sodium[:\s]*(\d+(?:\.\d+)?)\s*mg/gi,
+        /(\d+(?:\.\d+)?)\s*mg\s*sodium/gi,
+        /sodium[:\s<>]*(\d+(?:\.\d+)?)\s*mg/gi,
+      ];
+      for (const pattern of sodiumPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 5000) { // Reasonable range for sodium in mg per 100g
+              nutritionData.sodium = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.sodium) break;
+      }
+    }
+
+    // Salt (in g)
+    if (!nutritionData.salt) {
+      const saltPatterns = [
+        /salt[:\s]*(\d+(?:\.\d+)?)\s*g/gi,
+        /(\d+(?:\.\d+)?)\s*g\s*salt/gi,
+        /salt[:\s<>]*(\d+(?:\.\d+)?)/gi,
+      ];
+      for (const pattern of saltPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          // Skip if it's "unsalted" or "no salt"
+          if (match[0].toLowerCase().includes('unsalt') || match[0].toLowerCase().includes('no salt')) continue;
+          if (match[1]) {
+            const value = parseFloat(match[1]);
+            if (value >= 0 && value <= 10) { // Reasonable range for salt in g per 100g
+              nutritionData.salt = value;
+              break;
+            }
+          }
+        }
+        if (nutritionData.salt) break;
+      }
+    }
+
+    // STEP 4: Extract ingredients if requested
+    console.log(`📋 Step 4: Extracting ingredients...`);
+    if (!nutritionData.ingredients) {
+      // Look for common ingredients patterns
+      const ingredientsPatterns = [
+        /ingredients?[:\s]*([^<.]*(?:flour|sugar|water|salt|oil|milk|egg|butter|corn|wheat|soy|palm)[^<.]*)/gi,
+        /<[^>]*>ingredients?[:\s]*<\/[^>]*>([^<]+)/gi,
+        /(?:contains?|made with)[:\s]*([^<.]*(?:flour|sugar|water|salt|oil|milk)[^<.]*)/gi,
+      ];
+
+      for (const pattern of ingredientsPatterns) {
+        const matches = [...lowerHtml.matchAll(pattern)];
+        for (const match of matches) {
+          const ingredientsText = match[1]?.trim();
+          if (ingredientsText && ingredientsText.length > 20 && ingredientsText.length < 2000) {
+            // Clean up HTML entities and tags
+            const cleaned = ingredientsText
+              .replace(/<[^>]+>/g, '') // Remove HTML tags
+              .replace(/&[a-z]+;/gi, ' ') // Remove HTML entities
+              .replace(/\s+/g, ' ') // Normalize whitespace
+              .trim();
+
+            if (cleaned.length > 20) {
+              nutritionData.ingredients = cleaned;
+              console.log(`✅ Found ingredients: ${cleaned.substring(0, 100)}...`);
+              break;
+            }
+          }
+        }
+        if (nutritionData.ingredients) break;
+      }
+
+      // Alternative: Look for ingredients in structured data
+      const ingredientsJsonMatch = html.match(/"ingredients":\s*"([^"]+)"/i);
+      if (!nutritionData.ingredients && ingredientsJsonMatch) {
+        nutritionData.ingredients = ingredientsJsonMatch[1].replace(/\\n/g, ' ').trim();
+        console.log(`✅ Found ingredients from JSON: ${nutritionData.ingredients.substring(0, 100)}...`);
+      }
+    }
+    console.log(`⏭️ Step 4 complete: ${nutritionData.ingredients ? 'Found ingredients' : 'No ingredients'}`);
+
+    // Return results if we found useful data
+    // Be more lenient if we found calories (the most important field)
+    const foundFields = Object.keys(nutritionData).length;
+    const hasCalories = nutritionData.calories !== undefined;
+    const hasProtein = nutritionData.protein !== undefined;
+    const hasCarbs = nutritionData.carbs !== undefined;
+    const hasFat = nutritionData.fat !== undefined;
+
+    console.log(`📊 Final nutrition data:`, nutritionData);
+    console.log(`📈 Found fields (${foundFields}): ${Object.keys(nutritionData).join(', ')}`);
+
+    // Return if we found calories + at least 1 other macro OR 3+ fields total
+    if (hasCalories && (hasProtein || hasCarbs || hasFat)) {
+      console.log(`✅ SUCCESS: Found calories + macros (${foundFields} fields total)`);
+      return nutritionData;
+    }
+    if (foundFields >= 3) {
+      console.log(`✅ SUCCESS: Found ${foundFields} fields total`);
+      return nutritionData;
+    }
+
+    console.log(`❌ INSUFFICIENT: Only ${foundFields} fields found, need calories+macro or 3+ fields`);
+    return null;
   };
 
   // Check API configuration
@@ -117,7 +796,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     return () => window.removeEventListener('keydown', handleEsc);
   }, [previewImage]);
 
-  // Load foods from Algolia
+  // Load foods from Algolia (with pagination to get ALL products)
   const loadFoodsFromIndices = useCallback(async () => {
     if (selectedIndices.size === 0) {
       addLog('No indices selected');
@@ -127,67 +806,135 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     setIsLoading(true);
     setShowIndexSelector(false);
     setLoadingProgress(0);
-    addLog('Loading foods from Algolia...');
+    addLog('📥 Loading ALL foods from selected indices (with pagination)...');
 
     const allFoods: FoodWithImage[] = [];
     const indicesToLoad = Array.from(selectedIndices);
+    const PAGE_SIZE = 5000; // Request 5k products at a time
+    const FUNCTIONS_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
 
     try {
       for (let i = 0; i < indicesToLoad.length; i++) {
         const indexName = indicesToLoad[i];
-        setLoadingMessage(`Loading ${indexName}...`);
-        setLoadingProgress(Math.round((i / indicesToLoad.length) * 100));
-        addLog(`Loading index: ${indexName}`);
+        addLog(`📦 Loading ${indexName}...`);
 
-        const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${indexName}/query`;
+        let offset = 0;
+        let hasMore = true;
+        let indexProducts: any[] = [];
+        let totalForIndex = 0;
 
-        try {
-          const response = await fetch(url, {
+        // Paginate through the index (with safety limits)
+        const MAX_ITERATIONS = 2000; // Safety: max 10M products (2000 * 5000)
+        let iterations = 0;
+
+        while (hasMore && iterations < MAX_ITERATIONS) {
+          iterations++;
+
+          // Log progress every 5 iterations (25k products)
+          if (iterations > 1 && iterations % 5 === 0) {
+            addLog(`  → ${indexName}: ${indexProducts.length.toLocaleString()} products pulled, fetching more...`);
+          }
+
+          const response = await fetch(`${FUNCTIONS_BASE}/browseAllIndices`, {
             method: 'POST',
-            headers: {
-              'X-Algolia-Application-Id': ALGOLIA_APP_ID,
-              'X-Algolia-API-Key': ALGOLIA_SEARCH_KEY,
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              query: '',
-              hitsPerPage: 1000,
-              attributesToRetrieve: ['objectID', 'name', 'foodName', 'brandName', 'brand', 'barcode', 'imageUrl'],
+              indices: [indexName],
+              offset,
+              pageSize: PAGE_SIZE,
             }),
           });
 
           if (!response.ok) {
-            addLog(`Error loading ${indexName}: ${response.status}`);
-            continue;
+            addLog(`❌ ${indexName}: HTTP ${response.status}`);
+            break;
           }
 
-          const data = await response.json();
-          const hits = data.hits || [];
-          addLog(`${indexName}: ${hits.length} records`);
+          const result = await response.json();
 
-          for (const hit of hits) {
-            allFoods.push({
-              id: `${indexName}:${hit.objectID}`,
-              objectID: hit.objectID,
-              name: hit.name || hit.foodName || 'Unknown',
-              brandName: hit.brandName || hit.brand || null,
-              barcode: hit.barcode || null,
-              currentImageUrl: hit.imageUrl || null,
-              sourceIndex: indexName,
-              selected: false,
-              searchResults: [],
-              selectedImageUrl: null,
-              analysis: null,
-              status: 'pending',
-              analysisProgress: 0,
-            });
+          if (result.success && result.products) {
+            const products = result.products || [];
+            const pagination = result.pagination || {};
+
+            // Safety: If we got no products, stop pagination
+            if (products.length === 0) {
+              addLog(`  ✓ ${indexName}: Reached end (0 products returned)`);
+              hasMore = false;
+              break;
+            }
+
+            // Safety: If we got less than PAGE_SIZE, this is likely the last page
+            if (products.length < PAGE_SIZE) {
+              addLog(`  ✓ ${indexName}: Last page (${products.length} products)`);
+              hasMore = false;
+            }
+
+            indexProducts.push(...products);
+            totalForIndex = pagination?.total || indexProducts.length;
+
+            // Update progress
+            const progressPct = Math.floor(((i + (indexProducts.length / Math.max(totalForIndex, 1))) / indicesToLoad.length) * 100);
+            setLoadingProgress(progressPct);
+
+            const pct = totalForIndex > 0 ? Math.round((indexProducts.length / totalForIndex) * 100) : 0;
+            addLog(`  → Page ${iterations}: ${indexProducts.length.toLocaleString()} / ${totalForIndex.toLocaleString()} (${pct}%)`);
+
+            // Check if there's more data from backend
+            if (!pagination.hasMore) {
+              addLog(`  ✓ ${indexName}: Backend says no more data`);
+              hasMore = false;
+            } else {
+              hasMore = true;
+              offset += PAGE_SIZE;
+            }
+
+            // Safety: If we've reached the expected total, stop
+            if (totalForIndex > 0 && indexProducts.length >= totalForIndex) {
+              addLog(`  ✓ ${indexName}: Reached total count (${indexProducts.length} >= ${totalForIndex})`);
+              hasMore = false;
+            }
+
+          } else {
+            addLog(`❌ ${indexName}: ${result.error || 'Failed'}`);
+            break;
           }
-        } catch (err) {
-          addLog(`Error loading ${indexName}: ${err}`);
         }
+
+        // Warn if we hit the safety limit
+        if (iterations >= MAX_ITERATIONS) {
+          addLog(`⚠️ ${indexName}: Hit safety limit (${MAX_ITERATIONS} iterations)`);
+        }
+
+        addLog(`✅ ${indexName}: Loaded ${indexProducts.length.toLocaleString()} products`);
+
+        // Convert to FoodWithImage format
+        for (const hit of indexProducts) {
+          allFoods.push({
+            id: `${indexName}:${hit.objectID}`,
+            objectID: hit.objectID,
+            name: hit.name || hit.foodName || 'Unknown',
+            brandName: hit.brandName || hit.brand || null,
+            barcode: hit.barcode || null,
+            currentImageUrl: hit.imageUrl || null,
+            sourceIndex: indexName,
+            calories: hit.calories,
+            dontShowImage: hit.dontShowImage || false,
+            selected: false,
+            searchResults: [],
+            selectedImageUrl: null,
+            analysis: null,
+            nutritionData: null,
+            nutritionStatus: 'pending',
+            status: 'pending',
+            analysisProgress: 0,
+          });
+        }
+
+        // Update progress for this index
+        setLoadingProgress(Math.round(((i + 1) / indicesToLoad.length) * 100));
       }
 
-      addLog(`Total foods loaded: ${allFoods.length}`);
+      addLog(`✅ Total foods loaded: ${allFoods.length.toLocaleString()}`);
 
       // Apply UK filter if enabled
       let foodsToUse = allFoods;
@@ -195,9 +942,62 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         const filterResult = filterUKProducts(allFoods, 40); // 40% confidence threshold
         foodsToUse = filterResult.ukProducts;
         setUkFilterStats(filterResult.stats);
-        addLog(`UK filter applied: ${filterResult.stats.ukCount} UK products (${filterResult.stats.ukPercentage}%), ${filterResult.stats.nonUkCount} non-UK products (${filterResult.stats.nonUkPercentage}%) filtered out`);
+        addLog(`🇬🇧 UK filter applied: ${filterResult.stats.ukCount.toLocaleString()} UK products (${filterResult.stats.ukPercentage}%), ${filterResult.stats.nonUkCount.toLocaleString()} filtered out (${filterResult.stats.nonUkPercentage}%)`);
       } else {
         setUkFilterStats(null);
+      }
+
+      // Apply "no images" filter if enabled
+      const beforeImageFilter = foodsToUse.length;
+      if (filterNoImages) {
+        const withImages = foodsToUse.filter(f => f.currentImageUrl);
+        const withoutImages = foodsToUse.filter(f => !f.currentImageUrl);
+
+        setImageFilterStats({
+          total: beforeImageFilter,
+          withImages: withImages.length,
+          withoutImages: withoutImages.length,
+        });
+
+        foodsToUse = withoutImages;
+        addLog(`🖼️ Image filter applied: ${withoutImages.length.toLocaleString()} without images, ${withImages.length.toLocaleString()} with images hidden`);
+      } else {
+        setImageFilterStats(null);
+      }
+
+      // Apply "very low calories" filter if enabled
+      if (filterZeroCalories) {
+        const beforeZeroCalFilter = foodsToUse.length;
+        foodsToUse = foodsToUse.filter(f => {
+          // Check if food has 0-5 calories (catches sweeteners, zero-cal items with trace amounts)
+          const isLowCalorie = f.calories !== undefined && f.calories >= 0 && f.calories <= 5;
+
+          // If excluding drinks, also check if this is a drink
+          if (isLowCalorie && excludeDrinks) {
+            return !isDrink(f.name);
+          }
+
+          return isLowCalorie;
+        });
+        const filtered = beforeZeroCalFilter - foodsToUse.length;
+        const drinkNote = excludeDrinks ? ' (drinks excluded)' : '';
+        addLog(`0️⃣ Very low calorie filter${drinkNote}: ${foodsToUse.length.toLocaleString()} with 0-5 kcal, ${filtered.toLocaleString()} filtered out`);
+      }
+
+      // Apply "Tesco bad image" filter if enabled
+      if (filterTescoBadImages) {
+        const beforeTescoFilter = foodsToUse.length;
+        foodsToUse = foodsToUse.filter(f => {
+          // Only filter Tesco products
+          if (f.sourceIndex === 'tesco_products') {
+            return !f.dontShowImage; // Hide items with dontShowImage flag
+          }
+          return true; // Keep all non-Tesco items
+        });
+        const filtered = beforeTescoFilter - foodsToUse.length;
+        if (filtered > 0) {
+          addLog(`🚫 Tesco bad images filter: ${foodsToUse.length.toLocaleString()} kept, ${filtered.toLocaleString()} with bad images filtered out`);
+        }
       }
 
       setFoods(foodsToUse);
@@ -205,11 +1005,11 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       setLoadingProgress(100);
       setLoadingMessage('');
     } catch (error) {
-      addLog(`Error: ${error}`);
+      addLog(`❌ Error: ${error}`);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedIndices, filterUKOnly]);
+  }, [selectedIndices, filterUKOnly, filterNoImages, filterZeroCalories, excludeDrinks, filterTescoBadImages]);
 
   // Search Algolia for foods by name/brand/barcode
   const handleSearch = useCallback(async () => {
@@ -251,7 +1051,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             body: JSON.stringify({
               query: searchQuery.trim(),
               hitsPerPage: 1000,
-              attributesToRetrieve: ['objectID', 'name', 'foodName', 'brandName', 'brand', 'barcode', 'imageUrl'],
+              attributesToRetrieve: ['objectID', 'name', 'foodName', 'brandName', 'brand', 'barcode', 'imageUrl', 'calories', 'dontShowImage'],
             }),
           });
 
@@ -273,10 +1073,14 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
               barcode: hit.barcode || null,
               currentImageUrl: hit.imageUrl || null,
               sourceIndex: indexName,
+              calories: hit.calories,
+              dontShowImage: hit.dontShowImage || false,
               selected: false,
               searchResults: [],
               selectedImageUrl: null,
               analysis: null,
+              nutritionData: null,
+              nutritionStatus: 'pending',
               status: 'pending',
               analysisProgress: 0,
             });
@@ -297,6 +1101,57 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         addLog(`🇬🇧 UK Filter: ${filterResult.ukProducts.length} kept, ${filterResult.nonUkProducts.length} filtered`);
       }
 
+      // Apply "no images" filter if enabled
+      if (filterNoImages) {
+        const withImages = foodsToUse.filter(f => f.currentImageUrl);
+        const withoutImages = foodsToUse.filter(f => !f.currentImageUrl);
+
+        setImageFilterStats({
+          total: foodsToUse.length,
+          withImages: withImages.length,
+          withoutImages: withoutImages.length,
+        });
+
+        foodsToUse = withoutImages;
+        addLog(`🖼️ Image Filter: ${withoutImages.length} without images, ${withImages.length} with images hidden`);
+      } else {
+        setImageFilterStats(null);
+      }
+
+      // Apply "very low calories" filter if enabled
+      if (filterZeroCalories) {
+        const beforeZeroCalFilter = foodsToUse.length;
+        foodsToUse = foodsToUse.filter(f => {
+          // Check if food has 0-5 calories (catches sweeteners, zero-cal items with trace amounts)
+          const isLowCalorie = f.calories !== undefined && f.calories >= 0 && f.calories <= 5;
+
+          // If excluding drinks, also check if this is a drink
+          if (isLowCalorie && excludeDrinks) {
+            return !isDrink(f.name);
+          }
+
+          return isLowCalorie;
+        });
+        const filtered = beforeZeroCalFilter - foodsToUse.length;
+        const drinkNote = excludeDrinks ? ' (drinks excluded)' : '';
+        addLog(`0️⃣ Very Low Cal Filter${drinkNote}: ${foodsToUse.length} with 0-5 kcal, ${filtered} filtered out`);
+      }
+
+      // Apply "Tesco bad image" filter if enabled
+      if (filterTescoBadImages) {
+        const beforeTescoFilter = foodsToUse.length;
+        foodsToUse = foodsToUse.filter(f => {
+          if (f.sourceIndex === 'tesco_products') {
+            return !f.dontShowImage;
+          }
+          return true;
+        });
+        const filtered = beforeTescoFilter - foodsToUse.length;
+        if (filtered > 0) {
+          addLog(`🚫 Tesco Filter: ${foodsToUse.length} kept, ${filtered} bad images filtered`);
+        }
+      }
+
       setFoods(foodsToUse);
       setStats({
         total: foodsToUse.length,
@@ -313,7 +1168,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       setIsLoading(false);
       setLoadingProgress(100);
     }
-  }, [searchQuery, selectedIndices, filterUKOnly, addLog]);
+  }, [searchQuery, selectedIndices, filterUKOnly, filterNoImages, filterZeroCalories, excludeDrinks, filterTescoBadImages, addLog]);
 
   // Search by barcode - finds foods with this barcode and searches Google Images using the barcode
   const handleBarcodeSearch = useCallback(async () => {
@@ -350,10 +1205,14 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         barcode: result.barcode,
         currentImageUrl: result.imageUrl,
         sourceIndex: result._sourceIndex,
+        calories: result.calories,
+        dontShowImage: result.dontShowImage || false,
         selected: true, // Auto-select for processing
         searchResults: [],
         selectedImageUrl: null,
         analysis: null,
+        nutritionData: null,
+        nutritionStatus: 'pending',
         status: 'pending',
         analysisProgress: 0,
       }));
@@ -667,11 +1526,42 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         isBestResult: r.url === bestResult.url,
       }));
 
+      // Step 3: Scrape nutrition data if any scraping option is enabled
+      let nutritionData = null;
+      let nutritionStatus: FoodWithImage['nutritionStatus'] = 'pending';
+
+      if (scrapeNutrition || scrapeServingSize || scrapeIngredients) {
+        const scrapeTypes = [];
+        if (scrapeNutrition) scrapeTypes.push('nutrition');
+        if (scrapeServingSize) scrapeTypes.push('serving size');
+        if (scrapeIngredients) scrapeTypes.push('ingredients');
+        addLog(`🍎 Scraping ${scrapeTypes.join(', ')} for ${food.name}...`);
+        setFoods(prev => prev.map(f => f.id === food.id ? { ...f, nutritionStatus: 'searching' } : f));
+
+        nutritionData = await scrapeNutritionData(food);
+
+        if (nutritionData) {
+          // Special handling for fast food database: default to "per unit" if no serving size found
+          if (food.sourceIndex === 'fast_foods_database' && !nutritionData.servingSize) {
+            nutritionData.servingSize = 'per unit';
+            addLog(`🍔 Fast food item - defaulting to "per unit" serving size`);
+          }
+
+          nutritionStatus = 'found';
+          addLog(`✓ Nutrition found for ${food.name} (${nutritionData.source})`);
+        } else {
+          nutritionStatus = 'not_found';
+          addLog(`⚠ No nutrition data found for ${food.name}`);
+        }
+      }
+
       return {
         ...food,
         searchResults: resultsWithBest,
         selectedImageUrl: bestResult.url, // Show highest confidence in preview
         analysis: bestAnalysis,
+        nutritionData,
+        nutritionStatus,
         status,
         confidence,
         error: confidence < 80 ? `Low confidence (${confidence}%) - ${bestAnalysis.overlayTypes.join(', ') || 'Check image quality'}` : undefined,
@@ -687,8 +1577,162 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     }
   };
 
+  // Process nutrition only (no images)
+  const processNutritionOnly = async () => {
+    setIsProcessing(true);
+    pauseRef.current = false;
+    abortRef.current = false;
+
+    const selectedFoods = foods.filter(f => f.selected);
+    const toProcess = selectedFoods.length > 0
+      ? selectedFoods
+      : foods.filter(f => f.status === 'pending' || f.nutritionStatus === 'pending');
+
+    addLog(`🍎 Starting nutrition scraping for ${toProcess.length} foods`);
+
+    if (toProcess.length === 0) {
+      addLog('No foods to process!');
+      setIsProcessing(false);
+      return;
+    }
+
+    for (let i = 0; i < toProcess.length; i++) {
+      if (abortRef.current) {
+        addLog('Nutrition scraping stopped by user');
+        break;
+      }
+
+      const food = toProcess[i];
+      addLog(`[${i + 1}/${toProcess.length}] Scraping nutrition for ${food.name}...`);
+
+      // Update status
+      setFoods(prev => prev.map(f => f.id === food.id ? { ...f, nutritionStatus: 'searching' } : f));
+
+      const nutritionData = await scrapeNutritionData(food);
+
+      if (nutritionData) {
+        // Special handling for fast food database: default to "per unit" if no serving size found
+        if (food.sourceIndex === 'fast_foods_database' && !nutritionData.servingSize) {
+          nutritionData.servingSize = 'per unit';
+          addLog(`🍔 Fast food item - defaulting to "per unit" serving size`);
+        }
+
+        setFoods(prev => prev.map(f =>
+          f.id === food.id
+            ? { ...f, nutritionData, nutritionStatus: 'found', status: 'uploading' }
+            : f
+        ));
+
+        // Build detailed log message
+        const foundFields = [];
+        if (nutritionData.calories !== undefined) foundFields.push('calories');
+        if (nutritionData.protein !== undefined) foundFields.push('protein');
+        if (nutritionData.carbs !== undefined) foundFields.push('carbs');
+        if (nutritionData.fat !== undefined) foundFields.push('fat');
+        if (nutritionData.sugar !== undefined) foundFields.push('sugar');
+        if (nutritionData.fiber !== undefined) foundFields.push('fiber');
+        if (nutritionData.servingSize) foundFields.push(`serving: ${nutritionData.servingSize}`);
+        if (nutritionData.ingredients) foundFields.push('ingredients');
+
+        addLog(`✓ ${food.name}: Found ${foundFields.length} fields (${nutritionData.source}) ${nutritionData.servingSize ? '📏' : ''}${nutritionData.ingredients ? '🥕' : ''}`);
+        if (nutritionData.servingSize) {
+          addLog(`  📏 Serving size: ${nutritionData.servingSize}`);
+        }
+        if (nutritionData.ingredients) {
+          addLog(`  🥕 Ingredients: ${nutritionData.ingredients.substring(0, 100)}...`);
+        }
+
+        // Save nutrition data to database
+        try {
+          addLog(`💾 Saving nutrition for ${food.name}...`);
+
+          // For fast food database, send ALL fields (even if undefined) to overwrite existing data
+          const isFastFood = food.sourceIndex === 'fast_foods_database';
+          const nutritionPayload = isFastFood ? {
+            // Fast food: Send all fields to ensure complete overwrite
+            calories: nutritionData.calories ?? null,
+            protein: nutritionData.protein ?? null,
+            carbs: nutritionData.carbs ?? null,
+            fat: nutritionData.fat ?? null,
+            saturatedFat: nutritionData.saturatedFat ?? null,
+            fiber: nutritionData.fiber ?? null,
+            sugar: nutritionData.sugar ?? null,
+            sodium: nutritionData.sodium ?? null,
+            salt: nutritionData.salt ?? null,
+            servingSizeG: nutritionData.servingSize ?? null,
+            ingredients: nutritionData.ingredients ?? null,
+          } : {
+            // Other databases: Only send fields that were found
+            calories: nutritionData.calories,
+            protein: nutritionData.protein,
+            carbs: nutritionData.carbs,
+            fat: nutritionData.fat,
+            saturatedFat: nutritionData.saturatedFat,
+            fiber: nutritionData.fiber,
+            sugar: nutritionData.sugar,
+            sodium: nutritionData.sodium,
+            salt: nutritionData.salt,
+            servingSizeG: nutritionData.servingSize,
+            ingredients: nutritionData.ingredients,
+          };
+
+          if (isFastFood) {
+            addLog(`🍔 Fast food mode: Overwriting ALL nutrition fields`);
+          }
+
+          const updateResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/updateFoodNutrition', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              index: food.sourceIndex,
+              objectID: food.objectID,
+              nutritionData: nutritionPayload,
+            }),
+          });
+
+          if (!updateResponse.ok) {
+            throw new Error(`HTTP ${updateResponse.status}`);
+          }
+
+          setFoods(prev => prev.map(f =>
+            f.id === food.id
+              ? { ...f, status: 'completed' }
+              : f
+          ));
+          addLog(`✅ ${food.name}: Saved to database`);
+        } catch (error) {
+          addLog(`⚠ ${food.name}: Nutrition found but save failed - ${error}`);
+          setFoods(prev => prev.map(f =>
+            f.id === food.id
+              ? { ...f, status: 'ready', error: 'Save failed' }
+              : f
+          ));
+        }
+      } else {
+        setFoods(prev => prev.map(f =>
+          f.id === food.id
+            ? { ...f, nutritionStatus: 'not_found', status: 'failed' }
+            : f
+        ));
+        addLog(`✗ ${food.name}: No nutrition data found`);
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    addLog('✅ Nutrition scraping complete');
+    setIsProcessing(false);
+    setIsPaused(false);
+  };
+
   // Batch search
   const startBatchSearch = async () => {
+    // If nutrition-only mode is enabled, use that instead
+    if (nutritionOnlyMode) {
+      return processNutritionOnly();
+    }
+
     if (!apiConfigured) {
       alert('Please configure SearchAPI first. See the console log for instructions.');
       addLog(getConfigurationHelp());
@@ -867,6 +1911,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       case 'pending': filtered = filtered.filter(f => f.status === 'pending'); break;
       case 'ready': filtered = filtered.filter(f => f.status === 'ready'); break;
       case 'selected': filtered = filtered.filter(f => f.selected); break;
+      case 'nutrition_found': filtered = filtered.filter(f => f.nutritionStatus === 'found'); break;
+      case 'nutrition_failed': filtered = filtered.filter(f => f.nutritionStatus === 'not_found' || f.nutritionStatus === 'failed'); break;
       default: break;
     }
 
@@ -890,6 +1936,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const selectedCount = foods.filter(f => f.selected).length;
   const pendingCount = foods.filter(f => f.status === 'pending').length;
   const readyCount = foods.filter(f => f.status === 'ready').length;
+  const nutritionFoundCount = foods.filter(f => f.nutritionStatus === 'found').length;
+  const nutritionFailedCount = foods.filter(f => f.nutritionStatus === 'not_found' || f.nutritionStatus === 'failed').length;
 
   const statusColors: Record<FoodWithImage['status'], string> = {
     pending: 'bg-gray-100 text-gray-600',
@@ -975,13 +2023,22 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
                 <button
                   onClick={startBatchSearch}
-                  disabled={isLoading || !apiConfigured || (selectedCount === 0 && pendingCount === 0)}
+                  disabled={isLoading || (!nutritionOnlyMode && !apiConfigured) || (selectedCount === 0 && pendingCount === 0)}
                   className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  {selectedCount > 0 ? `Search Selected (${selectedCount})` : `Search All (${pendingCount})`}
+                  {nutritionOnlyMode ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  )}
+                  {nutritionOnlyMode
+                    ? (selectedCount > 0 ? `Scrape Nutrition (${selectedCount})` : `Scrape All Nutrition (${pendingCount})`)
+                    : (selectedCount > 0 ? `Search Selected (${selectedCount})` : `Search All (${pendingCount})`)
+                  }
                 </button>
 
                 {readyCount > 0 && (
@@ -1095,6 +2152,11 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                     🇬🇧 UK Filter: <strong>{ukFilterStats.ukCount}</strong> kept ({ukFilterStats.ukPercentage}%), <strong>{ukFilterStats.nonUkCount}</strong> filtered ({ukFilterStats.nonUkPercentage}%)
                   </span>
                 )}
+                {imageFilterStats && (
+                  <span className="text-purple-600">
+                    🖼️ Image Filter: <strong>{imageFilterStats.withoutImages.toLocaleString()}</strong> without images, <strong>{imageFilterStats.withImages.toLocaleString()}</strong> with images hidden
+                  </span>
+                )}
               </div>
             </>
           )}
@@ -1109,6 +2171,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             { value: 'pending', label: 'Pending', count: pendingCount },
             { value: 'ready', label: 'Ready', count: readyCount },
             { value: 'selected', label: 'Selected', count: selectedCount },
+            { value: 'nutrition_found', label: '✓ Nutrition Found', count: nutritionFoundCount },
+            { value: 'nutrition_failed', label: '✗ No Nutrition', count: nutritionFailedCount },
           ].map(tab => (
             <button
               key={tab.value}
@@ -1313,6 +2377,147 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                         </p>
                       </div>
                     </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-purple-200 bg-purple-50 cursor-pointer hover:bg-purple-100 transition-colors mt-3">
+                      <input
+                        type="checkbox"
+                        checked={filterNoImages}
+                        onChange={(e) => setFilterNoImages(e.target.checked)}
+                        className="w-4 h-4 text-purple-600 rounded mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">🖼️ Hide Foods With Images</span>
+                          <span className="px-2 py-0.5 text-xs font-semibold text-purple-700 bg-purple-200 rounded-full">Recommended</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Only show foods that are missing images. This helps you focus on products that actually need image scraping, saving time and API calls.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-orange-200 bg-orange-50 cursor-pointer hover:bg-orange-100 transition-colors mt-3">
+                      <input
+                        type="checkbox"
+                        checked={filterZeroCalories}
+                        onChange={(e) => setFilterZeroCalories(e.target.checked)}
+                        className="w-4 h-4 text-orange-600 rounded mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">0️⃣ Very Low Calorie (0-5 kcal)</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Only show foods with 0-5 calories per 100g. Catches zero-calorie sweeteners, diet sodas, condiments, and other ultra-low calorie products (including 1-2 kcal items like sugar-free syrups).
+                        </p>
+                      </div>
+                    </label>
+
+                    {filterZeroCalories && (
+                      <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-amber-200 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors mt-3 ml-6">
+                        <input
+                          type="checkbox"
+                          checked={excludeDrinks}
+                          onChange={(e) => setExcludeDrinks(e.target.checked)}
+                          className="w-4 h-4 text-amber-600 rounded mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">🥤 Exclude Drinks</span>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-1">
+                            When filtering very low calorie items, exclude beverages like water, diet sodas, tea, coffee, and other drinks. Focus on actual food items only.
+                          </p>
+                        </div>
+                      </label>
+                    )}
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-red-200 bg-red-50 cursor-pointer hover:bg-red-100 transition-colors mt-3">
+                      <input
+                        type="checkbox"
+                        checked={filterTescoBadImages}
+                        onChange={(e) => setFilterTescoBadImages(e.target.checked)}
+                        className="w-4 h-4 text-red-600 rounded mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">🚫 Hide Tesco Bad Images</span>
+                          <span className="px-2 py-0.5 text-xs font-semibold text-red-700 bg-red-200 rounded-full">Recommended</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Hide Tesco products that are marked with "dontShowImage" flag. These have been identified as having poor quality images that shouldn't be displayed.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-green-200 bg-green-50 cursor-pointer hover:bg-green-100 transition-colors mt-3">
+                      <input
+                        type="checkbox"
+                        checked={scrapeNutrition}
+                        onChange={(e) => setScrapeNutrition(e.target.checked)}
+                        className="w-4 h-4 text-green-600 rounded mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">🍎 Scrape Nutrition Data</span>
+                          <span className="px-2 py-0.5 text-xs font-semibold text-green-700 bg-green-200 rounded-full">Recommended</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Automatically fetch nutrition information from Google during processing. Includes calories, protein, carbs, fat, fiber, sugar, and sodium.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-blue-200 bg-blue-50 cursor-pointer hover:bg-blue-100 transition-colors mt-3">
+                      <input
+                        type="checkbox"
+                        checked={scrapeServingSize}
+                        onChange={(e) => setScrapeServingSize(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">📏 Scrape Serving Size</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Extract serving size information (e.g., "100g", "250ml", "1 slice"). Useful for standardizing portion sizes across different products.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-purple-200 bg-purple-50 cursor-pointer hover:bg-purple-100 transition-colors mt-3">
+                      <input
+                        type="checkbox"
+                        checked={scrapeIngredients}
+                        onChange={(e) => setScrapeIngredients(e.target.checked)}
+                        className="w-4 h-4 text-purple-600 rounded mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">🥕 Scrape Ingredients</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Automatically extract ingredient lists from product pages. Essential for allergen detection and dietary restrictions.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-teal-200 bg-teal-50 cursor-pointer hover:bg-teal-100 transition-colors mt-3">
+                      <input
+                        type="checkbox"
+                        checked={nutritionOnlyMode}
+                        onChange={(e) => setNutritionOnlyMode(e.target.checked)}
+                        className="w-4 h-4 text-teal-600 rounded mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">🔬 Nutrition Only Mode</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Skip image scraping entirely - only search for nutrition data. Much faster and uses fewer API calls. Great for quickly filling in missing nutrition information.
+                        </p>
+                      </div>
+                    </label>
                   </div>
 
                   {/* Barcode Search OR Load All */}
@@ -1434,7 +2639,75 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                         )}
                         <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
                           <span className="px-1.5 py-0.5 bg-gray-100 rounded">{food.sourceIndex.replace(/_/g, ' ')}</span>
+                          {food.calories !== undefined && (
+                            <span className="px-1.5 py-0.5 bg-gray-100 rounded">{food.calories} cal</span>
+                          )}
                         </div>
+
+                        {/* Nutrition Data */}
+                        {food.nutritionData && (
+                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="font-semibold text-green-900 flex items-center gap-1">
+                                🍎 Nutrition (per 100g)
+                                {food.nutritionData.servingSize && <span className="text-blue-600">📏</span>}
+                              </div>
+                              <div className="text-[10px] text-green-700">
+                                {food.nutritionData.source}
+                              </div>
+                            </div>
+                            {food.nutritionData.servingSize && (
+                              <div className="px-2 py-1 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-900 font-medium mb-1">
+                                📏 Serving: {food.nutritionData.servingSize}
+                              </div>
+                            )}
+                            <div className="grid grid-cols-3 gap-2 text-gray-700">
+                              {food.nutritionData.calories !== undefined && (
+                                <div><span className="font-medium">Cal:</span> {food.nutritionData.calories}</div>
+                              )}
+                              {food.nutritionData.protein !== undefined && (
+                                <div><span className="font-medium">Protein:</span> {food.nutritionData.protein}g</div>
+                              )}
+                              {food.nutritionData.carbs !== undefined && (
+                                <div><span className="font-medium">Carbs:</span> {food.nutritionData.carbs}g</div>
+                              )}
+                              {food.nutritionData.fat !== undefined && (
+                                <div><span className="font-medium">Fat:</span> {food.nutritionData.fat}g</div>
+                              )}
+                              {food.nutritionData.saturatedFat !== undefined && (
+                                <div><span className="font-medium">Sat Fat:</span> {food.nutritionData.saturatedFat}g</div>
+                              )}
+                              {food.nutritionData.fiber !== undefined && (
+                                <div><span className="font-medium">Fiber:</span> {food.nutritionData.fiber}g</div>
+                              )}
+                              {food.nutritionData.sugar !== undefined && (
+                                <div><span className="font-medium">Sugar:</span> {food.nutritionData.sugar}g</div>
+                              )}
+                              {food.nutritionData.sodium !== undefined && (
+                                <div><span className="font-medium">Sodium:</span> {food.nutritionData.sodium}mg</div>
+                              )}
+                              {food.nutritionData.salt !== undefined && (
+                                <div><span className="font-medium">Salt:</span> {food.nutritionData.salt}g</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Nutrition Status */}
+                        {food.nutritionStatus !== 'pending' && !food.nutritionData && (
+                          <div className="mt-2 text-xs">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
+                              food.nutritionStatus === 'searching' ? 'bg-blue-100 text-blue-700' :
+                              food.nutritionStatus === 'not_found' ? 'bg-yellow-100 text-yellow-700' :
+                              food.nutritionStatus === 'failed' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {food.nutritionStatus === 'searching' && '🔍 Searching nutrition...'}
+                              {food.nutritionStatus === 'not_found' && '⚠ No nutrition data found'}
+                              {food.nutritionStatus === 'failed' && '✗ Nutrition search failed'}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Search results thumbnails */}
                         {food.searchResults.length > 0 && (

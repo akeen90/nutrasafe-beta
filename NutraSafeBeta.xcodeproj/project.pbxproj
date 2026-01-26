@@ -698,7 +698,7 @@
 			isa = PBXGroup;
 			children = (
 			);
-			path = Health;
+			path = "Views/Health";
 			sourceTree = "<group>";
 		};
 		AB7C5BC32F25A161001E7365 /* Nutrition */ = {

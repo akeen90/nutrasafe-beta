@@ -75,6 +75,8 @@ async function configureIndexSettings(client, indexName) {
                 removeStopWords: ["en"], // Remove common stop words in English
                 // Alternative matching
                 alternativesAsExact: ["ignorePlurals", "singleWordSynonym"],
+                // Query parsing - prevent AND/OR operators from being interpreted
+                advancedSyntax: false,
                 // Advanced settings
                 attributeForDistinct: "name", // Deduplicate by name
                 distinct: true, // Enable deduplication
@@ -854,9 +856,14 @@ function prepareTescoForAlgolia(data) {
         imageQuality: data.imageQuality || undefined,
         imageFlags: data.imageFlags || undefined,
         flaggedAt: data.flaggedAt || undefined,
-        // Metadata - extract numeric serving size from string like "250ml" or "30g"
+        // Metadata - use existing servingSizeG if available, otherwise try to extract from string
         servingSize: data.servingSize || "per 100g",
         servingSizeG: (() => {
+            // First, check if servingSizeG is already defined in the document
+            if (data.servingSizeG !== undefined && data.servingSizeG !== null) {
+                return data.servingSizeG;
+            }
+            // Fallback: try to extract from servingSize string like "250ml" or "30g"
             const servingStr = data.servingSize || "";
             const match = servingStr.match(/(\d+(?:\.\d+)?)\s*(g|ml)/i);
             return match ? parseFloat(match[1]) : 100;

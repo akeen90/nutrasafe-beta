@@ -45,6 +45,24 @@ const ImageRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) => {
   );
 };
 
+const NameRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) => {
+  const name = params.value as string;
+  const foodId = params.data?._id;
+  const foodReportIds = useGridStore(state => state.foodReportIds);
+  const hasReport = foodId && foodReportIds.has(foodId);
+
+  return (
+    <div className="flex items-center gap-2">
+      <span>{name}</span>
+      {hasReport && (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-700" title="Has user report">
+          📝
+        </span>
+      )}
+    </div>
+  );
+};
+
 const IndexBadgeRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) => {
   const index = params.value as AlgoliaIndexName;
 
@@ -59,6 +77,7 @@ const IndexBadgeRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) 
     'uk_foods_cleaned': 'bg-cyan-100 text-cyan-800',
     'fast_foods_database': 'bg-red-100 text-red-800',
     'generic_database': 'bg-gray-100 text-gray-800',
+    'consumer_foods': 'bg-teal-100 text-teal-800',
   };
 
   const shortNames: Record<AlgoliaIndexName, string> = {
@@ -72,6 +91,7 @@ const IndexBadgeRenderer: React.FC<ICellRendererParams<UnifiedFood>> = (params) 
     'uk_foods_cleaned': 'UK Clean',
     'fast_foods_database': 'Fast Food',
     'generic_database': 'Generic',
+    'consumer_foods': 'Consumer',
   };
 
   return (
@@ -168,28 +188,34 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
   // Auto-save function
   const saveToBackend = useCallback(async (food: UnifiedFood) => {
     try {
+      const payload = {
+        foodId: food.objectID,
+        indexName: food._sourceIndex,
+        updates: {
+          foodName: food.name,
+          brandName: food.brandName,
+          barcode: food.barcode,
+          servingSizeG: food.servingSizeG,
+          servingSize: food.servingDescription, // Maps to servingDescription in backend
+          nutrition: {
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            fiber: food.fiber,
+            sugar: food.sugar,
+            sodium: food.sodium,
+            saturatedFat: food.saturatedFat,
+          },
+        },
+      };
+
+      console.log('🔍 Saving to backend:', JSON.stringify(payload, null, 2));
+
       const response = await fetch(`${FUNCTIONS_BASE}/adminSaveFood`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          foodId: food.objectID,
-          indexName: food._sourceIndex,
-          updates: {
-            foodName: food.name,
-            brandName: food.brandName,
-            barcode: food.barcode,
-            nutrition: {
-              calories: food.calories,
-              protein: food.protein,
-              carbs: food.carbs,
-              fat: food.fat,
-              fiber: food.fiber,
-              sugar: food.sugar,
-              sodium: food.sodium,
-              saturatedFat: food.saturatedFat,
-            },
-          },
-        }),
+        body: JSON.stringify(payload),
       });
       const result = await response.json();
       return result.success;
@@ -254,6 +280,7 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
       filter: 'agTextColumnFilter',
       sortable: true,
       cellClass: 'font-medium',
+      cellRenderer: NameRenderer,
     },
     {
       field: 'brandName',
@@ -353,6 +380,41 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
       filter: 'agNumberColumnFilter',
       sortable: true,
       type: 'numericColumn',
+    },
+    {
+      field: 'servingSizeG',
+      headerName: 'Serving (g)',
+      width: 100,
+      editable: true,
+      valueGetter: (params) => {
+        // Always return numeric value for editing
+        return params.data?.servingSizeG;
+      },
+      valueFormatter: (params) => {
+        // Display with 'g' suffix
+        if (params.value == null) return '-';
+        return `${params.value}g`;
+      },
+      valueParser: (params) => {
+        // Parse user input: "45g" -> 45, "45" -> 45, "100" -> 100
+        if (!params.newValue) return null;
+        const str = String(params.newValue).toLowerCase().replace(/[^0-9.]/g, '');
+        const parsed = parseFloat(str);
+        console.log(`servingSizeG parser: "${params.newValue}" -> ${parsed}`);
+        return isNaN(parsed) ? null : parsed;
+      },
+      filter: 'agNumberColumnFilter',
+      sortable: true,
+      type: 'numericColumn',
+    },
+    {
+      field: 'servingDescription',
+      headerName: 'Serving Desc',
+      width: 120,
+      editable: true,
+      valueFormatter: (params) => params.value || '-',
+      filter: 'agTextColumnFilter',
+      sortable: true,
     },
     {
       field: 'isVerified',

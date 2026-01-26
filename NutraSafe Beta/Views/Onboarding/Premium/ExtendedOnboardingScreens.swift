@@ -27,6 +27,10 @@ struct PersonalDetailsScreen: View {
     @FocusState private var weightFieldFocused: Bool
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
+    private var isIPad: Bool {
+        horizontalSizeClass == .regular
+    }
+
     // Height range (100cm - 250cm)
     private let heightRange: ClosedRange<Double> = 100...250
     // Weight range (30kg - 300kg)
@@ -60,221 +64,218 @@ struct PersonalDetailsScreen: View {
                 .padding(.top, 16)
             }
 
-            Spacer().frame(height: onBack != nil ? 20 : 50)
+            Spacer()
 
-            // Headline
+            // Headline - larger on iPad
             VStack(spacing: 8) {
                 Text("A little about you")
-                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .font(.system(size: isIPad ? 36 : 28, weight: .bold, design: .serif))
                     .foregroundColor(Color(white: 0.2))
 
                 Text("For accurate calorie targets")
-                    .font(.system(size: 15, weight: .regular))
+                    .font(.system(size: isIPad ? 18 : 15, weight: .regular))
                     .foregroundColor(Color(white: 0.5))
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, isIPad ? 12 : 8)
 
             // Helper text
             Text("We use this to calculate your personal BMR and daily calorie needs.")
-                .font(.system(size: 14, weight: .regular))
+                .font(.system(size: isIPad ? 16 : 14, weight: .regular))
                 .foregroundColor(Color(white: 0.5))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 24)
+                .padding(.horizontal, isIPad ? 60 : 40)
+                .padding(.bottom, isIPad ? 20 : 24)
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // Date of Birth
-                    PersonalDetailCard(
-                        icon: "calendar",
-                        title: "Date of birth",
-                        palette: state.palette
-                    ) {
-                        DatePicker(
-                            "Birthday",
-                            selection: $state.birthDate,
-                            in: dateRange,
-                            displayedComponents: .date
-                        )
-                        .datePickerStyle(.compact)
-                        .labelsHidden()
-                        .onChange(of: state.birthDate) { _, _ in
-                            hasBirthdayBeenSet = true
-                        }
-
-                        if hasBirthdayBeenSet || state.age != 30 {
-                            Text("\(state.age) years old")
-                                .font(.system(size: 13))
-                                .foregroundColor(state.palette.primary)
-                        }
+            VStack(spacing: isIPad ? 24 : 20) {
+                // Date of Birth
+                PersonalDetailCard(
+                    icon: "calendar",
+                    title: "Date of birth",
+                    palette: state.palette
+                ) {
+                    DatePicker(
+                        "Birthday",
+                        selection: $state.birthDate,
+                        in: dateRange,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.compact)
+                    .labelsHidden()
+                    .onChange(of: state.birthDate) { _, _ in
+                        hasBirthdayBeenSet = true
                     }
 
-                    // Height - with text input option
-                    PersonalDetailCard(
-                        icon: "ruler",
-                        title: "Height",
-                        palette: state.palette
-                    ) {
-                        VStack(spacing: 8) {
-                            HStack(spacing: 12) {
-                                Slider(value: $state.heightCm, in: heightRange, step: 1)
-                                    .accentColor(state.palette.primary)
+                    if hasBirthdayBeenSet || state.age != 30 {
+                        Text("\(state.age) years old")
+                            .font(.system(size: isIPad ? 15 : 13))
+                            .foregroundColor(state.palette.primary)
+                    }
+                }
 
-                                // Tappable text field - larger on iPad
-                                Button {
-                                    heightText = "\(Int(state.heightCm))"
-                                    isEditingHeight = true
-                                    heightFieldFocused = true
-                                } label: {
-                                    if isEditingHeight {
-                                        TextField("", text: $heightText)
-                                            .keyboardType(.numberPad)
-                                            .multilineTextAlignment(.center)
-                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                            .foregroundColor(Color(white: 0.3))
-                                            .frame(width: horizontalSizeClass == .regular ? 80 : 50)
-                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .fill(Color.white.opacity(0.7))
-                                            )
-                                            .focused($heightFieldFocused)
-                                            .onChange(of: heightFieldFocused) { _, focused in
-                                                if !focused {
-                                                    isEditingHeight = false
-                                                    if let value = Double(heightText), heightRange.contains(value) {
-                                                        state.heightCm = value
-                                                    }
+                // Height - with text input option
+                PersonalDetailCard(
+                    icon: "ruler",
+                    title: "Height",
+                    palette: state.palette
+                ) {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 12) {
+                            Slider(value: $state.heightCm, in: heightRange, step: 1)
+                                .accentColor(state.palette.primary)
+
+                            // Tappable text field - larger on iPad
+                            Button {
+                                heightText = "\(Int(state.heightCm))"
+                                isEditingHeight = true
+                                heightFieldFocused = true
+                            } label: {
+                                if isEditingHeight {
+                                    TextField("", text: $heightText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: horizontalSizeClass == .regular ? 80 : 50)
+                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.7))
+                                        )
+                                        .focused($heightFieldFocused)
+                                        .onChange(of: heightFieldFocused) { _, focused in
+                                            if !focused {
+                                                isEditingHeight = false
+                                                if let value = Double(heightText), heightRange.contains(value) {
+                                                    state.heightCm = value
                                                 }
                                             }
-                                    } else {
-                                        Text("\(Int(state.heightCm))")
-                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                            .foregroundColor(Color(white: 0.3))
-                                            .frame(width: horizontalSizeClass == .regular ? 80 : 50)
-                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .fill(Color.white.opacity(0.5))
-                                            )
-                                    }
+                                        }
+                                } else {
+                                    Text("\(Int(state.heightCm))")
+                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: horizontalSizeClass == .regular ? 80 : 50)
+                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.5))
+                                        )
                                 }
-                                .buttonStyle(.plain)
-
-                                Text("cm")
-                                    .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
-                                    .foregroundColor(Color(white: 0.5))
                             }
+                            .buttonStyle(.plain)
 
-                            // Show feet/inches conversion
-                            let feet = Int(state.heightCm / 30.48)
-                            let inches = Int((state.heightCm / 2.54).truncatingRemainder(dividingBy: 12))
-                            Text("\(feet)'\(inches)\"")
-                                .font(.system(size: 13))
+                            Text("cm")
+                                .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
                                 .foregroundColor(Color(white: 0.5))
                         }
+
+                        // Show feet/inches conversion
+                        let feet = Int(state.heightCm / 30.48)
+                        let inches = Int((state.heightCm / 2.54).truncatingRemainder(dividingBy: 12))
+                        Text("\(feet)'\(inches)\"")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(white: 0.5))
                     }
+                }
 
-                    // Weight - with text input option
-                    PersonalDetailCard(
-                        icon: "scalemass",
-                        title: "Current weight",
-                        palette: state.palette
-                    ) {
-                        VStack(spacing: 8) {
-                            HStack(spacing: 12) {
-                                Slider(value: $state.weightKg, in: weightRange, step: 0.5)
-                                    .accentColor(state.palette.primary)
+                // Weight - with text input option
+                PersonalDetailCard(
+                    icon: "scalemass",
+                    title: "Current weight",
+                    palette: state.palette
+                ) {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 12) {
+                            Slider(value: $state.weightKg, in: weightRange, step: 0.5)
+                                .accentColor(state.palette.primary)
 
-                                // Tappable text field - larger on iPad
-                                Button {
-                                    weightText = String(format: "%.1f", state.weightKg)
-                                    isEditingWeight = true
-                                    weightFieldFocused = true
-                                } label: {
-                                    if isEditingWeight {
-                                        TextField("", text: $weightText)
-                                            .keyboardType(.decimalPad)
-                                            .multilineTextAlignment(.center)
-                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                            .foregroundColor(Color(white: 0.3))
-                                            .frame(width: horizontalSizeClass == .regular ? 90 : 55)
-                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .fill(Color.white.opacity(0.7))
-                                            )
-                                            .focused($weightFieldFocused)
-                                            .onChange(of: weightFieldFocused) { _, focused in
-                                                if !focused {
-                                                    isEditingWeight = false
-                                                    if let value = Double(weightText), weightRange.contains(value) {
-                                                        state.weightKg = value
-                                                    }
+                            // Tappable text field - larger on iPad
+                            Button {
+                                weightText = String(format: "%.1f", state.weightKg)
+                                isEditingWeight = true
+                                weightFieldFocused = true
+                            } label: {
+                                if isEditingWeight {
+                                    TextField("", text: $weightText)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: horizontalSizeClass == .regular ? 90 : 55)
+                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.7))
+                                        )
+                                        .focused($weightFieldFocused)
+                                        .onChange(of: weightFieldFocused) { _, focused in
+                                            if !focused {
+                                                isEditingWeight = false
+                                                if let value = Double(weightText), weightRange.contains(value) {
+                                                    state.weightKg = value
                                                 }
                                             }
-                                    } else {
-                                        Text(String(format: "%.1f", state.weightKg))
-                                            .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                            .foregroundColor(Color(white: 0.3))
-                                            .frame(width: horizontalSizeClass == .regular ? 90 : 55)
-                                            .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .fill(Color.white.opacity(0.5))
-                                            )
-                                    }
+                                        }
+                                } else {
+                                    Text(String(format: "%.1f", state.weightKg))
+                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: horizontalSizeClass == .regular ? 90 : 55)
+                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.5))
+                                        )
                                 }
-                                .buttonStyle(.plain)
-
-                                Text("kg")
-                                    .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
-                                    .foregroundColor(Color(white: 0.5))
                             }
+                            .buttonStyle(.plain)
 
-                            // Show stone/pounds conversion
-                            let totalPounds = state.weightKg * 2.20462
-                            let stone = Int(totalPounds / 14)
-                            let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
-                            Text("\(stone) st \(pounds) lb")
-                                .font(.system(size: 13))
+                            Text("kg")
+                                .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
                                 .foregroundColor(Color(white: 0.5))
                         }
-                    }
 
-                    // Gender
-                    PersonalDetailCard(
-                        icon: "person",
-                        title: "Biological sex",
-                        subtitle: "For BMR calculation",
-                        palette: state.palette
-                    ) {
-                        HStack(spacing: 10) {
-                            ForEach([UserGender.male, .female, .other], id: \.self) { gender in
-                                GenderChip(
-                                    gender: gender,
-                                    isSelected: state.gender == gender,
-                                    palette: state.palette,
-                                    onSelect: { state.gender = gender }
-                                )
-                            }
+                        // Show stone/pounds conversion
+                        let totalPounds = state.weightKg * 2.20462
+                        let stone = Int(totalPounds / 14)
+                        let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
+                        Text("\(stone) st \(pounds) lb")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(white: 0.5))
+                    }
+                }
+
+                // Gender
+                PersonalDetailCard(
+                    icon: "person",
+                    title: "Biological sex",
+                    subtitle: "For BMR calculation",
+                    palette: state.palette
+                ) {
+                    HStack(spacing: 10) {
+                        ForEach([UserGender.male, .female, .other], id: \.self) { gender in
+                            GenderChip(
+                                gender: gender,
+                                isSelected: state.gender == gender,
+                                palette: state.palette,
+                                onSelect: { state.gender = gender }
+                            )
                         }
                     }
                 }
-                .padding(.horizontal, 24)
             }
-            .frame(maxHeight: 420)
+            .padding(.horizontal, isIPad ? 32 : 24)
 
             // Note about changing later
             HStack(spacing: 6) {
                 Image(systemName: "pencil.circle")
-                    .font(.system(size: 14))
+                    .font(.system(size: isIPad ? 16 : 14))
                     .foregroundColor(Color(white: 0.5))
                 Text("You can adjust these anytime in Settings")
-                    .font(.system(size: 13))
+                    .font(.system(size: isIPad ? 15 : 13))
                     .foregroundColor(Color(white: 0.5))
             }
-            .padding(.top, 16)
+            .padding(.top, isIPad ? 24 : 16)
 
             Spacer()
 
@@ -287,8 +288,8 @@ struct PersonalDetailsScreen: View {
                     onContinue()
                 }
             )
-            .padding(.horizontal, 32)
-            .padding(.bottom, 50)
+            .padding(.horizontal, isIPad ? 48 : 32)
+            .padding(.bottom, isIPad ? 70 : 50)
         }
         .onTapGesture {
             // Dismiss keyboard on tap outside
@@ -318,21 +319,26 @@ struct PersonalDetailCard<Content: View>: View {
     var subtitle: String? = nil
     let palette: OnboardingPalette
     @ViewBuilder let content: () -> Content
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+
+    private var isIPad: Bool {
+        horizontalSizeClass == .regular
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: isIPad ? 16 : 12) {
             HStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: isIPad ? 20 : 16, weight: .medium))
                     .foregroundColor(palette.primary)
 
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: isIPad ? 18 : 16, weight: .semibold))
                     .foregroundColor(Color(white: 0.3))
 
                 if let subtitle = subtitle {
                     Text("(\(subtitle))")
-                        .font(.system(size: 13))
+                        .font(.system(size: isIPad ? 15 : 13))
                         .foregroundColor(Color(white: 0.5))
                 }
 
@@ -341,14 +347,14 @@ struct PersonalDetailCard<Content: View>: View {
 
             content()
         }
-        .padding(16)
+        .padding(isIPad ? 20 : 16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: isIPad ? 20 : 16)
                 .fill(Color.white.opacity(0.8))
-                .shadow(color: Color.black.opacity(0.05), radius: 8, y: 4)
+                .shadow(color: Color.black.opacity(0.05), radius: isIPad ? 12 : 8, y: 4)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: isIPad ? 20 : 16)
                 .stroke(Color.white.opacity(0.5), lineWidth: 1)
         )
     }

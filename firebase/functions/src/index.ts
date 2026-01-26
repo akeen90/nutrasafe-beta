@@ -86,6 +86,9 @@ export { validateFoodsFromDatabase, getValidationStats, getValidationProgress, r
 // Food image upload and processing
 export { uploadFoodImage, batchUploadFoodImages } from './upload-food-image';
 
+// Nutrition data update
+export { updateFoodNutrition } from './update-food-nutrition';
+
 // Tesco image quality filtering
 export { filterTescoImages, getTescoImageStats } from './filter-tesco-images';
 export { syncTescoImageQuality } from './sync-tesco-quality';

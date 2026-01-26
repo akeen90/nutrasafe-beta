@@ -1170,7 +1170,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         // SIMPLIFIED: Only use servingSizeG from database, never extract from product name
         // Product names often contain package sizes (342g bottle) not serving sizes
         // The database servingSizeG field is the source of truth for serving size
-        if let g = servingSizeG, g > 0 && g != 100 {
+        // VALIDATION: Reject implausible serving sizes (<10g or >500g per serving)
+        // No real food has a 1g serving - that's clearly bad data
+        if let g = servingSizeG, g >= 10 && g <= 500 && g != 100 {
             return g
         }
         // Fallback to 100g if no specific serving size in database
@@ -1306,12 +1308,18 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         }
 
         // 2. Database portions for other categories
+        // VALIDATION: Filter out implausibly small portions (<10g) - no real food has a 0g or 1g serving
         if let dbPortions = portions, !dbPortions.isEmpty {
-            return dbPortions
+            let validPortions = dbPortions.filter { $0.serving_g >= 10 }
+            if !validPortions.isEmpty {
+                return validPortions
+            }
+            // If all db portions are invalid, fall through to other options
         }
 
         // 3. If food has a real serving size (not default 100g), use that plus extras for drinks
-        if let servingG = servingSizeG, servingG > 0 && servingG != 100 {
+        // VALIDATION: Also require serving size >= 10g (no 0g or 1g servings)
+        if let servingG = servingSizeG, servingG >= 10 && servingG <= 500 && servingG != 100 {
             let unit = isLiquidCategory ? "ml" : "g"
             let caloriesForServing = calories * (servingG / 100)
 
@@ -1647,8 +1655,10 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     func hasAnyPortionOptions(forQuery query: String) -> Bool {
         let confidence = servingConfidence(forQuery: query)
 
-        // Database portions always available
-        if hasPortionOptions { return true }
+        // Database portions available - but only if they have VALID serving sizes (>= 10g)
+        if let dbPortions = portions, dbPortions.contains(where: { $0.serving_g >= 10 }) {
+            return true
+        }
         // Per-unit items have no portions
         if isPerUnit == true { return false }
         // Fast food has no portions
@@ -1661,8 +1671,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         if confidence.usesSafeOutput {
             return false
         }
-        // Real serving size (non-100) means we can show that option
-        if let servingG = servingSizeG, servingG > 0 && servingG != 100 {
+        // Real serving size (>= 10g, <= 500g, non-100) means we can show that option
+        // VALIDATION: Reject implausible serving sizes (<10g or >500g)
+        if let servingG = servingSizeG, servingG >= 10 && servingG <= 500 && servingG != 100 {
             return true
         }
         // Category presets available

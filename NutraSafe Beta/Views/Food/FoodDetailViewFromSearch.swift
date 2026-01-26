@@ -167,15 +167,49 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         } else {
-            // Per-100g food: SIMPLIFIED - just use servingSizeG from database
-            // Never extract from product names or serving descriptions (they contain package sizes)
-            if let servingG = food.servingSizeG, servingG > 0 && servingG != 100 {
+            // Per-100g food: Use servingSizeG if valid, or category defaults
+            // VALIDATION: Reject implausible serving sizes (<10g or >500g per serving)
+            if let servingG = food.servingSizeG, servingG >= 10 && servingG <= 500 && servingG != 100 {
                 initialServingSize = String(format: "%.0f", servingG)
                 initialUnit = food.isLiquidCategory ? "ml" : "g"
-            } else if food.isLiquidCategory {
-                initialUnit = "ml"
+            } else {
+                // CATEGORY DEFAULTS when no valid database serving size
+                let brandLower = (food.brand ?? "").lowercased()
+
+                // Sauce keywords
+                let sauceKeywords = ["ketchup", "sauce", "mayo", "mayonnaise", "mustard", "relish",
+                                     "dressing", "sriracha", "chutney", "pickle", "aioli", "vinegar"]
+                // Cereal keywords
+                let cerealKeywords = ["oats", "porridge", "oatmeal", "granola", "muesli", "cornflakes",
+                                      "corn flakes", "bran flakes", "weetabix", "shreddies", "cheerios",
+                                      "special k", "rice krispies", "coco pops", "frosties", "cereal"]
+                // Bread keywords (includes crumpets!)
+                let breadKeywords = ["bread", "loaf", "slice", "toast", "baguette", "roll", "bun",
+                                     "bagel", "pitta", "pita", "naan", "wrap", "tortilla", "crumpet",
+                                     "muffin english", "english muffin", "sourdough", "ciabatta",
+                                     "focaccia", "brioche", "jason's", "jasons", "warburton", "hovis",
+                                     "kingsmill", "wholemeal", "seeded", "granary", "bloomer",
+                                     "farmhouse", "tiger bread", "rye bread", "pumpernickel"]
+
+                let isSauce = sauceKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+                let isCereal = cerealKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+                let isBread = breadKeywords.contains { nameLower.contains($0) || brandLower.contains($0) }
+                let isCrumpet = nameLower.contains("crumpet")
+
+                if isSauce {
+                    initialServingSize = "15"  // 1 tablespoon
+                } else if isCereal {
+                    initialServingSize = "45"  // Medium bowl
+                } else if isCrumpet {
+                    initialServingSize = "55"  // 1 crumpet (~55g each)
+                } else if isBread {
+                    initialServingSize = "38"  // 1 slice of bread (~38g)
+                } else if food.isLiquidCategory {
+                    initialUnit = "ml"
+                    // Keep default 100ml
+                }
+                // Otherwise keep default 100g
             }
-            // If no servingSizeG, keep default 100g
         }
 
         // Initialize all serving size state variables with the determined value
@@ -3912,11 +3946,13 @@ struct FoodDetailViewFromSearch: View {
                     // This prevents "salmon en croute" from getting "small fillet" suggestions
                     let effectiveQuery = food.name // Use food name as query for classification
                     if food.hasAnyPortionOptions(forQuery: effectiveQuery) {
-                        // FILTER OUT portions that result in >700 calories (package sizes, not servings)
+                        // FILTER OUT portions that result in >700 calories (package sizes) or are implausibly small (<10g)
+                        // No real food has a 0g or 1g serving - that's clearly bad database data
                         let allPortions = food.portionsForQuery(effectiveQuery)
                         let portions = allPortions.filter { portion in
                             let portionCalories = food.calories * (portion.serving_g / 100.0)
-                            return portionCalories <= 700
+                            // Reject: too many calories (>700 = package size) or too small (<10g = bad data)
+                            return portionCalories <= 700 && portion.serving_g >= 10
                         }
                         ForEach(portions) { portion in
                             let isSelected = selectedPortionName == portion.name

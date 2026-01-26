@@ -89,6 +89,14 @@
 
     <url>
         <loc>https://www.nutrasafe.co.uk/nutrasafe-vs-yuka</loc>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/nutrasafe-vs-nutracheck</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
         <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
@@ -295,6 +303,155 @@
         <lastmod>2026-01-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.4</priority>
+    </url>
+
+    <!-- Blog -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Blog Posts -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-to-count-calories-for-weight-loss-uk/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/complete-guide-to-macros-uk/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/high-protein-low-calorie-foods-uk/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-to-use-food-scanner-app/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-many-grams-is-1-cup/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/what-is-a-cup-measurement/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-to-lose-water-weight/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/can-you-freeze-hummus/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-many-grams-in-a-tablespoon/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-much-is-4-oz/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/best-food-scanner-apps-uk-2026/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/why-am-i-not-losing-weight/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/myfitnesspal-alternative-uk/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-many-calories-should-i-eat-to-lose-weight-uk/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/tesco-barcode-scanner-guide/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/sainsburys-food-scanner-guide/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-to-track-food-intolerances/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/best-food-allergy-tracker-apps-uk/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/how-to-track-vitamins-and-minerals/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://www.nutrasafe.co.uk/blog/best-vitamin-tracker-apps-uk/</loc>
+        <lastmod>2026-01-26</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
     </url>
 
 </urlset>

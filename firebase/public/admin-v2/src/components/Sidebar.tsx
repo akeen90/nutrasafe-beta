@@ -44,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'uk_foods_cleaned': 'bg-cyan-500',
     'fast_foods_database': 'bg-red-500',
     'generic_database': 'bg-gray-500',
+    'consumer_foods': 'bg-teal-500',
   };
 
   const indexShortNames: Record<AlgoliaIndexName, string> = {
@@ -57,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'uk_foods_cleaned': 'UK',
     'fast_foods_database': 'Fast',
     'generic_database': 'Generic',
+    'consumer_foods': 'Consumer',
   };
 
   return (

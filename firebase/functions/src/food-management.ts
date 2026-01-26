@@ -1278,6 +1278,7 @@ export const adminSaveFood = functions
       }
 
       console.log(`📝 Admin saving food: ${foodId} in index: ${indexName}`);
+      console.log(`🔍 Received updates:`, JSON.stringify(updates, null, 2));
 
       // Build the update object with flattened nutrition
       const updateObj: Record<string, unknown> = {

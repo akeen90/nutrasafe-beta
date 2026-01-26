@@ -435,22 +435,69 @@ When deploying the admin v2 dashboard (`/firebase/public/admin-v2/`):
    firebase deploy --only hosting
    ```
 
-3. **ALWAYS VERIFY THE DEPLOYMENT** (REQUIRED)
-   - **DO NOT** say deployment is complete until you've verified the dashboard loads
-   - Use WebFetch to check `https://nutrasafe-705c7.web.app/admin-v2/`
-   - Confirm you see "NutraSafe Food Database Manager" title
-   - Confirm no critical errors appear
-   - If the page shows a loading spinner, that's normal (it takes a moment to initialize)
+3. **ALWAYS VERIFY THE DEPLOYMENT ACTUALLY WORKS** (REQUIRED - NOT OPTIONAL)
 
-   Example verification:
+   ⚠️ **CRITICAL**: Checking if HTML loads is NOT enough. You MUST verify the app actually initializes.
+
+   **INCORRECT** ❌:
+   - "The page shows a loading spinner" = NOT VERIFIED
+   - "The title is present" = NOT VERIFIED
+   - "No errors in HTML" = NOT VERIFIED
+
+   **CORRECT** ✅:
+   - **Tell the user to open the URL in their browser** and check:
+     1. Does the loading spinner disappear after 5-10 seconds?
+     2. Does the main dashboard UI appear (sidebar, header, grid)?
+     3. Are there any red error messages in the browser console (F12)?
+
+   - **YOU CANNOT VERIFY THIS WITH WebFetch** - WebFetch only sees initial HTML, not JavaScript initialization
+   - **YOU MUST ASK THE USER** to confirm the dashboard loads in their browser
+
+   Example conversation:
    ```
-   WebFetch url: https://nutrasafe-705c7.web.app/admin-v2/
-   prompt: "Check if the page loads successfully and verify there are no critical errors."
+   Assistant: "Deployment complete. Please open https://nutrasafe-705c7.web.app/admin-v2/
+               in your browser and confirm:
+               1. Loading spinner disappears
+               2. Dashboard appears (sidebar + main grid)
+               3. No console errors (F12)
+
+               Let me know if you see any issues."
    ```
+
+   **If you say "deployment complete" without user confirmation, YOU FAILED**.
 
 ### Admin Dashboard Dev Server (CRITICAL)
 
 When starting the dev server for admin v2 (`/firebase/public/admin-v2/`):
+
+**⚠️ STEP 0: ALWAYS CHECK THIS FIRST** (MOST COMMON ISSUE)
+
+**If the user reports "spinning" or "stuck loading", CHECK THIS IMMEDIATELY:**
+
+```bash
+# Check if index.html has production build files (WRONG for dev)
+grep "index-.*\.js" /Users/aaronkeen/Documents/My\ Apps/NutraSafe/firebase/public/admin-v2/index.html
+```
+
+**If you see production filenames** (like `index-_wno3f55.js`), the HTML is wrong:
+
+```bash
+# Fix: Reset to dev HTML
+cd /Users/aaronkeen/Documents/My\ Apps/NutraSafe/firebase/public/admin-v2
+cp index.src.html index.html
+
+# Kill and restart dev server
+pkill -9 -f vite 2>/dev/null || true
+npm run dev &
+
+# Tell user to HARD REFRESH (Cmd+Shift+R)
+```
+
+**Why this happens:** After running `npm run build`, the production `index.html` gets copied to the root, overwriting the dev version. The `npm run dev` script copies `index.src.html` to `index.html`, but if the build was run after dev started, the HTML gets out of sync.
+
+**ALWAYS check this FIRST before investigating other issues.**
+
+---
 
 1. **Start the dev server**
    ```bash
@@ -458,32 +505,51 @@ When starting the dev server for admin v2 (`/firebase/public/admin-v2/`):
    npm run dev
    ```
 
-2. **ALWAYS VERIFY THE DEV SERVER ISN'T STUCK** (REQUIRED)
-   - **DO NOT** say dev server is running until you've verified it's actually serving content
-   - The server should start within 5-10 seconds and show a URL like `http://localhost:5173/admin-v2/`
-   - **Check for stuck/spinning states**: Look for error messages or infinite loading
-   - Verify the server responds by checking the URL with curl:
+2. **ALWAYS VERIFY THE DEV SERVER ACTUALLY WORKS** (REQUIRED - NOT OPTIONAL)
 
+   ⚠️ **CRITICAL**: curl checking HTML is NOT enough. You MUST verify the app actually works.
+
+   **Step 1: Check server started**
    ```bash
-   # Let dev server start
-   sleep 3
+   # Wait for startup
+   sleep 5
 
-   # Check if it's serving content (should see HTML with "NutraSafe" and "root")
+   # Verify HTML is being served
    curl -s http://localhost:5173/admin-v2/ | head -60 | grep -E "NutraSafe|root"
    ```
 
-3. **Common Issues**
-   - **Port in use**: Vite will automatically try another port (5174, 5175, etc.) - this is normal
-   - **Spinning/stuck**: If curl returns nothing or hangs, the server is stuck - kill it and restart
-   - **Build errors**: Check the terminal output for TypeScript or build errors
-   - **Old processes**: Use `pkill -f "vite.*admin-v2"` to kill lingering processes
+   **Step 2: ACTUALLY VERIFY IT WORKS**
+   - **YOU CANNOT VERIFY WITH CURL ALONE** - curl only sees HTML, not if React loads
+   - **YOU MUST ASK THE USER** to open the browser and confirm:
+     1. Does the loading spinner disappear after 5-10 seconds?
+     2. Does the dashboard UI appear (sidebar, header, grid)?
+     3. Are there console errors in browser DevTools (F12)?
 
-4. **How to verify it's working**
-   - ✅ Terminal shows: `VITE v5.x.x ready in XXXms` and a localhost URL
-   - ✅ curl returns HTML containing "NutraSafe Food Database Manager"
-   - ✅ Opening the URL in browser shows the loading spinner or the app
-   - ❌ curl returns nothing or connection refused = server is stuck/not running
-   - ❌ Terminal shows continuous errors or warnings = build issues
+   Example conversation:
+   ```
+   Assistant: "Dev server started on http://localhost:5173/admin-v2/
+
+               Please open this URL in your browser and confirm:
+               1. Loading spinner disappears
+               2. Dashboard appears with sidebar and grid
+               3. No red errors in console (press F12)
+
+               Let me know if it's working or stuck."
+   ```
+
+   **INCORRECT** ❌:
+   - "Dev server is running" = NOT VERIFIED
+   - "curl returns HTML" = NOT VERIFIED
+   - "Should work fine" = NOT VERIFIED
+
+   **CORRECT** ✅:
+   - Get explicit user confirmation the dashboard UI loaded
+
+3. **Common Issues**
+   - **Port in use**: Vite tries another port automatically (5174, 5175) - this is normal
+   - **Stuck loading spinner**: JavaScript error during initialization - check browser console
+   - **Build errors**: TypeScript errors prevent compilation - check terminal
+   - **Old processes**: Kill with `pkill -f "vite.*admin-v2"` and restart
 
 ### Security Checklist
 - [ ] API keys in `.env` only

@@ -41,6 +41,7 @@ const AppContent: React.FC = () => {
     selectedFoodIds,
     getFoodById,
     deselectAll,
+    setFoodReportIds,
   } = useGridStore();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -52,22 +53,31 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports' | 'master-builder'>('grid');
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
-  // Load pending reports count
+  // Load pending reports count and food report IDs
   useEffect(() => {
     const loadReportsCount = async () => {
       try {
         const response = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/getUserReports');
         const result = await response.json();
         if (result.success) {
-          const pending = (result.reports || []).filter((r: { status: string }) => r.status === 'pending').length;
+          const reports = result.reports || [];
+          const pending = reports.filter((r: { status: string }) => r.status === 'pending').length;
           setPendingReportsCount(pending);
+
+          // Extract unique food IDs from all reports
+          const reportFoodIds = new Set<string>();
+          reports.forEach((report: { foodId?: string; food?: { id?: string; objectID?: string } }) => {
+            const foodId = report.food?.id || report.food?.objectID || report.foodId;
+            if (foodId) reportFoodIds.add(foodId);
+          });
+          setFoodReportIds(reportFoodIds);
         }
       } catch (error) {
         console.error('Error loading reports count:', error);
       }
     };
     loadReportsCount();
-  }, []);
+  }, [setFoodReportIds]);
 
   // Load initial data
   const hasLoadedRef = React.useRef(false);
@@ -328,13 +338,22 @@ const AppContent: React.FC = () => {
       <div className="h-screen flex flex-col bg-gray-50">
         <ReportsPage onBack={() => {
           setCurrentView('grid');
-          // Refresh count when returning from reports
+          // Refresh count and food report IDs when returning from reports
           fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/getUserReports')
             .then(r => r.json())
             .then(result => {
               if (result.success) {
-                const pending = (result.reports || []).filter((r: { status: string }) => r.status === 'pending').length;
+                const reports = result.reports || [];
+                const pending = reports.filter((r: { status: string }) => r.status === 'pending').length;
                 setPendingReportsCount(pending);
+
+                // Extract unique food IDs from all reports
+                const reportFoodIds = new Set<string>();
+                reports.forEach((report: { foodId?: string; food?: { id?: string; objectID?: string } }) => {
+                  const foodId = report.food?.id || report.food?.objectID || report.foodId;
+                  if (foodId) reportFoodIds.add(foodId);
+                });
+                setFoodReportIds(reportFoodIds);
               }
             })
             .catch(() => {});

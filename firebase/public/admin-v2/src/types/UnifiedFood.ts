@@ -15,6 +15,7 @@ export const ALGOLIA_INDICES = [
   'uk_foods_cleaned',
   'fast_foods_database',
   'generic_database',
+  'consumer_foods',
 ] as const;
 
 export type AlgoliaIndexName = typeof ALGOLIA_INDICES[number];
@@ -31,6 +32,7 @@ export const INDEX_TO_COLLECTION: Record<AlgoliaIndexName, string | null> = {
   'uk_foods_cleaned': null,        // Algolia-only
   'fast_foods_database': null,     // Algolia-only
   'generic_database': null,        // Algolia-only
+  'consumer_foods': 'consumer_foods',
 };
 
 // Indices that have no Firestore backing (Algolia-only)
@@ -146,6 +148,8 @@ export interface FilterState {
   hasIssues: boolean;
   hasDuplicates: boolean;
   hasBarcode: boolean;
+  zeroCalories: boolean;
+  hasReport: boolean; // Filter to show only foods with user reports
 }
 
 // Statistics for the dashboard
