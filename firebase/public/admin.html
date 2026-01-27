@@ -7141,8 +7141,8 @@
                 };
 
                 try {
-                    // Use batchUpdateFoods to update Algolia directly (not Firestore)
-                    const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoods`, {
+                    // Use batchUpdateFoodsWithFirebase to update Firebase first, then sync to Algolia
+                    const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoodsWithFirebase`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -10240,7 +10240,7 @@
                     if (hasEdits) {
                         const requestBody = { indexName, updates, deletes };
 
-                        const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoods`, {
+                        const response = await fetch(`${CONFIG.API_BASE}/batchUpdateFoodsWithFirebase`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(requestBody)

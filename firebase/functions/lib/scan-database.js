@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.rescanProducts = exports.fixHtmlCode = exports.fixSimpleIngredients = exports.fixKjKcalCombinedCalories = exports.batchUpdateFoods = exports.scanDatabaseIssues = void 0;
+exports.rescanProducts = exports.fixHtmlCode = exports.fixSimpleIngredients = exports.fixKjKcalCombinedCalories = exports.batchUpdateFoodsWithFirebase = exports.batchUpdateFoods = exports.scanDatabaseIssues = void 0;
 const functions = require("firebase-functions");
 const algoliasearch_1 = require("algoliasearch");
 const axios_1 = require("axios");
@@ -11,6 +11,84 @@ const TESCO8_API_KEY = functions.config().rapidapi?.key || '7e61162448msh2832ba8
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 // Use functions.config() for v1 triggers (more reliable than v2 secrets)
 const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
+// Algolia-only indices (no Firebase backing)
+const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+// Map Algolia index names to Firestore collection names
+const INDEX_TO_COLLECTION = {
+    'verified_foods': 'verifiedFoods',
+    'foods': 'foods',
+    'manual_foods': 'manualFoods',
+    'user_added': 'userAdded',
+    'ai_enhanced': 'aiEnhanced',
+    'ai_manually_added': 'aiManuallyAdded',
+    'tescoProducts': 'tesco_products',
+    'tesco_products': 'tesco_products',
+};
+/**
+ * Helper function to apply batch updates with Firebase-first approach
+ * Updates Firebase first (source of truth), then syncs to Algolia
+ * For Algolia-only indices, updates Algolia directly
+ */
+async function applyBatchUpdatesFirebaseFirst(indexName, updates, client) {
+    const isAlgoliaOnly = ALGOLIA_ONLY_INDICES.includes(indexName);
+    let appliedCount = 0;
+    if (isAlgoliaOnly) {
+        // For Algolia-only indices, update Algolia directly
+        console.log(`   Index ${indexName} is Algolia-only, updating Algolia directly`);
+        const batchSize = 1000;
+        for (let i = 0; i < updates.length; i += batchSize) {
+            const batch = updates.slice(i, i + batchSize);
+            await client.partialUpdateObjects({
+                indexName,
+                objects: batch,
+                createIfNotExists: false,
+            });
+            appliedCount += batch.length;
+            console.log(`✅ Fixed Algolia batch: ${batch.length} records (total: ${appliedCount})`);
+        }
+    }
+    else {
+        // For Firebase-backed indices, update Firebase first, then sync to Algolia
+        const collectionName = INDEX_TO_COLLECTION[indexName] || indexName;
+        console.log(`   Index ${indexName} is Firebase-backed, updating collection: ${collectionName}`);
+        const admin = require('firebase-admin');
+        const db = admin.firestore();
+        // Update Firebase in batches (Firestore batch limit is 500)
+        const FIREBASE_BATCH_SIZE = 500;
+        for (let i = 0; i < updates.length; i += FIREBASE_BATCH_SIZE) {
+            const batch = db.batch();
+            const batchItems = updates.slice(i, i + FIREBASE_BATCH_SIZE);
+            for (const item of batchItems) {
+                const { objectID, ...updateData } = item;
+                const docRef = db.collection(collectionName).doc(objectID);
+                batch.set(docRef, {
+                    ...updateData,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+            }
+            await batch.commit();
+            appliedCount += batchItems.length;
+            console.log(`✅ Fixed Firebase batch: ${batchItems.length} records (total: ${appliedCount})`);
+        }
+        // Now sync to Algolia
+        console.log(`   Syncing ${appliedCount} fixes to Algolia...`);
+        const algoliaUpdates = updates.map(item => ({
+            ...item,
+            updatedAt: new Date().toISOString(),
+        }));
+        const batchSize = 1000;
+        for (let i = 0; i < algoliaUpdates.length; i += batchSize) {
+            const batch = algoliaUpdates.slice(i, i + batchSize);
+            await client.partialUpdateObjects({
+                indexName,
+                objects: batch,
+                createIfNotExists: true,
+            });
+            console.log(`   Synced Algolia batch: ${batch.length} records`);
+        }
+    }
+    return appliedCount;
+}
 // Legitimate foreign food terms that should NOT be flagged as misspellings
 const FOREIGN_FOOD_TERMS = new Set([
     // French terms
@@ -684,6 +762,189 @@ exports.batchUpdateFoods = functions
     }
 });
 /**
+ * Batch update and delete foods - Firebase-first approach
+ * Updates Firebase Firestore first (source of truth), then syncs to Algolia
+ * For Algolia-only indices, updates Algolia directly
+ */
+exports.batchUpdateFoodsWithFirebase = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .https.onRequest(async (req, res) => {
+    // CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(200).send();
+        return;
+    }
+    try {
+        const { indexName, updates, deletes } = req.body;
+        if (!indexName) {
+            res.status(400).json({ success: false, error: 'Index name is required' });
+            return;
+        }
+        const adminKey = getAlgoliaAdminKey();
+        if (!adminKey) {
+            res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+            return;
+        }
+        console.log(`📝 Batch update (Firebase-first) for index: ${indexName}`);
+        console.log(`   Updates: ${updates?.length || 0}, Deletes: ${deletes?.length || 0}`);
+        // Algolia-only indices (no Firebase backing)
+        const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+        // Map Algolia index names to Firestore collection names
+        const indexToCollection = {
+            'verified_foods': 'verifiedFoods',
+            'foods': 'foods',
+            'manual_foods': 'manualFoods',
+            'user_added': 'userAdded',
+            'ai_enhanced': 'aiEnhanced',
+            'ai_manually_added': 'aiManuallyAdded',
+            'tescoProducts': 'tesco_products',
+            'tesco_products': 'tesco_products',
+        };
+        let updatedCount = 0;
+        let deletedCount = 0;
+        const isAlgoliaOnly = ALGOLIA_ONLY_INDICES.includes(indexName);
+        if (isAlgoliaOnly) {
+            // For Algolia-only indices, update Algolia directly (original behavior)
+            console.log(`   Index ${indexName} is Algolia-only, updating Algolia directly`);
+            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+            // Apply updates
+            if (updates && Array.isArray(updates) && updates.length > 0) {
+                const objects = updates.map((u) => ({
+                    objectID: u.objectID,
+                    ...u.changes,
+                }));
+                const batchSize = 1000;
+                for (let i = 0; i < objects.length; i += batchSize) {
+                    const batch = objects.slice(i, i + batchSize);
+                    await client.partialUpdateObjects({
+                        indexName,
+                        objects: batch,
+                        createIfNotExists: false,
+                    });
+                    updatedCount += batch.length;
+                    console.log(`   Updated Algolia batch: ${batch.length} records`);
+                }
+            }
+            // Apply deletes
+            if (deletes && Array.isArray(deletes) && deletes.length > 0) {
+                const batchSize = 1000;
+                for (let i = 0; i < deletes.length; i += batchSize) {
+                    const batch = deletes.slice(i, i + batchSize);
+                    await client.deleteObjects({
+                        indexName,
+                        objectIDs: batch,
+                    });
+                    deletedCount += batch.length;
+                    console.log(`   Deleted Algolia batch: ${batch.length} records`);
+                }
+            }
+        }
+        else {
+            // For Firebase-backed indices, update Firebase first
+            const collectionName = indexToCollection[indexName] || indexName;
+            console.log(`   Index ${indexName} is Firebase-backed, updating collection: ${collectionName}`);
+            const admin = require('firebase-admin');
+            const db = admin.firestore();
+            const batch = db.batch();
+            let operationCount = 0;
+            const MAX_BATCH_SIZE = 500; // Firestore batch limit
+            // Helper to commit and reset batch
+            const commitBatch = async () => {
+                if (operationCount > 0) {
+                    await batch.commit();
+                    console.log(`   Committed Firestore batch: ${operationCount} operations`);
+                    operationCount = 0;
+                }
+            };
+            // Apply updates to Firebase
+            if (updates && Array.isArray(updates) && updates.length > 0) {
+                for (const update of updates) {
+                    const { objectID, changes } = update;
+                    const docRef = db.collection(collectionName).doc(objectID);
+                    // Add server timestamp
+                    const updateData = {
+                        ...changes,
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    };
+                    batch.set(docRef, updateData, { merge: true });
+                    operationCount++;
+                    updatedCount++;
+                    // Commit batch if we hit the limit
+                    if (operationCount >= MAX_BATCH_SIZE) {
+                        await commitBatch();
+                    }
+                }
+            }
+            // Apply deletes to Firebase
+            if (deletes && Array.isArray(deletes) && deletes.length > 0) {
+                for (const objectID of deletes) {
+                    const docRef = db.collection(collectionName).doc(objectID);
+                    batch.delete(docRef);
+                    operationCount++;
+                    deletedCount++;
+                    // Commit batch if we hit the limit
+                    if (operationCount >= MAX_BATCH_SIZE) {
+                        await commitBatch();
+                    }
+                }
+            }
+            // Commit any remaining operations
+            await commitBatch();
+            // Now sync to Algolia (Firebase triggers should handle this automatically, but we'll do it explicitly for reliability)
+            console.log(`   Syncing ${updatedCount + deletedCount} changes to Algolia...`);
+            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+            // Sync updates to Algolia
+            if (updates && Array.isArray(updates) && updates.length > 0) {
+                const objects = updates.map((u) => ({
+                    objectID: u.objectID,
+                    ...u.changes,
+                    updatedAt: new Date().toISOString(),
+                }));
+                const batchSize = 1000;
+                for (let i = 0; i < objects.length; i += batchSize) {
+                    const batch = objects.slice(i, i + batchSize);
+                    await client.partialUpdateObjects({
+                        indexName,
+                        objects: batch,
+                        createIfNotExists: true,
+                    });
+                    console.log(`   Synced Algolia batch: ${batch.length} records`);
+                }
+            }
+            // Sync deletes to Algolia
+            if (deletes && Array.isArray(deletes) && deletes.length > 0) {
+                const batchSize = 1000;
+                for (let i = 0; i < deletes.length; i += batchSize) {
+                    const batch = deletes.slice(i, i + batchSize);
+                    await client.deleteObjects({
+                        indexName,
+                        objectIDs: batch,
+                    });
+                    console.log(`   Deleted from Algolia: ${batch.length} records`);
+                }
+            }
+        }
+        console.log(`✅ Batch update complete: ${updatedCount} updated, ${deletedCount} deleted`);
+        res.json({
+            success: true,
+            updated: updatedCount,
+            deleted: deletedCount,
+            mode: isAlgoliaOnly ? 'algolia-only' : 'firebase-first',
+        });
+    }
+    catch (error) {
+        console.error('❌ Error in batch update:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to batch update',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
  * Fix kJ+kcal combined calories in an Algolia index
  * Scans for impossibly high calorie values that are actually kJ and kcal concatenated,
  * then fixes them by extracting the correct kcal value.
@@ -760,18 +1021,8 @@ exports.fixKjKcalCombinedCalories = functions
                 objectID: item.objectID,
                 calories: item.newCalories,
             }));
-            // Process in batches of 1000
-            const batchSize = 1000;
-            for (let i = 0; i < updates.length; i += batchSize) {
-                const batch = updates.slice(i, i + batchSize);
-                await client.partialUpdateObjects({
-                    indexName,
-                    objects: batch,
-                    createIfNotExists: false,
-                });
-                fixedCount += batch.length;
-                console.log(`✅ Fixed batch: ${batch.length} records (total: ${fixedCount})`);
-            }
+            // Use Firebase-first approach (updates Firebase, then syncs to Algolia)
+            fixedCount = await applyBatchUpdatesFirebaseFirst(indexName, updates, client);
         }
         res.json({
             success: true,
@@ -1549,18 +1800,8 @@ exports.fixSimpleIngredients = functions
                 ingredients: item.ingredients,
                 extractedIngredients: item.ingredients,
             }));
-            // Process in batches of 1000
-            const batchSize = 1000;
-            for (let i = 0; i < updates.length; i += batchSize) {
-                const batch = updates.slice(i, i + batchSize);
-                await client.partialUpdateObjects({
-                    indexName,
-                    objects: batch,
-                    createIfNotExists: false,
-                });
-                fixedCount += batch.length;
-                console.log(`✅ Fixed batch: ${batch.length} records (total: ${fixedCount})`);
-            }
+            // Use Firebase-first approach (updates Firebase, then syncs to Algolia)
+            fixedCount = await applyBatchUpdatesFirebaseFirst(indexName, updates, client);
         }
         // Group items by category for the response
         const byCategory = {};
@@ -1816,18 +2057,8 @@ exports.fixHtmlCode = functions
                 }
                 return update;
             });
-            // Process in batches of 1000
-            const batchSize = 1000;
-            for (let i = 0; i < updates.length; i += batchSize) {
-                const batch = updates.slice(i, i + batchSize);
-                await client.partialUpdateObjects({
-                    indexName,
-                    objects: batch,
-                    createIfNotExists: false,
-                });
-                fixedCount += batch.length;
-                console.log(`✅ Fixed batch: ${batch.length} records (total: ${fixedCount})`);
-            }
+            // Use Firebase-first approach (updates Firebase, then syncs to Algolia)
+            fixedCount = await applyBatchUpdatesFirebaseFirst(indexName, updates, client);
         }
         // Group by field for response
         const byField = { name: 0, brand: 0, ingredients: 0 };
@@ -2052,19 +2283,9 @@ exports.rescanProducts = functions
                 .filter(item => item.status === 'found' && item.newData)
                 .map(item => item.newData);
             if (updates.length > 0) {
-                console.log(`📝 Applying ${updates.length} updates to Algolia`);
-                // Process in batches of 1000
-                const batchSize = 1000;
-                for (let i = 0; i < updates.length; i += batchSize) {
-                    const batch = updates.slice(i, i + batchSize);
-                    await client.partialUpdateObjects({
-                        indexName,
-                        objects: batch,
-                        createIfNotExists: false,
-                    });
-                    updatedCount += batch.length;
-                    console.log(`✅ Updated batch: ${batch.length} records (total: ${updatedCount})`);
-                }
+                console.log(`📝 Applying ${updates.length} updates with Firebase-first approach`);
+                // Use Firebase-first approach (updates Firebase, then syncs to Algolia)
+                updatedCount = await applyBatchUpdatesFirebaseFirst(indexName, updates, client);
             }
         }
         return {

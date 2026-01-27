@@ -272,14 +272,81 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   // Scrape nutrition data from Google Search - fetches and parses actual page content
   const scrapeNutritionData = async (food: FoodWithImage): Promise<NutritionData | null> => {
     try {
+      // STEP 0: Try Open Food Facts API directly if we have a barcode
+      // This is the most reliable source for per-serving data
+      if (food.barcode) {
+        console.log(`🔍 Trying Open Food Facts API with barcode: ${food.barcode}`);
+        try {
+          const offResponse = await fetch(`https://world.openfoodfacts.org/api/v2/product/${food.barcode}.json`, {
+            headers: { 'Accept': 'application/json' },
+          });
+
+          if (offResponse.ok) {
+            const offData = await offResponse.json();
+            if (offData.status === 1 && offData.product) {
+              const product = offData.product;
+              const nutriments = product.nutriments || {};
+
+              // Check if we have per-serving data
+              const hasServingData = nutriments['energy-kcal_serving'] !== undefined ||
+                                     nutriments.energy_serving !== undefined;
+
+              if (hasServingData || nutriments['energy-kcal_100g'] !== undefined) {
+                // Prefer per-serving values, fall back to per-100g
+                const useServing = hasServingData;
+                const suffix = useServing ? '_serving' : '_100g';
+
+                // Get serving size
+                let servingSize: string | undefined;
+                if (product.serving_size) {
+                  servingSize = product.serving_size;
+                } else if (product.serving_quantity) {
+                  servingSize = `${product.serving_quantity}g`;
+                }
+
+                const nutritionData: NutritionData = {
+                  calories: nutriments[`energy-kcal${suffix}`] || (nutriments[`energy${suffix}`] ? nutriments[`energy${suffix}`] / 4.184 : undefined),
+                  protein: nutriments[`proteins${suffix}`],
+                  carbs: nutriments[`carbohydrates${suffix}`],
+                  fat: nutriments[`fat${suffix}`],
+                  saturatedFat: nutriments[`saturated-fat${suffix}`],
+                  fiber: nutriments[`fiber${suffix}`],
+                  sugar: nutriments[`sugars${suffix}`],
+                  sodium: nutriments[`sodium${suffix}`],
+                  salt: nutriments[`salt${suffix}`],
+                  servingSize,
+                  ingredients: product.ingredients_text_en || product.ingredients_text,
+                  source: `Open Food Facts (${useServing ? 'per serving' : 'per 100g'})`,
+                };
+
+                // Count valid fields
+                const validFields = Object.entries(nutritionData)
+                  .filter(([k, v]) => v !== undefined && k !== 'source' && k !== 'ingredients' && k !== 'servingSize')
+                  .length;
+
+                if (validFields >= 3) {
+                  console.log(`✅ Open Food Facts found ${validFields} nutrition fields (${useServing ? 'per serving' : 'per 100g'})`);
+                  if (servingSize) console.log(`   📏 Serving size: ${servingSize}`);
+                  return nutritionData;
+                }
+              }
+            }
+          }
+          console.log(`   Open Food Facts: No data found for barcode ${food.barcode}`);
+        } catch (offError) {
+          console.log(`   Open Food Facts API error:`, offError);
+        }
+      }
+
+      // STEP 1: Fall back to Google search
       const SEARCHAPI_KEY = import.meta.env.VITE_SEARCHAPI_KEY || '';
       if (!SEARCHAPI_KEY) {
         console.warn('SearchAPI key not configured');
         return null;
       }
 
-      // Build search query for nutrition - specifically request per 100g
-      let query = `${food.brandName || ''} ${food.name} nutrition per 100g`.trim();
+      // Build search query - add "site:openfoodfacts.org" to prioritize Open Food Facts
+      let query = `${food.brandName || ''} ${food.name} nutrition serving size site:openfoodfacts.org OR site:asda.com`.trim();
 
       const params = new URLSearchParams({
         api_key: SEARCHAPI_KEY,
@@ -287,7 +354,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         q: query,
         hl: 'en',
         gl: 'uk',
-        num: '3', // Get top 3 results
+        num: '5', // Get top 5 results (increased from 3)
       });
 
       const response = await fetch(`https://www.searchapi.io/api/v1/search?${params}`, {
@@ -338,8 +405,11 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       // Fetch and parse actual page content from top results
       const organicResults = data.organic_results || [];
       if (organicResults.length > 0) {
-        // Try to fetch actual page content from top 2 results
-        for (let i = 0; i < Math.min(2, organicResults.length); i++) {
+        // Try to fetch actual page content from top 3 results
+        // Keep searching if a site only has per-100g data (we want per-serving)
+        let bestPer100gResult: { data: Partial<NutritionData>; source: string } | null = null;
+
+        for (let i = 0; i < Math.min(3, organicResults.length); i++) {
           const result = organicResults[i];
           const pageUrl = result.link;
 
@@ -364,37 +434,64 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             const pageHtml = await pageResponse.text();
             console.log(`Fetched ${pageHtml.length} bytes from page ${i + 1}`);
 
+            // Check if this page has per-serving data (not just per-100g)
+            // Per-serving can be labeled many ways: "per piece", "per bar", "per 30g", "per slice", "per biscuit", etc.
+            // We look for any "per X" pattern that ISN'T "per 100g"
+            const lowerHtml = pageHtml.toLowerCase();
+            const has100g = /per\s*100\s*g/i.test(lowerHtml);
+
+            // Find ALL "per X" patterns in the page for debugging
+            const allPerMatches = [...lowerHtml.matchAll(/per\s+[^\s<]{1,20}/gi)];
+            console.log(`🔍 Page ${i + 1} - All "per X" patterns found:`, allPerMatches.slice(0, 10).map(m => m[0]));
+
+            // Match "per Xg" where X isn't 100, or "per piece/bar/slice/serving/portion/biscuit/etc"
+            const hasOtherPerColumn = /per\s+(?!100\s*g)(\d+\s*g\b|piece|bar|slice|serving|portion|biscuit|pack|sachet|pot|unit|item|cookie|cracker|tablet|capsule|scoop)/i.test(lowerHtml);
+            const hasServingData = hasOtherPerColumn;
+            const hasOnly100g = has100g && !hasServingData;
+
+            console.log(`🔍 Page ${i + 1} - has100g=${has100g}, hasOtherPerColumn=${hasOtherPerColumn}, hasOnly100g=${hasOnly100g}`);
+
             // Parse HTML to extract nutrition data
             const nutritionData = parseNutritionFromHtml(pageHtml);
 
             if (nutritionData && Object.keys(nutritionData).length > 2) {
-              console.log(`Successfully parsed nutrition from page ${i + 1}:`, nutritionData);
+              const source = new URL(pageUrl).hostname.replace('www.', '');
 
-              // Filter based on user preferences
-              const filteredData: Partial<NutritionData> = { source: new URL(pageUrl).hostname.replace('www.', '') };
+              // If this page has per-serving data, use it immediately
+              if (hasServingData) {
+                console.log(`✅ Page ${i + 1} has per-serving data - using this source`);
 
-              if (scrapeNutrition) {
-                // Include all nutrition fields
-                if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
-                if (nutritionData.protein !== undefined) filteredData.protein = nutritionData.protein;
-                if (nutritionData.carbs !== undefined) filteredData.carbs = nutritionData.carbs;
-                if (nutritionData.fat !== undefined) filteredData.fat = nutritionData.fat;
-                if (nutritionData.saturatedFat !== undefined) filteredData.saturatedFat = nutritionData.saturatedFat;
-                if (nutritionData.fiber !== undefined) filteredData.fiber = nutritionData.fiber;
-                if (nutritionData.sugar !== undefined) filteredData.sugar = nutritionData.sugar;
-                if (nutritionData.sodium !== undefined) filteredData.sodium = nutritionData.sodium;
-                if (nutritionData.salt !== undefined) filteredData.salt = nutritionData.salt;
+                // Filter based on user preferences
+                const filteredData: Partial<NutritionData> = { source };
+
+                if (scrapeNutrition) {
+                  if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
+                  if (nutritionData.protein !== undefined) filteredData.protein = nutritionData.protein;
+                  if (nutritionData.carbs !== undefined) filteredData.carbs = nutritionData.carbs;
+                  if (nutritionData.fat !== undefined) filteredData.fat = nutritionData.fat;
+                  if (nutritionData.saturatedFat !== undefined) filteredData.saturatedFat = nutritionData.saturatedFat;
+                  if (nutritionData.fiber !== undefined) filteredData.fiber = nutritionData.fiber;
+                  if (nutritionData.sugar !== undefined) filteredData.sugar = nutritionData.sugar;
+                  if (nutritionData.sodium !== undefined) filteredData.sodium = nutritionData.sodium;
+                  if (nutritionData.salt !== undefined) filteredData.salt = nutritionData.salt;
+                }
+
+                if (scrapeServingSize && nutritionData.servingSize) {
+                  filteredData.servingSize = nutritionData.servingSize;
+                }
+
+                if (scrapeIngredients && nutritionData.ingredients) {
+                  filteredData.ingredients = nutritionData.ingredients;
+                }
+
+                return filteredData as NutritionData;
               }
 
-              if (scrapeServingSize && nutritionData.servingSize) {
-                filteredData.servingSize = nutritionData.servingSize;
+              // If only per-100g, save as fallback but keep searching
+              if (hasOnly100g && !bestPer100gResult) {
+                console.log(`⚠️ Page ${i + 1} only has per-100g data - saving as fallback, trying next site...`);
+                bestPer100gResult = { data: nutritionData, source };
               }
-
-              if (scrapeIngredients && nutritionData.ingredients) {
-                filteredData.ingredients = nutritionData.ingredients;
-              }
-
-              return filteredData as NutritionData;
             } else {
               console.log(`Insufficient nutrition data from page ${i + 1}: ${Object.keys(nutritionData || {}).length} fields`);
             }
@@ -402,6 +499,35 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             console.log(`Failed to fetch page ${i + 1}:`, pageError instanceof Error ? pageError.message : 'Unknown error');
             continue;
           }
+        }
+
+        // If no per-serving data found but we have per-100g fallback, use it
+        if (bestPer100gResult) {
+          console.log(`📊 No per-serving data found in 3 sites - using per-100g fallback from ${bestPer100gResult.source}`);
+          const filteredData: Partial<NutritionData> = { source: bestPer100gResult.source + ' (per 100g)' };
+
+          if (scrapeNutrition) {
+            const nutritionData = bestPer100gResult.data;
+            if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
+            if (nutritionData.protein !== undefined) filteredData.protein = nutritionData.protein;
+            if (nutritionData.carbs !== undefined) filteredData.carbs = nutritionData.carbs;
+            if (nutritionData.fat !== undefined) filteredData.fat = nutritionData.fat;
+            if (nutritionData.saturatedFat !== undefined) filteredData.saturatedFat = nutritionData.saturatedFat;
+            if (nutritionData.fiber !== undefined) filteredData.fiber = nutritionData.fiber;
+            if (nutritionData.sugar !== undefined) filteredData.sugar = nutritionData.sugar;
+            if (nutritionData.sodium !== undefined) filteredData.sodium = nutritionData.sodium;
+            if (nutritionData.salt !== undefined) filteredData.salt = nutritionData.salt;
+          }
+
+          if (scrapeServingSize && bestPer100gResult.data.servingSize) {
+            filteredData.servingSize = bestPer100gResult.data.servingSize;
+          }
+
+          if (scrapeIngredients && bestPer100gResult.data.ingredients) {
+            filteredData.ingredients = bestPer100gResult.data.ingredients;
+          }
+
+          return filteredData as NutritionData;
         }
 
         // Fallback: parse from search snippets if page scraping failed
@@ -494,12 +620,15 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     }
     console.log(`⏭️ Step 1 complete: ${Object.keys(nutritionData).length} fields from JSON-LD (need 3+ for early return)`);
 
-    // STEP 2: Look for "per 100g" or "per serving" sections with nearby nutrition values
-    console.log(`📋 Step 2: Checking for "per 100g" sections...`);
+    // STEP 2: Look for "per serving/piece/bar/etc" sections with nearby nutrition values (prefer over per 100g)
+    console.log(`📋 Step 2: Checking for per-serving sections (per piece, per bar, per 30g, etc)...`);
     // This catches nutrition tables where values are in a structured format
-    const per100gSection = lowerHtml.match(/(per\s*100\s*g[^<]*?(?:<[^>]+>[^<]*?){0,50}?(?:calories|kcal|energy|protein|fat|carb)[^<]*?(?:<[^>]+>[^<]*?){0,100})/gis);
-    if (per100gSection) {
-      const sectionText = per100gSection[0];
+    // Prioritize any "per X" that isn't "per 100g" - could be per piece, per bar, per 30g, etc.
+    const perServingSection = lowerHtml.match(/(per\s+(?!100\s*g)(?:\d+\s*g|piece|bar|slice|serving|portion|biscuit|pack|sachet|pot|unit|item)[^<]*?(?:<[^>]+>[^<]*?){0,50}?(?:calories|kcal|energy|protein|fat|carb)[^<]*?(?:<[^>]+>[^<]*?){0,100})/gis);
+    const per100gSection = !perServingSection ? lowerHtml.match(/(per\s*100\s*g[^<]*?(?:<[^>]+>[^<]*?){0,50}?(?:calories|kcal|energy|protein|fat|carb)[^<]*?(?:<[^>]+>[^<]*?){0,100})/gis) : null;
+    const nutritionSection = perServingSection || per100gSection;
+    if (nutritionSection) {
+      const sectionText = nutritionSection[0];
       // Extract all numbers followed by units from this section
       const matches = sectionText.matchAll(/(\w+)[:\s]*(\d+(?:\.\d+)?)\s*(g|mg|kcal)?/gi);
       for (const match of matches) {
@@ -530,7 +659,75 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     console.log(`⏭️ Step 2 complete: ${Object.keys(nutritionData).length} fields total`);
 
     // STEP 2.5: Extract from HTML tables (common on product pages)
-    console.log(`📋 Step 2.5: Extracting from HTML tables...`);
+    // Simple approach: Find all "per X" headers. If one is "per 100g", use the other one.
+    console.log(`📋 Step 2.5: Extracting from HTML tables (looking for per-serving column)...`);
+
+    // Find all "per ..." patterns in the HTML and their column positions
+    const allPerMatches = [...lowerHtml.matchAll(/per\s+(\d+\s*g|100\s*g|\w+)/gi)];
+    const perHeaders: { text: string; is100g: boolean }[] = [];
+
+    for (const match of allPerMatches) {
+      const fullMatch = match[0].toLowerCase();
+      const is100g = /per\s*100\s*g/i.test(fullMatch);
+      // Avoid duplicates
+      if (!perHeaders.find(h => h.text === fullMatch)) {
+        perHeaders.push({ text: fullMatch, is100g });
+      }
+    }
+
+    console.log(`   Found ${perHeaders.length} "per" headers:`, perHeaders.map(h => h.text));
+
+    // Find column indices by scanning table headers
+    let servingColumnIndex = -1;
+    let per100gColumnIndex = -1;
+    let servingColumnExplicitlyFound = false; // Track if we found a real "per piece" etc header
+
+    const allRows = [...html.matchAll(/<tr[^>]*>(.*?)<\/tr>/gis)];
+    for (const rowMatch of allRows) {
+      const rowHtml = rowMatch[1];
+      const cells = [...rowHtml.matchAll(/<t[dh][^>]*>(.*?)<\/t[dh]>/gis)];
+
+      for (let idx = 0; idx < cells.length; idx++) {
+        // Strip HTML tags to get plain text
+        const cellText = cells[idx][1].replace(/<[^>]*>/g, ' ').toLowerCase().trim();
+        console.log(`      Cell ${idx}: "${cellText.substring(0, 50)}"`);
+
+        // Match "per 100g" or "for 100g" or "100 g" or "per: 100g" patterns
+        if (/(?:per|for)[:\s]*100\s*g/i.test(cellText) || /\b100\s*g\b/i.test(cellText)) {
+          per100gColumnIndex = idx;
+          console.log(`   Found "per 100g" in column ${idx}`);
+        } else if (/(?:per|for)[:\s]+(?!100\s*g)/i.test(cellText) && !/per\s*kg/i.test(cellText) && !/inspiration/i.test(cellText)) {
+          // This is a "per X" or "for X" that isn't "per 100g" - this is our serving column
+          // Handles "per piece", "per: 1 gyoza", "for serving", etc.
+          servingColumnIndex = idx;
+          servingColumnExplicitlyFound = true;
+          console.log(`   Found serving column "${cellText.substring(0, 30)}" in column ${idx}`);
+        }
+      }
+      // Stop after finding both
+      if (per100gColumnIndex >= 0 && servingColumnIndex >= 0) break;
+    }
+
+    // If we found per 100g but not the other serving column explicitly,
+    // the serving column is likely the one AFTER per 100g
+    if (per100gColumnIndex >= 0 && servingColumnIndex < 0) {
+      servingColumnIndex = per100gColumnIndex + 1;
+      console.log(`   Inferring serving column as ${servingColumnIndex} (next after per 100g)`);
+    }
+
+    const isMultiColumnTable = per100gColumnIndex >= 0;
+
+    // CRITICAL: Check if the serving column is just an inference or was actually found in headers
+    // Only mark as inferred if we did NOT explicitly find a serving column header
+    const servingColumnWasInferred = servingColumnIndex >= 0 && !servingColumnExplicitlyFound;
+
+    console.log(`   Table structure: servingCol=${servingColumnIndex}, per100gCol=${per100gColumnIndex}, isMultiColumn=${isMultiColumnTable}, servingColInferred=${servingColumnWasInferred}`);
+
+    // Track if we actually found data in the serving column
+    // If we inferred a serving column but data rows don't have it, we should NOT extract per-100g values
+    let foundAnyServingData = false;
+    let servingColumnMissing = false;
+
     // Look for <tr> rows with nutrition labels and values
     const tableMatches = html.matchAll(/<tr[^>]*>(.*?)<\/tr>/gis);
     for (const tableMatch of tableMatches) {
@@ -541,55 +738,110 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       const hasNutritionLabel = /calor|kcal|protein|carb|fat|sugar|fib|sodium|salt/i.test(rowLower);
       if (!hasNutritionLabel) continue;
 
-      // Extract all numbers from the row
-      const numbers = [...rowHtml.matchAll(/(\d+(?:\.\d+)?)\s*(g|mg|kcal)?/gi)];
-      if (numbers.length === 0) continue;
+      // Extract all cells from the row
+      const cells = [...rowHtml.matchAll(/<t[dh][^>]*>(.*?)<\/t[dh]>/gis)];
 
-      // Get the primary number (usually the first significant one)
-      let value = 0;
-      for (const numMatch of numbers) {
-        const num = parseFloat(numMatch[1]);
-        if (num > 0 && num < 10000) { // Sanity check
-          value = num;
-          break;
+      // Extract numbers from each cell, keeping track of their positions
+      const cellData: { index: number; value: number; text: string }[] = [];
+      for (let idx = 0; idx < cells.length; idx++) {
+        const cellContent = cells[idx][1];
+        const numMatch = cellContent.match(/(\d+(?:\.\d+)?)/);
+        if (numMatch) {
+          cellData.push({ index: idx, value: parseFloat(numMatch[1]), text: cellContent });
         }
       }
 
-      if (value === 0) continue;
+      if (cellData.length === 0) continue;
+
+      // Debug: Log all cell data for this row
+      console.log(`   Row cells: ${cellData.map(c => `[${c.index}]=${c.value}`).join(', ')}`);
+
+      // Determine which value to use based on column detection
+      let value = 0;
+
+      if (servingColumnIndex >= 0) {
+        // We know exactly which column is the serving column
+        const servingCell = cellData.find(c => c.index === servingColumnIndex);
+        if (servingCell) {
+          value = servingCell.value;
+          foundAnyServingData = true;
+          console.log(`   ✓ Using serving column ${servingColumnIndex}: ${value}`);
+        } else {
+          // The serving column doesn't exist in this data row
+          // This means the table only has per-100g data - DO NOT use any values
+          servingColumnMissing = true;
+          console.log(`   ⚠️ Serving column ${servingColumnIndex} doesn't exist in data row (cells: ${cellData.map(c => c.index).join(',')}) - skipping row to avoid per-100g`);
+          continue; // Skip this row entirely
+        }
+      } else if (per100gColumnIndex >= 0 && cellData.length >= 2) {
+        // We know which column is 100g, so use the OTHER column
+        const nonPer100gCell = cellData.find(c => c.index !== per100gColumnIndex);
+        if (nonPer100gCell) {
+          value = nonPer100gCell.value;
+          foundAnyServingData = true;
+          console.log(`   ✓ Using non-100g column ${nonPer100gCell.index}: ${value}`);
+        }
+      } else if (isMultiColumnTable && cellData.length >= 2) {
+        // Fallback: assume second numeric value is per-serving
+        value = cellData[1].value;
+        foundAnyServingData = true;
+        console.log(`   ✓ Fallback: using second value: ${value}`);
+      } else {
+        // Single column: DON'T take per-100g values - we want per-serving only
+        // Skip this extraction since it's likely per-100g data
+        console.log(`   ⚠️ Single-column table (likely per-100g only) - skipping to find per-serving data`);
+        continue;
+      }
+
+      if (value === 0 || value >= 10000) continue;
 
       // Match to nutrient based on label in row
       if (!nutritionData.calories && /calor|kcal|energy/i.test(rowLower)) {
-        if (value <= 900) nutritionData.calories = value;
+        if (value <= 2000) nutritionData.calories = value; // Per serving can be higher than 900
       } else if (!nutritionData.protein && /protein/i.test(rowLower)) {
-        if (value <= 100) nutritionData.protein = value;
+        if (value <= 200) nutritionData.protein = value;
       } else if (!nutritionData.carbs && /carb/i.test(rowLower) && !/fib/i.test(rowLower)) {
-        if (value <= 100) nutritionData.carbs = value;
+        if (value <= 200) nutritionData.carbs = value;
       } else if (!nutritionData.fat && /\bfat\b/i.test(rowLower) && !/saturat/i.test(rowLower)) {
-        if (value <= 100) nutritionData.fat = value;
+        if (value <= 200) nutritionData.fat = value;
       } else if (!nutritionData.saturatedFat && /saturat/i.test(rowLower)) {
         if (value <= 100) nutritionData.saturatedFat = value;
       } else if (!nutritionData.sugar && /sugar/i.test(rowLower)) {
-        if (value <= 100) nutritionData.sugar = value;
+        if (value <= 200) nutritionData.sugar = value;
       } else if (!nutritionData.fiber && /fib/i.test(rowLower)) {
-        if (value <= 50) nutritionData.fiber = value;
+        if (value <= 100) nutritionData.fiber = value;
       } else if (!nutritionData.sodium && /sodium/i.test(rowLower)) {
-        if (value <= 5000) nutritionData.sodium = value;
+        if (value <= 10000) nutritionData.sodium = value;
       } else if (!nutritionData.salt && /\bsalt\b/i.test(rowLower) && !/unsalt/i.test(rowLower)) {
-        if (value <= 10) nutritionData.salt = value;
+        if (value <= 20) nutritionData.salt = value;
       }
     }
 
-    // Extract serving size - look for multiple patterns (if not already found)
+    // Log whether we found per-serving data from the table
+    // CRITICAL: If we detected a multi-column table but couldn't extract from serving column,
+    // this page only has per-100g data in the table - don't proceed with aggressive extraction
+    let skipAggressiveExtraction = false;
+    if (servingColumnMissing && !foundAnyServingData) {
+      console.log(`   ⚠️ Table has per-100g column but inferred serving column doesn't exist in data rows - NO per-serving data extracted`);
+      skipAggressiveExtraction = true;
+    } else if (foundAnyServingData) {
+      console.log(`   ✅ Successfully extracted per-serving data from table`);
+    }
+
+    // Extract serving size - look for actual serving patterns only (NOT pack size/weight)
+    // Pack size ≠ serving size - a 350g pack doesn't mean 350g per serving
     if (!nutritionData.servingSize) {
       const servingSizePatterns = [
         /serving\s+size[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
-        /pack\s+size[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
-        /net\s+(?:weight|contents?)[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
-        /per\s+(?:pack|portion|serving)[:\s]*(\d+(?:\.\d+)?)\s*(g|ml)/gi,
-        /(?:bottle|can|pack)[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz|fl\s*oz)/gi,
-        /(\d+(?:\.\d+)?)\s*(g|ml|oz)\s+(?:pack|bottle|can|serving|bar|pot)/gi,
+        /per\s+serving[:\s]*(\d+(?:\.\d+)?)\s*(g|ml)/gi,
+        /per\s+portion[:\s]*(\d+(?:\.\d+)?)\s*(g|ml)/gi,
+        /recommended\s+serving[:\s]*(\d+(?:\.\d+)?)\s*(g|ml)/gi,
+        /typical\s+serving[:\s]*(\d+(?:\.\d+)?)\s*(g|ml)/gi,
         /serves?\s+(\d+(?:\.\d+)?)\s*(g|ml)/gi,
-        /weight[:\s]*(\d+(?:\.\d+)?)\s*(g|ml|oz)/gi,
+        // UK supermarket table header patterns like "per piece (5 g)" or "per portion (20 g)"
+        /per\s+(?:piece|portion|bar|slice|biscuit|serving)\s*\((\d+(?:\.\d+)?)\s*(g|ml)\)/gi,
+        // Note: Removed pack size, net weight, bottle, can, weight patterns
+        // These are PACK sizes, not serving sizes
       ];
 
       for (const pattern of servingSizePatterns) {
@@ -611,6 +863,14 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     console.log(`⏭️ Step 2.5 complete: ${Object.keys(nutritionData).length} fields total`);
 
     // STEP 3: Aggressive pattern matching for individual nutrients
+    // SKIP this step if we detected a multi-column table but couldn't find the serving column
+    // (This means the page only has per-100g data in usable format)
+    if (skipAggressiveExtraction) {
+      console.log(`⏭️ Step 3: SKIPPED - page appears to have per-100g only, trying next site instead`);
+      console.log(`⏭️ Returning with ${Object.keys(nutritionData).length} fields (may be insufficient to trigger fallback)`);
+      return nutritionData;
+    }
+
     console.log(`📋 Step 3: Aggressive pattern matching for nutrients...`);
     // Calories - look for various patterns (if not already found)
     if (!nutritionData.calories) {
@@ -1815,7 +2075,48 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             sugar: nutritionData.sugar,
             sodium: nutritionData.sodium,
             salt: nutritionData.salt,
-            servingSizeG: nutritionData.servingSize,
+            // Parse serving size - extract grams and description separately
+            // e.g., "5 gyoza (100 g)" → servingSizeG: 100, servingDescription: "5 gyoza"
+            // e.g., "1 pack (168 g)" → servingSizeG: 168, servingDescription: "1 pack"
+            // e.g., "30g" → servingSizeG: 30, servingDescription: "per serving"
+            ...(() => {
+              const servingStr = nutritionData.servingSize;
+              if (!servingStr) return {};
+
+              // Try to extract grams from parentheses: "5 gyoza (100 g)" → 100
+              const parenMatch = String(servingStr).match(/\((\d+(?:\.\d+)?)\s*g\)/i);
+              if (parenMatch) {
+                const grams = parseFloat(parenMatch[1]);
+                // Description is everything before the parentheses, trimmed
+                const desc = String(servingStr).replace(/\s*\(\d+(?:\.\d+)?\s*g\)\s*/i, '').trim();
+                return {
+                  servingSizeG: grams,
+                  servingDescription: desc || 'per serving',
+                };
+              }
+
+              // Try plain number with g: "30g" or "30 g" → 30
+              const plainMatch = String(servingStr).match(/^(\d+(?:\.\d+)?)\s*g$/i);
+              if (plainMatch) {
+                return {
+                  servingSizeG: parseFloat(plainMatch[1]),
+                  servingDescription: 'per serving',
+                };
+              }
+
+              // If it's just a number, use it as grams
+              if (typeof servingStr === 'number') {
+                return {
+                  servingSizeG: servingStr,
+                  servingDescription: 'per serving',
+                };
+              }
+
+              // Otherwise store as description only (no grams found)
+              return {
+                servingDescription: String(servingStr),
+              };
+            })(),
             ingredients: nutritionData.ingredients,
           };
 

@@ -1885,8 +1885,8 @@ function parseAIResponse(content: string, foods: Array<{ id: string; name: strin
 
     // Determine final serving size and source using tiered logic:
     // T0: If DB serving is within tolerance → use it
-    // T1: If pack size < category default → use pack size (prevents over-portioning)
     // T2: Otherwise → use category default
+    // NOTE: Pack size from name is NOT used for serving suggestions (pack size ≠ serving size)
     let suggestedServingG: number;
     let servingSource: 'validated' | 'pack_size' | 'category_default';
 
@@ -1894,13 +1894,8 @@ function parseAIResponse(content: string, foods: Array<{ id: string; name: strin
       // T0: Database serving is valid
       suggestedServingG = food.servingSizeG;
       servingSource = 'validated';
-    } else if (packSizeG !== null && packSizeG < category.defaultServingG && packSizeG >= category.toleranceMin) {
-      // T1: Pack size is UNDER category default and at least the minimum tolerance
-      // This prevents over-portioning (e.g., 250g pack shouldn't suggest 400g serving)
-      suggestedServingG = packSizeG;
-      servingSource = 'pack_size';
     } else {
-      // T2: Use category default
+      // T2: Use category default (pack size from name is NOT a valid serving size)
       suggestedServingG = category.defaultServingG;
       servingSource = 'category_default';
     }
