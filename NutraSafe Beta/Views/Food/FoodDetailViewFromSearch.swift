@@ -295,7 +295,8 @@ struct FoodDetailViewFromSearch: View {
                 processingGrade: food.processingGrade,
                 processingLabel: food.processingLabel,
                 barcode: food.barcode,
-                micronutrientProfile: food.micronutrientProfile
+                micronutrientProfile: food.micronutrientProfile,
+                imageUrl: food.imageUrl  // Preserve image when enhancing
             )
         }
         return food

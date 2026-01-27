@@ -1635,7 +1635,8 @@ struct AddFoodSearchView: View {
             processingGrade: ns.grade,
             processingLabel: ns.label,
             barcode: base.barcode,
-            micronutrientProfile: base.micronutrientProfile
+            micronutrientProfile: base.micronutrientProfile,
+            imageUrl: base.imageUrl // Preserve image from diary
         )
     }
     
