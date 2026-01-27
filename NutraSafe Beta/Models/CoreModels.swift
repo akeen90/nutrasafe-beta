@@ -542,7 +542,9 @@ class DiaryDataManager: ObservableObject {
             additives: item.additives,
             barcode: item.barcode,
             micronutrientProfile: item.micronutrientProfile,
-            isPerUnit: item.isPerUnit
+            isPerUnit: item.isPerUnit,
+            imageUrl: item.imageUrl,
+            portions: item.portions
         )
 
         do {
@@ -589,7 +591,9 @@ class DiaryDataManager: ObservableObject {
                         additives: itemWithCorrectTime.additives,
                         barcode: itemWithCorrectTime.barcode,
                         micronutrientProfile: itemWithCorrectTime.micronutrientProfile,
-                        isPerUnit: itemWithCorrectTime.isPerUnit
+                        isPerUnit: itemWithCorrectTime.isPerUnit,
+                        imageUrl: itemWithCorrectTime.imageUrl,
+                        portions: itemWithCorrectTime.portions
                     )
                     updated[index] = updatedItem
                     return updated
@@ -764,7 +768,9 @@ class DiaryDataManager: ObservableObject {
             additives: item.additives,
             barcode: item.barcode,
             micronutrientProfile: item.micronutrientProfile,
-            isPerUnit: item.isPerUnit
+            isPerUnit: item.isPerUnit,
+            imageUrl: item.imageUrl,
+            portions: item.portions
         )
 
         // Add to new meal (replace if same id already exists, otherwise append)

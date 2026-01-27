@@ -2237,6 +2237,8 @@ struct FoodEntry: Identifiable, Codable {
     let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
     let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
+    let imageUrl: String?  // Product image URL
+    let portions: [PortionOption]?  // Available portion sizes
     let mealType: MealType
     let date: Date
     let dateLogged: Date
@@ -2280,7 +2282,7 @@ struct FoodEntry: Identifiable, Codable {
     init(id: String = UUID().uuidString, userId: String, foodName: String, brandName: String? = nil,
          servingSize: Double, servingUnit: String, calories: Double, protein: Double,
          carbohydrates: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
-         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, mealType: MealType, date: Date, dateLogged: Date = Date(), inferredIngredients: [InferredIngredient]? = nil) {
+         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, imageUrl: String? = nil, portions: [PortionOption]? = nil, mealType: MealType, date: Date, dateLogged: Date = Date(), inferredIngredients: [InferredIngredient]? = nil) {
         self.id = id
         self.userId = userId
         self.foodName = foodName
@@ -2300,6 +2302,8 @@ struct FoodEntry: Identifiable, Codable {
         self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
         self.isPerUnit = isPerUnit
+        self.imageUrl = imageUrl
+        self.portions = portions
         self.mealType = mealType
         self.date = date
         self.dateLogged = dateLogged
@@ -2360,6 +2364,19 @@ struct FoodEntry: Identifiable, Codable {
            let inferredArray = try? JSONSerialization.jsonObject(with: inferredData, options: []) as? [[String: Any]],
            JSONSerialization.isValidJSONObject(inferredArray) {
             dict["inferredIngredients"] = inferredArray
+        }
+
+        // Add imageUrl if available
+        if let imageUrl = imageUrl {
+            dict["imageUrl"] = imageUrl
+        }
+
+        // Add portions if available
+        if let portions = portions,
+           let portionsData = try? JSONEncoder().encode(portions),
+           let portionsArray = try? JSONSerialization.jsonObject(with: portionsData, options: []) as? [[String: Any]],
+           JSONSerialization.isValidJSONObject(portionsArray) {
+            dict["portions"] = portionsArray
         }
 
         return dict
@@ -2432,6 +2449,15 @@ struct FoodEntry: Identifiable, Codable {
         }
         // Note: Don't reject entry if inferredIngredients has wrong type - it's optional
 
+        // Deserialize portions if available (portion options for per-unit foods)
+        var portions: [PortionOption]? = nil
+        if let portionsArray = data["portions"] as? [[String: Any]],
+           JSONSerialization.isValidJSONObject(portionsArray),
+           let portionsData = try? JSONSerialization.data(withJSONObject: portionsArray, options: []) {
+            portions = try? JSONDecoder().decode([PortionOption].self, from: portionsData)
+        }
+        // Note: Don't reject entry if portions has wrong type - it's optional
+
         return FoodEntry(
             id: id,
             userId: userId,
@@ -2452,6 +2478,8 @@ struct FoodEntry: Identifiable, Codable {
             barcode: data["barcode"] as? String,
             micronutrientProfile: micronutrientProfile,
             isPerUnit: data["isPerUnit"] as? Bool,
+            imageUrl: data["imageUrl"] as? String,
+            portions: portions,
             mealType: mealType,
             date: dateTimestamp.dateValue(),
             dateLogged: dateLoggedTimestamp.dateValue(),
@@ -2607,6 +2635,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let micronutrientProfile: MicronutrientProfile?
     let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
     let imageUrl: String?
+    let portions: [PortionOption]?  // Available portion sizes for per-unit foods
 
     // AI-Inferred Meal Analysis: For foods without known ingredient labels
     // These are ESTIMATED exposures and may be incomplete or incorrect
@@ -2643,7 +2672,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         return result
     }
 
-    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, saturatedFat: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, imageUrl: String? = nil, inferredIngredients: [InferredIngredient]? = nil) {
+    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, saturatedFat: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, imageUrl: String? = nil, portions: [PortionOption]? = nil, inferredIngredients: [InferredIngredient]? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -2667,6 +2696,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.micronutrientProfile = micronutrientProfile
         self.isPerUnit = isPerUnit
         self.imageUrl = imageUrl
+        self.portions = portions
         self.inferredIngredients = inferredIngredients
     }
 
@@ -2681,7 +2711,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         case id, name, brand, calories, protein, carbs, fat, fiber, sugar, sodium
         case calcium, saturatedFat, servingDescription, quantity, time
         case processedScore, sugarLevel, ingredients, additives, barcode
-        case micronutrientProfile, isPerUnit, imageUrl, inferredIngredients
+        case micronutrientProfile, isPerUnit, imageUrl, portions, inferredIngredients
     }
 
     init(from decoder: Decoder) throws {
@@ -2713,11 +2743,20 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         micronutrientProfile = try container.decodeIfPresent(MicronutrientProfile.self, forKey: .micronutrientProfile)
         isPerUnit = try container.decodeIfPresent(Bool.self, forKey: .isPerUnit)
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        portions = try container.decodeIfPresent([PortionOption].self, forKey: .portions)
         inferredIngredients = try container.decodeIfPresent([InferredIngredient].self, forKey: .inferredIngredients)
     }
 
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
+        // DEBUG: Check what we have in the diary entry
+        print("🔍 DEBUG toFoodSearchResult:")
+        print("  - name: \(self.name)")
+        print("  - imageUrl: \(self.imageUrl ?? "nil")")
+        print("  - portions: \(self.portions?.count ?? 0) options")
+        print("  - servingDescription: \(self.servingDescription)")
+        print("  - isPerUnit: \(self.isPerUnit ?? false)")
+
         // PERFORMANCE: Set database version to current to prevent re-analysis
         // DiaryFoodItem doesn't store database version, so we set it here to mark as "current"
         let currentVersion = ProcessingScorer.shared.databaseVersion
@@ -2758,6 +2797,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
                 processingLabel: self.processedScore,
                 barcode: self.barcode,
                 micronutrientProfile: self.micronutrientProfile,
+                portions: self.portions, // Preserve portion options (1 piece, 3 pieces, etc.)
                 imageUrl: self.imageUrl // Preserve image when editing
             )
         }
@@ -2789,7 +2829,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             fiber: per100gFiber,
             sugar: per100gSugar,
             sodium: per100gSodium,
-            servingDescription: "\(servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(servingSize)) : String(servingSize))g",
+            servingDescription: self.servingDescription, // Preserve original serving description (e.g., "1 slice (38g)")
             servingSizeG: servingSize,
             isPerUnit: false,
             ingredients: self.ingredients,
@@ -2802,6 +2842,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             processingLabel: self.processedScore,
             barcode: self.barcode,
             micronutrientProfile: self.micronutrientProfile,
+            portions: self.portions, // Preserve portion options
             imageUrl: self.imageUrl // Preserve image when editing
         )
     }
@@ -2901,6 +2942,8 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             barcode: self.barcode,
             micronutrientProfile: self.micronutrientProfile,
             isPerUnit: self.isPerUnit,
+            imageUrl: self.imageUrl,
+            portions: self.portions,
             mealType: mealType,
             date: date,
             dateLogged: Date()
@@ -2948,7 +2991,9 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             additives: entry.additives,
             barcode: entry.barcode,
             micronutrientProfile: entry.micronutrientProfile,
-            isPerUnit: entry.isPerUnit
+            isPerUnit: entry.isPerUnit,
+            imageUrl: entry.imageUrl,
+            portions: entry.portions
         )
     }
 }

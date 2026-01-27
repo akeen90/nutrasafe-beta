@@ -126,7 +126,9 @@ struct MealItem: Identifiable, Codable, Equatable {
             time: mealType,
             ingredients: ingredients,
             barcode: barcode,
-            isPerUnit: isPerUnit
+            isPerUnit: isPerUnit,
+            imageUrl: nil,
+            portions: nil
         )
     }
 

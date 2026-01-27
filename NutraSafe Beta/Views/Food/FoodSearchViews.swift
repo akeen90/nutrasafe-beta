@@ -1066,7 +1066,9 @@ struct FoodSearchResultRowEnhanced: View {
             additives: additivesToSave,  // Use freshly analyzed additives
             barcode: food.barcode,
             micronutrientProfile: food.micronutrientProfile,
-            isPerUnit: food.isPerUnit
+            isPerUnit: food.isPerUnit,
+            imageUrl: food.imageUrl,
+            portions: food.portions
         )
 
         // Get the date (use preselected date if available, otherwise today)

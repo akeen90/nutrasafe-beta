@@ -389,6 +389,8 @@ const AppContent: React.FC = () => {
         onRefresh={loadData}
         onDeleteSelected={handleDeleteSelected}
         onMoveSelected={handleMoveSelected}
+        onReports={() => setCurrentView('reports')}
+        pendingReportsCount={pendingReportsCount}
         isSaving={isSaving}
         isDeleting={isDeleting}
         isMoving={isMoving}

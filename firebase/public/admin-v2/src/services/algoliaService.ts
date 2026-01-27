@@ -417,4 +417,31 @@ export async function getIndexStats(): Promise<Record<AlgoliaIndexName, { entrie
   return stats;
 }
 
+/**
+ * Get a single food by ID from Algolia
+ * Searches all indices to find the food
+ */
+export async function getFoodById(foodId: string): Promise<UnifiedFood | null> {
+  // Try each index until we find the food
+  for (const indexName of ALGOLIA_INDICES) {
+    try {
+      const index = algoliaClient.initIndex(indexName);
+      // Use search with objectID filter instead of getObject
+      const result = await index.search('', {
+        filters: `objectID:${foodId}`,
+        hitsPerPage: 1,
+      });
+
+      if (result.hits.length > 0) {
+        return transformToUnifiedFood(result.hits[0] as Record<string, unknown>, indexName);
+      }
+    } catch (error) {
+      // Object not found in this index, continue to next
+      continue;
+    }
+  }
+
+  return null;
+}
+
 export { algoliaClient };

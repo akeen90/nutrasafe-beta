@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { getFoodById } from '../services/algoliaService';
 
 // Types
 interface FoodReport {
@@ -78,6 +79,7 @@ interface EditableFood {
   sugar: string;
   salt: string;
   saturatedFat: string;
+  imageUrl: string;
 }
 
 // API base URL
@@ -93,6 +95,9 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isApplyingAI, setIsApplyingAI] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [unitMode, setUnitMode] = useState<'g' | 'ml'>('g');
+  const previousPendingCountRef = React.useRef<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Show toast notification
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
@@ -100,28 +105,87 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Convert serving size between g and ml (approximate for liquids)
+  const convertServingSize = (value: number, fromUnit: 'g' | 'ml', toUnit: 'g' | 'ml'): number => {
+    if (fromUnit === toUnit) return value;
+    // For water-based liquids, 1ml ≈ 1g
+    // This is an approximation - actual density varies by food type
+    return value;
+  };
+
+  // Toggle unit mode with conversion
+  const toggleUnitMode = () => {
+    const newMode = unitMode === 'g' ? 'ml' : 'g';
+    setUnitMode(newMode);
+
+    if (editableFood) {
+      // Convert serving size
+      const currentSize = parseFloat(editableFood.servingSizeG) || 0;
+      const convertedSize = convertServingSize(currentSize, editableFood.servingUnit as 'g' | 'ml', newMode);
+
+      setEditableFood({
+        ...editableFood,
+        servingUnit: newMode,
+        servingSizeG: convertedSize.toString(),
+      });
+    }
+
+    showToast(`Switched to ${newMode.toUpperCase()} mode`, 'info');
+  };
+
   // Load reports from API
   const loadReports = useCallback(async () => {
-    setIsLoading(true);
+    const wasInitialLoad = isLoading;
+    if (!wasInitialLoad) {
+      // Don't show loading spinner for auto-refresh
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
       const response = await fetch(`${API_BASE}/getUserReports`);
       const result = await response.json();
       if (result.success) {
-        setReports(result.reports || []);
+        const newReports = result.reports || [];
+        const newPendingCount = newReports.filter((r: FoodReport) => r.status === 'pending').length;
+
+        // Check for new reports
+        if (previousPendingCountRef.current !== null && newPendingCount > previousPendingCountRef.current) {
+          const diff = newPendingCount - previousPendingCountRef.current;
+          showToast(`🔔 ${diff} new report${diff > 1 ? 's' : ''} received!`, 'info');
+        }
+
+        previousPendingCountRef.current = newPendingCount;
+        setReports(newReports);
+        setLastUpdated(new Date());
       } else {
-        showToast('Error loading reports', 'error');
+        if (wasInitialLoad) {
+          showToast('Error loading reports', 'error');
+        }
       }
     } catch (error) {
       console.error('Error loading reports:', error);
-      showToast('Error loading reports', 'error');
+      if (wasInitialLoad) {
+        showToast('Error loading reports', 'error');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isLoading]);
 
   // Initial load
   useEffect(() => {
     loadReports();
+  }, [loadReports]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadReports();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
   }, [loadReports]);
 
   // Filter reports
@@ -140,18 +204,43 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   // Open report detail panel
-  const openReport = (report: FoodReport) => {
+  const openReport = async (report: FoodReport) => {
     setSelectedReport(report);
-    const food = report.food || {};
+
+    // Try to fetch full food data from Algolia to get servingUnit and imageUrl
+    const foodId = report.food?.id || report.food?.objectID || report.foodId;
+    let fullFood = null;
+
+    if (foodId) {
+      try {
+        fullFood = await getFoodById(foodId);
+      } catch (error) {
+        console.error('Error fetching full food from Algolia:', error);
+      }
+    }
+
+    // Use full Algolia data if available, otherwise fall back to cached snapshot
+    const food: any = fullFood || report.food || {};
+    const initialUnit = (food.servingUnit === 'ml' ? 'ml' : 'g') as 'g' | 'ml';
+
+    // Sync unitMode with the food's actual unit
+    setUnitMode(initialUnit);
+
+    // Handle both UnifiedFood (from Algolia) and report.food (from cached snapshot)
+    const brandName = food.brandName || food.brand || report.brandName || '';
+    const ingredientsStr = Array.isArray(food.ingredients)
+      ? food.ingredients.join(', ')
+      : (food.ingredientsText || food.ingredients || '');
+
     setEditableFood({
       name: food.name || report.foodName || '',
-      brandName: food.brand || report.brandName || '',
+      brandName,
       barcode: food.barcode || report.barcode || '',
       servingDescription: food.servingDescription || '',
       servingSizeG: food.servingSizeG?.toString() || '',
-      servingUnit: food.servingUnit || 'g',
+      servingUnit: initialUnit,
       category: food.category || '',
-      ingredients: Array.isArray(food.ingredients) ? food.ingredients.join(', ') : (food.ingredients || ''),
+      ingredients: ingredientsStr,
       calories: food.calories?.toString() || '',
       protein: food.protein?.toString() || '',
       carbs: food.carbs?.toString() || '',
@@ -160,6 +249,7 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       sugar: food.sugar?.toString() || '',
       salt: food.salt?.toString() || '',
       saturatedFat: food.saturatedFat?.toString() || '',
+      imageUrl: food.imageUrl || '',
     });
   };
 
@@ -241,6 +331,7 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           servingUnit: editableFood.servingUnit,
           category: editableFood.category,
           ingredients: editableFood.ingredients.split(',').map(i => i.trim()).filter(i => i),
+          imageUrl: editableFood.imageUrl || null,
           nutrition: {
             calories: parseFloat(editableFood.calories) || null,
             protein: parseFloat(editableFood.protein) || null,
@@ -457,7 +548,17 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </button>
             <div>
               <h1 className="text-xl font-semibold text-gray-900">User Reports</h1>
-              <p className="text-sm text-gray-500">Review and resolve user-submitted food corrections</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-500">Review and resolve user-submitted food corrections</p>
+                {lastUpdated && (
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Updated {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -558,6 +659,17 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   onClick={() => openReport(report)}
                 >
                   <div className="flex items-start gap-3">
+                    {/* Status indicator */}
+                    {report.status === 'pending' && (
+                      <div className="relative flex items-center justify-center w-4 h-4 mt-1">
+                        <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-orange-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                      </div>
+                    )}
+                    {report.status !== 'pending' && (
+                      <div className="w-4 h-4 mt-1" />
+                    )}
+
                     {/* Checkbox */}
                     <input
                       type="checkbox"
@@ -569,6 +681,20 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       onClick={(e) => e.stopPropagation()}
                       className="mt-1 w-4 h-4 text-primary-600 rounded"
                     />
+
+                    {/* Image thumbnail */}
+                    {report.food?.imageUrl && (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={report.food.imageUrl}
+                          alt={report.foodName}
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
@@ -700,11 +826,29 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </div>
               </div>
 
+              {/* Food Image */}
+              {editableFood.imageUrl && (
+                <div className="mb-4 rounded-xl overflow-hidden border border-gray-200">
+                  <img
+                    src={editableFood.imageUrl}
+                    alt={editableFood.name}
+                    className="w-full h-48 object-cover"
+                    onError={(e) => {
+                      // Hide image if it fails to load
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  <div className="p-2 bg-gray-50 text-xs text-gray-600 truncate" title={editableFood.imageUrl}>
+                    {editableFood.imageUrl}
+                  </div>
+                </div>
+              )}
+
               {/* AI Suggestions button */}
               <button
                 onClick={applyAISuggestions}
                 disabled={isApplyingAI}
-                className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors disabled:opacity-50"
+                className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors disabled:opacity-50"
               >
                 {isApplyingAI ? (
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -718,6 +862,32 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 )}
                 {isApplyingAI ? 'Analyzing...' : 'Apply AI Suggestions'}
               </button>
+
+              {/* Unit Mode Toggle */}
+              <div className="mb-6 flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                  </svg>
+                  <div>
+                    <span className="text-sm font-medium text-blue-900">Unit Mode</span>
+                    <p className="text-xs text-blue-600">Current: {unitMode.toUpperCase()}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleUnitMode}
+                  className="relative inline-flex items-center h-7 w-14 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  style={{ backgroundColor: unitMode === 'ml' ? '#3b82f6' : '#9ca3af' }}
+                >
+                  <span
+                    className={`inline-block w-5 h-5 transform rounded-full bg-white transition-transform ${
+                      unitMode === 'ml' ? 'translate-x-8' : 'translate-x-1'
+                    }`}
+                  />
+                  <span className="absolute left-2 text-[10px] font-bold text-white" style={{ opacity: unitMode === 'g' ? 1 : 0.3 }}>g</span>
+                  <span className="absolute right-1.5 text-[10px] font-bold text-white" style={{ opacity: unitMode === 'ml' ? 1 : 0.3 }}>ml</span>
+                </button>
+              </div>
 
               {/* Food form */}
               <div className="space-y-4">
@@ -763,6 +933,18 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   </div>
                 </div>
 
+                {/* Image URL */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Image URL</label>
+                  <input
+                    type="url"
+                    value={editableFood.imageUrl}
+                    onChange={(e) => setEditableFood({ ...editableFood, imageUrl: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Serving Size</label>
@@ -787,7 +969,11 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <label className="block text-xs font-medium text-gray-500 mb-1">Unit</label>
                     <select
                       value={editableFood.servingUnit}
-                      onChange={(e) => setEditableFood({ ...editableFood, servingUnit: e.target.value })}
+                      onChange={(e) => {
+                        const newUnit = e.target.value as 'g' | 'ml';
+                        setEditableFood({ ...editableFood, servingUnit: newUnit });
+                        setUnitMode(newUnit); // Keep toggle in sync
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
                       <option value="g">g</option>
@@ -809,7 +995,16 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                 {/* Nutrition */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">Nutrition (per 100g)</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-medium text-gray-500">
+                      Nutrition (per 100{unitMode})
+                    </label>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                      unitMode === 'g' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      {unitMode.toUpperCase()} MODE
+                    </span>
+                  </div>
                   <div className="grid grid-cols-4 gap-3">
                     {[
                       { key: 'calories', label: 'Calories', unit: 'kcal' },

@@ -129,6 +129,15 @@ struct FoodDetailViewFromSearch: View {
     let diaryDate: Date?
 
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, diaryDate: Date? = nil, fastingViewModel: FastingViewModel? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+        // DEBUG: Check what food data we received
+        print("🔍 DEBUG FoodDetailViewFromSearch init:")
+        print("  - name: \(food.name)")
+        print("  - imageUrl: \(food.imageUrl ?? "nil")")
+        print("  - portions: \(food.portions?.count ?? 0) options")
+        print("  - servingDescription: \(food.servingDescription ?? "nil")")
+        print("  - isPerUnit: \(food.isPerUnit ?? false)")
+        print("  - diaryEntryId: \(diaryEntryId?.uuidString ?? "nil") (editing: \(diaryEntryId != nil))")
+
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
@@ -2598,6 +2607,13 @@ struct FoodDetailViewFromSearch: View {
             additivesToSave = displayFood.additives
         }
 
+        // DEBUG: Check what we're saving to diary
+        print("🔍 DEBUG saving to diary:")
+        print("  - name: \(displayFood.name)")
+        print("  - imageUrl: \(displayFood.imageUrl ?? "nil")")
+        print("  - food.portions: \(food.portions?.count ?? 0) options")
+        print("  - servingDesc: \(servingDesc)")
+
         let diaryEntry = DiaryFoodItem(
             id: diaryEntryId ?? UUID(),
             name: displayFood.name,
@@ -2619,7 +2635,8 @@ struct FoodDetailViewFromSearch: View {
             barcode: displayFood.barcode,
             micronutrientProfile: nil,  // FIX: Don't save fake macro-based estimates
             isPerUnit: food.isPerUnit,
-            imageUrl: displayFood.imageUrl
+            imageUrl: displayFood.imageUrl,
+            portions: food.portions  // Preserve portion options for editing
         )
 
         // Add to diary using DiaryDataManager

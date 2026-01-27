@@ -1749,7 +1749,9 @@ struct ManualFoodDetailEntryView: View {
                 additives: nil,
                 barcode: barcode.isEmpty ? nil : barcode,
                 micronutrientProfile: nil,
-                isPerUnit: isPerUnit
+                isPerUnit: isPerUnit,
+                imageUrl: nil,
+                portions: nil
             )
 
             // Add to diary via DiaryDataManager using selected meal time
