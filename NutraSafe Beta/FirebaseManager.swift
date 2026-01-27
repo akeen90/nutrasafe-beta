@@ -1401,10 +1401,14 @@ class FirebaseManager: ObservableObject {
     // MARK: - Use By Items
 
     func saveUseByItem(_ item: UseByItem) async throws {
-        guard let userId = currentUser?.uid else { return }
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save items"])
+        }
         let itemData = item.toDictionary()
-        try await db.collection("users").document(userId)
-            .collection("useByItems").document(item.id.uuidString).setData(itemData)
+        try await withRetry(maxAttempts: 3, totalTimeout: 10.0) {
+            try await self.db.collection("users").document(userId)
+                .collection("useByItems").document(item.id.uuidString).setData(itemData)
+        }
     }
 
     func getUseByItems() async throws -> [UseByItem] {
@@ -1422,7 +1426,9 @@ class FirebaseManager: ObservableObject {
     // MARK: - Pending Food Verifications
     
     func savePendingVerification(_ verification: PendingFoodVerification) async throws {
-        guard let userId = currentUser?.uid else { return }
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to submit verifications"])
+        }
         let verificationData = [
             "id": verification.id,
             "foodName": verification.foodName,
@@ -1432,9 +1438,11 @@ class FirebaseManager: ObservableObject {
             "status": verification.status.rawValue,
             "userId": verification.userId
         ] as [String: Any]
-        
-        try await db.collection("users").document(userId)
-            .collection("pendingVerifications").document(verification.id).setData(verificationData)
+
+        try await withRetry(maxAttempts: 3, totalTimeout: 10.0) {
+            try await self.db.collection("users").document(userId)
+                .collection("pendingVerifications").document(verification.id).setData(verificationData)
+        }
     }
     
     func getPendingVerifications() async throws -> [PendingFoodVerification] {
@@ -1798,11 +1806,15 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        try await db.collection("users").document(userId)
-            .collection("favoriteFoods").document(food.id).setData(favoriteData)
-            }
+        // Use retry logic for network resilience
+        try await withRetry(maxAttempts: 3, totalTimeout: 10.0) {
+            try await self.db.collection("users").document(userId)
+                .collection("favoriteFoods").document(food.id).setData(favoriteData)
+        }
+    }
 
     /// Removes a food from user's favorites
+    /// Uses retry logic for network resilience
     func removeFavoriteFood(foodId: String) async throws {
         ensureAuthStateLoaded()
 
@@ -1810,9 +1822,11 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to remove favorites"])
         }
 
-        try await db.collection("users").document(userId)
-            .collection("favoriteFoods").document(foodId).delete()
-            }
+        try await withRetry(maxAttempts: 3, totalTimeout: 10.0) {
+            try await self.db.collection("users").document(userId)
+                .collection("favoriteFoods").document(foodId).delete()
+        }
+    }
 
     /// Gets user's favorite foods
     func getFavoriteFoods() async throws -> [FoodSearchResult] {
@@ -1900,6 +1914,7 @@ class FirebaseManager: ObservableObject {
     }
 
     /// Checks if a food is in user's favorites
+    /// Uses retry logic for network resilience
     func isFavoriteFood(foodId: String) async throws -> Bool {
         ensureAuthStateLoaded()
 
@@ -1907,10 +1922,11 @@ class FirebaseManager: ObservableObject {
             return false
         }
 
-        let doc = try await db.collection("users").document(userId)
-            .collection("favoriteFoods").document(foodId).getDocument()
-
-        return doc.exists
+        return try await withRetry(maxAttempts: 2, totalTimeout: 8.0) {
+            let doc = try await self.db.collection("users").document(userId)
+                .collection("favoriteFoods").document(foodId).getDocument()
+            return doc.exists
+        }
     }
 
     // MARK: - User Settings (Height, Goal Weight, Caloric Goal)

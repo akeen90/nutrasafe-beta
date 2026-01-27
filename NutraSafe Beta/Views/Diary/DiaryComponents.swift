@@ -335,5 +335,6 @@ struct DiaryFoodRow: View {
             .environmentObject(subscriptionManager)
             .environmentObject(firebaseManager)
         }
+        .id(food.id) // Stable identity prevents dismissal when parent re-renders
     }
 }

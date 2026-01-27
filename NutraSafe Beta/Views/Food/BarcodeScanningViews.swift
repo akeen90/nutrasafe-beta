@@ -209,6 +209,7 @@ struct AddFoodBarcodeView: View {
                 .interactiveDismissDisabled(false)
             }
         }
+        .id(scannedProduct?.id ?? "barcode-scanner") // Stable identity prevents dismissal on parent re-render
         .onChange(of: scannedProduct) { _, newProduct in
             // Automatically show food detail when product is found
             if newProduct != nil {

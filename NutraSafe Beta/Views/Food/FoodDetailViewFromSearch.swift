@@ -1808,19 +1808,43 @@ struct FoodDetailViewFromSearch: View {
             }
 
             // Load user allergens from cache (instant) and detect if present in this food
+            // Wrapped in error handling to prevent network issues from affecting view stability
             Task {
-                await loadAndDetectUserAllergensOptimized()
-
-                // Re-run additive analysis with user sensitivities after allergens are loaded
-                await runAdditiveAnalysis()
+                do {
+                    await loadAndDetectUserAllergensOptimized()
+                    // Re-run additive analysis with user sensitivities after allergens are loaded
+                    await runAdditiveAnalysis()
+                } catch {
+                    // Silently handle - allergens will use cached data or defaults
+                    print("⚠️ Failed to load allergens: \(error.localizedDescription)")
+                }
             }
 
-            // Check if food is in favorites
+            // Check if food is in favorites - with timeout to prevent hanging on slow networks
             Task {
-                if let isFav = try? await firebaseManager.isFavoriteFood(foodId: food.id) {
+                do {
+                    // Use a timeout task to prevent indefinite waiting
+                    let isFav = try await withThrowingTaskGroup(of: Bool.self) { group in
+                        group.addTask {
+                            try await self.firebaseManager.isFavoriteFood(foodId: self.food.id)
+                        }
+                        group.addTask {
+                            try await Task.sleep(nanoseconds: 5_000_000_000) // 5 second timeout
+                            throw CancellationError()
+                        }
+
+                        // Return first successful result
+                        let result = try await group.next() ?? false
+                        group.cancelAll()
+                        return result
+                    }
                     await MainActor.run {
                         isFavorite = isFav
                     }
+                } catch {
+                    // On network failure, leave isFavorite at default (false)
+                    // User can still toggle - it will sync when network recovers
+                    print("⚠️ Failed to check favorite status: \(error.localizedDescription)")
                 }
             }
 

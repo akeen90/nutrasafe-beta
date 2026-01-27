@@ -242,6 +242,7 @@ struct UseByTabView: View {
                 }
             )
         }
+        .id(showingFoodDetailForSearch?.id ?? "use-by-search") // Stable identity prevents dismissal on network issues
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddUseByItemSheetRedesigned(onComplete: {
                 showingAddSheet = false
@@ -3263,6 +3264,7 @@ Text(food.name)
         )) { selectedFood in
             AddFoundFoodToUseBySheet(food: selectedFood)
         }
+        .id(selectedFood?.id ?? "add-found-food") // Stable identity prevents dismissal on network issues
     }
 
     private func runSearch() async {

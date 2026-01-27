@@ -441,6 +441,7 @@ struct UseByMainViewRedesigned: View {
                 }
             )
         }
+        .id(showingFoodDetail?.id ?? "use-by-main") // Stable identity prevents dismissal on network issues
         .fullScreenCover(isPresented: $showingBarcodeScanner) {
             UseByBarcodeScannerSheet(
                 onFoodFound: { food in
