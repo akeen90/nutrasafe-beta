@@ -480,72 +480,91 @@ struct WeeklySummaryPill: View {
     let onTap: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isPressed = false
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
     }
 
+    // Emotion-first messaging based on progress
+    private var progressMessage: String {
+        let progress = goal > 0 ? Double(consumed) / Double(goal) : 0
+        if progress < 0.5 {
+            return "Your week so far"
+        } else if progress < 0.85 {
+            return "On track this week"
+        } else if progress <= 1.05 {
+            return "Great balance"
+        } else {
+            return "Your week at a glance"
+        }
+    }
+
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 8) {
-                // Left side: icon + label
-                HStack(spacing: 5) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 12, weight: .semibold))
+            HStack(spacing: 10) {
+                // Left side: emotional label with icon
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(palette.accent)
 
-                    Text("Weekly Summary")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundColor(palette.accent)
+                    Text(progressMessage)
+                        .font(.system(size: 14, weight: .semibold, design: .serif))
+                        .foregroundColor(palette.textPrimary)
                         .lineLimit(1)
                 }
 
                 Spacer()
 
-                // Right side: calorie summary - compact
-                HStack(spacing: 2) {
+                // Right side: calorie summary - warm, contextual
+                HStack(spacing: 3) {
                     Text(formatNumber(consumed))
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
-                    Text("/")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(palette.accent)
+                    Text("of")
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundColor(palette.textTertiary)
                     Text(formatNumber(goal))
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(palette.textTertiary)
-                    Text("kcal")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(palette.textTertiary)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(palette.textSecondary)
                 }
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
 
-                // Chevron
+                // Chevron - subtle invitation
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(palette.textTertiary.opacity(0.6))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(palette.textTertiary.opacity(0.5))
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 16)
             .frame(height: DiaryLayoutTokens.weeklySummaryHeight)
             .background(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(
                         LinearGradient(
                             colors: [
-                                palette.primary.opacity(0.06),
-                                palette.accent.opacity(0.04)
+                                palette.primary.opacity(colorScheme == .dark ? 0.12 : 0.06),
+                                palette.accent.opacity(colorScheme == .dark ? 0.08 : 0.04)
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(palette.accent.opacity(0.15), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(palette.accent.opacity(0.12), lineWidth: 1)
                     )
             )
         }
         .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isPressed ? 0.97 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isPressed)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
     }
 
     private func formatNumber(_ number: Int) -> String {

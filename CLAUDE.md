@@ -80,6 +80,8 @@ NutraSafe follows a **premium, emotion-first design language** that emphasizes c
 - Use rounded corners (12-20pt) consistently
 - Include loading/processing states with animations
 - Design for both light and dark mode
+- Add tactile feedback: `scaleEffect(isPressed ? 0.97 : 1.0)` on interactive elements
+- Use emotion-first language (e.g., "Your week so far" not "Weekly Summary")
 
 ❌ **DON'T:**
 - Overcrowd screens with information
@@ -88,6 +90,35 @@ NutraSafe follows a **premium, emotion-first design language** that emphasizes c
 - Skip empty states or error messages
 - Hardcode colors (use theme system)
 - Add features without considering emotional impact
+
+### ⚠️ CRITICAL: View Replacement Protocol
+
+**When redesigning or replacing views, you MUST delete the old version:**
+
+1. **Before creating a new view**, search for existing implementations:
+   ```bash
+   grep -rn "struct ViewName" "NutraSafe Beta/" --include="*.swift"
+   ```
+
+2. **If replacing an existing view:**
+   - Delete the old file or remove the old struct entirely
+   - Remove references from `project.pbxproj` if deleting files
+   - Update all call sites to use the new view
+   - Never leave `*Legacy`, `*Old`, `*V1` versions lying around
+
+3. **Naming conventions for replacements:**
+   - Use the SAME name as the view you're replacing (after deleting it)
+   - If temporarily keeping both, suffix new one with `Redesigned` until migration complete
+   - Once migrated, rename `FooRedesigned` → `Foo` and delete old `Foo`
+
+4. **After ANY view changes**, verify:
+   ```bash
+   # Check for orphaned views (defined but never instantiated)
+   grep -rn "struct ViewName:" "NutraSafe Beta/" --include="*.swift"
+   grep -rn "ViewName(" "NutraSafe Beta/" --include="*.swift" | grep -v "struct ViewName"
+   ```
+
+**Why this matters:** Dead code accumulates quickly. We removed 3,300+ lines of unused views in January 2026. Don't recreate this problem.
 
 ## 🌐 Website Development Standards
 
@@ -794,6 +825,16 @@ When you encounter old/duplicate code, add it here for future cleanup:
 - ✅ `FastingMainViewLegacy` and 30+ supporting views (~3,870 lines) - removed from FastingMainView.swift
 - ✅ `MacroManagementView`, `BMRCalculatorSheet`, and supporting views (~1,350 lines) - removed from SettingsView.swift
 - ✅ `AdditiveTrackerSectionLegacy` (~1,000 lines) - replaced with emotion-first redesign (AdditiveInsightsRedesigned.swift)
+- ✅ **Orphaned view files deleted** (~1,600 lines):
+  - `MacroViews.swift` - unused macro progress view
+  - `NutritionScoreViews.swift` - unused score displays
+  - `AdditiveHistoricalView.swift` - incomplete historical tracking
+  - `PrivacyPolicyView.swift` - legal content not wired to UI
+  - `TermsAndConditionsView.swift` - legal content not wired to UI
+- ✅ **Unused views removed from active files** (~1,700 lines):
+  - `FoodTabViews.swift`: Removed `SegmentedControlView`, `RecipesView`, `StatMiniCard`, `LogReactionView`, recipe support views
+  - `UseByTabViews.swift`: Removed `FreshnessIndicatorView`, `UseByItemDetailView`, `PlaceholderImageView`
+- ✅ **WeeklySummaryPill** - Updated to emotion-first design with contextual messaging
 
 ### Redesigned for Brand Consistency (January 2026)
 - ✅ **Additive Insights** - Completely redesigned to match onboarding aesthetic
