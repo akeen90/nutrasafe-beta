@@ -2541,15 +2541,26 @@ struct FoodDetailViewFromSearch: View {
         // This ensures only REAL nutrients from actual ingredients are shown
 
         // Create diary entry
-                // Create appropriate serving description based on food type
+        // Create appropriate serving description based on food type
+        // Preserve descriptive unit names (slice, bowl, tablespoon) when available
         let servingDesc: String
         if food.isPerUnit == true {
             // Per-unit food: show unit name (e.g., "medium drink", "burger")
             // The quantity is stored separately in the DiaryFoodItem.quantity field
             servingDesc = servingUnit
         } else {
-            // Per-100g food: show "Xg serving"
-            servingDesc = "\(String(format: "%.0f", servingSize))g serving"
+            // Per-100g food: create descriptive serving description
+            let unit = servingUnit.lowercased()
+            let sizeStr = String(format: "%.0f", servingSize)
+
+            // If unit is a descriptive name (not g/ml), include both
+            if unit != "g" && unit != "ml" && !unit.isEmpty {
+                // E.g., "1 slice (38g)" or "Medium bowl (45g)"
+                servingDesc = "\(servingAmount) \(servingUnit) (\(sizeStr)g)"
+            } else {
+                // Standard gram/ml serving
+                servingDesc = "\(sizeStr)\(unit.isEmpty ? "g" : unit) serving"
+            }
         }
 
         // CRITICAL FIX: Analyze additives fresh from ingredients and save to diary
@@ -5163,6 +5174,16 @@ struct FoodDetailViewFromSearch: View {
         var updatedSnacks = snacks
         
         let foodId = food.id
+        // Create descriptive serving description preserving unit context
+        let servingDesc: String
+        let unit = servingUnit.lowercased()
+        let sizeStr = String(format: "%.0f", actualServingSize)
+        if unit != "g" && unit != "ml" && !unit.isEmpty {
+            servingDesc = "\(servingAmount) \(servingUnit) (\(sizeStr)g)"
+        } else {
+            servingDesc = "\(sizeStr)\(unit.isEmpty ? "g" : unit) serving"
+        }
+
         let updatedFoodItem = DiaryFoodItem(
             name: food.name,
             brand: food.brand,
@@ -5173,7 +5194,7 @@ struct FoodDetailViewFromSearch: View {
             fiber: adjustedFiber,
             sugar: adjustedSugar,
             sodium: adjustedSalt,
-            servingDescription: "\(String(format: "%.0f", actualServingSize))g serving",
+            servingDescription: servingDesc,
             quantity: quantityMultiplier,
             time: getCurrentTimeString(),
             processedScore: nutraSafeGrade.grade,
