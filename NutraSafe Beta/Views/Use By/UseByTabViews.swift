@@ -1052,14 +1052,17 @@ struct UseByExpiryView: View {
     // MARK: - View Builders (extracted to help Swift type-checker)
     @ViewBuilder
     private var loadingView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Spacer()
             ProgressView()
                 .scaleEffect(1.2)
-                .progressViewStyle(.circular)
-            Text("Loading your items...")
-                .font(.system(size: 16, weight: .medium))
+                .tint(AppPalette.forCurrentUser(colorScheme: .light).accent)
+            Text("Checking your kitchen...")
+                .font(.system(size: 16, weight: .medium, design: .serif))
                 .foregroundColor(.secondary)
+            Text("Finding what needs attention")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(.secondary.opacity(0.7))
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1067,55 +1070,49 @@ struct UseByExpiryView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        // Compact empty state with text overlaid near the fridge
-        ZStack {
-            // Fridge image - sized to fit with text
-            VStack(spacing: 0) {
-                Image("useby-fridge")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 420)
-                    .padding(.top, -20)
+        // Emotion-first empty state
+        VStack(spacing: 0) {
+            Spacer()
 
-                Spacer().frame(height: 0)
-            }
+            // Fridge image
+            Image("useby-fridge")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 340)
 
-            // Text overlay positioned at bottom of fridge area
-            VStack {
-                Spacer()
+            // Warm messaging
+            VStack(spacing: 14) {
+                Text("Know what you have")
+                    .font(.system(size: 26, weight: .semibold, design: .serif))
+                    .foregroundColor(.primary)
 
-                VStack(spacing: 10) {
-                    Text("Your Fresh Start")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                Text("Track expiry dates, reduce waste,\nand never let good food go bad.")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
 
-                    Text("Track what's fresh, waste less, save more")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-
-                    // Subtle hint text with pill background
-                    HStack(spacing: 6) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 12, weight: .semibold))
-                        Text("Search to add items")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(Color.blue.opacity(0.1))
-                    )
-                    .padding(.top, 4)
+                // Gentle hint
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Add your first item")
+                        .font(.system(size: 14, weight: .semibold))
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 20)
+                .foregroundColor(AppPalette.forCurrentUser(colorScheme: .light).accent)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(AppPalette.forCurrentUser(colorScheme: .light).accent.opacity(0.10))
+                )
+                .padding(.top, 8)
             }
+            .padding(.horizontal, 32)
+
+            Spacer()
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 480)
     }
 
     // MARK: - Main Content View (extracted to help Swift type-checker)
@@ -1131,23 +1128,46 @@ struct UseByExpiryView: View {
 
     @ViewBuilder
     private var statCardsSection: some View {
-        HStack(spacing: 10) {
-            CompactStatPill(
-                value: "\(sortedItems.count)",
-                label: "Items",
-                icon: "refrigerator.fill",
-                tint: AppPalette.standard.accent
-            )
+        // Only show stat card if there are items needing attention
+        if urgentCount > 0 || thisWeekCount > 0 {
+            HStack(spacing: 12) {
+                // Urgency indicator with contextual message
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(adaptiveColor.opacity(0.12))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: adaptiveIcon)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(adaptiveColor)
+                    }
 
-            CompactStatPill(
-                value: adaptiveValue,
-                label: adaptiveTitle == "This Week" ? "This Week" : "Expiring",
-                icon: adaptiveIcon,
-                tint: adaptiveColor
-            )
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(urgentCount > 0 ? "Needs attention" : "Plan ahead")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text(adaptiveSubtitle)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Text("\(urgentCount > 0 ? urgentCount : thisWeekCount)")
+                        .font(.system(size: 22, weight: .bold, design: .serif))
+                        .foregroundColor(adaptiveColor)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.adaptiveCard)
+                        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+                )
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
     }
 
     @ViewBuilder
@@ -1171,108 +1191,60 @@ struct UseByExpiryView: View {
 
     @ViewBuilder
     private var itemsHeader: some View {
-        HStack {
-            Text("Your Items")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.primary, .primary.opacity(0.7)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+        VStack(alignment: .leading, spacing: 6) {
+            Text("What you have")
+                .font(.system(size: 20, weight: .semibold, design: .serif))
+                .foregroundColor(.primary)
 
-            Spacer()
-
-            itemCountBadge
+            Text(itemsSubtitle)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 18)
         .padding(.top, 18)
         .padding(.bottom, 14)
     }
 
-    @ViewBuilder
-    private var itemCountBadge: some View {
-        HStack(spacing: 4) {
-            Text("\(sortedItems.count)")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [AppPalette.standard.accent, Color.purple.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-            Text("item\(sortedItems.count == 1 ? "" : "s")")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundColor(.secondary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background {
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            AppPalette.standard.accent.opacity(0.12),
-                            Color.purple.opacity(0.08)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    AppPalette.standard.accent.opacity(0.3),
-                                    Color.purple.opacity(0.2)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            lineWidth: 1.5
-                        )
-                )
+    private var itemsSubtitle: String {
+        let count = sortedItems.count
+        if count == 0 {
+            return "Nothing tracked yet"
+        } else if urgentCount > 0 {
+            return "\(count) item\(count == 1 ? "" : "s") — \(urgentCount) need\(urgentCount == 1 ? "s" : "") attention"
+        } else if thisWeekCount > 0 {
+            return "\(count) item\(count == 1 ? "" : "s") — \(thisWeekCount) expiring this week"
+        } else {
+            return "\(count) item\(count == 1 ? "" : "s") tracked"
         }
     }
 
     @ViewBuilder
     private var itemsList: some View {
         if sortedItems.isEmpty {
-            VStack(spacing: AppSpacing.large) {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 60, weight: .light))
-                    .foregroundColor(Color.textTertiary.opacity(0.4))
-                    .padding(.top, AppSpacing.large)
+            VStack(spacing: 20) {
+                Image(systemName: "tray")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundColor(.secondary.opacity(0.4))
+                    .padding(.top, 24)
 
-                VStack(spacing: AppSpacing.small) {
-                    Text("No items tracked")
-                        .font(AppTypography.sectionTitle(20))
-                        .foregroundColor(Color.textSecondary)
+                VStack(spacing: 8) {
+                    Text("Nothing here yet")
+                        .font(.system(size: 18, weight: .medium, design: .serif))
+                        .foregroundColor(.primary.opacity(0.7))
 
-                    Text("Add use-by dates when logging food to avoid waste")
-                        .font(AppTypography.body)
-                        .foregroundColor(Color.textTertiary)
+                    Text("Add items to track their expiry dates")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, AppSpacing.xl)
-                        .lineSpacing(AppSpacing.lineSpacing)
                 }
-
-                NSInfoCard(
-                    icon: "lightbulb.fill",
-                    text: "Tap the + button above to start tracking items and get notified before they expire",
-                    iconColor: .orange
-                )
-                .padding(.horizontal, AppSpacing.large)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, AppSpacing.section)
+            .padding(.vertical, 32)
         } else {
             LazyVStack(spacing: 8) {
                 ForEach(sortedItems, id: \.id) { item in
-                    CleanUseByRow(item: item)
+                    PremiumUseByRow(item: item)
                 }
             }
             .padding(.vertical, 6)
@@ -3483,9 +3455,226 @@ struct QuickStartButton: View {
     }
 }
 
-// MARK: - Clean UseBy Row
+// MARK: - Premium UseBy Row (Emotion-First Design)
 
-// MARK: - Placeholder Image View for Products
+struct PremiumUseByRow: View {
+    let item: UseByInventoryItem
+    @Environment(\.colorScheme) var colorScheme
+    @State private var showingDetail = false
+    @State private var isPressed = false
+    @State private var offset: CGFloat = 0
+    @State private var isHorizontalDragging = false
+
+    private var daysLeft: Int { item.daysUntilExpiry }
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
+    // Emotion-first status messaging
+    private var statusMessage: String {
+        switch item.expiryStatus {
+        case .expired:
+            return "Past its date"
+        case .expiringToday:
+            return "Use today"
+        case .expiringSoon:
+            return daysLeft == 1 ? "Tomorrow" : "Use soon"
+        case .expiringThisWeek:
+            return "\(daysLeft) days left"
+        case .fresh:
+            return "Plenty of time"
+        }
+    }
+
+    private var statusColor: Color {
+        switch item.expiryStatus {
+        case .expired:
+            return Color(red: 0.85, green: 0.25, blue: 0.25)
+        case .expiringToday:
+            return Color(red: 0.90, green: 0.40, blue: 0.20)
+        case .expiringSoon:
+            return Color(red: 0.95, green: 0.60, blue: 0.20)
+        case .expiringThisWeek:
+            return Color(red: 0.90, green: 0.75, blue: 0.30)
+        case .fresh:
+            return palette.accent
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            // Delete action background
+            if offset < -1 {
+                HStack {
+                    Spacer()
+                    Button(action: deleteItem) {
+                        VStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 20, weight: .medium))
+                            Text("Remove")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .frame(width: 80)
+                    }
+                    .frame(maxHeight: .infinity)
+                    .background(Color(red: 0.85, green: 0.25, blue: 0.25))
+                }
+            }
+
+            // Main content
+            HStack(spacing: 14) {
+                // Product image
+                ZStack {
+                    CachedUseByImage(
+                        itemId: item.id,
+                        imageURL: item.imageURL,
+                        width: 56,
+                        height: 56,
+                        cornerRadius: 12
+                    )
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(statusColor.opacity(0.25), lineWidth: 1.5)
+                    )
+                    .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                }
+
+                // Item info
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.name)
+                        .font(.system(size: 16, weight: .semibold, design: .serif))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+
+                    if let brand = item.brand, !brand.isEmpty {
+                        Text(brand)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                // Status indicator
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(statusMessage)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(statusColor)
+
+                    if item.expiryStatus != .expired {
+                        Text(formatExpiryDate(item.expiryDate))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.4))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.04) : Color.white)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04), lineWidth: 1)
+            )
+            // Status accent bar
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(statusColor)
+                    .frame(width: 3)
+                    .padding(.vertical, 10)
+            }
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.15 : 0.04), radius: 6, x: 0, y: 2)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .offset(x: offset)
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 20)
+                    .onChanged { gesture in
+                        let dx = gesture.translation.width
+                        let dy = gesture.translation.height
+                        if !isHorizontalDragging {
+                            if abs(dx) > 20 && abs(dx) > abs(dy) * 2 {
+                                isHorizontalDragging = true
+                            } else {
+                                return
+                            }
+                        }
+                        if isHorizontalDragging && dx < 0 {
+                            offset = dx
+                        }
+                    }
+                    .onEnded { gesture in
+                        if isHorizontalDragging {
+                            let dx = gesture.translation.width
+                            if dx < -100 {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    offset = -UIScreen.main.bounds.width
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    deleteItem()
+                                }
+                            } else if dx < -40 {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    offset = -80
+                                }
+                            } else {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    offset = 0
+                                }
+                            }
+                        }
+                        isHorizontalDragging = false
+                    }
+            )
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if offset == 0 {
+                showingDetail = true
+            } else {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    offset = 0
+                }
+            }
+        }
+        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isPressed = pressing
+            }
+        }, perform: {})
+        .fullScreenCover(isPresented: $showingDetail) {
+            UseByFoodDetailSheetRedesigned(item: item)
+        }
+    }
+
+    private func formatExpiryDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        return formatter.string(from: date)
+    }
+
+    private func deleteItem() {
+        Task {
+            try? await FirebaseManager.shared.deleteUseByItem(itemId: item.id)
+            UseByNotificationManager.shared.cancelNotifications(for: item.id)
+            NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+        }
+    }
+}
+
+// MARK: - Clean UseBy Row (Legacy)
+
 struct CleanUseByRow: View {
     let item: UseByInventoryItem
     @State private var showingDetail = false
