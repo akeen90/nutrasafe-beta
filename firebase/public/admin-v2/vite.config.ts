@@ -12,13 +12,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    open: true,
+    open: false,
     watch: {
       // Ignore the built production files to prevent reload loops
       ignored: [
         '**/dist/**',
-        '**/assets/**',
-        '**/index.html' // Ignore production index.html
+        '**/assets/**'
       ]
     }
   },

@@ -8,3 +8,4 @@ export { ImageProcessingPage } from './ImageProcessingPage';
 export { GoogleImageScraperPage } from './GoogleImageScraperPage';
 export { ReportsPage } from './ReportsPage';
 export { MasterDatabaseBuilderPage } from './MasterDatabaseBuilderPage';
+export { AnalyticsPage } from './AnalyticsPage';

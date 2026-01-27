@@ -33,6 +33,7 @@ interface NutritionData {
   servingSize?: string;
   ingredients?: string; // Ingredient list
   source?: string; // Where the data came from (e.g., "Open Food Facts", "Tesco", "Web Scrape")
+  sourceUrl?: string; // URL where the data was scraped from
 }
 
 interface FoodWithImage {
@@ -95,7 +96,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const [filterNoImages, setFilterNoImages] = useState(false); // Show all foods by default
   const [filterZeroCalories, setFilterZeroCalories] = useState(false); // Filter for very low calorie foods (0-5 kcal)
   const [excludeDrinks, setExcludeDrinks] = useState(false); // Exclude drinks when filtering very low calorie
-  const [filterTescoBadImages, setFilterTescoBadImages] = useState(false); // Show all Tesco foods by default
+  // filterTescoBadImages REMOVED - Tesco images now always display regardless of dontShowImage flag
   const [scrapeNutrition, setScrapeNutrition] = useState(false); // Nutrition scraping disabled by default
   const [scrapeServingSize, setScrapeServingSize] = useState(false); // Serving size scraping disabled by default
   const [scrapeIngredients, setScrapeIngredients] = useState(false); // Ingredients scraping disabled by default
@@ -126,7 +127,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
   const pauseRef = useRef(false);
   const abortRef = useRef(false);
-  const ITEMS_PER_PAGE = 50;
+  const ITEMS_PER_PAGE = 500; // Increased from 50 for better scrolling experience
   const STORAGE_KEY = 'nutrasafe_image_scraper_progress';
 
   // ========== AUTO-SAVE PROGRESS TO LOCALSTORAGE ==========
@@ -272,81 +273,16 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   // Scrape nutrition data from Google Search - fetches and parses actual page content
   const scrapeNutritionData = async (food: FoodWithImage): Promise<NutritionData | null> => {
     try {
-      // STEP 0: Try Open Food Facts API directly if we have a barcode
-      // This is the most reliable source for per-serving data
-      if (food.barcode) {
-        console.log(`🔍 Trying Open Food Facts API with barcode: ${food.barcode}`);
-        try {
-          const offResponse = await fetch(`https://world.openfoodfacts.org/api/v2/product/${food.barcode}.json`, {
-            headers: { 'Accept': 'application/json' },
-          });
-
-          if (offResponse.ok) {
-            const offData = await offResponse.json();
-            if (offData.status === 1 && offData.product) {
-              const product = offData.product;
-              const nutriments = product.nutriments || {};
-
-              // Check if we have per-serving data
-              const hasServingData = nutriments['energy-kcal_serving'] !== undefined ||
-                                     nutriments.energy_serving !== undefined;
-
-              if (hasServingData || nutriments['energy-kcal_100g'] !== undefined) {
-                // Prefer per-serving values, fall back to per-100g
-                const useServing = hasServingData;
-                const suffix = useServing ? '_serving' : '_100g';
-
-                // Get serving size
-                let servingSize: string | undefined;
-                if (product.serving_size) {
-                  servingSize = product.serving_size;
-                } else if (product.serving_quantity) {
-                  servingSize = `${product.serving_quantity}g`;
-                }
-
-                const nutritionData: NutritionData = {
-                  calories: nutriments[`energy-kcal${suffix}`] || (nutriments[`energy${suffix}`] ? nutriments[`energy${suffix}`] / 4.184 : undefined),
-                  protein: nutriments[`proteins${suffix}`],
-                  carbs: nutriments[`carbohydrates${suffix}`],
-                  fat: nutriments[`fat${suffix}`],
-                  saturatedFat: nutriments[`saturated-fat${suffix}`],
-                  fiber: nutriments[`fiber${suffix}`],
-                  sugar: nutriments[`sugars${suffix}`],
-                  sodium: nutriments[`sodium${suffix}`],
-                  salt: nutriments[`salt${suffix}`],
-                  servingSize,
-                  ingredients: product.ingredients_text_en || product.ingredients_text,
-                  source: `Open Food Facts (${useServing ? 'per serving' : 'per 100g'})`,
-                };
-
-                // Count valid fields
-                const validFields = Object.entries(nutritionData)
-                  .filter(([k, v]) => v !== undefined && k !== 'source' && k !== 'ingredients' && k !== 'servingSize')
-                  .length;
-
-                if (validFields >= 3) {
-                  console.log(`✅ Open Food Facts found ${validFields} nutrition fields (${useServing ? 'per serving' : 'per 100g'})`);
-                  if (servingSize) console.log(`   📏 Serving size: ${servingSize}`);
-                  return nutritionData;
-                }
-              }
-            }
-          }
-          console.log(`   Open Food Facts: No data found for barcode ${food.barcode}`);
-        } catch (offError) {
-          console.log(`   Open Food Facts API error:`, offError);
-        }
-      }
-
-      // STEP 1: Fall back to Google search
+      // STEP 1: Try Google search first
       const SEARCHAPI_KEY = import.meta.env.VITE_SEARCHAPI_KEY || '';
       if (!SEARCHAPI_KEY) {
-        console.warn('SearchAPI key not configured');
+        console.warn('⚠️ SearchAPI key not configured - skipping Google search (Knowledge Graph, Answer Box, web scraping)');
+        console.warn('   Will try Open Food Facts API as fallback if barcode exists');
         return null;
       }
 
-      // Build search query - add "site:openfoodfacts.org" to prioritize Open Food Facts
-      let query = `${food.brandName || ''} ${food.name} nutrition serving size site:openfoodfacts.org OR site:asda.com`.trim();
+      // Build search query - prioritize UK supermarket sites for nutrition info
+      let query = `${food.brandName || ''} ${food.name} nutrition serving size site:asda.com OR site:tesco.com`.trim();
 
       const params = new URLSearchParams({
         api_key: SEARCHAPI_KEY,
@@ -376,7 +312,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       // Try to extract nutrition from knowledge graph
       if (knowledgeGraph && knowledgeGraph.nutrition_facts) {
         const facts = knowledgeGraph.nutrition_facts;
-        return {
+        const nutritionData = {
           calories: parseFloat(facts.calories) || undefined,
           protein: parseFloat(facts.protein) || undefined,
           carbs: parseFloat(facts.carbohydrates) || undefined,
@@ -388,18 +324,50 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           servingSize: facts.serving_size,
           source: 'Google Knowledge Graph',
         };
+
+        // Filter based on user preferences
+        const filteredData: Partial<NutritionData> = { source: nutritionData.source };
+
+        if (scrapeNutrition) {
+          if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
+          if (nutritionData.protein !== undefined) filteredData.protein = nutritionData.protein;
+          if (nutritionData.carbs !== undefined) filteredData.carbs = nutritionData.carbs;
+          if (nutritionData.fat !== undefined) filteredData.fat = nutritionData.fat;
+          if (nutritionData.saturatedFat !== undefined) filteredData.saturatedFat = nutritionData.saturatedFat;
+          if (nutritionData.fiber !== undefined) filteredData.fiber = nutritionData.fiber;
+          if (nutritionData.sugar !== undefined) filteredData.sugar = nutritionData.sugar;
+          if (nutritionData.sodium !== undefined) filteredData.sodium = nutritionData.sodium;
+        }
+
+        if (scrapeServingSize && nutritionData.servingSize) {
+          filteredData.servingSize = nutritionData.servingSize;
+        }
+
+        return filteredData as NutritionData;
       }
 
       // Try to extract from answer box
       if (answerBox && answerBox.nutrition_info) {
         const info = answerBox.nutrition_info;
-        return {
+        const nutritionData = {
           calories: parseFloat(info.calories) || undefined,
           protein: parseFloat(info.protein) || undefined,
           carbs: parseFloat(info.carbs) || undefined,
           fat: parseFloat(info.fat) || undefined,
           source: 'Google Answer Box',
         };
+
+        // Filter based on user preferences
+        const filteredData: Partial<NutritionData> = { source: nutritionData.source };
+
+        if (scrapeNutrition) {
+          if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
+          if (nutritionData.protein !== undefined) filteredData.protein = nutritionData.protein;
+          if (nutritionData.carbs !== undefined) filteredData.carbs = nutritionData.carbs;
+          if (nutritionData.fat !== undefined) filteredData.fat = nutritionData.fat;
+        }
+
+        return filteredData as NutritionData;
       }
 
       // Fetch and parse actual page content from top results
@@ -407,7 +375,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       if (organicResults.length > 0) {
         // Try to fetch actual page content from top 3 results
         // Keep searching if a site only has per-100g data (we want per-serving)
-        let bestPer100gResult: { data: Partial<NutritionData>; source: string } | null = null;
+        let bestPer100gResult: { data: Partial<NutritionData>; source: string; url: string } | null = null;
 
         for (let i = 0; i < Math.min(3, organicResults.length); i++) {
           const result = organicResults[i];
@@ -462,7 +430,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                 console.log(`✅ Page ${i + 1} has per-serving data - using this source`);
 
                 // Filter based on user preferences
-                const filteredData: Partial<NutritionData> = { source };
+                const filteredData: Partial<NutritionData> = { source, sourceUrl: pageUrl };
 
                 if (scrapeNutrition) {
                   if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
@@ -484,13 +452,39 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                   filteredData.ingredients = nutritionData.ingredients;
                 }
 
+                // CRITICAL: Only return data if we have a SPECIFIC serving size
+                if (scrapeServingSize) {
+                  if (!filteredData.servingSize) {
+                    console.log(`⚠️ Page ${i + 1} has "per serving" indicators but NO serving size quantity found`);
+                    console.log(`   Looked for: "serving size: Xg", "per piece (Xg)", header "Per Xg"`);
+                    console.log(`   Rejecting data - will try next site`);
+                    // Save as fallback but DON'T return yet
+                    if (!bestPer100gResult) {
+                      bestPer100gResult = { data: nutritionData, source, url: pageUrl };
+                    }
+                    continue; // Try next site
+                  }
+
+                  // Reject vague serving sizes without quantities
+                  const vagueSizes = ['per serving', 'per portion', 'serving', 'portion'];
+                  if (vagueSizes.includes(String(filteredData.servingSize).toLowerCase().trim())) {
+                    console.log(`⚠️ Page ${i + 1} has vague serving size "${filteredData.servingSize}" (no quantity)`);
+                    console.log(`   Need specific size like "30g", "per piece (50g)", etc.`);
+                    if (!bestPer100gResult) {
+                      bestPer100gResult = { data: nutritionData, source, url: pageUrl };
+                    }
+                    continue; // Try next site
+                  }
+                }
+
+                console.log(`✅ Page ${i + 1} validated: per-serving data with serving size "${filteredData.servingSize}"`);
                 return filteredData as NutritionData;
               }
 
               // If only per-100g, save as fallback but keep searching
               if (hasOnly100g && !bestPer100gResult) {
                 console.log(`⚠️ Page ${i + 1} only has per-100g data - saving as fallback, trying next site...`);
-                bestPer100gResult = { data: nutritionData, source };
+                bestPer100gResult = { data: nutritionData, source, url: pageUrl };
               }
             } else {
               console.log(`Insufficient nutrition data from page ${i + 1}: ${Object.keys(nutritionData || {}).length} fields`);
@@ -501,10 +495,19 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           }
         }
 
-        // If no per-serving data found but we have per-100g fallback, use it
-        if (bestPer100gResult) {
-          console.log(`📊 No per-serving data found in 3 sites - using per-100g fallback from ${bestPer100gResult.source}`);
-          const filteredData: Partial<NutritionData> = { source: bestPer100gResult.source + ' (per 100g)' };
+        // Reject per-100g fallback if scrapeServingSize is enabled
+        if (bestPer100gResult && scrapeServingSize) {
+          console.log(`❌ No per-serving data found in 3 sites - per-100g data REJECTED`);
+          console.log(`   Found per-100g data from ${bestPer100gResult.source} but no serving size specified`);
+          console.log(`   To accept this data, page must have serving size like "per 30g serving" or "per piece (50g)"`);
+          // Don't return anything - let other extraction methods try
+        } else if (bestPer100gResult && !scrapeServingSize) {
+          // If not scraping serving size, allow per-100g fallback (old behavior)
+          console.log(`📊 No per-serving data found - using per-100g fallback (serving size scraping disabled)`);
+          const filteredData: Partial<NutritionData> = {
+            source: bestPer100gResult.source + ' (per 100g)',
+            sourceUrl: bestPer100gResult.url
+          };
 
           if (scrapeNutrition) {
             const nutritionData = bestPer100gResult.data;
@@ -571,7 +574,113 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             snippetData.ingredients = ingredientsMatch[1].trim();
           }
 
-          return snippetData as NutritionData;
+          // CRITICAL: Reject if serving size is required but not found
+          if (scrapeServingSize && !snippetData.servingSize) {
+            console.log(`⚠️ Google Snippets: Found nutrition but NO serving size - rejecting`);
+            console.log(`   Need serving size to accept data when "Require Serving Size" is enabled`);
+            // Don't return - fall through to next method (Open Food Facts)
+          } else {
+            return snippetData as NutritionData;
+          }
+        }
+      }
+
+      // STEP 4 (FINAL): Try Open Food Facts API as last resort if we have a barcode
+      if (food.barcode) {
+        console.log(`🔍 Final fallback: Trying Open Food Facts API with barcode: ${food.barcode}`);
+        try {
+          const offResponse = await fetch(`https://world.openfoodfacts.org/api/v2/product/${food.barcode}.json`, {
+            headers: { 'Accept': 'application/json' },
+          });
+
+          if (offResponse.ok) {
+            const offData = await offResponse.json();
+            if (offData.status === 1 && offData.product) {
+              const product = offData.product;
+              const nutriments = product.nutriments || {};
+
+              // Check if we have per-serving data
+              const hasServingData = nutriments['energy-kcal_serving'] !== undefined ||
+                                     nutriments.energy_serving !== undefined;
+
+              if (hasServingData || nutriments['energy-kcal_100g'] !== undefined) {
+                // Prefer per-serving values, fall back to per-100g
+                const useServing = hasServingData;
+                const suffix = useServing ? '_serving' : '_100g';
+
+                // Get serving size
+                let servingSize: string | undefined;
+                if (product.serving_size) {
+                  servingSize = product.serving_size;
+                } else if (product.serving_quantity) {
+                  servingSize = `${product.serving_quantity}g`;
+                }
+
+                const nutritionData: NutritionData = {
+                  calories: nutriments[`energy-kcal${suffix}`] || (nutriments[`energy${suffix}`] ? nutriments[`energy${suffix}`] / 4.184 : undefined),
+                  protein: nutriments[`proteins${suffix}`],
+                  carbs: nutriments[`carbohydrates${suffix}`],
+                  fat: nutriments[`fat${suffix}`],
+                  saturatedFat: nutriments[`saturated-fat${suffix}`],
+                  fiber: nutriments[`fiber${suffix}`],
+                  sugar: nutriments[`sugars${suffix}`],
+                  sodium: nutriments[`sodium${suffix}`],
+                  salt: nutriments[`salt${suffix}`],
+                  servingSize,
+                  ingredients: product.ingredients_text_en || product.ingredients_text,
+                  source: `Open Food Facts (${useServing ? 'per serving' : 'per 100g'})`,
+                };
+
+                // Count valid fields
+                const validFields = Object.entries(nutritionData)
+                  .filter(([k, v]) => v !== undefined && k !== 'source' && k !== 'ingredients' && k !== 'servingSize')
+                  .length;
+
+                if (validFields >= 3) {
+                  console.log(`✅ Open Food Facts found ${validFields} nutrition fields (${useServing ? 'per serving' : 'per 100g'})`);
+                  if (servingSize) console.log(`   📏 Serving size: ${servingSize}`);
+
+                  // Filter based on user preferences (same as web scraping)
+                  const offUrl = `https://world.openfoodfacts.org/product/${food.barcode}`;
+                  const filteredData: Partial<NutritionData> = { source: nutritionData.source, sourceUrl: offUrl };
+
+                  if (scrapeNutrition) {
+                    if (nutritionData.calories !== undefined) filteredData.calories = nutritionData.calories;
+                    if (nutritionData.protein !== undefined) filteredData.protein = nutritionData.protein;
+                    if (nutritionData.carbs !== undefined) filteredData.carbs = nutritionData.carbs;
+                    if (nutritionData.fat !== undefined) filteredData.fat = nutritionData.fat;
+                    if (nutritionData.saturatedFat !== undefined) filteredData.saturatedFat = nutritionData.saturatedFat;
+                    if (nutritionData.fiber !== undefined) filteredData.fiber = nutritionData.fiber;
+                    if (nutritionData.sugar !== undefined) filteredData.sugar = nutritionData.sugar;
+                    if (nutritionData.sodium !== undefined) filteredData.sodium = nutritionData.sodium;
+                    if (nutritionData.salt !== undefined) filteredData.salt = nutritionData.salt;
+                  }
+
+                  if (scrapeServingSize && nutritionData.servingSize) {
+                    filteredData.servingSize = nutritionData.servingSize;
+                  }
+
+                  if (scrapeIngredients && nutritionData.ingredients) {
+                    filteredData.ingredients = nutritionData.ingredients;
+                  }
+
+                  // CRITICAL: Reject per-100g data if serving size is required but not found
+                  if (scrapeServingSize && !filteredData.servingSize) {
+                    console.log(`❌ Open Food Facts: Has per-100g data but NO serving size - rejecting`);
+                    console.log(`   Need serving size to accept data when "Require Serving Size" is enabled`);
+                    console.log(`   To accept this data, Open Food Facts needs serving_size or serving_quantity in the API response`);
+                    return null; // Reject - no more fallbacks
+                  }
+
+                  console.log(`   Filtered to ${Object.keys(filteredData).length - 1} fields based on checkboxes`);
+                  return filteredData as NutritionData;
+                }
+              }
+            }
+          }
+          console.log(`   Open Food Facts: No data found for barcode ${food.barcode}`);
+        } catch (offError) {
+          console.log(`   Open Food Facts API error:`, offError);
         }
       }
 
@@ -702,6 +811,20 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           servingColumnIndex = idx;
           servingColumnExplicitlyFound = true;
           console.log(`   Found serving column "${cellText.substring(0, 30)}" in column ${idx}`);
+
+          // NEW: Extract serving size from header when serving column is found
+          const servingSizeMatch = cellText.match(/per\s+(?:(\d+(?:\.\d+)?)\s*(g|ml)|(\w+)\s*\((\d+(?:\.\d+)?)\s*(g|ml)\))/i);
+          if (servingSizeMatch && !nutritionData.servingSize) {
+            if (servingSizeMatch[1]) {
+              // "Per 30g" format
+              nutritionData.servingSize = `${servingSizeMatch[1]}${servingSizeMatch[2]}`;
+              console.log(`   📏 Extracted serving size from header: ${nutritionData.servingSize}`);
+            } else if (servingSizeMatch[3] && servingSizeMatch[4]) {
+              // "Per piece (50g)" format
+              nutritionData.servingSize = `per ${servingSizeMatch[3]} (${servingSizeMatch[4]}${servingSizeMatch[5]})`;
+              console.log(`   📏 Extracted serving size from header: ${nutritionData.servingSize}`);
+            }
+          }
         }
       }
       // Stop after finding both
@@ -712,7 +835,9 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     // the serving column is likely the one AFTER per 100g
     if (per100gColumnIndex >= 0 && servingColumnIndex < 0) {
       servingColumnIndex = per100gColumnIndex + 1;
-      console.log(`   Inferring serving column as ${servingColumnIndex} (next after per 100g)`);
+      console.log(`   ⚠️ Inferring serving column as ${servingColumnIndex} (RISKY - not explicitly found in header)`);
+      console.log(`      Will validate that this column exists in data rows and has different values`);
+      console.log(`      If validation fails, this page likely only has per-100g data`);
     }
 
     const isMultiColumnTable = per100gColumnIndex >= 0;
@@ -824,8 +949,11 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     if (servingColumnMissing && !foundAnyServingData) {
       console.log(`   ⚠️ Table has per-100g column but inferred serving column doesn't exist in data rows - NO per-serving data extracted`);
       skipAggressiveExtraction = true;
-    } else if (foundAnyServingData) {
-      console.log(`   ✅ Successfully extracted per-serving data from table`);
+    } else if (foundAnyServingData && nutritionData.servingSize) {
+      console.log(`   ✅ Table: Extracted per-serving data WITH serving size`);
+    } else if (foundAnyServingData && !nutritionData.servingSize) {
+      console.log(`   ⚠️ Table: Extracted per-serving data but NO serving size found`);
+      console.log(`      This data will be rejected unless serving size is found elsewhere`);
     }
 
     // Extract serving size - look for actual serving patterns only (NOT pack size/weight)
@@ -853,11 +981,28 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             // Only accept reasonable serving sizes (between 1g and 5000g/ml)
             if (value >= 1 && value <= 5000) {
               nutritionData.servingSize = `${value}${unit}`;
+              // Debug: Show exactly what was matched and where
+              const matchedText = match[0];
+              const matchIndex = match.index || 0;
+              const surroundingText = lowerHtml.substring(
+                Math.max(0, matchIndex - 50),
+                Math.min(lowerHtml.length, matchIndex + matchedText.length + 50)
+              );
+              console.log(`   📏 Serving size matched: "${matchedText}" → ${value}${unit}`);
+              console.log(`      Context: ...${surroundingText.replace(/\s+/g, ' ')}...`);
               break;
             }
           }
         }
         if (nutritionData.servingSize) break;
+      }
+
+      // Enhanced debugging: Log serving size extraction result
+      if (nutritionData.servingSize) {
+        console.log(`   ✅ Serving size found: "${nutritionData.servingSize}"`);
+      } else {
+        console.log(`   ⚠️ No serving size found - tried ${servingSizePatterns.length} patterns`);
+        console.log(`      Patterns checked: "serving size: Xg", "per serving: Xg", "per piece (Xg)", etc.`);
       }
     }
     console.log(`⏭️ Step 2.5 complete: ${Object.keys(nutritionData).length} fields total`);
@@ -1358,21 +1503,21 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         addLog(`0️⃣ Very low calorie filter${drinkNote}: ${foodsToUse.length.toLocaleString()} with 0-5 kcal, ${filtered.toLocaleString()} filtered out`);
       }
 
-      // Apply "Tesco bad image" filter if enabled
-      if (filterTescoBadImages) {
-        const beforeTescoFilter = foodsToUse.length;
-        foodsToUse = foodsToUse.filter(f => {
-          // Only filter Tesco products
-          if (f.sourceIndex === 'tesco_products') {
-            return !f.dontShowImage; // Hide items with dontShowImage flag
-          }
-          return true; // Keep all non-Tesco items
-        });
-        const filtered = beforeTescoFilter - foodsToUse.length;
-        if (filtered > 0) {
-          addLog(`🚫 Tesco bad images filter: ${foodsToUse.length.toLocaleString()} kept, ${filtered.toLocaleString()} with bad images filtered out`);
-        }
-      }
+      // Tesco bad image filter DISABLED - show all Tesco images
+      // (Previously filtered out items with dontShowImage flag)
+      // if (filterTescoBadImages) {
+      //   const beforeTescoFilter = foodsToUse.length;
+      //   foodsToUse = foodsToUse.filter(f => {
+      //     if (f.sourceIndex === 'tesco_products') {
+      //       return !f.dontShowImage;
+      //     }
+      //     return true;
+      //   });
+      //   const filtered = beforeTescoFilter - foodsToUse.length;
+      //   if (filtered > 0) {
+      //     addLog(`🚫 Tesco bad images filter: ${foodsToUse.length.toLocaleString()} kept, ${filtered.toLocaleString()} with bad images filtered out`);
+      //   }
+      // }
 
       setFoods(foodsToUse);
       updateStats(foodsToUse);
@@ -1383,7 +1528,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     } finally {
       setIsLoading(false);
     }
-  }, [selectedIndices, filterUKOnly, filterNoImages, filterZeroCalories, excludeDrinks, filterTescoBadImages]);
+  }, [selectedIndices, filterUKOnly, filterNoImages, filterZeroCalories, excludeDrinks]);
 
   // Search Algolia for foods by name/brand/barcode
   const handleSearch = useCallback(async () => {
@@ -1511,20 +1656,21 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         addLog(`0️⃣ Very Low Cal Filter${drinkNote}: ${foodsToUse.length} with 0-5 kcal, ${filtered} filtered out`);
       }
 
-      // Apply "Tesco bad image" filter if enabled
-      if (filterTescoBadImages) {
-        const beforeTescoFilter = foodsToUse.length;
-        foodsToUse = foodsToUse.filter(f => {
-          if (f.sourceIndex === 'tesco_products') {
-            return !f.dontShowImage;
-          }
-          return true;
-        });
-        const filtered = beforeTescoFilter - foodsToUse.length;
-        if (filtered > 0) {
-          addLog(`🚫 Tesco Filter: ${foodsToUse.length} kept, ${filtered} bad images filtered`);
-        }
-      }
+      // Tesco bad image filter DISABLED - show all Tesco images
+      // (Previously filtered out items with dontShowImage flag)
+      // if (filterTescoBadImages) {
+      //   const beforeTescoFilter = foodsToUse.length;
+      //   foodsToUse = foodsToUse.filter(f => {
+      //     if (f.sourceIndex === 'tesco_products') {
+      //       return !f.dontShowImage;
+      //     }
+      //     return true;
+      //   });
+      //   const filtered = beforeTescoFilter - foodsToUse.length;
+      //   if (filtered > 0) {
+      //     addLog(`🚫 Tesco Filter: ${foodsToUse.length} kept, ${filtered} bad images filtered`);
+      //   }
+      // }
 
       setFoods(foodsToUse);
       setStats({
@@ -1542,7 +1688,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       setIsLoading(false);
       setLoadingProgress(100);
     }
-  }, [searchQuery, selectedIndices, filterUKOnly, filterNoImages, filterZeroCalories, excludeDrinks, filterTescoBadImages, addLog]);
+  }, [searchQuery, selectedIndices, filterUKOnly, filterNoImages, filterZeroCalories, excludeDrinks, addLog]);
 
   // Search by barcode - finds foods with this barcode and searches Google Images using the barcode
   const handleBarcodeSearch = useCallback(async () => {
@@ -2009,6 +2155,9 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         if (nutritionData.ingredients) foundFields.push('ingredients');
 
         addLog(`✓ ${food.name}: Found ${foundFields.length} fields (${nutritionData.source}) ${nutritionData.servingSize ? '📏' : ''}${nutritionData.ingredients ? '🥕' : ''}`);
+        if (nutritionData.sourceUrl) {
+          addLog(`  🔗 Source: ${nutritionData.sourceUrl}`);
+        }
         if (nutritionData.servingSize) {
           addLog(`  📏 Serving size: ${nutritionData.servingSize}`);
         }
@@ -2048,6 +2197,10 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             }
           }
 
+          // Debug: Log what's actually being saved
+          console.log(`💾 Nutrition payload fields:`, Object.keys(nutritionData));
+          console.log(`   Scrape settings: nutrition=${scrapeNutrition}, serving=${scrapeServingSize}, ingredients=${scrapeIngredients}`);
+
           const nutritionPayload = isFastFood ? {
             // Fast food: Send all fields to ensure complete overwrite
             // NOTE: Nutrition values are already for the FULL UNIT (not per 100g)
@@ -2064,17 +2217,18 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
             servingDescription: servingDesc, // e.g., "burger (354g)"
             isPerUnit: true, // Nutrition is for FULL unit, not per 100g
             ingredients: nutritionData.ingredients ?? null,
+            sourceUrl: nutritionData.sourceUrl ?? null,
           } : {
-            // Other databases: Only send fields that were found
-            calories: nutritionData.calories,
-            protein: nutritionData.protein,
-            carbs: nutritionData.carbs,
-            fat: nutritionData.fat,
-            saturatedFat: nutritionData.saturatedFat,
-            fiber: nutritionData.fiber,
-            sugar: nutritionData.sugar,
-            sodium: nutritionData.sodium,
-            salt: nutritionData.salt,
+            // Other databases: Only send fields that were found (exclude undefined)
+            ...(nutritionData.calories !== undefined && { calories: nutritionData.calories }),
+            ...(nutritionData.protein !== undefined && { protein: nutritionData.protein }),
+            ...(nutritionData.carbs !== undefined && { carbs: nutritionData.carbs }),
+            ...(nutritionData.fat !== undefined && { fat: nutritionData.fat }),
+            ...(nutritionData.saturatedFat !== undefined && { saturatedFat: nutritionData.saturatedFat }),
+            ...(nutritionData.fiber !== undefined && { fiber: nutritionData.fiber }),
+            ...(nutritionData.sugar !== undefined && { sugar: nutritionData.sugar }),
+            ...(nutritionData.sodium !== undefined && { sodium: nutritionData.sodium }),
+            ...(nutritionData.salt !== undefined && { salt: nutritionData.salt }),
             // Parse serving size - extract grams and description separately
             // e.g., "5 gyoza (100 g)" → servingSizeG: 100, servingDescription: "5 gyoza"
             // e.g., "1 pack (168 g)" → servingSizeG: 168, servingDescription: "1 pack"
@@ -2112,18 +2266,42 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                 };
               }
 
+              // Validate serving size - reject vague descriptions without weight
+              // e.g., "1 egg", "2 pieces", "1 bar" are invalid without gram weight
+              const servingLower = String(servingStr).toLowerCase().trim();
+
+              // Reject patterns like "1 egg", "2 pieces", "1 bar" (count + item, no grams)
+              const vagueCountPattern = /^\d+\s*(egg|piece|bar|slice|biscuit|item|unit|portion|serving|pack|sachet|pot|cookie|cracker|tablet|capsule|scoop)s?$/i;
+              if (vagueCountPattern.test(servingLower)) {
+                console.log(`   ⚠️ Rejected vague serving size without weight: "${servingStr}"`);
+                return {}; // Don't store invalid serving sizes
+              }
+
+              // Also reject very short vague descriptions
+              const vagueSizes = ['per serving', 'per portion', 'serving', 'portion', 'per unit', 'unit'];
+              if (vagueSizes.includes(servingLower)) {
+                console.log(`   ⚠️ Rejected vague serving size: "${servingStr}"`);
+                return {}; // Don't store invalid serving sizes
+              }
+
               // Otherwise store as description only (no grams found)
+              // This should only happen for valid descriptive sizes like "1/4 pizza" or "small bowl"
               return {
                 servingDescription: String(servingStr),
               };
             })(),
-            ingredients: nutritionData.ingredients,
+            ...(nutritionData.ingredients !== undefined && { ingredients: nutritionData.ingredients }),
+            ...(nutritionData.sourceUrl !== undefined && { sourceUrl: nutritionData.sourceUrl }),
           };
 
           if (isFastFood) {
             addLog(`🍔 Fast food mode: Setting isPerUnit=true, servingSizeG=1, description="${servingDesc}"`);
             addLog(`   Nutrition values are for FULL UNIT (not per 100g) - won't be multiplied by grams`);
           }
+
+          // Debug: Show exactly what's being sent to the backend
+          console.log(`📤 Sending to backend:`, nutritionPayload);
+          addLog(`📤 Payload fields: ${Object.keys(nutritionPayload).join(', ')}`);
 
           const updateResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/updateFoodNutrition', {
             method: 'POST',
@@ -2363,12 +2541,16 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
     // Filter by search query
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
+      // Normalize: remove special chars and extra spaces for flexible matching
+      const normalizeText = (text: string) =>
+        text.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+
+      const query = normalizeText(searchQuery);
       filtered = filtered.filter(f =>
-        f.name.toLowerCase().includes(query) ||
-        f.brandName?.toLowerCase().includes(query) ||
-        f.barcode?.includes(query) ||
-        f.objectID.toLowerCase().includes(query)
+        normalizeText(f.name).includes(query) ||
+        normalizeText(f.brandName || '').includes(query) ||
+        f.barcode?.includes(searchQuery.trim()) || // Keep barcode exact
+        normalizeText(f.objectID).includes(query)
       );
     }
 
@@ -2505,6 +2687,166 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                     : (selectedCount > 0 ? `Search Selected (${selectedCount})` : `Search All (${pendingCount})`)
                   }
                 </button>
+
+                {/* Save Nutrition Button - Save selected items with nutrition data */}
+                {selectedCount > 0 && foods.some(f => f.selected && f.nutritionData) && (
+                  <button
+                    onClick={async () => {
+                      const selectedWithNutrition = foods.filter(f => f.selected && f.nutritionData);
+                      if (selectedWithNutrition.length === 0) {
+                        addLog('⚠️ No selected items have nutrition data to save');
+                        return;
+                      }
+
+                      addLog(`💾 Saving nutrition for ${selectedWithNutrition.length} selected items...`);
+                      setIsProcessing(true);
+
+                      for (const food of selectedWithNutrition) {
+                        const nutritionData = food.nutritionData!;
+
+                        try {
+                          addLog(`💾 Saving nutrition for ${food.name}...`);
+
+                          const isFastFood = food.sourceIndex === 'fast_foods_database';
+                          let servingDesc = null;
+
+                          if (isFastFood) {
+                            const name = food.name.toLowerCase();
+                            let itemType = 'item';
+                            if (name.includes('burger')) itemType = 'burger';
+                            else if (name.includes('sandwich')) itemType = 'sandwich';
+                            else if (name.includes('wrap')) itemType = 'wrap';
+                            else if (name.includes('salad')) itemType = 'salad';
+                            else if (name.includes('fries') || name.includes('chips')) itemType = 'serving';
+                            else if (name.includes('nugget')) itemType = 'serving';
+                            else if (name.includes('pizza')) itemType = 'pizza';
+
+                            if (nutritionData.servingSize) {
+                              const sizeStr = typeof nutritionData.servingSize === 'number'
+                                ? `${nutritionData.servingSize}g`
+                                : nutritionData.servingSize;
+                              servingDesc = `${itemType} (${sizeStr})`;
+                            } else {
+                              servingDesc = itemType;
+                            }
+                          }
+
+                          const nutritionPayload = isFastFood ? {
+                            calories: nutritionData.calories ?? null,
+                            protein: nutritionData.protein ?? null,
+                            carbs: nutritionData.carbs ?? null,
+                            fat: nutritionData.fat ?? null,
+                            saturatedFat: nutritionData.saturatedFat ?? null,
+                            fiber: nutritionData.fiber ?? null,
+                            sugar: nutritionData.sugar ?? null,
+                            sodium: nutritionData.sodium ?? null,
+                            salt: nutritionData.salt ?? null,
+                            servingSizeG: 1,
+                            servingDescription: servingDesc,
+                            isPerUnit: true,
+                            ingredients: nutritionData.ingredients ?? null,
+                            sourceUrl: nutritionData.sourceUrl ?? null,
+                          } : {
+                            ...(nutritionData.calories !== undefined && { calories: nutritionData.calories }),
+                            ...(nutritionData.protein !== undefined && { protein: nutritionData.protein }),
+                            ...(nutritionData.carbs !== undefined && { carbs: nutritionData.carbs }),
+                            ...(nutritionData.fat !== undefined && { fat: nutritionData.fat }),
+                            ...(nutritionData.saturatedFat !== undefined && { saturatedFat: nutritionData.saturatedFat }),
+                            ...(nutritionData.fiber !== undefined && { fiber: nutritionData.fiber }),
+                            ...(nutritionData.sugar !== undefined && { sugar: nutritionData.sugar }),
+                            ...(nutritionData.sodium !== undefined && { sodium: nutritionData.sodium }),
+                            ...(nutritionData.salt !== undefined && { salt: nutritionData.salt }),
+                            ...(() => {
+                              const servingStr = nutritionData.servingSize;
+                              if (!servingStr) return {};
+
+                              const parenMatch = String(servingStr).match(/\((\d+(?:\.\d+)?)\s*g\)/i);
+                              if (parenMatch) {
+                                const grams = parseFloat(parenMatch[1]);
+                                const desc = String(servingStr).replace(/\s*\(\d+(?:\.\d+)?\s*g\)\s*/i, '').trim();
+                                return {
+                                  servingSizeG: grams,
+                                  servingDescription: desc || 'per serving',
+                                };
+                              }
+
+                              const plainMatch = String(servingStr).match(/^(\d+(?:\.\d+)?)\s*g$/i);
+                              if (plainMatch) {
+                                return {
+                                  servingSizeG: parseFloat(plainMatch[1]),
+                                  servingDescription: 'per serving',
+                                };
+                              }
+
+                              if (typeof servingStr === 'number') {
+                                return {
+                                  servingSizeG: servingStr,
+                                  servingDescription: 'per serving',
+                                };
+                              }
+
+                              // Validate serving size - reject vague descriptions without weight
+                              // e.g., "1 egg", "2 pieces", "1 bar" are invalid without gram weight
+                              const servingLower = String(servingStr).toLowerCase().trim();
+
+                              // Reject patterns like "1 egg", "2 pieces", "1 bar" (count + item, no grams)
+                              const vagueCountPattern = /^\d+\s*(egg|piece|bar|slice|biscuit|item|unit|portion|serving|pack|sachet|pot|cookie|cracker|tablet|capsule|scoop)s?$/i;
+                              if (vagueCountPattern.test(servingLower)) {
+                                console.log(`   ⚠️ Rejected vague serving size without weight: "${servingStr}"`);
+                                return {}; // Don't store invalid serving sizes
+                              }
+
+                              // Also reject very short vague descriptions
+                              const vagueSizes = ['per serving', 'per portion', 'serving', 'portion', 'per unit', 'unit'];
+                              if (vagueSizes.includes(servingLower)) {
+                                console.log(`   ⚠️ Rejected vague serving size: "${servingStr}"`);
+                                return {}; // Don't store invalid serving sizes
+                              }
+
+                              // Otherwise store as description only (no grams found)
+                              // This should only happen for valid descriptive sizes like "1/4 pizza" or "small bowl"
+                              return {
+                                servingDescription: String(servingStr),
+                              };
+                            })(),
+                            ...(nutritionData.ingredients !== undefined && { ingredients: nutritionData.ingredients }),
+                            ...(nutritionData.sourceUrl !== undefined && { sourceUrl: nutritionData.sourceUrl }),
+                          };
+
+                          addLog(`📤 Payload fields: ${Object.keys(nutritionPayload).join(', ')}`);
+
+                          const updateResponse = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/updateFoodNutrition', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              index: food.sourceIndex,
+                              objectID: food.objectID,
+                              nutritionData: nutritionPayload,
+                            }),
+                          });
+
+                          if (updateResponse.ok) {
+                            addLog(`✅ ${food.name}: Saved to database`);
+                          } else {
+                            addLog(`⚠ ${food.name}: Save failed - ${updateResponse.status}`);
+                          }
+                        } catch (error) {
+                          addLog(`⚠ ${food.name}: Save error - ${error}`);
+                        }
+                      }
+
+                      addLog(`✅ Saved nutrition for ${selectedWithNutrition.length} items`);
+                      setIsProcessing(false);
+                    }}
+                    disabled={isProcessing}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    Save Nutrition ({foods.filter(f => f.selected && f.nutritionData).length})
+                  </button>
+                )}
 
                 {readyCount > 0 && (
                   <button
@@ -2897,23 +3239,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                       </label>
                     )}
 
-                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-red-200 bg-red-50 cursor-pointer hover:bg-red-100 transition-colors mt-3">
-                      <input
-                        type="checkbox"
-                        checked={filterTescoBadImages}
-                        onChange={(e) => setFilterTescoBadImages(e.target.checked)}
-                        className="w-4 h-4 text-red-600 rounded mt-0.5"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">🚫 Hide Tesco Bad Images</span>
-                          <span className="px-2 py-0.5 text-xs font-semibold text-red-700 bg-red-200 rounded-full">Recommended</span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Hide Tesco products that are marked with "dontShowImage" flag. These have been identified as having poor quality images that shouldn't be displayed.
-                        </p>
-                      </div>
-                    </label>
+                    {/* Tesco bad image filter DISABLED - checkbox removed */}
+                    {/* Previously: "Hide Tesco Bad Images" checkbox that filtered items with dontShowImage flag */}
 
                     <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-green-200 bg-green-50 cursor-pointer hover:bg-green-100 transition-colors mt-3">
                       <input
@@ -2942,10 +3269,12 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">📏 Scrape Serving Size</span>
+                          <span className="text-sm font-medium text-gray-900">📏 Require Serving Size (Recommended)</span>
                         </div>
                         <p className="text-xs text-gray-600 mt-1">
-                          Extract serving size information (e.g., "100g", "250ml", "1 slice"). Useful for standardizing portion sizes across different products.
+                          Only extract nutrition data if an ACTUAL serving size is specified (e.g., "30g", "per piece (50g)").
+                          Per-100g-only data will be rejected. This ensures all scraped data has real-world portion sizes.
+                          Highly recommended to avoid misleading per-100g values.
                         </p>
                       </div>
                     </label>
@@ -3118,7 +3447,18 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                                 {food.nutritionData.servingSize && <span className="text-blue-600">📏</span>}
                               </div>
                               <div className="text-[10px] text-green-700">
-                                {food.nutritionData.source}
+                                {food.nutritionData.sourceUrl ? (
+                                  <a
+                                    href={food.nutritionData.sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline text-blue-600 hover:text-blue-800"
+                                  >
+                                    {food.nutritionData.source} 🔗
+                                  </a>
+                                ) : (
+                                  food.nutritionData.source
+                                )}
                               </div>
                             </div>
                             {food.nutritionData.servingSize && (

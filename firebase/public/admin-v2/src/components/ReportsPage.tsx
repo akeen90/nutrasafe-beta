@@ -203,6 +203,84 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     dismissed: reports.filter(r => r.status === 'dismissed').length,
   };
 
+  // Bulk fix missing suggestedServingUnit fields
+  const bulkFixUnits = async () => {
+    if (!confirm('This will fix all foods with missing suggestedServingUnit fields. Continue?')) {
+      return;
+    }
+
+    setIsSaving(true);
+    let fixed = 0;
+    let errors = 0;
+
+    try {
+      for (const report of reports) {
+        const foodId = report.food?.id || report.food?.objectID || report.foodId;
+        if (!foodId) continue;
+
+        // Fetch full food data
+        let fullFood: any = null;
+        try {
+          fullFood = await getFoodById(foodId);
+        } catch (err) {
+          fullFood = report.food;
+        }
+
+        const food = fullFood || report.food || {};
+
+        // Skip if already has suggestedServingUnit
+        if (food.suggestedServingUnit) continue;
+
+        // Infer unit from servingDescription
+        let unit: 'g' | 'ml' = 'g';
+        if (food.servingDescription) {
+          const desc = food.servingDescription.toLowerCase();
+          if (desc.includes('ml')) {
+            unit = 'ml';
+          }
+        }
+
+        // Save it
+        const foodIndex = food._sourceIndex || food.sourceIndex || report.sourceIndex || 'uk_foods_cleaned';
+        try {
+          const response = await fetch(`${API_BASE}/adminSaveFood`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              foodId,
+              indexName: foodIndex,
+              updates: {
+                suggestedServingUnit: unit,
+              },
+            }),
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            fixed++;
+            console.log(`✓ Fixed ${food.name || foodId}: ${unit}`);
+          } else {
+            errors++;
+          }
+        } catch (err) {
+          console.error(`✗ Error fixing ${foodId}:`, err);
+          errors++;
+        }
+
+        // Add small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      showToast(`✅ Fixed ${fixed} foods, ${errors} errors`, 'success');
+      await loadReports();
+    } catch (error) {
+      console.error('Bulk fix error:', error);
+      showToast('Error during bulk fix', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Open report detail panel
   const openReport = async (report: FoodReport) => {
     setSelectedReport(report);
@@ -222,17 +300,32 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     // Use full Algolia data if available, otherwise fall back to cached snapshot
     const food: any = fullFood || report.food || {};
 
-    // Infer unit from servingUnit field, or parse from servingDescription
+    // Debug: Log what's actually stored
+    console.log('🔍 FOOD DATA:', {
+      name: food.name,
+      servingUnit: food.servingUnit,
+      suggestedServingUnit: food.suggestedServingUnit,
+      servingDescription: food.servingDescription,
+      category: food.category,
+    });
+
+    // Infer unit from suggestedServingUnit (iOS app checks this), fallback to servingUnit, then parse from servingDescription
     let initialUnit: 'g' | 'ml' = 'g';
-    if (food.servingUnit === 'ml') {
+    if (food.suggestedServingUnit === 'ml' || food.servingUnit === 'ml') {
       initialUnit = 'ml';
+      console.log('✅ Unit from suggestedServingUnit/servingUnit field: ml');
     } else if (food.servingDescription) {
       // Parse unit from servingDescription (e.g., "100g", "200ml", "100 ml")
       const desc = food.servingDescription.toLowerCase();
       if (desc.includes('ml')) {
         initialUnit = 'ml';
+        console.log('✅ Unit inferred from servingDescription: ml');
+      } else {
+        console.log('✅ Unit inferred from servingDescription: g');
       }
     }
+
+    console.log('📊 Final initialUnit:', initialUnit);
 
     // Sync unitMode with the food's actual unit
     setUnitMode(initialUnit);
@@ -340,6 +433,7 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           servingSize: editableFood.servingDescription,
           servingSizeG: parseFloat(editableFood.servingSizeG) || null,
           servingUnit: editableFood.servingUnit,
+          suggestedServingUnit: editableFood.servingUnit, // ← iOS app checks THIS field
           category: editableFood.category,
           ingredients: editableFood.ingredients.split(',').map(i => i.trim()).filter(i => i),
           imageUrl: editableFood.imageUrl || null,
@@ -356,6 +450,13 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           },
         },
       };
+
+      console.log('💾 SAVING FOOD:', {
+        foodName: payload.updates.foodName,
+        servingUnit: payload.updates.servingUnit,
+        suggestedServingUnit: payload.updates.suggestedServingUnit, // ← iOS checks this
+        servingSize: payload.updates.servingSize,
+      });
 
       const response = await fetch(`${API_BASE}/adminSaveFood`, {
         method: 'POST',
@@ -583,6 +684,18 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               Refresh
+            </button>
+
+            <button
+              onClick={bulkFixUnits}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50"
+              title="Fix all foods with missing suggestedServingUnit"
+            >
+              <svg className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Bulk Fix Units
             </button>
 
             {selectedReportIds.size > 0 && (
@@ -874,6 +987,27 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 {isApplyingAI ? 'Analyzing...' : 'Apply AI Suggestions'}
               </button>
 
+              {/* Unit Warning if suggestedServingUnit undefined in database */}
+              {(() => {
+                const food: any = selectedReport?.food || {};
+                const isUndefined = food.suggestedServingUnit === undefined;
+                return isUndefined ? (
+                  <div className="mb-4 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-yellow-900">⚠️ suggestedServingUnit Not Stored</p>
+                        <p className="text-xs text-yellow-700 mt-0.5">
+                          iOS app is guessing unit from product name (checks <code>suggestedServingUnit</code> field). <strong>Click "Save & Resolve"</strong> to store "{editableFood.servingUnit}" and fix this.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
               {/* Unit Mode Toggle */}
               <div className="mb-6 flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
                 <div className="flex items-center gap-2">
@@ -982,6 +1116,7 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       value={editableFood.servingUnit}
                       onChange={(e) => {
                         const newUnit = e.target.value as 'g' | 'ml';
+                        console.log('🔄 UNIT CHANGED:', editableFood.servingUnit, '→', newUnit);
                         setEditableFood({ ...editableFood, servingUnit: newUnit });
                         setUnitMode(newUnit); // Keep toggle in sync
                       }}
@@ -1047,6 +1182,15 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
               {/* Actions */}
               <div className="mt-8 pt-6 border-t border-gray-200 space-y-3">
+                {(() => {
+                  const food: any = selectedReport?.food || {};
+                  const hasUnitIssue = food.suggestedServingUnit === undefined;
+                  return hasUnitIssue ? (
+                    <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200 text-xs text-green-800">
+                      ✓ Saving will store <strong>suggestedServingUnit: "{editableFood.servingUnit}"</strong> (iOS app checks this field)
+                    </div>
+                  ) : null;
+                })()}
                 <div className="flex gap-3">
                   <button
                     onClick={() => saveFood(true)}

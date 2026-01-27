@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage, MasterDatabaseBuilderPage } from './components';
+import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage, MasterDatabaseBuilderPage, AnalyticsPage } from './components';
 import { FoodCategorizerPage } from './components/FoodCategorizerPage';
 import { useGridStore } from './store';
 import { searchAllIndices, getIndexStats } from './services/algoliaService';
@@ -51,7 +51,7 @@ const AppContent: React.FC = () => {
   const [isDetectingDuplicates, setIsDetectingDuplicates] = useState(false);
   const [showOFFModal, setShowOFFModal] = useState(false);
   const [showDuplicatesPanel, setShowDuplicatesPanel] = useState(false);
-  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports' | 'master-builder' | 'food-categorizer'>('grid');
+  const [currentView, setCurrentView] = useState<'grid' | 'image-processing' | 'google-scraper' | 'reports' | 'master-builder' | 'food-categorizer' | 'analytics'>('grid');
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   // Load pending reports count and food report IDs
@@ -381,6 +381,15 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Show analytics page
+  if (currentView === 'analytics') {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50">
+        <AnalyticsPage onBack={() => setCurrentView('grid')} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -407,6 +416,7 @@ const AppContent: React.FC = () => {
           onReports={() => setCurrentView('reports')}
           onMasterBuilder={() => setCurrentView('master-builder')}
           onFoodCategorizer={() => setCurrentView('food-categorizer')}
+          onAnalytics={() => setCurrentView('analytics')}
           isDetectingDuplicates={isDetectingDuplicates}
           pendingReportsCount={pendingReportsCount}
         />
