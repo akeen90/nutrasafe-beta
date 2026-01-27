@@ -852,7 +852,7 @@ struct PremiumDayCard: View {
         return Double(day.calories) / calorieGoal
     }
 
-    // Emotion-first status message
+    // Status message - show calorie difference
     private var dayStatus: (message: String, color: Color) {
         if !day.isLogged {
             return ("No entries", .secondary)
@@ -860,8 +860,9 @@ struct PremiumDayCard: View {
         let diff = day.calories - Int(calorieGoal)
         let percentDiff = calorieGoal > 0 ? abs(Double(diff)) / calorieGoal : 0
 
-        if percentDiff < 0.05 {
-            return ("Balanced", palette.accent)
+        // Only show "On target" if very close (within 2%)
+        if percentDiff < 0.02 {
+            return ("On target", palette.accent)
         } else if diff > 0 {
             return ("+\(diff)", Color.orange)
         } else {
