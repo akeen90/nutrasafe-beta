@@ -375,6 +375,32 @@ If Claude is going in circles:
 - "Grep for where this view is instantiated/called."
 - "The code exists but isn't showing - find what's being called instead."
 
+## 📝 View Naming & File Management
+
+### Creating New Views
+When creating new sheet views or modals:
+1. **Always name new views with "New" suffix** during development (e.g., `AppleHealthSettingsViewNew`)
+2. Once verified working, rename and delete the old view
+3. Check if files are **actually in the Xcode project** before assuming they compile
+
+### Checking if a File is in Xcode Project
+```bash
+# Check if file is referenced in project.pbxproj
+grep -l "MyNewFile.swift" NutraSafeBeta.xcodeproj/project.pbxproj
+```
+If no output, the file exists on disk but **won't compile** - it's not in the Xcode build.
+
+### Duplicate View Issues
+**Problem:** Two structs with the same name in different files - one compiles, one doesn't.
+- Swift resolves by using the one that's actually in the build target
+- A file on disk but not in project.pbxproj is effectively dead code
+- Always grep for view usage to confirm which one is being called
+
+### Before Deleting "Duplicate" Views
+1. **Verify which one compiles**: Check project.pbxproj for file references
+2. **Verify which one is used**: Grep for instantiation (`ViewName(`)
+3. **Test after deletion**: Build to confirm the remaining view works
+
 ## 🚫 ANTI-LOOP PATTERNS (CRITICAL!)
 
 **NEVER write code with infinite loops.** Always add safety limits, break conditions, and progress tracking.
