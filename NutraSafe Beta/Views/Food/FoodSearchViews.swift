@@ -1154,6 +1154,7 @@ struct AddFoodSearchView: View {
     @State private var recentFoods: [DiaryFoodItem] = []
     @State private var favoriteFoods: [FoodSearchResult] = []
     @State private var hasFavoritesLoaded = false  // Prevent reload on rapid appear/disappear cycles
+    @State private var hasInitiallyLoaded = false  // Prevent setup from running on appear/disappear/appear cycle
     @State private var searchTask: Task<Void, Never>?
     @State private var keyboardHeight: CGFloat = 0
     @State private var isEditingMode = false
@@ -1406,14 +1407,12 @@ struct AddFoodSearchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
-            // Opaque base layer to prevent underlying content showing through
-            Color.adaptiveBackground
-                .ignoresSafeArea()
-            // Then the animated gradient on top
-            AppAnimatedBackground()
-        }
+        // Background provided by parent AddFoodMainView (ContentView.swift:5530)
         .onAppear {
+            // Guard against SwiftUI sheet bug that causes appear → disappear → appear cycle
+            guard !hasInitiallyLoaded else { return }
+            hasInitiallyLoaded = true
+
             setupKeyboardObservers()
             checkForEditingMode()
             loadRecentFoods()
@@ -1446,25 +1445,31 @@ struct AddFoodSearchView: View {
     }
 
     private func checkForEditingMode() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+
         if let mode = UserDefaults.standard.string(forKey: "foodSearchMode"), mode == "editing" {
-            isEditingMode = true
-            editingFoodName = UserDefaults.standard.string(forKey: "editingFoodName") ?? ""
-            originalMealType = UserDefaults.standard.string(forKey: "editingMealType") ?? ""
-            
-            // Pre-populate search with the food being edited
-            searchText = editingFoodName
+            withTransaction(transaction) {
+                isEditingMode = true
+                editingFoodName = UserDefaults.standard.string(forKey: "editingFoodName") ?? ""
+                originalMealType = UserDefaults.standard.string(forKey: "editingMealType") ?? ""
+                searchText = editingFoodName
+            }
+
             if !editingFoodName.isEmpty {
                 performSearch()
             }
-            
+
             // Clear the editing flags
             UserDefaults.standard.removeObject(forKey: "foodSearchMode")
             UserDefaults.standard.removeObject(forKey: "editingFoodName")
             UserDefaults.standard.removeObject(forKey: "editingMealType")
         } else {
-            isEditingMode = false
-            editingFoodName = ""
-            originalMealType = ""
+            withTransaction(transaction) {
+                isEditingMode = false
+                editingFoodName = ""
+                originalMealType = ""
+            }
         }
     }
     
@@ -1581,7 +1586,12 @@ struct AddFoodSearchView: View {
     }
     
     private func loadRecentFoods() {
-        recentFoods = diaryDataManager.getRecentFoods()
+        let loaded = diaryDataManager.getRecentFoods()
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            recentFoods = loaded
+        }
     }
 
     private func loadFavorites() {

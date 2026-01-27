@@ -244,7 +244,7 @@ struct FoodDetailServingView: View {
 
                 // Description
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(portion.name)
+                    Text(adjustedPortionName(portion.name))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(palette.textPrimary)
                     Text("\(Int(portion.serving_g))\(portionUnitLabel) • \(Int(portionCalories)) kcal")
@@ -403,6 +403,19 @@ struct FoodDetailServingView: View {
     }
 
     // MARK: - Helper Functions
+
+    /// Adjusts portion names to use the correct unit based on isLiquidCategory
+    /// E.g., "150ml" becomes "150g" if the food is not actually a liquid
+    private func adjustedPortionName(_ name: String) -> String {
+        // If this is a liquid category, keep the name as-is
+        if food.isLiquidCategory {
+            return name
+        }
+
+        // Replace "ml" with "g" in portion names when food is not liquid
+        // E.g., "150ml" → "150g", "330ml" → "330g"
+        return name.replacingOccurrences(of: "ml", with: "g", options: .caseInsensitive)
+    }
 
     private func portionIcon(for name: String) -> String {
         let lower = name.lowercased()

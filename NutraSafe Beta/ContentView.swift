@@ -5538,10 +5538,14 @@ struct AddFoodMainView: View {
                         print("[AddFoodMainView] Close button tapped - dismissing")
                         isPresented = false
                     }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22, weight: .medium))
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.secondary)
-                            .symbolRenderingMode(.hierarchical)
+                            .frame(width: 30, height: 30)
+                            .background(
+                                Circle()
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1.5)
+                            )
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
