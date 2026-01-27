@@ -2757,7 +2757,8 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
                 processingGrade: self.processedScore,
                 processingLabel: self.processedScore,
                 barcode: self.barcode,
-                micronutrientProfile: self.micronutrientProfile
+                micronutrientProfile: self.micronutrientProfile,
+                imageUrl: self.imageUrl // Preserve image when editing
             )
         }
 
@@ -2800,7 +2801,8 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             processingGrade: self.processedScore,
             processingLabel: self.processedScore,
             barcode: self.barcode,
-            micronutrientProfile: self.micronutrientProfile
+            micronutrientProfile: self.micronutrientProfile,
+            imageUrl: self.imageUrl // Preserve image when editing
         )
     }
 
