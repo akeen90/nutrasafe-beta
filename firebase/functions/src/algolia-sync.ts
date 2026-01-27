@@ -481,6 +481,44 @@ export const syncTescoProductToAlgolia = functionsV1.firestore
   });
 
 /**
+ * Sync uk_foods_cleaned to Algolia when they're created/updated/deleted
+ */
+export const syncUKFoodsCleanedToAlgolia = functionsV1.firestore
+  .document("uk_foods_cleaned/{foodId}")
+  .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+      console.error("Algolia admin key not configured");
+      return;
+    }
+    const client = algoliasearch(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const afterData = change.after.data();
+
+    // Delete
+    if (!afterData) {
+      await client.deleteObject({
+        indexName: 'uk_foods_cleaned',
+        objectID: foodId,
+      });
+      console.log(`Deleted uk_foods_cleaned ${foodId} from Algolia`);
+      return;
+    }
+
+    // Create or Update
+    const algoliaObject = {
+      objectID: foodId,
+      ...prepareForAlgolia(afterData),
+    };
+
+    await client.saveObject({
+      indexName: 'uk_foods_cleaned',
+      body: algoliaObject,
+    });
+    console.log(`Synced uk_foods_cleaned ${foodId} to Algolia`);
+  });
+
+/**
  * Configure custom ranking settings for all Algolia indices (HTTP endpoint)
  * Call this once to set up proper search ranking
  * This enables exact match prioritization and better search results

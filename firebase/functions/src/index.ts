@@ -17,6 +17,7 @@ export { searchFoodsByCollection } from './search-foods-by-collection';
 export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFromAlgolia, deleteFoodComprehensive, moveFoodBetweenCollections, moveFoodsBetweenIndices, resetAdminManualFoods, resetAllFoodsToInitial, fixExistingFoodsVerification, updateServingSizes, searchTescoAndUpdate, adminSaveFood, browseAllIndices, getBrowseJobData, deleteFromIndex, updateAlgoliaIndex } from './food-management';
 export { uploadMasterDatabase } from './upload-master-database';
 export { getOverviewStats, getAnalyticsData } from './analytics';
+export { getWebsiteAnalytics } from './website-analytics';
 export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp, setPremiumOverride, getPremiumOverrideStatus } from './user-management';
 export { getContextualNutritionScore } from './contextual-nutrition';
 export { analyzeAdditivesEnhanced } from './additive-analyzer-enhanced';
@@ -46,7 +47,7 @@ export { searchGenericOliveOil } from './search-generic-olive-oil';
 export { deleteSpecificItem } from './delete-specific-item';
 
 // Algolia integration (auto-sync on document write + manual sync functions)
-export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, syncTescoProductToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
+export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, syncTescoProductToAlgolia, syncUKFoodsCleanedToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
 
 // Algolia reverse sync (Algolia -> Firebase)
 export { checkAlgoliaFirebaseSync, syncAlgoliaToFirebase, getAlgoliaIndexStats } from './algolia-reverse-sync';

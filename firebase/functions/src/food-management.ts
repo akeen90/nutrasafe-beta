@@ -20,10 +20,10 @@ const TESCO8_HOST = 'tesco8.p.rapidapi.com';
 
 // Map Algolia index names to Firestore collection names (where applicable)
 const INDEX_TO_COLLECTION: Record<string, string | null> = {
-  'uk_foods_cleaned': null,        // Algolia-only, no direct Firestore sync
-  'fast_foods_database': null,     // Algolia-only
-  'generic_database': null,        // Algolia-only
-  'foods': 'foods',                // Has Firestore backing
+  'uk_foods_cleaned': 'uk_foods_cleaned',  // Has Firestore backing
+  'fast_foods_database': null,             // Algolia-only
+  'generic_database': null,                // Algolia-only
+  'foods': 'foods',                        // Has Firestore backing
   'verified_foods': 'verifiedFoods',
   'manual_foods': 'manualFoods',
   'user_added': 'userAdded',
@@ -33,7 +33,7 @@ const INDEX_TO_COLLECTION: Record<string, string | null> = {
 };
 
 // Algolia-only indices (no Firestore backing)
-const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+const ALGOLIA_ONLY_INDICES = ['fast_foods_database', 'generic_database'];
 
 // Update verified food
 export const updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).https.onRequest(async (req, res) => {
@@ -1311,6 +1311,10 @@ export const adminSaveFood = functions
         if (updates.servingUnit !== undefined) {
           updateObj.servingUnit = updates.servingUnit;
         }
+        if (updates.suggestedServingUnit !== undefined) {
+          updateObj.suggestedServingUnit = updates.suggestedServingUnit;
+          updateObj.unitOverrideLocked = true; // Lock unit to prevent auto-categorization override
+        }
         if (updates.ingredients !== undefined) {
           updateObj.ingredients = updates.ingredients;
           updateObj.extractedIngredients = updates.ingredients;
@@ -1376,17 +1380,26 @@ export const adminSaveFood = functions
         // Has Firestore backing - update Firestore (will auto-sync to Algolia via triggers)
         console.log(`📂 Updating Firestore: ${firestoreCollection}/${foodId}`);
 
+        // Read existing document to ensure we normalize name/foodName fields
+        const docRef = admin.firestore().collection(firestoreCollection).doc(foodId);
+        const existingDoc = await docRef.get();
+        const existingData = existingDoc.data() || {};
+
+        // Ensure both name and foodName fields are present for search compatibility
+        const normalizedName = updateObj.name || updateObj.foodName || existingData.name || existingData.foodName || '';
+        if (normalizedName) {
+          updateObj.name = normalizedName;
+          updateObj.foodName = normalizedName;
+        }
+
         const firestoreUpdate = {
           ...updateObj,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        await admin.firestore()
-          .collection(firestoreCollection)
-          .doc(foodId)
-          .update(firestoreUpdate);
+        await docRef.set(firestoreUpdate, { merge: true }); // Use set with merge instead of update
 
-        console.log(`✅ Firestore updated: ${firestoreCollection}/${foodId}`);
+        console.log(`✅ Firestore updated: ${firestoreCollection}/${foodId} with normalized name fields`);
       } else {
         // Algolia-only index - update directly in Algolia
         console.log(`🔍 Updating Algolia directly: ${indexName}/${foodId}`);
