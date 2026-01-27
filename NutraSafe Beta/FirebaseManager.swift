@@ -1322,7 +1322,8 @@ class FirebaseManager: ObservableObject {
     /// Previously used Cloud Function which added 100-500ms latency
     private func searchMainDatabase(query: String) async throws -> [FoodSearchResult] {
         // Use direct Algolia SDK for instant results (~300ms faster than Cloud Function)
-        return try await AlgoliaSearchManager.shared.search(query: query)
+        // Request 100 results for better scrolling experience (was 20 default)
+        return try await AlgoliaSearchManager.shared.search(query: query, hitsPerPage: 100)
     }
 
     /// Clear the search cache (useful for testing or memory management)
@@ -2737,6 +2738,10 @@ class FirebaseManager: ObservableObject {
 
             let isPerUnit = foodDict["per_unit_nutrition"] as? Bool
 
+            // Extract unit override fields (for admin panel Reports feature)
+            let suggestedServingUnit = foodDict["suggestedServingUnit"] as? String
+            let unitOverrideLocked = foodDict["unitOverrideLocked"] as? Bool
+
             return FoodSearchResult(
                 id: id,
                 name: name,
@@ -2760,7 +2765,15 @@ class FirebaseManager: ObservableObject {
                 processingGrade: nil,
                 processingLabel: nil,
                 barcode: barcode,
-                micronutrientProfile: nil
+                micronutrientProfile: nil,
+                portions: nil,
+                source: nil,
+                imageUrl: nil,
+                foodCategory: nil,
+                suggestedServingSize: nil,
+                suggestedServingUnit: suggestedServingUnit,
+                suggestedServingDescription: nil,
+                unitOverrideLocked: unitOverrideLocked
             )
         }
     }

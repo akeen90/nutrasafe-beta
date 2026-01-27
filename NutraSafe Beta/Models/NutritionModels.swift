@@ -61,8 +61,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let suggestedServingSize: Double? // Default serving size for this category (e.g., 45, 150, 25)
     let suggestedServingUnit: String? // "g" or "ml"
     let suggestedServingDescription: String? // e.g., "per bar", "per portion", "per 25ml measure"
+    let unitOverrideLocked: Bool? // If true, ALWAYS use suggestedServingUnit (manually set by admin, ignore auto-detection)
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, gtin: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, imageUrl: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, gtin: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, imageUrl: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil, unitOverrideLocked: Bool? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -95,6 +96,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.suggestedServingSize = suggestedServingSize
         self.suggestedServingUnit = suggestedServingUnit
         self.suggestedServingDescription = suggestedServingDescription
+        self.unitOverrideLocked = unitOverrideLocked
     }
 
     // Custom decoder to handle flexible payloads from Cloud Functions
@@ -135,6 +137,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case suggestedServingSize
         case suggestedServingUnit
         case suggestedServingDescription
+        case unitOverrideLocked
     }
     
     // Helper structs for nested nutrition format from Firebase
@@ -260,6 +263,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.suggestedServingSize = try? c.decode(Double.self, forKey: .suggestedServingSize)
         self.suggestedServingUnit = try? c.decode(String.self, forKey: .suggestedServingUnit)
         self.suggestedServingDescription = try? c.decode(String.self, forKey: .suggestedServingDescription)
+        self.unitOverrideLocked = try? c.decode(Bool.self, forKey: .unitOverrideLocked)
     }
 
     /// Returns true if this food has multiple portion options (e.g., McNuggets with 6pc, 9pc, 20pc)
@@ -1000,8 +1004,14 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     /// Returns true if this food category represents a liquid/drink
     /// IMPORTANT: Chocolate products are NEVER liquid, even if their serving description mentions ml
     var isLiquidCategory: Bool {
-        // PRIORITY: Firebase category data is authoritative (from AI categorization)
-        // If the backend says it uses "ml", it's a liquid
+        // PRIORITY 1: If unitOverrideLocked is true, ALWAYS trust suggestedServingUnit (manually set by admin)
+        // This prevents auto-detection from overriding admin panel changes
+        if unitOverrideLocked == true, let unit = suggestedServingUnit, !unit.isEmpty {
+            return unit == "ml"
+        }
+
+        // PRIORITY 2: Firebase category data is authoritative (from AI categorization)
+        // If the backend says it uses "ml", it's a liquid (unless explicitly overridden above)
         if let unit = suggestedServingUnit, !unit.isEmpty {
             return unit == "ml"
         }

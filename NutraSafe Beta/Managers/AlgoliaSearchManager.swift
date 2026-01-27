@@ -1447,7 +1447,7 @@ final class AlgoliaSearchManager {
             )
 
             // Try to get serving description from various field names
-            var servingDescription = (hit["servingSize"] as? String)
+            let servingDescription = (hit["servingSize"] as? String)
                 ?? (hit["serving_description"] as? String)
                 ?? (hit["servingDescription"] as? String)
                 ?? (hit["serving_size_description"] as? String)
@@ -1586,6 +1586,10 @@ final class AlgoliaSearchManager {
                 return url
             }()
 
+            // Extract unit override fields (for admin panel Reports feature)
+            let suggestedServingUnit = hit["suggestedServingUnit"] as? String
+            let unitOverrideLocked = hit["unitOverrideLocked"] as? Bool
+
             // DEBUG: Log parsed values for troubleshooting Tesco data
             #if DEBUG
             let debugNameLower = name.lowercased()
@@ -1620,7 +1624,9 @@ final class AlgoliaSearchManager {
                 micronutrientProfile: micronutrientProfile,
                 portions: portions,
                 source: source,
-                imageUrl: imageUrl
+                imageUrl: imageUrl,
+                suggestedServingUnit: suggestedServingUnit,
+                unitOverrideLocked: unitOverrideLocked
             )
         }
     }

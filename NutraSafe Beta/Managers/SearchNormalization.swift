@@ -198,6 +198,29 @@ struct SearchQueryNormalizer {
             }
         }
 
+        // Step 5.5: Apostrophe variants (both with and without)
+        // This handles cases like "Hellmann's" vs "Hellmanns" or "McDonald's" vs "McDonalds"
+        if normalized.contains("'") {
+            // Generate variant without apostrophes
+            variants.insert(normalized.replacingOccurrences(of: "'", with: ""))
+            variants.insert(normalized.replacingOccurrences(of: "'", with: "")) // curly apostrophe
+        } else {
+            // Query has no apostrophe - try adding common apostrophe positions
+            // This is a fallback for when the query is typed without apostrophes
+            // but the index has products with apostrophes
+            for variant in Array(variants) {
+                // Try adding apostrophes before 's' at word boundaries (e.g., "mcdonalds" -> "mcdonald's")
+                let withApostrophe = variant.replacingOccurrences(
+                    of: "s ",
+                    with: "'s ",
+                    options: .regularExpression
+                )
+                if withApostrophe != variant {
+                    variants.insert(withApostrophe)
+                }
+            }
+        }
+
         // Step 6: Detect search intent
         let intent = detectSearchIntent(normalized)
 
