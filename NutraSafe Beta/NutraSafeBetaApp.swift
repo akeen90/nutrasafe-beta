@@ -139,10 +139,7 @@ struct NutraSafeBetaApp: App {
     }
 
     // Add theme binding at the scene level so changes apply instantly across sheets and overlays
-    @AppStorage("appearanceMode") private var appearanceModeString: String = AppearanceMode.system.rawValue
-    private var appearanceMode: AppearanceMode {
-        AppearanceMode(rawValue: appearanceModeString) ?? .system
-    }
+    @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
 
     var body: some Scene {
         WindowGroup {
@@ -159,12 +156,8 @@ struct NutraSafeBetaApp: App {
 struct MainAppView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var healthKitManager: HealthKitManager
-    @AppStorage("appearanceMode") private var appearanceModeString: String = AppearanceMode.system.rawValue
+    @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
-
-    private var appearanceMode: AppearanceMode {
-        AppearanceMode(rawValue: appearanceModeString) ?? .system
-    }
 
     var body: some View {
         AuthenticationView()

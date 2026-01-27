@@ -1992,7 +1992,6 @@ struct AppPreferencesSection: View {
         }
         .fullScreenCover(isPresented: $showingThemeSelector) {
             ThemeSelectorView(selectedTheme: $appearanceMode)
-                .preferredColorScheme(appearanceMode.colorScheme)
         }
         .fullScreenCover(isPresented: $showingUnitsSelector) {
             UnitsSelectorView(selectedUnit: $unitSystem)
@@ -2061,6 +2060,20 @@ struct ThemeSelectorView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTheme: AppearanceMode
 
+    /// Resolves the actual color scheme to use - for "system" mode, queries the device's current setting
+    private var resolvedColorScheme: ColorScheme {
+        switch selectedTheme {
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        case .system:
+            // Query the actual system color scheme from UIKit
+            let style = UIScreen.main.traitCollection.userInterfaceStyle
+            return style == .dark ? .dark : .light
+        }
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -2124,6 +2137,7 @@ struct ThemeSelectorView: View {
             }
         }
         .navigationViewStyle(.stack)
+        .preferredColorScheme(resolvedColorScheme)
     }
 }
 
