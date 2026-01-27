@@ -133,6 +133,144 @@ Before deploying any new page, verify:
 - **Firebase**: FirebaseManager.swift for all backend operations
 - **Health**: HealthKitManager.swift for Apple Health integration
 
+## 📁 iOS Project File Structure (CRITICAL)
+
+When creating or modifying Swift files, **ALWAYS** place them in the correct Xcode group. The project uses virtual groups that may not match disk locations.
+
+### Xcode Group Structure
+
+```
+NutraSafe Beta/
+├── Models/                    # Data models and types
+│   ├── CoreModels.swift
+│   ├── NutritionModels.swift
+│   ├── UserModels.swift
+│   ├── FoodSafetyModels.swift
+│   ├── HealthKitModels.swift
+│   ├── SearchModels.swift
+│   ├── ScoringModels.swift
+│   ├── FastingModels.swift
+│   └── MicronutrientScoringModels.swift
+│
+├── Views/                     # All SwiftUI views
+│   ├── Food/                  # Food-related views
+│   │   ├── FoodSearchViews.swift
+│   │   ├── FoodDetailViews.swift
+│   │   ├── AddFoodManualViews.swift
+│   │   └── LogReactionSheet.swift
+│   ├── Diary/                 # Diary and meal tracking
+│   │   ├── DiaryViews.swift
+│   │   ├── DiaryComponents.swift
+│   │   └── DiaryMetricCards.swift
+│   ├── UseBy/                 # Expiry tracking views
+│   ├── Fasting/               # Fasting-related views
+│   ├── Onboarding/            # Onboarding flow
+│   │   └── Premium/           # Premium onboarding theme
+│   ├── Settings/              # Settings views
+│   └── Components/            # Reusable UI components
+│       ├── NutritionScoreViews.swift
+│       ├── ActionButtons.swift
+│       ├── MacroViews.swift
+│       ├── CustomTabBar.swift
+│       ├── AddActionMenu.swift
+│       ├── FeatureTipOverlay.swift
+│       ├── PremiumFeatureWrapper.swift
+│       └── DiarySegmentedControl.swift
+│
+├── Managers/                  # Business logic managers
+│   ├── FirebaseManager.swift      # (in root NutraSafe Beta/)
+│   ├── HealthKitManager.swift     # (in root NutraSafe Beta/)
+│   ├── NutrientTrackingManager.swift
+│   ├── MicronutrientTrackingManager.swift
+│   ├── UseByNotificationManager.swift
+│   ├── FastingManager.swift       # (in Managers/ folder)
+│   ├── FastingNotificationManager.swift
+│   ├── AlgoliaSearchManager.swift
+│   ├── AnalyticsManager.swift
+│   ├── BackgroundTaskManager.swift
+│   ├── ImageCacheManager.swift
+│   ├── MealManager.swift
+│   ├── OnboardingManager.swift
+│   ├── SubscriptionManager.swift
+│   ├── ReactionLogManager.swift
+│   ├── SearchNormalization.swift
+│   ├── FeatureTipsManager.swift
+│   ├── MigrationManager.swift
+│   └── InferredIngredientManager.swift
+│
+├── Parsers/                   # AI and data parsers
+│   ├── AIAdditiveParser.swift
+│   ├── AIMicronutrientParser.swift
+│   └── IngredientMicronutrientParser.swift
+│
+├── Validators/                # Validation logic
+│   ├── StrictMicronutrientValidator.swift
+│   └── NutrientRecommendationEngine.swift
+│
+├── Databases/                 # Database helpers
+│   └── MicronutrientDatabase.swift
+│
+├── Utils/                     # Utility helpers
+│   ├── DateHelper.swift
+│   ├── SecureStorage.swift
+│   ├── NutritionValidator.swift
+│   ├── FirestoreTransactionHelper.swift
+│   ├── PrivacyLogger.swift
+│   ├── AppConstants.swift
+│   ├── ReactionPDFExporter.swift
+│   └── CacheManager.swift
+│
+├── Configuration/             # App configuration
+│   └── AppConfig.swift
+│
+├── ViewModels/                # View models (MVVM)
+├── Services/                  # External service integrations
+└── Design/                    # Design system files
+    └── AppTheme.swift
+```
+
+### File Placement Rules
+
+When creating NEW files, follow these rules:
+
+| File Type | Target Group | Disk Location |
+|-----------|--------------|---------------|
+| `*View.swift`, `*Views.swift` | Views/{Feature}/ | `NutraSafe Beta/Views/{Feature}/` |
+| `*Models.swift` | Models/ | `NutraSafe Beta/Models/` |
+| `*Manager.swift` | Managers/ | `NutraSafe Beta/Managers/` |
+| `*Parser.swift` | Parsers/ | `NutraSafe Beta/Parsers/` |
+| `*Validator.swift`, `*Engine.swift` | Validators/ | `NutraSafe Beta/Validators/` |
+| `*Database.swift` | Databases/ | `NutraSafe Beta/Databases/` |
+| `*Helper.swift`, `*Utils.swift` | Utils/ | `NutraSafe Beta/Utils/` |
+| Reusable UI components | Views/Components/ | `NutraSafe Beta/Views/Components/` |
+| Config files | Configuration/ | `NutraSafe Beta/Configuration/` |
+
+### ⚠️ Important Notes
+
+1. **Some managers are in root folder**: `FirebaseManager.swift`, `HealthKitManager.swift`, `NutrientTrackingManager.swift`, `MicronutrientTrackingManager.swift`, and `UseByNotificationManager.swift` are physically in `NutraSafe Beta/` (not in `Managers/` folder) but appear in the Managers group in Xcode.
+
+2. **After creating files**: Always verify the file appears in the correct Xcode group. If it shows in "Recovered References" or at the root level, the project.pbxproj needs updating.
+
+3. **Clean build after structure changes**: Run `Cmd+Shift+K` in Xcode to clean, then `Cmd+B` to rebuild after any project structure modifications.
+
+4. **Views subfolder structure**:
+   - `Views/Food/` - Food search, detail, scanning
+   - `Views/Diary/` - Daily diary, meal logging
+   - `Views/UseBy/` - Expiry tracking
+   - `Views/Fasting/` - Fasting features
+   - `Views/Onboarding/` - Onboarding flow
+   - `Views/Settings/` - App settings
+   - `Views/Components/` - Reusable UI pieces
+
+### When Adding Files to project.pbxproj
+
+If manually editing project.pbxproj:
+1. Create a `PBXFileReference` entry with a unique 24-character UUID
+2. Add the UUID to the correct `PBXGroup`'s children array
+3. Add the UUID to the `PBXSourcesBuildPhase` for compilation
+4. Use `path = filename.swift` for files in the group's folder
+5. Use `path = ../filename.swift` for files in parent directory
+
 ### Firebase Backend
 - **Functions**: `firebase/functions/src/index.ts`
 - **Database**: Firestore with user-based collections
