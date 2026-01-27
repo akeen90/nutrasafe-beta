@@ -2,7 +2,7 @@
 //  WeeklySummarySheet.swift
 //  NutraSafe Beta
 //
-//  Modern weekly nutrition summary with expandable days and week navigation
+//  Premium weekly summary with emotion-first design
 //
 
 import SwiftUI
@@ -25,6 +25,7 @@ struct WeeklySummarySheet: View {
     @State private var displayedMonth: Date = Date()
     @State private var datesWithEntries: Set<Date> = []
     @State private var isLoadingCalendarEntries = false
+    @State private var navButtonPressed: String? = nil
 
     init(initialDate: Date, calorieGoal: Double, macroGoals: [MacroGoal], fetchWeeklySummary: @escaping (Date, Double, Double, Double, Double) async -> WeeklySummary?, setSelectedDate: @escaping (Date) -> Void) {
         self.initialDate = initialDate
@@ -56,22 +57,56 @@ struct WeeklySummarySheet: View {
         return min(Double(summary.totalCalories) / Double(weeklyCalorieGoal), 1.0)
     }
 
+    // MARK: - Emotion-First Messaging
+    private var weeklyInsightMessage: String {
+        guard let summary = weeklySummary else { return "" }
+        let progress = calorieProgress
+        let daysLogged = summary.daysLogged
+
+        if daysLogged == 0 {
+            return "A fresh week ahead. Every meal is an opportunity."
+        } else if daysLogged < 3 {
+            if progress < 0.4 {
+                return "You're building momentum. Keep going."
+            } else {
+                return "Great start to your week."
+            }
+        } else if daysLogged < 6 {
+            if progress < 0.85 {
+                return "Steady progress. You're finding your rhythm."
+            } else if progress <= 1.05 {
+                return "Balanced and consistent. Well done."
+            } else {
+                return "A little over, but awareness is what matters."
+            }
+        } else {
+            if progress < 0.85 {
+                return "You stayed mindful all week."
+            } else if progress <= 1.05 {
+                return "A week of balance. Be proud."
+            } else {
+                return "You showed up every day. That's what counts."
+            }
+        }
+    }
+
+    private var palette: AppPalette {
+        AppPalette.forCurrentUser(colorScheme: colorScheme)
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: colorScheme == .dark
-                        ? [Color(red: 0.08, green: 0.08, blue: 0.12), Color(red: 0.05, green: 0.05, blue: 0.08)]
-                        : [Color(red: 0.95, green: 0.96, blue: 0.98), Color.white],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                // Adaptive background
+                backgroundGradient
+                    .ignoresSafeArea()
 
                 if let summary = weeklySummary {
                     ScrollView(showsIndicators: false) {
-                        VStack(spacing: 20) {
+                        VStack(spacing: 24) {
+                            // Emotional headline
+                            weeklyHeadlineSection
+
                             // Week Navigation
                             weekNavigationBar
 
@@ -87,36 +122,70 @@ struct WeeklySummarySheet: View {
                             Spacer().frame(height: 40)
                         }
                         .padding(.horizontal, 20)
-                        .padding(.top, 8)
+                        .padding(.top, 16)
                     }
                 } else if isLoading {
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        Text("Loading your week...")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
+                    loadingState
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Weekly Summary")
-                        .font(.system(size: 17, weight: .semibold))
+                    Text("Your Week")
+                        .font(.system(size: 17, weight: .semibold, design: .serif))
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(AppPalette.standard.accent)
+                    .foregroundColor(palette.accent)
                 }
             }
             .onAppear {
                 loadWeek()
             }
         }
+    }
+
+    // MARK: - Background Gradient
+    private var backgroundGradient: some View {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [Color(red: 0.08, green: 0.08, blue: 0.10), Color(red: 0.05, green: 0.05, blue: 0.07)]
+                : [palette.background.opacity(0.3), Color.white],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    // MARK: - Loading State
+    private var loadingState: some View {
+        VStack(spacing: 20) {
+            ProgressView()
+                .scaleEffect(1.2)
+                .tint(palette.accent)
+
+            Text("Gathering your week...")
+                .font(.system(size: 16, weight: .medium, design: .serif))
+                .foregroundColor(.secondary)
+
+            Text("Understanding your patterns")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(.secondary.opacity(0.7))
+        }
+    }
+
+    // MARK: - Weekly Headline Section
+    private var weeklyHeadlineSection: some View {
+        VStack(spacing: 8) {
+            Text(weeklyInsightMessage)
+                .font(.system(size: 20, weight: .medium, design: .serif))
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+        }
+        .padding(.horizontal, 8)
     }
 
     // MARK: - Week Navigation Bar
@@ -132,14 +201,18 @@ struct WeeklySummarySheet: View {
                     }
                 }) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary.opacity(0.7))
                         .frame(width: 44, height: 44)
                         .background(
                             Circle()
-                                .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05))
+                                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
                         )
                 }
+                .scaleEffect(navButtonPressed == "prev" ? 0.95 : 1.0)
+                .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+                    navButtonPressed = pressing ? "prev" : nil
+                }, perform: {})
 
                 Spacer()
 
@@ -154,9 +227,9 @@ struct WeeklySummarySheet: View {
                     }
                 }) {
                     HStack(spacing: 6) {
-                        Image(systemName: showingCalendarPicker ? "calendar.circle.fill" : "calendar")
+                        Image(systemName: showingCalendarPicker ? "xmark" : "calendar")
                             .font(.system(size: 12, weight: .semibold))
-                        Text(showingCalendarPicker ? "Close" : "Pick Week")
+                        Text(showingCalendarPicker ? "Close" : "Jump to week")
                             .font(.system(size: 13, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -166,14 +239,20 @@ struct WeeklySummarySheet: View {
                         Capsule()
                             .fill(
                                 LinearGradient(
-                                    colors: showingCalendarPicker ? [Color.gray, Color.gray.opacity(0.8)] : [AppPalette.standard.accent, AppPalette.standard.accent.opacity(0.8)],
+                                    colors: showingCalendarPicker
+                                        ? [Color.secondary.opacity(0.6), Color.secondary.opacity(0.4)]
+                                        : [palette.accent, palette.accent.opacity(0.8)],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                     )
-                    .shadow(color: (showingCalendarPicker ? Color.gray : AppPalette.standard.accent).opacity(0.3), radius: 8, x: 0, y: 4)
+                    .shadow(color: (showingCalendarPicker ? Color.clear : palette.accent).opacity(0.25), radius: 8, x: 0, y: 4)
                 }
+                .scaleEffect(navButtonPressed == "calendar" ? 0.97 : 1.0)
+                .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+                    navButtonPressed = pressing ? "calendar" : nil
+                }, perform: {})
 
                 Spacer()
 
@@ -186,24 +265,28 @@ struct WeeklySummarySheet: View {
                     }
                 }) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary.opacity(0.7))
                         .frame(width: 44, height: 44)
                         .background(
                             Circle()
-                                .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05))
+                                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
                         )
                 }
+                .scaleEffect(navButtonPressed == "next" ? 0.95 : 1.0)
+                .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+                    navButtonPressed = pressing ? "next" : nil
+                }, perform: {})
             }
 
             // Week range or month/year when calendar is shown
             if showingCalendarPicker {
                 Text(formatMonthYear(displayedMonth))
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 16, weight: .semibold, design: .serif))
                     .foregroundColor(.primary)
             } else {
                 Text(formatWeekRange())
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
             }
 
@@ -234,7 +317,7 @@ struct WeeklySummarySheet: View {
             calendarGrid
                 .padding(.bottom, 12)
 
-            // This Week button
+            // Back to current week button
             Button(action: {
                 navigateToThisWeek()
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -244,23 +327,23 @@ struct WeeklySummarySheet: View {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.uturn.backward")
                         .font(.system(size: 12, weight: .semibold))
-                    Text("This Week")
+                    Text("Back to this week")
                         .font(.system(size: 13, weight: .semibold))
                 }
-                .foregroundColor(AppPalette.standard.accent)
+                .foregroundColor(palette.accent)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
                     Capsule()
-                        .fill(AppPalette.standard.accent.opacity(0.12))
+                        .fill(palette.accent.opacity(0.10))
                 )
             }
             .padding(.bottom, 12)
         }
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 12, x: 0, y: 4)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.04) : Color.white)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.06), radius: 12, x: 0, y: 4)
         )
         .onChange(of: displayedMonth) {
             loadDatesWithEntries()
@@ -322,21 +405,21 @@ struct WeeklySummarySheet: View {
                 ZStack {
                     if isInSelectedWeek {
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(AppPalette.standard.accent.opacity(0.3))
+                            .fill(palette.accent.opacity(0.2))
                             .frame(width: 32, height: 32)
                     }
 
                     if isToday {
                         Circle()
-                            .stroke(AppPalette.standard.accent, lineWidth: 2)
+                            .stroke(palette.accent, lineWidth: 2)
                             .frame(width: 28, height: 28)
                     }
 
                     Text("\(day)")
-                        .font(.system(size: 16, weight: isToday || isInSelectedWeek ? .bold : .regular))
+                        .font(.system(size: 16, weight: isToday || isInSelectedWeek ? .semibold : .regular))
                         .foregroundColor(
-                            isFuture ? .secondary.opacity(0.5) :
-                            isInSelectedWeek ? .blue :
+                            isFuture ? .secondary.opacity(0.4) :
+                            isInSelectedWeek ? palette.accent :
                             .primary
                         )
                 }
@@ -344,12 +427,12 @@ struct WeeklySummarySheet: View {
                 // Entry indicator dot
                 if hasEntries && !isFuture {
                     Circle()
-                        .fill(isInSelectedWeek ? AppPalette.standard.accent : Color.green)
-                        .frame(width: 6, height: 6)
+                        .fill(isInSelectedWeek ? palette.accent : palette.accent.opacity(0.5))
+                        .frame(width: 5, height: 5)
                 } else {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 6, height: 6)
+                        .frame(width: 5, height: 5)
                 }
             }
             .frame(height: 44)
@@ -420,97 +503,128 @@ struct WeeklySummarySheet: View {
         DateHelper.fullMonthYearFormatter.string(from: date)
     }
 
-    // MARK: - Hero Stats Card (Compact)
+    // MARK: - Hero Stats Card
     private func heroStatsCard(summary: WeeklySummary) -> some View {
         let calorieDifference = summary.totalCalories - weeklyCalorieGoal
         let isOver = calorieDifference > 0
         let absDiff = abs(calorieDifference)
 
-        return HStack(spacing: 16) {
-            // Compact Calorie Ring
-            ZStack {
-                Circle()
-                    .stroke(
-                        colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05),
-                        lineWidth: 8
-                    )
-                    .frame(width: 80, height: 80)
+        // Contextual message based on status
+        let statusMessage: String = {
+            let percentDiff = weeklyCalorieGoal > 0 ? abs(Double(calorieDifference)) / Double(weeklyCalorieGoal) : 0
+            if percentDiff < 0.03 {
+                return "Right on target"
+            } else if isOver {
+                return "\(formatNumber(absDiff)) over your goal"
+            } else {
+                return "\(formatNumber(absDiff)) remaining"
+            }
+        }()
 
-                Circle()
-                    .trim(from: 0, to: calorieProgress)
-                    .stroke(
-                        LinearGradient(
-                            colors: [AppPalette.standard.accent, Color.purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                    )
-                    .frame(width: 80, height: 80)
-                    .rotationEffect(.degrees(-90))
+        let daysMessage: String = {
+            switch summary.daysLogged {
+            case 0: return "Start logging to see your week"
+            case 1: return "1 day tracked"
+            case 7: return "Full week tracked"
+            default: return "\(summary.daysLogged) days tracked"
+            }
+        }()
 
-                VStack(spacing: 0) {
-                    Text("\(Int(calorieProgress * 100))%")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+        return VStack(spacing: 16) {
+            HStack(spacing: 20) {
+                // Calorie Ring
+                ZStack {
+                    Circle()
+                        .stroke(
+                            colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04),
+                            lineWidth: 10
+                        )
+                        .frame(width: 90, height: 90)
+
+                    Circle()
+                        .trim(from: 0, to: calorieProgress)
+                        .stroke(
+                            LinearGradient(
+                                colors: [palette.accent, palette.accent.opacity(0.6)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        )
+                        .frame(width: 90, height: 90)
+                        .rotationEffect(.degrees(-90))
+
+                    VStack(spacing: 2) {
+                        Text("\(Int(calorieProgress * 100))")
+                            .font(.system(size: 24, weight: .bold, design: .serif))
+                            .foregroundColor(.primary)
+                        Text("%")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
                 }
+
+                // Stats Column
+                VStack(alignment: .leading, spacing: 8) {
+                    // Total eaten
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(formatNumber(summary.totalCalories))
+                            .font(.system(size: 28, weight: .bold, design: .serif))
+                            .foregroundColor(.primary)
+                        Text("of \(formatNumber(weeklyCalorieGoal)) weekly")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Status message
+                    Text(statusMessage)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(isOver ? Color.orange : palette.accent)
+                }
+
+                Spacer()
             }
 
-            // Stats Column
-            VStack(alignment: .leading, spacing: 6) {
-                // Total eaten
-                HStack(spacing: 4) {
-                    Text("\(formatNumber(summary.totalCalories))")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-                    Text("/ \(formatNumber(weeklyCalorieGoal)) kcal")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
-
-                // Budget status with clear context
-                HStack(spacing: 6) {
-                    Image(systemName: isOver ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(isOver ? .red : .green)
-
-                    Text("\(formatNumber(absDiff)) \(isOver ? "over" : "under") weekly budget")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(isOver ? .red : .green)
-                }
-
-                // Days logged
-                Text("\(summary.daysLogged)/7 days logged")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+            // Days logged bar
+            HStack {
+                Text(daysMessage)
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
-            }
 
-            Spacer()
+                Spacer()
+
+                // Mini day indicators
+                HStack(spacing: 4) {
+                    ForEach(0..<7, id: \.self) { index in
+                        Circle()
+                            .fill(index < summary.daysLogged ? palette.accent : Color.secondary.opacity(0.2))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+            }
         }
-        .padding(16)
+        .padding(20)
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 18)
                 .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.06), radius: 12, x: 0, y: 4)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.15 : 0.06), radius: 12, x: 0, y: 4)
         )
     }
 
     // MARK: - Macro Progress Section
     private func macroProgressSection(summary: WeeklySummary) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Weekly Macros")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
+            Text("Your macros this week")
+                .font(.system(size: 15, weight: .medium, design: .serif))
+                .foregroundColor(.primary.opacity(0.8))
 
             HStack(spacing: 12) {
                 macroCard(
                     name: "Protein",
                     value: Int(summary.totalProtein),
                     goal: Int(proteinGoal * 7),
-                    color: Color(red: 0.95, green: 0.3, blue: 0.3),
+                    color: Color(red: 0.85, green: 0.35, blue: 0.35),
                     icon: "bolt.fill"
                 )
 
@@ -518,7 +632,7 @@ struct WeeklySummarySheet: View {
                     name: "Carbs",
                     value: Int(summary.totalCarbs),
                     goal: Int(carbGoal * 7),
-                    color: Color.orange,
+                    color: Color(red: 0.95, green: 0.65, blue: 0.25),
                     icon: "leaf.fill"
                 )
 
@@ -526,7 +640,7 @@ struct WeeklySummarySheet: View {
                     name: "Fat",
                     value: Int(summary.totalFat),
                     goal: Int(fatGoal * 7),
-                    color: Color(red: 0.95, green: 0.75, blue: 0.2),
+                    color: Color(red: 0.90, green: 0.75, blue: 0.30),
                     icon: "drop.fill"
                 )
             }
@@ -537,78 +651,90 @@ struct WeeklySummarySheet: View {
         let progress = goal > 0 ? min(Double(value) / Double(goal), 1.0) : 0
         let difference = value - goal
         let isOver = difference > 0
-        let isOnTarget = goal > 0 && abs(Double(difference) / Double(goal)) < 0.05 // Within 5%
+        let isOnTarget = goal > 0 && abs(Double(difference) / Double(goal)) < 0.08 // Within 8%
 
-        return VStack(spacing: 8) {
-            // Icon
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(color)
+        // Contextual status text
+        let statusText: String = {
+            if goal == 0 { return "No goal set" }
+            if isOnTarget { return "On track" }
+            if isOver { return "+\(difference)g" }
+            return "\(abs(difference))g to go"
+        }()
+
+        let statusColor: Color = {
+            if isOnTarget { return palette.accent }
+            if isOver { return Color.orange }
+            return .secondary
+        }()
+
+        return VStack(spacing: 10) {
+            // Icon with subtle background
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.12))
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(color)
+            }
 
             // Value
             Text("\(value)g")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 20, weight: .bold, design: .serif))
                 .foregroundColor(.primary)
-
-            // Goal text
-            Text("of \(goal)g goal")
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
 
             // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(color.opacity(0.15))
+                        .fill(color.opacity(0.12))
 
                     RoundedRectangle(cornerRadius: 4)
                         .fill(color)
                         .frame(width: geo.size.width * progress)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 5)
 
-            // Over/Under indicator
-            if goal > 0 {
-                Text(isOnTarget ? "On target" : (isOver ? "\(difference)g over" : "\(abs(difference))g under"))
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundColor(isOnTarget ? .green : (isOver ? .red : .green))
-            }
+            // Status text
+            Text(statusText)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(statusColor)
 
             // Label
             Text(name)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 10, x: 0, y: 4)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.04) : Color.white)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.12 : 0.05), radius: 10, x: 0, y: 4)
         )
     }
 
     // MARK: - Daily Breakdown Section
     private func dailyBreakdownSection(summary: WeeklySummary) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Daily Breakdown")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
+            Text("Day by day")
+                .font(.system(size: 15, weight: .medium, design: .serif))
+                .foregroundColor(.primary.opacity(0.8))
 
             VStack(spacing: 10) {
                 ForEach(summary.dailyBreakdowns) { day in
-                    ModernDayCard(
+                    PremiumDayCard(
                         day: day,
                         calorieGoal: calorieGoal,
                         proteinGoal: proteinGoal,
                         carbGoal: carbGoal,
                         fatGoal: fatGoal,
                         isExpanded: expandedDays.contains(day.id.uuidString),
-                        colorScheme: colorScheme
+                        colorScheme: colorScheme,
+                        palette: palette
                     ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             toggleExpanded(day.id.uuidString)
@@ -707,8 +833,8 @@ struct WeeklySummarySheet: View {
     }
 }
 
-// MARK: - Modern Day Card
-struct ModernDayCard: View {
+// MARK: - Premium Day Card
+struct PremiumDayCard: View {
     let day: DailyBreakdown
     let calorieGoal: Double
     let proteinGoal: Double
@@ -716,28 +842,30 @@ struct ModernDayCard: View {
     let fatGoal: Double
     let isExpanded: Bool
     let colorScheme: ColorScheme
+    let palette: AppPalette
     let onTap: () -> Void
+
+    @State private var isPressed = false
 
     private var calorieProgress: Double {
         guard calorieGoal > 0 else { return 0 }
         return Double(day.calories) / calorieGoal
     }
 
-    private var calorieStatus: (text: String, color: Color, isOnTarget: Bool) {
+    // Emotion-first status message
+    private var dayStatus: (message: String, color: Color) {
         if !day.isLogged {
-            return ("–", .secondary, false)
+            return ("No entries", .secondary)
         }
         let diff = day.calories - Int(calorieGoal)
-        let percentDiff = abs(Double(diff)) / calorieGoal
+        let percentDiff = calorieGoal > 0 ? abs(Double(diff)) / calorieGoal : 0
+
         if percentDiff < 0.05 {
-            // Within 5% of goal - on target
-            return ("On target", .green, true)
+            return ("Balanced", palette.accent)
         } else if diff > 0 {
-            // Over goal - red
-            return ("+\(diff)", .red, false)
+            return ("+\(diff)", Color.orange)
         } else {
-            // Under goal - green
-            return ("\(diff)", .green, false)
+            return ("\(abs(diff)) under", .secondary)
         }
     }
 
@@ -746,29 +874,30 @@ struct ModernDayCard: View {
             // Main row
             Button(action: onTap) {
                 HStack(spacing: 14) {
-                    // Day indicator
-                    VStack(spacing: 2) {
-                        Text(day.dayName.prefix(3).uppercased())
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                    // Day indicator - cleaner design
+                    VStack(spacing: 3) {
+                        Text(day.dayName.prefix(3))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
+                            .textCase(.uppercase)
 
                         Text("\(Calendar.current.component(.day, from: day.date))")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(day.isLogged ? .primary : .secondary.opacity(0.5))
+                            .font(.system(size: 22, weight: .bold, design: .serif))
+                            .foregroundColor(day.isLogged ? .primary : .secondary.opacity(0.4))
                     }
-                    .frame(width: 44)
+                    .frame(width: 46)
 
                     if day.isLogged {
                         // Progress bar
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
+                                    .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
 
                                 RoundedRectangle(cornerRadius: 6)
                                     .fill(
                                         LinearGradient(
-                                            colors: [AppPalette.standard.accent, Color.purple.opacity(0.8)],
+                                            colors: [palette.accent, palette.accent.opacity(0.6)],
                                             startPoint: .leading,
                                             endPoint: .trailing
                                         )
@@ -776,74 +905,74 @@ struct ModernDayCard: View {
                                     .frame(width: geo.size.width * min(calorieProgress, 1.0))
                             }
                         }
-                        .frame(height: 12)
+                        .frame(height: 10)
 
-                        // Calories
-                        VStack(alignment: .trailing, spacing: 2) {
-                            HStack(spacing: 2) {
-                                Text("\(day.calories)")
-                                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
+                        // Calories - simplified
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text("\(day.calories)")
+                                .font(.system(size: 17, weight: .bold, design: .serif))
+                                .foregroundColor(.primary)
 
-                                Text("kcal")
-                                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Text("/ \(Int(calorieGoal))")
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                                .foregroundColor(.secondary.opacity(0.7))
+                            Text("of \(Int(calorieGoal))")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
                         }
-                        .frame(width: 70, alignment: .trailing)
+                        .frame(width: 65, alignment: .trailing)
 
-                        // Calorie difference indicator
-                        Text(calorieStatus.text)
-                            .font(.system(size: calorieStatus.isOnTarget ? 10 : 12, weight: .bold, design: .rounded))
-                            .foregroundColor(calorieStatus.color)
-                            .frame(minWidth: 50, alignment: .trailing)
+                        // Status
+                        Text(dayStatus.message)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(dayStatus.color)
+                            .frame(minWidth: 55, alignment: .trailing)
 
                         // Chevron
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary.opacity(0.5))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary.opacity(0.4))
                     } else {
                         Spacer()
 
-                        Text("Not logged")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary.opacity(0.6))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                        Text("Rest day")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary.opacity(0.5))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
+                                    .fill(colorScheme == .dark ? Color.white.opacity(0.04) : Color.black.opacity(0.02))
                             )
                     }
                 }
                 .padding(14)
             }
             .buttonStyle(PlainButtonStyle())
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+                isPressed = pressing
+            }, perform: {})
 
             // Expanded content
             if isExpanded && day.isLogged {
-                VStack(spacing: 12) {
-                    Divider()
-                        .padding(.horizontal, 14)
+                VStack(spacing: 14) {
+                    Rectangle()
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                        .frame(height: 1)
+                        .padding(.horizontal, 16)
 
-                    HStack(spacing: 16) {
-                        expandedMacro(name: "Protein", value: Int(day.protein), goal: Int(proteinGoal), color: Color(red: 0.95, green: 0.3, blue: 0.3))
-                        expandedMacro(name: "Carbs", value: Int(day.carbs), goal: Int(carbGoal), color: .orange)
-                        expandedMacro(name: "Fat", value: Int(day.fat), goal: Int(fatGoal), color: Color(red: 0.95, green: 0.75, blue: 0.2))
+                    HStack(spacing: 20) {
+                        expandedMacro(name: "Protein", value: Int(day.protein), goal: Int(proteinGoal), color: Color(red: 0.85, green: 0.35, blue: 0.35))
+                        expandedMacro(name: "Carbs", value: Int(day.carbs), goal: Int(carbGoal), color: Color(red: 0.95, green: 0.65, blue: 0.25))
+                        expandedMacro(name: "Fat", value: Int(day.fat), goal: Int(fatGoal), color: Color(red: 0.90, green: 0.75, blue: 0.30))
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 14)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
             }
         }
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 8, x: 0, y: 2)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.04) : Color.white)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.12 : 0.04), radius: 8, x: 0, y: 2)
         )
     }
 
@@ -851,24 +980,27 @@ struct ModernDayCard: View {
         let progress = goal > 0 ? min(Double(value) / Double(goal), 1.0) : 0
         let difference = value - goal
         let isOver = difference > 0
-        let isOnTarget = goal > 0 && abs(Double(difference) / Double(goal)) < 0.10 // Within 10%
+        let isOnTarget = goal > 0 && abs(Double(difference) / Double(goal)) < 0.10
 
-        return VStack(spacing: 4) {
-            // Value and goal
-            HStack(spacing: 2) {
-                Text("\(value)")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-                Text("/\(goal)g")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
-            }
+        // Simpler status
+        let statusText: String = {
+            if goal == 0 { return "–" }
+            if isOnTarget { return "✓" }
+            if isOver { return "+\(difference)g" }
+            return "\(difference)g"
+        }()
+
+        return VStack(spacing: 6) {
+            // Value
+            Text("\(value)g")
+                .font(.system(size: 16, weight: .bold, design: .serif))
+                .foregroundColor(.primary)
 
             // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(color.opacity(0.15))
+                        .fill(color.opacity(0.12))
 
                     RoundedRectangle(cornerRadius: 3)
                         .fill(color)
@@ -877,15 +1009,13 @@ struct ModernDayCard: View {
             }
             .frame(height: 4)
 
-            // Over/under indicator
-            if goal > 0 {
-                Text(isOnTarget ? "✓" : (isOver ? "+\(difference)" : "\(difference)"))
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundColor(isOnTarget ? .green : (isOver ? .red : .green))
-            }
+            // Status
+            Text(statusText)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isOnTarget ? palette.accent : (isOver ? .orange : .secondary))
 
             Text(name)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
