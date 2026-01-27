@@ -160,6 +160,252 @@ Fetch Weight History → Cache
 
 ---
 
+## 🔒 Privacy & Data Isolation Model
+
+### CRITICAL: What's Stored Where
+
+**Public Data (Shared Across All Users):**
+```
+┌─────────────────────────────────────────────────┐
+│        Food Database (~150 MB)                  │
+│        SAME for ALL users                       │
+├─────────────────────────────────────────────────┤
+│ ✅ 100,000 foods (nutritional facts)            │
+│ ✅ Ingredients, barcodes, nutrition data         │
+│ ✅ Product images (URLs only)                    │
+│                                                   │
+│ ❌ NO user_id column (public reference data)    │
+│ ❌ NOT personal data (like Wikipedia)           │
+└─────────────────────────────────────────────────┘
+```
+
+**Private Data (Per-User, Isolated):**
+```
+┌─────────────────────────────────────────────────┐
+│        User Data (~5 MB per user)               │
+│        ONLY current user's data                 │
+├─────────────────────────────────────────────────┤
+│ ✅ Diary entries (what THEY ate)                │
+│ ✅ Favorite foods (THEIR favorites)             │
+│ ✅ Reactions/sensitivities (THEIR health data)  │
+│ ✅ Weight history (THEIR weight)                │
+│ ✅ Fasting sessions (THEIR fasting)             │
+│ ✅ Use-by items (THEIR inventory)               │
+│                                                   │
+│ ✅ ALL rows have user_id column (filtered!)     │
+│ ✅ Personal data (GDPR protected)               │
+└─────────────────────────────────────────────────┘
+```
+
+### Storage on Device
+
+**User A's iPhone:**
+```
+150 MB   Foods Database (public, shared)
++  5 MB   User A's Data (private, filtered by user_id='userA')
+──────
+155 MB   Total
+```
+
+**Shared iPad (Multiple Users):**
+```
+Before: User A signed in
+  150 MB   Foods Database
+  +  5 MB   User A's Data
+  = 155 MB Total
+
+User A signs out → Clear User A's data
+
+After: User B signs in
+  150 MB   Foods Database (stays, it's public)
+  +  5 MB   User B's Data (downloaded from Firebase)
+  = 155 MB Total
+
+✅ User B NEVER sees User A's diary
+✅ Food database is shared (public info)
+```
+
+### Query Privacy Enforcement
+
+**Every user data query MUST filter by user_id:**
+
+```swift
+// ❌ WRONG - Would expose all users' data
+let allEntries = try db.query("SELECT * FROM diary_entries")
+
+// ✅ CORRECT - Only current user's data
+let myEntries = try db.query(
+    "SELECT * FROM diary_entries WHERE user_id = ?",
+    [currentUserId]
+)
+
+// ✅ CORRECT - Food search (no user_id filter, it's public)
+let foods = try db.query(
+    "SELECT * FROM foods WHERE name MATCH ?",
+    [searchQuery]
+)
+```
+
+### Sign Out Behavior
+
+```swift
+func signOut() async {
+    // 1. Clear user-specific data from local DB
+    try localDB.deleteAllData(userId: currentUserId)
+    // Deletes from: diary_entries, favorite_foods, reactions,
+    //               weight_history, use_by_items, etc.
+
+    // 2. Food database STAYS (it's public data)
+    // Don't delete foods table
+
+    // 3. Clear Firebase cached auth
+    try await FirebaseManager.shared.signOut()
+
+    print("✅ User data cleared, food database preserved")
+}
+```
+
+### GDPR Compliance
+
+**Data Minimization:**
+- ✅ Store only public food data (nutritional facts)
+- ✅ Store only current user's personal data
+- ✅ No access to other users' data
+
+**Right to Erasure:**
+```swift
+func deleteAccount() async throws {
+    // 1. Delete from Firebase (source of truth)
+    try await firebase.deleteAllUserData(userId: currentUserId)
+
+    // 2. Delete from local device
+    try localDB.deleteAllUserData(userId: currentUserId)
+
+    // 3. Food database stays (public, not personal data)
+    // Foods table is NOT covered by "right to erasure"
+    // It's like deleting Wikipedia from a dictionary app
+
+    print("✅ User account deleted (personal data removed)")
+}
+```
+
+**Data Portability:**
+- User can export their diary as CSV/JSON
+- Food database is not "their data" (public reference)
+
+### Multi-User Device Support
+
+**Example: Family iPad**
+
+```
+┌─────────────────────────────────────────────────┐
+│              Shared iPad                        │
+├─────────────────────────────────────────────────┤
+│ Foods Database:     150 MB  (once, for everyone)│
+│ Alice's Data:         5 MB  (when Alice logs in)│
+│ Bob's Data:           5 MB  (when Bob logs in)  │
+│ Carol's Data:         5 MB  (when Carol logs in)│
+├─────────────────────────────────────────────────┤
+│ Total:              165 MB                       │
+└─────────────────────────────────────────────────┘
+
+Privacy guarantees:
+✅ Alice only sees Alice's diary
+✅ Bob only sees Bob's diary
+✅ Carol only sees Carol's diary
+✅ All share same food database (public info)
+```
+
+### Database Schema Privacy
+
+**Foods Table (NO user_id):**
+```sql
+CREATE TABLE foods (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    calories REAL NOT NULL,
+    -- NO user_id column → public data
+);
+```
+
+**Diary Table (WITH user_id):**
+```sql
+CREATE TABLE diary_entries (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,  -- ← CRITICAL: filters to current user
+    food_id TEXT,
+    calories INTEGER NOT NULL,
+    date INTEGER NOT NULL,
+
+    INDEX idx_user_date ON diary_entries(user_id, date DESC)
+);
+```
+
+**Favorite Foods Table (WITH user_id):**
+```sql
+CREATE TABLE favorite_foods (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,  -- ← CRITICAL: filters to current user
+    food_id TEXT NOT NULL,
+
+    INDEX idx_user ON favorite_foods(user_id)
+);
+```
+
+### Security Best Practices
+
+**1. Always Use Parameterized Queries:**
+```swift
+// ✅ SAFE - prevents SQL injection
+let entries = try db.query(
+    "SELECT * FROM diary_entries WHERE user_id = ?",
+    [currentUserId]
+)
+
+// ❌ UNSAFE - SQL injection risk
+let entries = try db.query(
+    "SELECT * FROM diary_entries WHERE user_id = '\(currentUserId)'"
+)
+```
+
+**2. Validate User ID on Every Query:**
+```swift
+func getDiaryEntries(date: Date) throws -> [DiaryEntry] {
+    guard let userId = Auth.shared.currentUserId else {
+        throw DatabaseError.notAuthenticated
+    }
+
+    return try db.query(
+        "SELECT * FROM diary_entries WHERE user_id = ? AND date = ?",
+        [userId, date]
+    )
+}
+```
+
+**3. Clear Data on Sign Out:**
+```swift
+func signOut() {
+    // CRITICAL: Must clear all user-specific tables
+    let userTables = [
+        "diary_entries",
+        "favorite_foods",
+        "reactions",
+        "weight_history",
+        "use_by_items",
+        "fasting_sessions"
+    ]
+
+    for table in userTables {
+        try? db.execute(
+            "DELETE FROM \(table) WHERE user_id = ?",
+            [currentUserId]
+        )
+    }
+}
+```
+
+---
+
 ## 🗄️ SQLite Database Schema
 
 ### Table: `foods`
@@ -223,10 +469,16 @@ CREATE TABLE foods (
 );
 ```
 
-**Estimated Size:**
+**Estimated Size (Shared Public Data):**
 - 100,000 foods × ~2 KB average = **~200 MB** (uncompressed)
 - SQLite with compression: **~100-150 MB**
 - With images cached: **+50-100 MB** (optional)
+
+**Storage Model:**
+- ✅ Downloaded ONCE per device
+- ✅ Shared by all users on device
+- ✅ NOT deleted when user signs out
+- ✅ Public nutritional data (like Wikipedia)
 
 ---
 
@@ -279,9 +531,15 @@ CREATE TABLE diary_entries (
 );
 ```
 
-**Estimated Size:**
+**Estimated Size (Per-User Private Data):**
 - 1000 diary entries × ~1 KB = **~1 MB** per user
 - Most users: **<5 MB** for 1 year of data
+
+**Storage Model:**
+- ✅ Filtered by `user_id` (current user only)
+- ✅ Deleted when user signs out
+- ✅ Re-downloaded when user signs back in
+- ✅ Private personal data (GDPR protected)
 
 ---
 
@@ -291,7 +549,7 @@ CREATE TABLE diary_entries (
 ```sql
 CREATE TABLE favorite_foods (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,                  -- ← FILTERS to current user
     food_id TEXT NOT NULL,                  -- Reference to foods.id
     food_name TEXT NOT NULL,                -- Denormalized for offline
     brand TEXT,
@@ -302,6 +560,12 @@ CREATE TABLE favorite_foods (
     INDEX idx_food ON favorite_foods(food_id)
 );
 ```
+
+**Storage Model:**
+- ✅ Per-user private data
+- ✅ Filtered by `user_id`
+- ✅ Deleted on sign out
+- ✅ Size: ~50-200 KB per user (20-100 favorites)
 
 ---
 
@@ -973,7 +1237,22 @@ At 100K DAU: **Savings: $6,770/month** 🤯
 
 | Current | With Bundled DB | Increase |
 |---------|----------------|----------|
-| 30 MB | 130 MB | +100 MB |
+| 30 MB (app only) | 130 MB (app + food DB) | +100 MB (shared public data) |
+
+**What's in the 100 MB:**
+- ✅ 100,000 foods (nutritional database)
+- ✅ Shared by ALL users on device
+- ✅ Downloaded ONCE per device
+- ❌ NOT per-user (it's public reference data)
+
+**Per-User Data (Separate):**
+- ~5 MB per user (diary, favorites, reactions)
+- Stored separately in user-specific tables
+- Deleted when user signs out
+
+**Total Storage Example:**
+- Single user: 130 MB (app + food DB) + 5 MB (user data) = **135 MB**
+- Family iPad (3 users): 130 MB (app + food DB) + 15 MB (3 users' data) = **145 MB**
 
 **Mitigation:**
 - App thinning (iOS downloads only needed architectures)
