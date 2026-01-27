@@ -221,7 +221,18 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     // Use full Algolia data if available, otherwise fall back to cached snapshot
     const food: any = fullFood || report.food || {};
-    const initialUnit = (food.servingUnit === 'ml' ? 'ml' : 'g') as 'g' | 'ml';
+
+    // Infer unit from servingUnit field, or parse from servingDescription
+    let initialUnit: 'g' | 'ml' = 'g';
+    if (food.servingUnit === 'ml') {
+      initialUnit = 'ml';
+    } else if (food.servingDescription) {
+      // Parse unit from servingDescription (e.g., "100g", "200ml", "100 ml")
+      const desc = food.servingDescription.toLowerCase();
+      if (desc.includes('ml')) {
+        initialUnit = 'ml';
+      }
+    }
 
     // Sync unitMode with the food's actual unit
     setUnitMode(initialUnit);
