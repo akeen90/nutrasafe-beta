@@ -493,6 +493,26 @@ struct AdditivePatternSection: View {
     }
 }
 
+// MARK: - Stub Views (for compilation - not used in app, app uses AdditivePatternSectionRedesigned)
+
+struct AdditiveComparisonView: View {
+    let recentScore: Int
+    let earlierScore: Int
+    let trend: AdditiveTrendDirection
+
+    var body: some View {
+        EmptyView() // Stub - actual app uses AdditivePatternSectionRedesigned
+    }
+}
+
+struct AdditiveSparklineChart: View {
+    let dailyData: [DailyAdditiveData]
+
+    var body: some View {
+        EmptyView() // Stub - actual app uses AdditivePatternSectionRedesigned
+    }
+}
+
 // MARK: - Preview
 
 #if DEBUG
