@@ -281,6 +281,7 @@ struct EatingHabitsScreen: View {
 struct DietExperienceScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
+    @State private var hasAutoAdvanced = false  // Prevents double-advance if user taps Continue manually
 
     var body: some View {
         VStack(spacing: 0) {
@@ -317,8 +318,10 @@ struct DietExperienceScreen: View {
                                 state.dietExperience = experience
                             }
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            // Auto-advance after selection
+                            // Auto-advance after selection (with guard to prevent double-advance)
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                guard !hasAutoAdvanced else { return }
+                                hasAutoAdvanced = true
                                 onContinue()
                             }
                         }
@@ -561,6 +564,7 @@ struct GoalsProcessingScreen: View {
 
     @State private var showMessage = false
     @State private var pulseScale: CGFloat = 1.0
+    @State private var hasAutoAdvanced = false  // Prevents race condition on double-trigger
 
     var body: some View {
         VStack {
@@ -607,6 +611,8 @@ struct GoalsProcessingScreen: View {
                 pulseScale = 1.1
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                guard !hasAutoAdvanced else { return }
+                hasAutoAdvanced = true
                 onComplete()
             }
         }
@@ -631,6 +637,7 @@ struct ActivityProcessingScreen: View {
 
     @State private var showMessage = false
     @State private var progress: CGFloat = 0
+    @State private var hasAutoAdvanced = false  // Prevents race condition on double-trigger
 
     var body: some View {
         VStack {
@@ -676,6 +683,8 @@ struct ActivityProcessingScreen: View {
                 progress = 1.0
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                guard !hasAutoAdvanced else { return }
+                hasAutoAdvanced = true
                 onComplete()
             }
         }
@@ -688,6 +697,7 @@ struct ProfileBuildingScreen: View {
 
     @State private var showElements = false
     @State private var currentPhrase = 0
+    @State private var hasAutoAdvanced = false  // Prevents race condition on double-trigger
 
     private let phrases = [
         "Understanding your lifestyle...",
@@ -748,6 +758,8 @@ struct ProfileBuildingScreen: View {
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+                guard !hasAutoAdvanced else { return }
+                hasAutoAdvanced = true
                 onComplete()
             }
         }

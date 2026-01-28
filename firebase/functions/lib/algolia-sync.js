@@ -1,9 +1,114 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchFoodsAlgolia = exports.deleteNewAlgoliaIndices = exports.syncNewDatabasesToAlgolia = exports.bulkImportFoodsToAlgolia = exports.configureAlgoliaIndices = exports.syncTescoProductToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
+exports.searchFoodsAlgolia = exports.deleteNewAlgoliaIndices = exports.syncNewDatabasesToAlgolia = exports.bulkImportFoodsToAlgolia = exports.configureAlgoliaIndices = exports.syncUKFoodsCleanedToAlgolia = exports.syncTescoProductToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
 const functionsV1 = require("firebase-functions");
 const admin = require("firebase-admin");
 const algoliasearch_1 = require("algoliasearch");
+// ==========================================
+// LOCAL DATABASE SYNC SUPPORT
+// ==========================================
+// Records food updates for delta sync to iOS local SQLite database
+// Uses Firestore transactions to atomically increment version and record changes
+const DB_VERSION_COLLECTION = 'databaseVersions';
+const FOOD_UPDATES_COLLECTION = 'foodUpdates';
+/**
+ * Record a food update for delta sync to local iOS database
+ * Called from each Algolia sync trigger to track changes
+ *
+ * @param foodId - The food document ID (with source prefix for Algolia indices)
+ * @param action - The type of change: 'add', 'update', or 'delete'
+ * @param food - The food data (null for deletes)
+ * @param indexName - The Algolia index name (used as source prefix)
+ */
+async function recordUpdateForSync(foodId, action, food, indexName) {
+    try {
+        const db = admin.firestore();
+        const versionRef = db.collection(DB_VERSION_COLLECTION).doc('current');
+        await db.runTransaction(async (transaction) => {
+            const versionDoc = await transaction.get(versionRef);
+            const versionData = versionDoc.data();
+            const currentVersion = versionData?.version || '1.0.0';
+            const [major, minor, patch] = currentVersion.split('.').map(Number);
+            const newVersion = `${major}.${minor}.${patch + 1}`;
+            // Create full food ID with source prefix (matches export-to-sqlite.mjs format)
+            const fullFoodId = `${indexName}:${foodId}`;
+            // Record the update with minimal food data for efficient sync
+            const updateRef = db.collection(FOOD_UPDATES_COLLECTION).doc();
+            transaction.set(updateRef, {
+                action,
+                foodId: fullFoodId,
+                food: food ? prepareMinimalFoodForSync(food, indexName) : null,
+                version: newVersion,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                indexName, // Track source index for debugging
+            });
+            // Update current version
+            transaction.set(versionRef, {
+                version: newVersion,
+                lastUpdated: new Date().toISOString(),
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                foodCount: (versionData?.foodCount || 0) + (action === 'add' ? 1 : action === 'delete' ? -1 : 0),
+            }, { merge: true });
+        });
+        console.log(`📝 Recorded ${action} for ${indexName}:${foodId} (delta sync)`);
+    }
+    catch (error) {
+        // Don't throw - this is supplementary to main Algolia sync
+        // We don't want delta sync failures to block Algolia updates
+        console.error(`⚠️ Failed to record delta sync for ${foodId}:`, error);
+    }
+}
+/**
+ * Prepare minimal food data for delta sync
+ * Only includes fields needed by the iOS local database
+ * Keeps payload small for efficient sync
+ */
+function prepareMinimalFoodForSync(data, indexName) {
+    const name = data.name || data.foodName || data.title || '';
+    const brandName = data.brandName || data.brand || '';
+    // Handle Tesco's nested nutrition structure
+    const nutrition = data.nutrition || {};
+    // CRITICAL: Check gtin FIRST for Tesco products (they use GTIN-14 format)
+    // Then fallback to barcode for other sources
+    const primaryBarcode = data.gtin || data.barcode || null;
+    // Build barcodes array for better search coverage
+    // Include both GTIN-14 and EAN-13 for Tesco products
+    const barcodes = [];
+    if (primaryBarcode) {
+        barcodes.push(primaryBarcode);
+        // For GTIN-14 starting with 0, also add the EAN-13 (without leading 0)
+        if (primaryBarcode.length === 14 && primaryBarcode.startsWith('0')) {
+            barcodes.push(primaryBarcode.substring(1));
+        }
+    }
+    return {
+        name,
+        brand: brandName || null,
+        barcode: primaryBarcode,
+        barcodes: barcodes.length > 0 ? barcodes : null,
+        calories: nutrition.energyKcal || data.calories || 0,
+        protein: nutrition.protein || data.protein || 0,
+        carbs: nutrition.carbohydrate || data.carbs || 0,
+        fat: nutrition.fat || data.fat || 0,
+        saturatedFat: nutrition.saturates || data.saturatedFat || data.saturated_fat || null,
+        fiber: nutrition.fibre || data.fiber || null,
+        sugar: nutrition.sugars || data.sugar || null,
+        sodium: data.sodium || (nutrition.salt ? nutrition.salt * 400 : null),
+        servingSizeG: data.servingSizeG || data.serving_size_g || null,
+        servingDescription: data.servingDescription || data.serving_description || data.servingSize || null,
+        isPerUnit: data.per_unit_nutrition || data.isPerUnit || false,
+        ingredients: Array.isArray(data.ingredients)
+            ? data.ingredients.join(', ')
+            : (data.ingredients || null),
+        isVerified: data.isVerified || data.verified || false,
+        imageUrl: data.imageUrl || null,
+        category: data.category || data.foodCategory || data.department || null,
+        source: indexName,
+    };
+}
+// ==========================================
+// ALGOLIA CONFIGURATION
+// ==========================================
 // Algolia configuration
 const ALGOLIA_APP_ID = "WK0TIF84M2";
 // Use functions.config() for v1 triggers (more reliable than v2 secrets)
@@ -205,6 +310,7 @@ exports.syncVerifiedFoodToAlgolia = functionsV1.firestore
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const foodId = context.params.foodId;
+    const beforeData = change.before.data();
     const afterData = change.after.data();
     // Delete
     if (!afterData) {
@@ -213,6 +319,8 @@ exports.syncVerifiedFoodToAlgolia = functionsV1.firestore
             objectID: foodId,
         });
         console.log(`Deleted verified food ${foodId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(foodId, 'delete', null, VERIFIED_FOODS_INDEX);
         return;
     }
     // Create or Update
@@ -225,6 +333,9 @@ exports.syncVerifiedFoodToAlgolia = functionsV1.firestore
         body: algoliaObject,
     });
     console.log(`Synced verified food ${foodId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(foodId, action, afterData, VERIFIED_FOODS_INDEX);
 });
 /**
  * Sync foods collection to Algolia
@@ -239,6 +350,7 @@ exports.syncFoodToAlgolia = functionsV1.firestore
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const foodId = context.params.foodId;
+    const beforeData = change.before.data();
     const afterData = change.after.data();
     // Delete
     if (!afterData) {
@@ -247,6 +359,8 @@ exports.syncFoodToAlgolia = functionsV1.firestore
             objectID: foodId,
         });
         console.log(`Deleted food ${foodId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(foodId, 'delete', null, FOODS_INDEX);
         return;
     }
     // Create or Update
@@ -259,6 +373,9 @@ exports.syncFoodToAlgolia = functionsV1.firestore
         body: algoliaObject,
     });
     console.log(`Synced food ${foodId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(foodId, action, afterData, FOODS_INDEX);
 });
 /**
  * Sync manual foods to Algolia
@@ -273,6 +390,7 @@ exports.syncManualFoodToAlgolia = functionsV1.firestore
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const foodId = context.params.foodId;
+    const beforeData = change.before.data();
     const afterData = change.after.data();
     // Delete
     if (!afterData) {
@@ -281,6 +399,8 @@ exports.syncManualFoodToAlgolia = functionsV1.firestore
             objectID: foodId,
         });
         console.log(`Deleted manual food ${foodId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(foodId, 'delete', null, MANUAL_FOODS_INDEX);
         return;
     }
     // Create or Update
@@ -293,6 +413,9 @@ exports.syncManualFoodToAlgolia = functionsV1.firestore
         body: algoliaObject,
     });
     console.log(`Synced manual food ${foodId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(foodId, action, afterData, MANUAL_FOODS_INDEX);
 });
 /**
  * Sync user-added foods to Algolia
@@ -307,6 +430,7 @@ exports.syncUserAddedFoodToAlgolia = functionsV1.firestore
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const foodId = context.params.foodId;
+    const beforeData = change.before.data();
     const afterData = change.after.data();
     // Delete
     if (!afterData) {
@@ -315,6 +439,8 @@ exports.syncUserAddedFoodToAlgolia = functionsV1.firestore
             objectID: foodId,
         });
         console.log(`Deleted user-added food ${foodId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(foodId, 'delete', null, USER_ADDED_INDEX);
         return;
     }
     // Create or Update
@@ -327,6 +453,9 @@ exports.syncUserAddedFoodToAlgolia = functionsV1.firestore
         body: algoliaObject,
     });
     console.log(`Synced user-added food ${foodId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(foodId, action, afterData, USER_ADDED_INDEX);
 });
 /**
  * Sync AI-enhanced foods to Algolia
@@ -341,6 +470,7 @@ exports.syncAIEnhancedFoodToAlgolia = functionsV1.firestore
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const foodId = context.params.foodId;
+    const beforeData = change.before.data();
     const afterData = change.after.data();
     // Delete
     if (!afterData) {
@@ -349,6 +479,8 @@ exports.syncAIEnhancedFoodToAlgolia = functionsV1.firestore
             objectID: foodId,
         });
         console.log(`Deleted AI-enhanced food ${foodId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(foodId, 'delete', null, AI_ENHANCED_INDEX);
         return;
     }
     // Only sync approved foods
@@ -366,6 +498,9 @@ exports.syncAIEnhancedFoodToAlgolia = functionsV1.firestore
         body: algoliaObject,
     });
     console.log(`Synced AI-enhanced food ${foodId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(foodId, action, afterData, AI_ENHANCED_INDEX);
 });
 /**
  * Sync AI manually added foods to Algolia
@@ -380,6 +515,7 @@ exports.syncAIManuallyAddedFoodToAlgolia = functionsV1.firestore
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const foodId = context.params.foodId;
+    const beforeData = change.before.data();
     const afterData = change.after.data();
     // Delete
     if (!afterData) {
@@ -388,6 +524,8 @@ exports.syncAIManuallyAddedFoodToAlgolia = functionsV1.firestore
             objectID: foodId,
         });
         console.log(`Deleted AI manually added food ${foodId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(foodId, 'delete', null, AI_MANUALLY_ADDED_INDEX);
         return;
     }
     // Create or Update
@@ -400,6 +538,9 @@ exports.syncAIManuallyAddedFoodToAlgolia = functionsV1.firestore
         body: algoliaObject,
     });
     console.log(`Synced AI manually added food ${foodId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(foodId, action, afterData, AI_MANUALLY_ADDED_INDEX);
 });
 /**
  * Sync Tesco products to Algolia when they're created/updated/deleted
@@ -414,6 +555,7 @@ exports.syncTescoProductToAlgolia = functionsV1.firestore
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
     const productId = context.params.productId;
+    const beforeData = change.before.data();
     const afterData = change.after.data();
     // Delete
     if (!afterData) {
@@ -422,6 +564,8 @@ exports.syncTescoProductToAlgolia = functionsV1.firestore
             objectID: productId,
         });
         console.log(`Deleted Tesco product ${productId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(productId, 'delete', null, TESCO_PRODUCTS_INDEX);
         return;
     }
     // Create or Update - use Tesco-specific formatting
@@ -434,6 +578,49 @@ exports.syncTescoProductToAlgolia = functionsV1.firestore
         body: algoliaObject,
     });
     console.log(`Synced Tesco product ${productId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(productId, action, afterData, TESCO_PRODUCTS_INDEX);
+});
+/**
+ * Sync uk_foods_cleaned to Algolia when they're created/updated/deleted
+ */
+exports.syncUKFoodsCleanedToAlgolia = functionsV1.firestore
+    .document("uk_foods_cleaned/{foodId}")
+    .onWrite(async (change, context) => {
+    const adminKey = getAlgoliaAdminKey();
+    if (!adminKey) {
+        console.error("Algolia admin key not configured");
+        return;
+    }
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+    const foodId = context.params.foodId;
+    const beforeData = change.before.data();
+    const afterData = change.after.data();
+    // Delete
+    if (!afterData) {
+        await client.deleteObject({
+            indexName: 'uk_foods_cleaned',
+            objectID: foodId,
+        });
+        console.log(`Deleted uk_foods_cleaned ${foodId} from Algolia`);
+        // Record for delta sync
+        await recordUpdateForSync(foodId, 'delete', null, 'uk_foods_cleaned');
+        return;
+    }
+    // Create or Update
+    const algoliaObject = {
+        objectID: foodId,
+        ...prepareForAlgolia(afterData),
+    };
+    await client.saveObject({
+        indexName: 'uk_foods_cleaned',
+        body: algoliaObject,
+    });
+    console.log(`Synced uk_foods_cleaned ${foodId} to Algolia`);
+    // Record for delta sync
+    const action = beforeData ? 'update' : 'add';
+    await recordUpdateForSync(foodId, action, afterData, 'uk_foods_cleaned');
 });
 /**
  * Configure custom ranking settings for all Algolia indices (HTTP endpoint)

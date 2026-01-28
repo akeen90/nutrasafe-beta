@@ -66,6 +66,9 @@ interface FoodWithImage {
   error?: string;
   analysisProgress: number;
   confidence?: number; // 0-100 confidence score
+
+  // Persistent tracking - marks if this food has been processed in any session
+  wasProcessed?: boolean; // True if we've attempted to process this (even if failed)
 }
 
 interface ProcessingStats {
@@ -83,6 +86,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const [loadingMessage, setLoadingMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [currentProcessingIndex, setCurrentProcessingIndex] = useState(0);
+  const [totalToProcess, setTotalToProcess] = useState(0);
   const [filter, setFilter] = useState<'all' | 'pending' | 'ready' | 'selected' | 'nutrition_found' | 'nutrition_failed'>('pending');
   const [currentPage, setCurrentPage] = useState(0);
   const [stats, setStats] = useState<ProcessingStats>({
@@ -155,10 +160,25 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         nutritionData: f.nutritionData,
         nutritionStatus: f.nutritionStatus,
         error: f.error,
+        wasProcessed: f.wasProcessed,
         // Don't save searchResults to keep storage small
       })),
       stats,
       processingLog: processingLog.slice(-20), // Keep last 20 log entries
+      currentProcessingIndex,
+      totalToProcess,
+      isPaused,
+      // SAVE SETTINGS - critical for resume functionality
+      settings: {
+        scrapeNutrition,
+        scrapeServingSize,
+        scrapeIngredients,
+        nutritionOnlyMode,
+        filterUKOnly,
+        filterNoImages,
+        filterZeroCalories,
+        excludeDrinks,
+      },
     };
 
     try {
@@ -167,7 +187,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     } catch (e) {
       console.warn('Failed to save progress to localStorage:', e);
     }
-  }, [foods, stats, processingLog]);
+  }, [foods, stats, processingLog, currentProcessingIndex, totalToProcess, isPaused, scrapeNutrition, scrapeServingSize, scrapeIngredients, nutritionOnlyMode, filterUKOnly, filterNoImages, filterZeroCalories, excludeDrinks]);
 
   // Auto-save with debounce (save 2 seconds after last change)
   useEffect(() => {
@@ -203,12 +223,29 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         if (ageHours < 24 && data.foods?.length > 0) {
           console.log(`📂 Found saved progress from ${savedAt.toLocaleString()} (${data.foods.length} foods)`);
 
+          // Build settings description
+          const settings = data.settings || {};
+          const settingsDesc = [];
+          if (settings.nutritionOnlyMode) {
+            settingsDesc.push('🍎 Nutrition only (no images)');
+          } else {
+            settingsDesc.push('📷 Image search');
+          }
+          if (settings.scrapeNutrition) settingsDesc.push('nutrition');
+          if (settings.scrapeServingSize) settingsDesc.push('serving size');
+          if (settings.scrapeIngredients) settingsDesc.push('ingredients');
+
+          const processedCount = data.foods.filter((f: any) => f.wasProcessed || f.status === 'ready' || f.status === 'completed').length;
+          const pendingCount = data.foods.length - processedCount;
+
           // Ask user if they want to restore
           const shouldRestore = window.confirm(
-            `Found saved progress from ${savedAt.toLocaleString()}:\n` +
+            `Found saved progress from ${savedAt.toLocaleString()}:\n\n` +
             `• ${data.foods.length} foods loaded\n` +
-            `• ${data.foods.filter((f: any) => f.status === 'ready' || f.status === 'completed').length} ready/completed\n\n` +
-            `Restore this progress?`
+            `• ${processedCount} processed / ${pendingCount} remaining\n` +
+            `• Settings: ${settingsDesc.join(', ') || 'default'}\n\n` +
+            `Restore this progress?\n` +
+            `(Settings will be restored as they were. You can change them later without losing progress.)`
           );
 
           if (shouldRestore) {
@@ -221,14 +258,36 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
               searchResults: [], // Don't restore search results
               analysis: null,
               analysisProgress: 0,
+              wasProcessed: f.wasProcessed || false,
             }));
 
             setFoods(restoredFoods);
             if (data.stats) setStats(data.stats);
             if (data.processingLog) setProcessingLog(data.processingLog);
+            if (data.currentProcessingIndex !== undefined) setCurrentProcessingIndex(data.currentProcessingIndex);
+            if (data.totalToProcess !== undefined) setTotalToProcess(data.totalToProcess);
+            if (data.isPaused !== undefined) {
+              setIsPaused(data.isPaused);
+              pauseRef.current = data.isPaused;
+            }
+
+            // RESTORE SETTINGS - critical!
+            if (settings.scrapeNutrition !== undefined) setScrapeNutrition(settings.scrapeNutrition);
+            if (settings.scrapeServingSize !== undefined) setScrapeServingSize(settings.scrapeServingSize);
+            if (settings.scrapeIngredients !== undefined) setScrapeIngredients(settings.scrapeIngredients);
+            if (settings.nutritionOnlyMode !== undefined) setNutritionOnlyMode(settings.nutritionOnlyMode);
+            if (settings.filterUKOnly !== undefined) setFilterUKOnly(settings.filterUKOnly);
+            if (settings.filterNoImages !== undefined) setFilterNoImages(settings.filterNoImages);
+            if (settings.filterZeroCalories !== undefined) setFilterZeroCalories(settings.filterZeroCalories);
+            if (settings.excludeDrinks !== undefined) setExcludeDrinks(settings.excludeDrinks);
+
             setShowIndexSelector(false); // Hide selector since we loaded data
 
             console.log(`✅ Restored ${restoredFoods.length} foods from saved progress`);
+            console.log(`⚙️ Restored settings:`, settings);
+            if (data.currentProcessingIndex > 0) {
+              console.log(`📍 Processing was at item ${data.currentProcessingIndex}/${data.totalToProcess}`);
+            }
           }
         }
       }
@@ -241,6 +300,12 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
   const clearSavedProgress = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     console.log('🗑️ Cleared saved progress');
+  }, []);
+
+  // Reset processed flags - allows reprocessing all foods
+  const resetProcessedFlags = useCallback(() => {
+    setFoods(prev => prev.map(f => ({ ...f, wasProcessed: false })));
+    setProcessingLog(prev => [...prev, `${new Date().toLocaleTimeString()}: 🔄 Reset all processed flags - foods can be reprocessed`]);
   }, []);
 
   // Helper function to detect if a food is a drink based on its name
@@ -495,13 +560,22 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           }
         }
 
-        // Reject per-100g fallback if scrapeServingSize is enabled
-        if (bestPer100gResult && scrapeServingSize) {
-          console.log(`❌ No per-serving data found in 3 sites - per-100g data REJECTED`);
-          console.log(`   Found per-100g data from ${bestPer100gResult.source} but no serving size specified`);
-          console.log(`   To accept this data, page must have serving size like "per 30g serving" or "per piece (50g)"`);
+        // Reject per-100g fallback if scrapeServingSize is enabled OR if this is fast food
+        // Fast food items MUST be per-meal/per-item, never per 100g
+        const isFastFood = food.sourceIndex === 'fast_foods_database';
+        const rejectPer100g = scrapeServingSize || isFastFood;
+
+        if (bestPer100gResult && rejectPer100g) {
+          if (isFastFood) {
+            console.log(`🍔 Fast food: No per-meal data found - per-100g data REJECTED`);
+            console.log(`   Fast food must have per-meal nutrition (e.g., "1 Big Mac = 550 kcal")`);
+          } else {
+            console.log(`❌ No per-serving data found in 3 sites - per-100g data REJECTED`);
+            console.log(`   Found per-100g data from ${bestPer100gResult.source} but no serving size specified`);
+            console.log(`   To accept this data, page must have serving size like "per 30g serving" or "per piece (50g)"`);
+          }
           // Don't return anything - let other extraction methods try
-        } else if (bestPer100gResult && !scrapeServingSize) {
+        } else if (bestPer100gResult && !rejectPer100g) {
           // If not scraping serving size, allow per-100g fallback (old behavior)
           console.log(`📊 No per-serving data found - using per-100g fallback (serving size scraping disabled)`);
           const filteredData: Partial<NutritionData> = {
@@ -665,10 +739,19 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                   }
 
                   // CRITICAL: Reject per-100g data if serving size is required but not found
-                  if (scrapeServingSize && !filteredData.servingSize) {
-                    console.log(`❌ Open Food Facts: Has per-100g data but NO serving size - rejecting`);
-                    console.log(`   Need serving size to accept data when "Require Serving Size" is enabled`);
-                    console.log(`   To accept this data, Open Food Facts needs serving_size or serving_quantity in the API response`);
+                  // OR if this is a fast food item (fast food MUST be per-meal)
+                  const isFastFood = food.sourceIndex === 'fast_foods_database';
+                  const needsServingSize = scrapeServingSize || isFastFood;
+
+                  if (needsServingSize && !filteredData.servingSize) {
+                    if (isFastFood) {
+                      console.log(`🍔 Fast food: Open Food Facts has per-100g data but NO per-meal data - rejecting`);
+                      console.log(`   Fast food items must have per-meal nutrition, not per 100g`);
+                    } else {
+                      console.log(`❌ Open Food Facts: Has per-100g data but NO serving size - rejecting`);
+                      console.log(`   Need serving size to accept data when "Require Serving Size" is enabled`);
+                      console.log(`   To accept this data, Open Food Facts needs serving_size or serving_quantity in the API response`);
+                    }
                     return null; // Reject - no more fallbacks
                   }
 
@@ -1941,7 +2024,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       // Step 1: Search via SearchAPI
       setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'searching' as const } : f));
 
-      const results = await searchSerpApiImages(food.name, food.brandName, 10);
+      const results = await searchSerpApiImages(food.name, food.brandName, 10, food.sourceIndex);
 
       if (results.length === 0) {
         addLog(`No results for ${food.name}`);
@@ -1981,24 +2064,43 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           // Calculate confidence score (0-100)
           let confidence = 0;
 
-          // Transparent/no background detected: MAXIMUM SCORE (check for very high whiteness = 95%+)
-          if (analysis.backgroundConfidence >= 95 && analysis.hasWhiteBackground) {
-            confidence = 95; // Nearly perfect - transparent or pure white
+          // Special scoring for fast food restaurants - different criteria
+          if (food.sourceIndex === 'fast_foods_database') {
+            // For restaurants, we want storefront/building images, not white background
+            // Base score on position and resolution
+            confidence = 50;
+
+            // Top 3 results: +20 points
+            if (i < 3) confidence += 20;
+
+            // No text overlays: +20 points
+            if (!analysis.hasOverlay) confidence += 20;
+
+            // Good resolution: +10 points
+            if (candidate.width && candidate.width > 800) confidence += 10;
+
+            addLog(`🍔 Fast food restaurant: ${food.name} - Confidence: ${Math.round(confidence)}% (Rank: ${i+1}, Overlay: ${analysis.hasOverlay ? 'Yes' : 'No'})`);
           } else {
-            // White background: +40 points
-            if (analysis.hasWhiteBackground) confidence += 40;
+            // Normal product scoring - requires white background
+            // Transparent/no background detected: MAXIMUM SCORE (check for very high whiteness = 95%+)
+            if (analysis.backgroundConfidence >= 95 && analysis.hasWhiteBackground) {
+              confidence = 95; // Nearly perfect - transparent or pure white
+            } else {
+              // White background: +40 points
+              if (analysis.hasWhiteBackground) confidence += 40;
 
-            // No overlays: +30 points
-            if (!analysis.hasOverlay) confidence += 30;
+              // No overlays: +30 points
+              if (!analysis.hasOverlay) confidence += 30;
 
-            // High background confidence: up to +20 points
-            confidence += Math.min(20, analysis.backgroundConfidence * 0.2);
+              // High background confidence: up to +20 points
+              confidence += Math.min(20, analysis.backgroundConfidence * 0.2);
+            }
+
+            // Manufacturer site: +5 bonus points (less important if image is already perfect)
+            if (candidate.isManufacturerSite) confidence += 5;
+
+            addLog(`Analysis: ${food.name} - Confidence: ${Math.round(confidence)}% (BG: ${analysis.backgroundConfidence}%, Overlay: ${analysis.hasOverlay ? 'Yes' : 'No'})`);
           }
-
-          // Manufacturer site: +5 bonus points (less important if image is already perfect)
-          if (candidate.isManufacturerSite) confidence += 5;
-
-          addLog(`Analysis: ${food.name} - Confidence: ${Math.round(confidence)}% (BG: ${analysis.backgroundConfidence}%, Overlay: ${analysis.hasOverlay ? 'Yes' : 'No'})`);
 
           // If confidence >= 80%, use it immediately
           if (confidence >= 80) {
@@ -2086,6 +2188,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         confidence,
         error: confidence < 80 ? `Low confidence (${confidence}%) - ${bestAnalysis.overlayTypes.join(', ') || 'Check image quality'}` : undefined,
         analysisProgress: 100,
+        wasProcessed: true, // Mark as processed
       };
     } catch (error) {
       addLog(`Error searching ${food.name}: ${error}`);
@@ -2093,6 +2196,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         ...food,
         status: 'failed',
         error: error instanceof Error ? error.message : String(error),
+        wasProcessed: true, // Mark as processed even if failed
       };
     }
   };
@@ -2106,20 +2210,38 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     const selectedFoods = foods.filter(f => f.selected);
     const toProcess = selectedFoods.length > 0
       ? selectedFoods
-      : foods.filter(f => f.status === 'pending' || f.nutritionStatus === 'pending');
+      : foods.filter(f => (f.status === 'pending' || f.nutritionStatus === 'pending') && !f.wasProcessed);
 
     addLog(`🍎 Starting nutrition scraping for ${toProcess.length} foods`);
 
     if (toProcess.length === 0) {
-      addLog('No foods to process!');
+      const totalUnprocessed = foods.filter(f => !f.wasProcessed).length;
+      if (totalUnprocessed === 0) {
+        addLog('✅ All foods have been processed! Select specific foods to reprocess.');
+      } else {
+        addLog('No pending foods to process. Select specific foods or adjust filters.');
+      }
       setIsProcessing(false);
       return;
     }
 
+    // Initialize progress tracking
+    setTotalToProcess(toProcess.length);
+    setCurrentProcessingIndex(0);
+
     for (let i = 0; i < toProcess.length; i++) {
+      // Update current progress
+      setCurrentProcessingIndex(i + 1);
+
       if (abortRef.current) {
         addLog('Nutrition scraping stopped by user');
         break;
+      }
+
+      // Proper pause implementation
+      while (pauseRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (abortRef.current) break;
       }
 
       const food = toProcess[i];
@@ -2139,7 +2261,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
         setFoods(prev => prev.map(f =>
           f.id === food.id
-            ? { ...f, nutritionData, nutritionStatus: 'found', status: 'uploading' }
+            ? { ...f, nutritionData, nutritionStatus: 'found', status: 'uploading', wasProcessed: true }
             : f
         ));
 
@@ -2319,7 +2441,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
           setFoods(prev => prev.map(f =>
             f.id === food.id
-              ? { ...f, status: 'completed' }
+              ? { ...f, status: 'completed', wasProcessed: true }
               : f
           ));
           addLog(`✅ ${food.name}: Saved to database`);
@@ -2327,14 +2449,14 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           addLog(`⚠ ${food.name}: Nutrition found but save failed - ${error}`);
           setFoods(prev => prev.map(f =>
             f.id === food.id
-              ? { ...f, status: 'ready', error: 'Save failed' }
+              ? { ...f, status: 'ready', error: 'Save failed', wasProcessed: true }
               : f
           ));
         }
       } else {
         setFoods(prev => prev.map(f =>
           f.id === food.id
-            ? { ...f, nutritionStatus: 'not_found', status: 'failed' }
+            ? { ...f, nutritionStatus: 'not_found', status: 'failed', wasProcessed: true }
             : f
         ));
         addLog(`✗ ${food.name}: No nutrition data found`);
@@ -2347,6 +2469,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     addLog('✅ Nutrition scraping complete');
     setIsProcessing(false);
     setIsPaused(false);
+    setCurrentProcessingIndex(0);
+    setTotalToProcess(0);
   };
 
   // Batch search
@@ -2369,20 +2493,38 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     const selectedFoods = foods.filter(f => f.selected);
     const toProcess = selectedFoods.length > 0
       ? selectedFoods
-      : foods.filter(f => f.status === 'pending');
+      : foods.filter(f => f.status === 'pending' && !f.wasProcessed); // Only process unprocessed foods
 
     addLog(`Starting batch search of ${toProcess.length} foods`);
 
     if (toProcess.length === 0) {
-      addLog('No foods to process!');
+      const totalUnprocessed = foods.filter(f => !f.wasProcessed).length;
+      if (totalUnprocessed === 0) {
+        addLog('✅ All foods have been processed! Select specific foods to reprocess.');
+      } else {
+        addLog('No pending foods to process. Select specific foods or adjust filters.');
+      }
       setIsProcessing(false);
       return;
     }
 
+    // Initialize progress tracking
+    setTotalToProcess(toProcess.length);
+    setCurrentProcessingIndex(0);
+
     for (let i = 0; i < toProcess.length; i++) {
+      // Update current progress
+      setCurrentProcessingIndex(i + 1);
+
       if (abortRef.current) {
         addLog('Search stopped by user');
         break;
+      }
+
+      // Proper pause implementation - check ref AND wait
+      while (pauseRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (abortRef.current) break;
       }
 
       const food = toProcess[i];
@@ -2403,6 +2545,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     addLog('Batch search complete');
     setIsProcessing(false);
     setIsPaused(false);
+    setCurrentProcessingIndex(0);
+    setTotalToProcess(0);
   };
 
   const pauseProcessing = () => { pauseRef.current = true; setIsPaused(true); addLog('Paused'); };
@@ -2423,20 +2567,38 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     const selectedFoods = foods.filter(f => f.selected);
     const toProcess = selectedFoods.length > 0
       ? selectedFoods
-      : foods.filter(f => f.status === 'pending');
+      : foods.filter(f => f.status === 'pending' && !f.wasProcessed);
 
     if (toProcess.length === 0) {
-      addLog('No foods to process!');
+      const totalUnprocessed = foods.filter(f => !f.wasProcessed).length;
+      if (totalUnprocessed === 0) {
+        addLog('✅ All foods have been processed! Select specific foods to reprocess.');
+      } else {
+        addLog('No pending foods to process. Select specific foods or adjust filters.');
+      }
       setIsProcessing(false);
       return;
     }
 
     addLog(`🔎 Starting barcode-based image search for ${toProcess.length} food(s)`);
 
+    // Initialize progress tracking
+    setTotalToProcess(toProcess.length);
+    setCurrentProcessingIndex(0);
+
     for (let i = 0; i < toProcess.length; i++) {
+      // Update current progress
+      setCurrentProcessingIndex(i + 1);
+
       if (abortRef.current) {
         addLog('Search stopped by user');
         break;
+      }
+
+      // Proper pause implementation - check ref AND wait
+      while (pauseRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (abortRef.current) break;
       }
 
       const food = toProcess[i];
@@ -2444,7 +2606,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
       // Use food's own barcode
       if (!food.barcode) {
         addLog(`[${i + 1}/${toProcess.length}] ⚠️ ${food.name} - No barcode, skipping`);
-        setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'failed' as const, error: 'No barcode' } : f));
+        setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'failed' as const, error: 'No barcode', wasProcessed: true } : f));
         continue;
       }
 
@@ -2459,7 +2621,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
 
         if (results.length === 0) {
           addLog(`  ❌ No results found`);
-          setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'no_results' as const } : f));
+          setFoods(prev => prev.map(f => f.id === food.id ? { ...f, status: 'no_results' as const, wasProcessed: true } : f));
         } else {
           addLog(`  ✓ Found ${results.length} images`);
 
@@ -2483,7 +2645,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                     status: 'ready' as const,
                     selectedImageUrl: bestResult.result.url,
                     analysis: bestResult.analysis,
-                    confidence: bestResult.analysis.qualityScore
+                    confidence: bestResult.analysis.qualityScore,
+                    wasProcessed: true
                   }
                 : f
             ));
@@ -2495,7 +2658,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                     ...f,
                     status: 'ready' as const,
                     analysis: bestResult?.analysis || null,
-                    confidence: bestResult?.analysis.qualityScore || 0
+                    confidence: bestResult?.analysis.qualityScore || 0,
+                    wasProcessed: true
                   }
                 : f
             ));
@@ -2505,7 +2669,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
         addLog(`  ❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setFoods(prev => prev.map(f =>
           f.id === food.id
-            ? { ...f, status: 'failed' as const, error: 'Search failed' }
+            ? { ...f, status: 'failed' as const, error: 'Search failed', wasProcessed: true }
             : f
         ));
       }
@@ -2523,6 +2687,8 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
     addLog('Barcode image search complete');
     setIsProcessing(false);
     setIsPaused(false);
+    setCurrentProcessingIndex(0);
+    setTotalToProcess(0);
   }, [foods, apiConfigured, addLog]);
 
   // Filter foods by status and search query
@@ -2625,12 +2791,33 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                 </button>
                 <button
                   onClick={() => {
-                    if (confirm('Clear saved progress? This will remove your saved state from browser storage.')) {
+                    const processedCount = foods.filter(f => f.wasProcessed).length;
+                    if (processedCount === 0) {
+                      alert('No processed foods to reset.');
+                      return;
+                    }
+                    if (confirm(`Reset processed flags for ${processedCount} foods?\n\nThis allows reprocessing with different settings without losing data.`)) {
+                      resetProcessedFlags();
+                    }
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-orange-600 hover:bg-orange-50 rounded-lg"
+                  title="Reset processed flags to allow reprocessing with different settings"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset Processed
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Clear ALL saved data?\n\nThis will remove everything from browser storage and reset to empty state.')) {
                       clearSavedProgress();
                       setFoods([]);
                       setShowIndexSelector(true);
                       setStats({ total: 0, completed: 0, failed: 0, noResults: 0, processing: 0 });
                       setProcessingLog([]);
+                      setCurrentProcessingIndex(0);
+                      setTotalToProcess(0);
                     }
                   }}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
@@ -2639,7 +2826,7 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Clear Saved
+                  Clear All Data
                 </button>
               </>
             )}
@@ -2921,8 +3108,128 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
           </div>
         </div>
 
+        {/* Active Settings - Interactive */}
+        {foods.length > 0 && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-blue-900 mb-3">Active Settings (Click to change)</div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Nutrition Only Mode */}
+                  <label className="flex items-center gap-2 p-2 rounded bg-white border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={nutritionOnlyMode}
+                      onChange={(e) => setNutritionOnlyMode(e.target.checked)}
+                      disabled={isProcessing}
+                      className="w-4 h-4 text-purple-600 rounded"
+                    />
+                    <span className="text-sm font-medium">🍎 Nutrition Only (No Images)</span>
+                  </label>
+
+                  {/* Scrape Nutrition */}
+                  <label className="flex items-center gap-2 p-2 rounded bg-white border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={scrapeNutrition}
+                      onChange={(e) => setScrapeNutrition(e.target.checked)}
+                      disabled={isProcessing}
+                      className="w-4 h-4 text-green-600 rounded"
+                    />
+                    <span className="text-sm">Nutrition Values</span>
+                  </label>
+
+                  {/* Scrape Serving Size */}
+                  <label className="flex items-center gap-2 p-2 rounded bg-white border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={scrapeServingSize}
+                      onChange={(e) => setScrapeServingSize(e.target.checked)}
+                      disabled={isProcessing}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <span className="text-sm font-medium">📏 Serving Size</span>
+                  </label>
+
+                  {/* Scrape Ingredients */}
+                  <label className="flex items-center gap-2 p-2 rounded bg-white border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={scrapeIngredients}
+                      onChange={(e) => setScrapeIngredients(e.target.checked)}
+                      disabled={isProcessing}
+                      className="w-4 h-4 text-purple-600 rounded"
+                    />
+                    <span className="text-sm">🥕 Ingredients</span>
+                  </label>
+
+                  {/* Filter UK Only */}
+                  <label className="flex items-center gap-2 p-2 rounded bg-white border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={filterUKOnly}
+                      onChange={(e) => setFilterUKOnly(e.target.checked)}
+                      disabled={isProcessing}
+                      className="w-4 h-4 text-gray-600 rounded"
+                    />
+                    <span className="text-sm">🇬🇧 UK Only</span>
+                  </label>
+
+                  {/* Exclude Drinks */}
+                  <label className="flex items-center gap-2 p-2 rounded bg-white border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={excludeDrinks}
+                      onChange={(e) => setExcludeDrinks(e.target.checked)}
+                      disabled={isProcessing}
+                      className="w-4 h-4 text-gray-600 rounded"
+                    />
+                    <span className="text-sm">Exclude Drinks</span>
+                  </label>
+                </div>
+
+                {isProcessing && (
+                  <div className="mt-2 text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
+                    ⚠️ Settings locked during processing. Stop to change settings.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Progress */}
         <div className="space-y-3">
+          {/* Processing Progress Bar */}
+          {isProcessing && totalToProcess > 0 && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-blue-900">
+                  Processing: {currentProcessingIndex} / {totalToProcess}
+                </span>
+                <span className="text-sm text-blue-700">
+                  {Math.round((currentProcessingIndex / totalToProcess) * 100)}%
+                </span>
+              </div>
+              <div className="h-3 bg-blue-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 transition-all duration-300"
+                  style={{ width: `${(currentProcessingIndex / totalToProcess) * 100}%` }}
+                />
+              </div>
+              {isPaused && (
+                <div className="mt-2 text-sm text-yellow-700 font-medium">
+                  ⏸️ Paused - Click Resume to continue
+                </div>
+              )}
+            </div>
+          )}
+
           {isLoading && (
             <div className="flex items-center gap-3">
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -2954,6 +3261,18 @@ export const GoogleImageScraperPage: React.FC<{ onBack: () => void }> = ({ onBac
                 {selectedCount > 0 && (
                   <span className="text-primary-600">Selected: <strong>{selectedCount}</strong></span>
                 )}
+                {(() => {
+                  const processedCount = foods.filter(f => f.wasProcessed).length;
+                  const unprocessedCount = foods.length - processedCount;
+                  return (
+                    <>
+                      <span className="text-purple-600">Processed: <strong>{processedCount.toLocaleString()}</strong></span>
+                      {unprocessedCount > 0 && (
+                        <span className="text-orange-600">Remaining: <strong>{unprocessedCount.toLocaleString()}</strong></span>
+                      )}
+                    </>
+                  );
+                })()}
                 {ukFilterStats && (
                   <span className="text-blue-600">
                     🇬🇧 UK Filter: <strong>{ukFilterStats.ukCount}</strong> kept ({ukFilterStats.ukPercentage}%), <strong>{ukFilterStats.nonUkCount}</strong> filtered ({ukFilterStats.nonUkPercentage}%)

@@ -65,8 +65,12 @@ class FastingViewModel: ObservableObject {
         let calendar = Calendar.current
         var weekMap: [Date: [FastingSession]] = [:]
 
+        // RACE CONDITION FIX: Copy array before iterating to prevent crash if recentSessions
+        // is modified during iteration (e.g., by Firebase listener firing again)
+        let sessionsSnapshot = recentSessions
+
         // Group sessions by their week start (Monday), using END date for reporting
-        for session in recentSessions {
+        for session in sessionsSnapshot {
             let reportDate = session.endTime ?? session.startTime
             let weekStart = getWeekStart(for: reportDate, calendar: calendar)
             if weekMap[weekStart] == nil {
@@ -1100,11 +1104,12 @@ class FastingViewModel: ObservableObject {
             let hours = customTargetHoursOverride ?? plan.durationHours
             let customEnd = customStart.addingTimeInterval(Double(hours) * 3600)
 
-            // If we're still within the custom fasting window
-            if Date() < customEnd {
+            // If we're still within the custom fasting window, OR there's an active session
+            // (keep override active while session is ongoing, even if calculated end time passed)
+            if Date() < customEnd || activeSession != nil {
                 return .fasting(windowStart: customStart, windowEnd: customEnd)
             } else {
-                // Custom window ended - find next fast
+                // Custom window ended AND no active session - find next fast
                 customStartTimeOverride = nil
                 customTargetHoursOverride = nil
                 if let nextFast = plan.nextScheduledFastingWindow() {
@@ -1120,6 +1125,12 @@ class FastingViewModel: ObservableObject {
     func clearExpiredOverrides() {
         guard let customStart = customStartTimeOverride,
               let plan = activePlan else { return }
+
+        // Don't clear if there's still an active session - the override should stay
+        // valid until the user ends their fast, even if calculated time passed
+        if activeSession != nil {
+            return
+        }
 
         let hours = customTargetHoursOverride ?? plan.durationHours
         let customEnd = customStart.addingTimeInterval(Double(hours) * 3600)
@@ -1364,6 +1375,11 @@ class FastingViewModel: ObservableObject {
         do {
             try await firebaseManager.updateFastingSession(endedSession)
             self.activeSession = nil
+
+            // Clear custom overrides when ending a fast
+            customStartTimeOverride = nil
+            customTargetHoursOverride = nil
+
             await loadRecentSessions()
             await loadAnalytics()
 
@@ -1396,6 +1412,11 @@ class FastingViewModel: ObservableObject {
         do {
             try await firebaseManager.updateFastingSession(skippedSession)
             self.activeSession = nil
+
+            // Clear custom overrides when skipping a fast
+            customStartTimeOverride = nil
+            customTargetHoursOverride = nil
+
             await loadRecentSessions()
             await loadAnalytics()
         } catch {
@@ -1676,6 +1697,11 @@ class FastingViewModel: ObservableObject {
                 _ = try await firebaseManager.saveFastingPlan(plan)
                 self.activePlan = nil
                 self.activeSession = nil
+
+                // Clear custom overrides when deleting plan
+                customStartTimeOverride = nil
+                customTargetHoursOverride = nil
+
                 await loadRecentSessions()
                 await loadAnalytics()
             } catch {
@@ -1977,6 +2003,11 @@ class FastingViewModel: ObservableObject {
             do {
                 try await firebaseManager.deleteFastingSession(id: sessionId)
                 self.activeSession = nil
+
+                // Clear custom overrides when deleting session
+                customStartTimeOverride = nil
+                customTargetHoursOverride = nil
+
                 await loadRecentSessions()
             } catch {
                 // Non-critical - session deletion failed but continue with skip
@@ -2016,6 +2047,11 @@ class FastingViewModel: ObservableObject {
             do {
                 try await firebaseManager.deleteFastingSession(id: sessionId)
                 self.activeSession = nil
+
+                // Clear custom overrides when deleting session for snooze
+                customStartTimeOverride = nil
+                customTargetHoursOverride = nil
+
                 await loadRecentSessions()
             } catch {
                 // Non-critical - session deletion failed but continue with snooze
@@ -2105,6 +2141,11 @@ class FastingViewModel: ObservableObject {
         do {
             try await firebaseManager.updateFastingSession(endedSession)
             self.activeSession = nil
+
+            // Clear custom overrides when ending a fast
+            customStartTimeOverride = nil
+            customTargetHoursOverride = nil
+
             await loadRecentSessions()
             await loadAnalytics()
 

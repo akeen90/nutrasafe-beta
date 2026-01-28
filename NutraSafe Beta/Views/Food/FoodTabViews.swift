@@ -96,6 +96,12 @@ struct FoodTabView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
                         selectedFoodSubTab = .fasting
         }
+        .onReceive(NotificationCenter.default.publisher(for: .fastingConfirmationRequired)) { notification in
+                        // Extract userInfo and pass to FastingViewModel to show confirmation sheet
+            if let userInfo = notification.userInfo {
+                fastingViewModelWrapper.viewModel?.handleConfirmationNotification(userInfo: userInfo)
+            }
+        }
         .featureTip(isPresented: $showingHealthTip, tipKey: .healthOverview)
         .featureTip(isPresented: $showingFastingTip, tipKey: .healthFasting)
         .trackScreen("Health")

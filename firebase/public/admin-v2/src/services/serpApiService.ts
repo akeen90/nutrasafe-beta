@@ -50,28 +50,49 @@ export interface ImageAnalysisResult {
 export async function searchSerpApiImages(
   productName: string,
   brandName?: string | null,
-  maxResults: number = 10
+  maxResults: number = 10,
+  sourceIndex?: string
 ): Promise<SerpApiImageResult[]> {
   // Build search query - keep it simple to maximize results
   let query = '';
 
-  if (brandName && brandName.trim()) {
-    query = `${brandName} ${productName}`;
+  // Special handling for fast food database - search for restaurant outlet, not product
+  if (sourceIndex === 'fast_foods_database') {
+    // Extract restaurant name from product name
+    // Examples: "KFC Original Recipe Chicken", "McDonald's Big Mac", "Subway 6 inch Turkey Sub"
+    // We want to search for "KFC restaurant" or "McDonald's restaurant"
+
+    if (brandName && brandName.trim()) {
+      // Use brand name as the restaurant (e.g., "KFC", "McDonald's")
+      query = `${brandName} restaurant outlet storefront`;
+    } else {
+      // Try to extract restaurant name from product name (first few words usually)
+      const words = productName.split(' ');
+      const restaurantName = words.slice(0, Math.min(2, words.length)).join(' ');
+      query = `${restaurantName} restaurant outlet storefront`;
+    }
+
+    console.log(`🍔 Fast food mode: Original "${brandName} ${productName}" → Restaurant search "${query}"`);
   } else {
-    query = productName;
+    // Normal product search
+    if (brandName && brandName.trim()) {
+      query = `${brandName} ${productName}`;
+    } else {
+      query = productName;
+    }
+
+    // Clean up the query to remove common noise words that hurt search results
+    query = query
+      .replace(/\b(zero sugar|sugar free|no sugar|caffeine free)\b/gi, '') // Remove sugar/caffeine descriptors
+      .replace(/\b\d+ml\b/gi, '') // Remove size (500ml, 330ml, etc.)
+      .replace(/\b\d+g\b/gi, '') // Remove weight (100g, etc.)
+      .replace(/\bpack of \d+\b/gi, '') // Remove pack sizes
+      .replace(/\bmultipack\b/gi, '') // Remove multipack
+      .replace(/\s+/g, ' ') // Clean up extra spaces
+      .trim();
+
+    console.log(`Original: "${brandName} ${productName}" → Cleaned: "${query}"`);
   }
-
-  // Clean up the query to remove common noise words that hurt search results
-  query = query
-    .replace(/\b(zero sugar|sugar free|no sugar|caffeine free)\b/gi, '') // Remove sugar/caffeine descriptors
-    .replace(/\b\d+ml\b/gi, '') // Remove size (500ml, 330ml, etc.)
-    .replace(/\b\d+g\b/gi, '') // Remove weight (100g, etc.)
-    .replace(/\bpack of \d+\b/gi, '') // Remove pack sizes
-    .replace(/\bmultipack\b/gi, '') // Remove multipack
-    .replace(/\s+/g, ' ') // Clean up extra spaces
-    .trim();
-
-  console.log(`Original: "${brandName} ${productName}" → Cleaned: "${query}"`);
 
   try {
     // Use SearchAPI.io Google Images

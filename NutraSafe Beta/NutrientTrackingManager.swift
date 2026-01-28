@@ -25,6 +25,7 @@ class NutrientTrackingManager: ObservableObject {
     private let db = Firestore.firestore()
     private var listeners: [ListenerRegistration] = []
     private var diaryListener: ListenerRegistration? // Deduplicated diary listener
+    private var isSettingUpListeners = false // RACE CONDITION FIX: Guard against concurrent listener setup
     private var currentUserId: String = "" // User-specific cache isolation
 
     // File-based cache paths (UserDefaults inappropriate for large data - can cause launch delays)
@@ -401,11 +402,19 @@ class NutrientTrackingManager: ObservableObject {
     // MARK: - Realtime Listeners
 
     private func setupRealtimeListeners(userId: String) {
-        // Guard against duplicate listener registration
-        // Multiple calls to startTracking would accumulate listeners without this check
-        guard diaryListener == nil else {
-                        return
+        // RACE CONDITION FIX: Guard against both duplicate listeners AND concurrent setup attempts
+        // Multiple calls to startTracking could race and both pass the diaryListener == nil check
+        guard diaryListener == nil, !isSettingUpListeners else {
+            return
         }
+
+        // Mark that we're setting up listeners to prevent concurrent attempts
+        isSettingUpListeners = true
+        defer { isSettingUpListeners = false }
+
+        // Remove any existing listener before creating new one (defensive cleanup)
+        diaryListener?.remove()
+        diaryListener = nil
 
         // Listen to diary changes to auto-update nutrients
         // PERFORMANCE: Limit to last 90 days to prevent downloading entire history
@@ -428,8 +437,9 @@ class NutrientTrackingManager: ObservableObject {
 
                 guard let snapshot = snapshot else { return }
 
-                // When diary changes, recalculate nutrients
-                Task {
+                // RACE CONDITION FIX: Route to MainActor for @Published property updates
+                // Firebase listeners fire on background threads
+                Task { @MainActor in
                     await self.processDiaryChanges(userId: userId, snapshot: snapshot)
                 }
             }

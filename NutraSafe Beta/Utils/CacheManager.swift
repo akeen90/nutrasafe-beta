@@ -61,6 +61,14 @@ final class CacheManager {
         clearFileSystemCaches()
         clearImageCaches()
         clearUserDefaultsCaches()
+        resetLocalFoodDatabase()
+    }
+
+    /// Reset local food database to get fresh bundled version
+    /// This ensures users get the latest food data after app updates
+    private func resetLocalFoodDatabase() {
+        print("🔄 CacheManager: Resetting local food database...")
+        LocalDatabaseManager.shared.resetToFreshBundle()
     }
 
     /// Force clear all caches (can be called from settings)

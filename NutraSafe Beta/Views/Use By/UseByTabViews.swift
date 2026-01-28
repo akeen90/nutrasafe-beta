@@ -611,6 +611,7 @@ struct AddFoundFoodToUseBySheet: View {
 
 @State private var expiryAmount: Int = 7
 @State private var expiryUnit: ExpiryUnit = .days
+    @State private var hasInitializedExpiry = false  // Prevents redundant recalcExpiry on initial load
     @State private var showPhotoActionSheet = false
     @State private var showCameraPicker = false
     @State private var showPhotoPicker = false
@@ -758,8 +759,14 @@ struct AddFoundFoodToUseBySheet: View {
                                 .pickerStyle(.segmented)
                             }
                         }
-                        .onChange(of: expiryAmount) { recalcExpiry() }
-                        .onChange(of: expiryUnit) { recalcExpiry() }
+                        .onChange(of: expiryAmount) {
+                            guard hasInitializedExpiry else { return }
+                            recalcExpiry()
+                        }
+                        .onChange(of: expiryUnit) {
+                            guard hasInitializedExpiry else { return }
+                            recalcExpiry()
+                        }
                         HStack {
                             Text("Expiry Date").font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
                             Spacer()
@@ -772,6 +779,8 @@ struct AddFoundFoodToUseBySheet: View {
                 .padding(16)
 .onAppear {
                 recalcExpiry()
+                // Mark as initialized after initial calculation to enable onChange handlers
+                hasInitializedExpiry = true
             }
             }
             .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
@@ -2736,14 +2745,21 @@ struct UseByBarcodeScanSheet: View {
         scannerKey = UUID()
     }
 
-    // MARK: - Barcode Normalization (EAN-13 ↔ UPC-A)
+    // MARK: - Barcode Normalization (EAN-13 ↔ UPC-A ↔ GTIN-14)
     private func normalizeBarcode(_ barcode: String) -> [String] {
         var variations = [barcode]
+        // EAN-13 with leading 0 → UPC-A (12 digits)
         if barcode.count == 13 && barcode.hasPrefix("0") {
             variations.append(String(barcode.dropFirst()))
         }
-        if barcode.count == 12 {
+        // EAN-13 without leading 0 → GTIN-14 (Tesco format: 0 + EAN-13)
+        if barcode.count == 13 && !barcode.hasPrefix("0") {
             variations.append("0" + barcode)
+        }
+        // UPC-A (12 digits) → EAN-13 and GTIN-14
+        if barcode.count == 12 {
+            variations.append("0" + barcode)   // EAN-13
+            variations.append("00" + barcode)  // GTIN-14
         }
         return variations
     }
@@ -3046,6 +3062,8 @@ struct UseByInlineSearchView: View {
                                 guard trimmed.count >= 2 else { self.results = []; self.isSearching = false; return }
                                 searchTask = Task {
                                     try? await Task.sleep(nanoseconds: 300_000_000)
+                                    // Check if task was cancelled during sleep
+                                    guard !Task.isCancelled else { return }
                                     await runSearch(trimmed)
                                 }
                             }
@@ -4726,14 +4744,20 @@ struct UseByBarcodeScannerSheet: View {
     private func normalizeBarcode(_ barcode: String) -> [String] {
         var variations = [barcode]
 
-        // EAN-13 to UPC-A
+        // EAN-13 with leading 0 → UPC-A (12 digits)
         if barcode.count == 13 && barcode.hasPrefix("0") {
             variations.append(String(barcode.dropFirst()))
         }
 
-        // UPC-A to EAN-13
-        if barcode.count == 12 {
+        // EAN-13 without leading 0 → GTIN-14 (Tesco format: 0 + EAN-13)
+        if barcode.count == 13 && !barcode.hasPrefix("0") {
             variations.append("0" + barcode)
+        }
+
+        // UPC-A (12 digits) → EAN-13 and GTIN-14
+        if barcode.count == 12 {
+            variations.append("0" + barcode)   // EAN-13
+            variations.append("00" + barcode)  // GTIN-14
         }
 
         return variations

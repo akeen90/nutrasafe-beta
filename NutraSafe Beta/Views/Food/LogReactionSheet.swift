@@ -1923,14 +1923,20 @@ struct ReactionBarcodeScannerSheet: View {
     private func normalizeBarcode(_ barcode: String) -> [String] {
         var variations = [barcode]
 
-        // EAN-13 to UPC-A
+        // EAN-13 with leading 0 → UPC-A (12 digits)
         if barcode.count == 13 && barcode.hasPrefix("0") {
             variations.append(String(barcode.dropFirst()))
         }
 
-        // UPC-A to EAN-13
-        if barcode.count == 12 {
+        // EAN-13 without leading 0 → GTIN-14 (Tesco format: 0 + EAN-13)
+        if barcode.count == 13 && !barcode.hasPrefix("0") {
             variations.append("0" + barcode)
+        }
+
+        // UPC-A (12 digits) → EAN-13 and GTIN-14
+        if barcode.count == 12 {
+            variations.append("0" + barcode)   // EAN-13
+            variations.append("00" + barcode)  // GTIN-14
         }
 
         return variations

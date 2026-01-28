@@ -63,6 +63,7 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
     finalMasterCount: 0,
     processing: false,
   });
+  const [memoryWarning, setMemoryWarning] = useState<string | null>(null);
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
@@ -709,6 +710,17 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
       }
 
       addLog(`📊 Total: ${allFetchedProducts.length.toLocaleString()} products`);
+
+      // MEMORY SAFETY: Warn if dataset is very large
+      const estimatedMemoryMB = (allFetchedProducts.length * 2) / 1000; // ~2KB per product estimate
+      if (allFetchedProducts.length > 50000) {
+        const warning = `⚠️ LARGE DATASET: ${allFetchedProducts.length.toLocaleString()} products (~${Math.round(estimatedMemoryMB)}MB). Consider using single-index mode or test mode to avoid memory issues.`;
+        addLog(warning);
+        setMemoryWarning(warning);
+      } else {
+        setMemoryWarning(null);
+      }
+
       setIndexStats(allStats);
       setAllProducts(allFetchedProducts);
       setStats(prev => ({ ...prev, totalScanned: allFetchedProducts.length }));
@@ -779,11 +791,26 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
       const duplicates: DuplicateGroup[] = [];
       const startTime = Date.now();
 
+      // MEMORY SAFETY: Process in chunks to avoid memory overflow
+      const CHUNK_SIZE = 10000;
+      const chunks = [];
+      for (let i = 0; i < productsToScan.length; i += CHUNK_SIZE) {
+        chunks.push(productsToScan.slice(i, i + CHUNK_SIZE));
+      }
+      addLog(`  → Processing ${productsToScan.length.toLocaleString()} products in ${chunks.length} chunks of ${CHUNK_SIZE.toLocaleString()}`);
+
       // Step 1: Build indices (O(n) - fast!)
       const barcodeIndex = new Map<string, Product[]>();
       const nameIndex = new Map<string, Product[]>();
 
-      for (const product of productsToScan) {
+      for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
+        const chunk = chunks[chunkIdx];
+        if (chunkIdx > 0 && chunkIdx % 5 === 0) {
+          addLog(`  → Indexing chunk ${chunkIdx + 1}/${chunks.length}...`);
+          await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI update
+        }
+
+        for (const product of chunk) {
         // Index by barcode
         const barcodes = typeof product.barcode === 'string'
           ? [product.barcode]
@@ -797,12 +824,13 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
           }
         }
 
-        // Index by normalized name (for fuzzy matching)
-        const name = normalizeText(product.name || product.foodName || '');
-        if (name) {
-          const nameKey = name.substring(0, 15); // First 15 chars as key
-          if (!nameIndex.has(nameKey)) nameIndex.set(nameKey, []);
-          nameIndex.get(nameKey)!.push(product);
+          // Index by normalized name (for fuzzy matching)
+          const name = normalizeText(product.name || product.foodName || '');
+          if (name) {
+            const nameKey = name.substring(0, 15); // First 15 chars as key
+            if (!nameIndex.has(nameKey)) nameIndex.set(nameKey, []);
+            nameIndex.get(nameKey)!.push(product);
+          }
         }
       }
 
@@ -1465,6 +1493,13 @@ export const MasterDatabaseBuilderPage: React.FC<{ onBack: () => void }> = ({ on
             )}
           </div>
         </div>
+
+        {/* Memory Warning */}
+        {memoryWarning && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-800">
+            <strong>⚠️ Memory Warning:</strong> {memoryWarning}
+          </div>
+        )}
 
         {/* Progress */}
         {(isPulling || isScanning || isBuilding || isMerging) && (

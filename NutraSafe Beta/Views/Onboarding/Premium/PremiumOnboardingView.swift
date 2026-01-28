@@ -24,10 +24,12 @@ struct PremiumOnboardingView: View {
     @State private var transitionOpacity: Double = 1
     @State private var showingPaywall = false
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     let onComplete: (Bool) -> Void
 
     // Total screens (0-22) - added FeatureBenefits after GoalsProcessing
+    // Note: ProUpgrade screen (20) is skipped if user already has subscription access
     private let totalScreens = 23
 
     var body: some View {
@@ -105,12 +107,16 @@ struct PremiumOnboardingView: View {
                     // Notifications Permission
                     NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
                 case 20:
-                    // Pro Upgrade CTA
-                    ProUpgradeScreen(
-                        state: state,
-                        onUpgrade: { showingPaywall = true },
-                        onContinueFree: { advanceScreen() }
-                    )
+                    // Pro Upgrade CTA - skip if user already has subscription access
+                    if subscriptionManager.hasAccess {
+                        Color.clear.onAppear { advanceScreen() }
+                    } else {
+                        ProUpgradeScreen(
+                            state: state,
+                            onUpgrade: { showingPaywall = true },
+                            onContinueFree: { advanceScreen() }
+                        )
+                    }
                 case 21:
                     // Honesty/Disclaimer screen
                     HonestyScreen(state: state, onContinue: { advanceScreen() })
@@ -267,6 +273,7 @@ struct MirrorScreen: View {
     @ObservedObject var state: PremiumOnboardingState
     let onContinue: () -> Void
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @State private var hasAutoAdvanced = false  // Prevents double-advance if user taps Continue manually
 
     private var isIPad: Bool {
         horizontalSizeClass == .regular
@@ -312,8 +319,10 @@ struct MirrorScreen: View {
                             withAnimation(.easeOut(duration: 0.3)) {
                                 state.selectedIntent = intent
                             }
-                            // Auto-advance after selection
+                            // Auto-advance after selection (with guard to prevent double-advance)
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                                guard !hasAutoAdvanced else { return }
+                                hasAutoAdvanced = true
                                 onContinue()
                             }
                         }
@@ -385,6 +394,7 @@ struct ProcessingScreen: View {
     let onComplete: () -> Void
 
     @State private var showRipples = false
+    @State private var hasAutoAdvanced = false  // Prevents race condition on double-trigger
 
     var body: some View {
         VStack {
@@ -421,6 +431,8 @@ struct ProcessingScreen: View {
 
             // Auto-advance after 2.5 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                guard !hasAutoAdvanced else { return }
+                hasAutoAdvanced = true
                 onComplete()
             }
         }
@@ -581,6 +593,7 @@ struct SynthesisScreen: View {
 
     @State private var mergeProgress: CGFloat = 0
     @State private var showLens = false
+    @State private var hasAutoAdvanced = false  // Prevents race condition on double-trigger
 
     var body: some View {
         VStack {
@@ -653,6 +666,8 @@ struct SynthesisScreen: View {
 
             // Auto-advance
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                guard !hasAutoAdvanced else { return }
+                hasAutoAdvanced = true
                 onComplete()
             }
         }

@@ -597,6 +597,8 @@ struct UseBySearchFlowRedesigned: View {
 
         searchTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
+            // Check if task was cancelled during sleep
+            guard !Task.isCancelled else { return }
             await runSearch(trimmed)
         }
     }

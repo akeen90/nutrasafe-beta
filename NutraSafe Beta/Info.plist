@@ -61,6 +61,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.nutrasafe.refresh-notifications</string>
+		<string>com.nutrasafe.sync-database</string>
 	</array>
 	<key>AlgoliaAppId</key>
 	<string>WK0TIF84M2</string>

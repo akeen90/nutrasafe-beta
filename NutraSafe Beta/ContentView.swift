@@ -747,7 +747,9 @@ struct ContentView: View {
                         showingWeightAdd = false
                     }
                 },
-                onSave: { refreshMainViewWeightData() }
+                // Note: Don't call refreshMainViewWeightData() here - the .weightHistoryUpdated
+                // notification already updates weightHistory optimistically.
+                onSave: nil
             )
                 .environmentObject(FirebaseManager.shared)
                 .onDisappear {
@@ -1685,7 +1687,10 @@ struct WeightTrackingView: View {
                         showingAddWeight = false
                     }
                 },
-                onSave: { loadWeightHistory() }
+                // Note: Don't call loadWeightHistory() here - the .weightHistoryUpdated
+                // notification already updates weightHistory optimistically. Reloading from
+                // Firestore may overwrite with stale data before sync completes.
+                onSave: nil
             )
                 .environmentObject(firebaseManager)
         }
@@ -1707,7 +1712,9 @@ struct WeightTrackingView: View {
                     }
                 },
                 existingEntry: entry,
-                onSave: { loadWeightHistory() }
+                // Note: Don't call loadWeightHistory() here - the .weightHistoryUpdated
+                // notification already updates weightHistory optimistically.
+                onSave: nil
             )
             .environmentObject(firebaseManager)
         }
@@ -4476,58 +4483,50 @@ struct EditWeightView: View {
     }
 
     private func convertWeight(from oldUnit: WeightUnit, to newUnit: WeightUnit) {
-                withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.easeInOut(duration: 0.2)) {
             // First, get current weight in kg for conversion
             guard let primary = Double(primaryWeight), primary > 0 else { return }
             let secondary = !secondaryWeight.isEmpty ? Double(secondaryWeight) : nil
 
             // Convert from old unit to kg
             let kg = oldUnit.toKg(primary: primary, secondary: secondary)
-                        if newUnit == .kg {
-                // Converting TO kg
-                self.primaryWeight = String(format: "%.1f", kg)
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.secondaryWeight = ""
-                }
-            } else if newUnit == .stones {
-                // Converting TO stones/lbs
-                let converted = WeightUnit.stones.fromKg(kg)
 
-                // Update stones/lbs fields FIRST
+            if newUnit == .kg {
+                // Converting TO kg - clear secondary first to avoid stale data
+                self.secondaryWeight = ""
+                self.primaryWeight = String(format: "%.1f", kg)
+            } else if newUnit == .stones {
+                // Converting TO stones/lbs - update both fields atomically
+                let converted = WeightUnit.stones.fromKg(kg)
                 self.primaryWeight = String(format: "%.0f", converted.primary)
                 self.secondaryWeight = String(format: "%.1f", converted.secondary ?? 0)
-                            } else if newUnit == .lbs {
-                // Converting TO lbs
+            } else if newUnit == .lbs {
+                // Converting TO lbs - clear secondary first to avoid stale data
                 let converted = WeightUnit.lbs.fromKg(kg)
+                self.secondaryWeight = ""
                 self.primaryWeight = String(format: "%.1f", converted.primary)
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.secondaryWeight = ""
-                }
             }
         }
     }
 
     private func convertHeight(from oldUnit: HeightUnit, to newUnit: HeightUnit) {
-                withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.easeInOut(duration: 0.2)) {
             guard let primary = Double(primaryHeight), primary > 0 else { return }
             let secondary = !secondaryHeight.isEmpty ? Double(secondaryHeight) : nil
 
             // Convert from old unit to cm
             let cm = oldUnit.toCm(primary: primary, secondary: secondary)
-                        if newUnit == .cm {
-                // Converting TO cm
-                self.primaryHeight = String(format: "%.0f", cm)
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.secondaryHeight = ""
-                }
-            } else if newUnit == .ftIn {
-                // Converting TO feet/inches
-                let converted = HeightUnit.ftIn.fromCm(cm)
 
-                // Update ft/in fields FIRST
+            if newUnit == .cm {
+                // Converting TO cm - clear secondary first to avoid stale data
+                self.secondaryHeight = ""
+                self.primaryHeight = String(format: "%.0f", cm)
+            } else if newUnit == .ftIn {
+                // Converting TO feet/inches - update both fields atomically
+                let converted = HeightUnit.ftIn.fromCm(cm)
                 self.primaryHeight = String(format: "%.0f", converted.primary)
                 self.secondaryHeight = String(format: "%.0f", converted.secondary ?? 0)
-                            }
+            }
         }
     }
 

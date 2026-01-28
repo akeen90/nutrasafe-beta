@@ -32,9 +32,7 @@ struct PremiumFeatureWrapper<Content: View, Preview: View>: View {
     }
 
     private var hasAccess: Bool {
-        subscriptionManager.isSubscribed ||
-        subscriptionManager.isInTrial ||
-        subscriptionManager.isPremiumOverride
+        subscriptionManager.hasAccess
     }
 
     var body: some View {

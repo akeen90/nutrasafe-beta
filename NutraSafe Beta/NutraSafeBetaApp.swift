@@ -136,6 +136,23 @@ struct NutraSafeBetaApp: App {
     init() {
         // Check for app version change and clear caches if needed
         CacheManager.shared.checkAndClearCachesIfNeeded()
+
+        // Initialize local database and image manager early
+        // This ensures the SQLite database is ready for offline search
+        // and image mappings are loaded before any views try to use them
+        print("🚀 App Init: Initializing local database and image manager...")
+        let dbAvailable = LocalDatabaseManager.shared.isAvailable
+        let imageCount = LocalFoodImageManager.shared.localImageCount
+        print("🚀 App Init: LocalDB available: \(dbAvailable), Local images: \(imageCount)")
+
+        // Debug: print full state of image manager
+        LocalFoodImageManager.shared.debugPrintState()
+
+        // Initialize offline data manager for user-generated data
+        // This provides offline-first storage for diary entries, Use By items, etc.
+        print("🚀 App Init: Initializing offline data manager...")
+        OfflineDataManager.shared.initialize()
+        print("🚀 App Init: Offline data manager initialized")
     }
 
     // Add theme binding at the scene level so changes apply instantly across sheets and overlays
@@ -177,11 +194,23 @@ struct MainAppView: View {
                     // Check and refresh notification queue on app launch
                     await checkAndRefreshNotifications()
                     await prewarmSettingsCache()
+
+                    // Check if local food database needs sync
+                    DatabaseSyncManager.shared.syncIfNeeded()
+
+                    // Trigger offline sync for user-generated data
+                    OfflineSyncManager.shared.triggerSync()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 // Clear search cache to ensure fresh data (e.g., verified status changes)
                 AlgoliaSearchManager.shared.clearCache()
+
+                // Sync local food database if needed when returning to foreground
+                DatabaseSyncManager.shared.syncIfNeeded()
+
+                // Trigger offline sync for user-generated data
+                OfflineSyncManager.shared.triggerSync()
 
                 Task {
                     await clearAppBadge()

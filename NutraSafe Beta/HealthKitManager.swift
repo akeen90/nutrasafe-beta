@@ -73,6 +73,9 @@ class HealthKitManager: ObservableObject {
     // Track which date the current HealthKit values represent (prevents race conditions)
     private var currentDisplayDate: Date = Date()
 
+    // RACE CONDITION FIX: Use serial queue to synchronize task storage and cancellation
+    private let taskQueue = DispatchQueue(label: "com.nutrasafe.healthkit.tasks")
+
     // Task cancellation for rapid date changes
     private var exerciseCaloriesTask: Task<Void, Never>?
     private var stepCountTask: Task<Void, Never>?
@@ -165,10 +168,16 @@ class HealthKitManager: ObservableObject {
 
         // Only cancel tasks if the date actually changed
         if newDate != currentDisplayDate {
-            // Cancel in-flight tasks to prevent stale data from racing with new requests
-            exerciseCaloriesTask?.cancel()
-            stepCountTask?.cancel()
-            activeEnergyTask?.cancel()
+            // RACE CONDITION FIX: Synchronize task cancellation to prevent race with task storage
+            taskQueue.sync {
+                exerciseCaloriesTask?.cancel()
+                stepCountTask?.cancel()
+                activeEnergyTask?.cancel()
+                // Clear task references after cancellation
+                exerciseCaloriesTask = nil
+                stepCountTask = nil
+                activeEnergyTask = nil
+            }
         }
 
         currentDisplayDate = newDate
@@ -518,7 +527,10 @@ class HealthKitManager: ObservableObject {
             }
         }
 
-        exerciseCaloriesTask = task
+        // RACE CONDITION FIX: Synchronize task storage
+        taskQueue.sync {
+            exerciseCaloriesTask = task
+        }
         await task.value
     }
 
@@ -600,7 +612,10 @@ class HealthKitManager: ObservableObject {
             }
         }
 
-        stepCountTask = task
+        // RACE CONDITION FIX: Synchronize task storage
+        taskQueue.sync {
+            stepCountTask = task
+        }
         await task.value
     }
 
@@ -638,7 +653,10 @@ class HealthKitManager: ObservableObject {
             }
         }
 
-        activeEnergyTask = task
+        // RACE CONDITION FIX: Synchronize task storage
+        taskQueue.sync {
+            activeEnergyTask = task
+        }
         await task.value
     }
 

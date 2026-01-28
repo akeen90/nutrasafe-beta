@@ -234,7 +234,18 @@ struct AddFoodBarcodeView: View {
     /// Normalizes a barcode to handle format variations (EAN-13 ↔ UPC-A)
     /// Returns an array of barcode variations to search
     private func normalizeBarcode(_ barcode: String) -> [String] {
-        var variations = [barcode] // Always include original
+        var variations: [String] = []
+
+        // EAN-13 to GTIN-14: Add leading zero for Tesco products FIRST (GTIN-14 = 0 + EAN-13)
+        // Tesco stores barcodes as GTIN-14 (14 digits with leading 0)
+        // Check this FIRST because Tesco is most common UK retailer
+        if barcode.count == 13 && !barcode.hasPrefix("0") {
+            let gtinVariation = "0" + barcode
+            variations.append(gtinVariation)
+        }
+
+        // Always include original barcode
+        variations.append(barcode)
 
         // EAN-13 to UPC-A: Remove leading zero if length is 13 and starts with 0
         if barcode.count == 13 && barcode.hasPrefix("0") {
@@ -242,10 +253,12 @@ struct AddFoodBarcodeView: View {
             variations.append(upcVariation)
         }
 
-        // UPC-A to EAN-13: Add leading zero if length is 12
+        // UPC-A to EAN-13 and GTIN-14: Add leading zero(s) if length is 12
         if barcode.count == 12 {
             let eanVariation = "0" + barcode
             variations.append(eanVariation)
+            let gtinVariation = "00" + barcode
+            variations.append(gtinVariation)
         }
 
         return variations
@@ -307,24 +320,17 @@ struct AddFoodBarcodeView: View {
         errorMessage = nil
 
         Task {
-            // Step 1: Normalize barcode to handle format variations
-            let barcodeVariations = normalizeBarcode(barcode)
-            
-            // Step 2: Try Algolia exact barcode lookup across indices (fast path)
-            var foundInAlgolia: FoodSearchResult? = nil
-            for variation in barcodeVariations {
-                do {
-                    if let hit = try await AlgoliaSearchManager.shared.searchByBarcode(variation) {
-                        foundInAlgolia = hit
-                                                break
-                    }
-                } catch {
-                    // Continue to next variation/fallback
-                }
+            // Step 1: Try AlgoliaSearchManager barcode lookup (handles all format variations internally)
+            // This checks local database first, then falls back to Algolia indices
+            var foundProduct: FoodSearchResult? = nil
+            do {
+                foundProduct = try await AlgoliaSearchManager.shared.searchByBarcode(barcode)
+            } catch {
+                // Continue to Cloud Function fallback
             }
 
-            // If found in Algolia, validate and show
-            if let product = foundInAlgolia {
+            // If found, validate and show
+            if let product = foundProduct {
                 // Validate nutrition data even from Algolia (some imported data may be incomplete)
                 if self.hasValidNutritionData(product) {
                     await MainActor.run {

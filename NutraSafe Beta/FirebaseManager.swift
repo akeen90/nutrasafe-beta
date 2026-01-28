@@ -33,8 +33,13 @@ class FirebaseManager: ObservableObject {
     private let cacheQueue = DispatchQueue(label: "com.nutrasafe.cacheQueue")
     private var authListenerHandle: AuthStateDidChangeListenerHandle?
 
-    // Apple Sign In nonce storage
-    private var currentNonce: String?
+    // Apple Sign In nonce storage - protected by dedicated queue to prevent race conditions
+    private let nonceQueue = DispatchQueue(label: "com.nutrasafe.nonceQueue")
+    private var _currentNonce: String?
+    private var currentNonce: String? {
+        get { nonceQueue.sync { _currentNonce } }
+        set { nonceQueue.sync { _currentNonce = newValue } }
+    }
 
     // MARK: - Search Cache (Optimized with NSCache)
     private class SearchCacheEntry {
@@ -53,6 +58,10 @@ class FirebaseManager: ObservableObject {
         return cache
     }()
     private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+    // Thread-safe queue for search cache operations (NSCache is thread-safe for individual ops, but not for read-check-modify)
+    private let searchCacheQueue = DispatchQueue(label: "com.nutrasafe.searchCacheQueue")
+    // In-flight search request tracking to prevent duplicate fetches
+    private var inFlightSearchRequests: [String: Task<[FoodSearchResult], Error>] = [:]
 
     // MARK: - Food Entries Cache (Performance Optimization)
     private struct FoodEntriesCacheEntry {
@@ -70,7 +79,8 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Allergen Cache
     @Published var cachedUserAllergens: [Allergen] = []
-    private var allergensLastFetched: Date?
+    // allergensLastFetched is only accessed from MainActor contexts
+    @MainActor private var allergensLastFetched: Date?
     private let allergenCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
 
     private init() {
@@ -86,29 +96,34 @@ class FirebaseManager: ObservableObject {
         if authListenerHandle == nil {
             authListenerHandle = auth.addStateDidChangeListener { [weak self] _, user in
                 // Ensure @Published properties change on the main actor
+                // RACE CONDITION FIX: Check self before posting notification to prevent
+                // orphaned observers receiving events for deallocated managers
                 Task { @MainActor in
-                    self?.currentUser = user
-                    self?.isAuthenticated = user != nil
+                    guard let self = self else { return }
+                    self.currentUser = user
+                    self.isAuthenticated = user != nil
                     NotificationCenter.default.post(name: .authStateChanged, object: nil)
                 }
             }
         }
     }
 
+    /// Preload weight data into cache - awaitable to ensure data is ready before use
+    @MainActor
     func preloadWeightData(history: [WeightEntry], height: Double?, goalWeight: Double?) {
-        Task { @MainActor in
-            self.cachedWeightHistory = history
-            self.cachedUserHeight = height
-            self.cachedGoalWeight = goalWeight
-        }
+        self.cachedWeightHistory = history
+        self.cachedUserHeight = height
+        self.cachedGoalWeight = goalWeight
     }
-    
-    // Ensure our cached auth state is populated even if the listener hasn't fired yet
-    private func ensureAuthStateLoaded() {
+
+    /// Async version for non-MainActor contexts that need to ensure auth state is loaded
+    /// This awaits MainActor to prevent race conditions where callers check currentUser
+    /// immediately after calling this method
+    private func ensureAuthStateLoadedAsync() async {
         initializeFirebaseServices()
-        if self.currentUser == nil {
-            let user = auth.currentUser
-            Task { @MainActor in
+        await MainActor.run {
+            if self.currentUser == nil {
+                let user = auth.currentUser
                 self.currentUser = user
                 self.isAuthenticated = user != nil
             }
@@ -210,7 +225,16 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Authentication
 
+    /// Sign out the current user and clear all local state atomically
+    /// - Throws: Firebase auth errors if sign out fails
+    @MainActor
     func signOut() throws {
+        // Clear auth state FIRST (synchronously on MainActor) before signing out
+        // This ensures no code can see an inconsistent state
+        self.currentUser = nil
+        self.isAuthenticated = false
+
+        // Now sign out from Firebase
         try auth.signOut()
 
         // Clear any residual UserDefaults data to prevent leakage between accounts
@@ -222,21 +246,32 @@ class FirebaseManager: ObservableObject {
         logInfo("Cleared local UserDefaults data on sign out", subsystem: .app, category: .security)
 
         // Clear ReactionManager data to prevent leakage between accounts
-        Task { @MainActor in
-            ReactionManager.shared.clearData()
-        }
+        ReactionManager.shared.clearData()
 
         // Cancel all Use By notifications to prevent cross-account notification leakage
         UseByNotificationManager.shared.cancelAllNotifications()
 
-        Task { @MainActor in
-            self.currentUser = nil
-            self.isAuthenticated = false
+        // Clear all caches to prevent data leakage
+        cacheQueue.sync {
+            self.foodEntriesCache.removeAll()
+            self.foodEntriesCacheAccessTime.removeAll()
+            self.periodCache.removeAll()
+            self.periodCacheAccessTime.removeAll()
+            self.inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+            self.inFlightFoodEntriesRequests.removeAll()
+            self.inFlightPeriodRequests.values.forEach { $0.cancel() }
+            self.inFlightPeriodRequests.removeAll()
         }
+        self.searchCache.removeAllObjects()
+        self.cachedUserAllergens = []
+        self.allergensLastFetched = nil
+        self.cachedWeightHistory = []
+        self.cachedUserHeight = nil
+        self.cachedGoalWeight = nil
     }
 
     func deleteAllUserData() async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete data"])
@@ -332,6 +367,11 @@ class FirebaseManager: ObservableObject {
             self.currentUser = auth.currentUser
             self.isAuthenticated = true
         }
+
+        // Pull user data to local offline storage in background
+        Task {
+            await self.pullUserDataToOfflineStorage()
+        }
     }
     
     func signUp(email: String, password: String) async throws {
@@ -345,6 +385,9 @@ class FirebaseManager: ObservableObject {
             self.currentUser = result.user
             self.isAuthenticated = true
         }
+
+        // New user - no data to pull, but initialize offline storage
+        // (will start syncing as they add data)
     }
 
     // Check if current user's email is verified
@@ -440,6 +483,11 @@ class FirebaseManager: ObservableObject {
             self.isAuthenticated = true
             logInfo("Auth state updated - user authenticated", subsystem: .auth, category: .authentication)
         }
+
+        // Pull user data to local offline storage in background
+        Task {
+            await self.pullUserDataToOfflineStorage()
+        }
     }
 
     /// Check if current user authenticated via Apple Sign In
@@ -479,6 +527,20 @@ class FirebaseManager: ObservableObject {
         let document = try await db.collection("users").document(userId).getDocument()
         guard let data = document.data() else { return nil }
         return UserProfile.fromDictionary(data)
+    }
+
+    // MARK: - Offline Data Sync
+
+    /// Pull user data from Firebase to local offline storage
+    /// Called after successful sign-in to enable offline-first functionality
+    private func pullUserDataToOfflineStorage() async {
+        do {
+            try await OfflineSyncManager.shared.pullAllData()
+            print("[FirebaseManager] Successfully pulled user data to offline storage")
+        } catch {
+            print("[FirebaseManager] Failed to pull user data to offline storage: \(error.localizedDescription)")
+            // Non-fatal error - app will work with Firebase directly until next sync attempt
+        }
     }
 
     // MARK: - Email Marketing Consent
@@ -551,13 +613,9 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        let entryData = entry.toDictionary()
-
-        // Wrap with retry for network resilience
-        try await withRetry {
-            try await self.db.collection("users").document(userId)
-                .collection("foodEntries").document(entry.id).setData(entryData)
-        }
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveFoodEntry(entry)
 
         // Invalidate cache for this date only (granular invalidation for better performance)
         invalidateFoodEntriesCache(for: entry.date, userId: userId)
@@ -570,6 +628,9 @@ class FirebaseManager: ObservableObject {
         await MainActor.run {
             NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
         }
+
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
 
         // Write dietary energy to Apple Health when enabled
         let ringsEnabled = UserDefaults.standard.bool(forKey: "healthKitRingsEnabled")
@@ -628,13 +689,13 @@ class FirebaseManager: ObservableObject {
             return cached.entries
         }
 
-        // Check for in-flight request to prevent duplicate fetches
+        // RACE CONDITION FIX: Check for existing task first
         let existingTask = cacheQueue.sync { inFlightFoodEntriesRequests[dateKey] }
         if let task = existingTask {
             return try await task.value
         }
 
-        // Create new fetch task
+        // Create new fetch task - we'll register it atomically below
         let fetchTask = Task<[FoodEntry], Error> {
             // CRITICAL: Check for cancellation before starting work (prevents race condition)
             try Task.checkCancellation()
@@ -645,6 +706,13 @@ class FirebaseManager: ObservableObject {
                                 throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date range"])
             }
             let queryEnd = endOfDay
+
+            // Use defer to ensure in-flight request is always cleaned up, even on error/cancellation
+            defer {
+                _ = self.cacheQueue.sync {
+                    self.inFlightFoodEntriesRequests.removeValue(forKey: dateKey)
+                }
+            }
 
             let snapshot = try await withRetry {
                 // Check cancellation before each retry attempt
@@ -678,7 +746,7 @@ class FirebaseManager: ObservableObject {
             // This prevents a cancelled task from overwriting fresh data
             try Task.checkCancellation()
 
-            // Store in cache and remove from in-flight (async-safe with DispatchQueue)
+            // Store in cache (in-flight cleanup handled by defer above)
             self.cacheQueue.sync {
                 self.foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
                 self.foodEntriesCacheAccessTime[dateKey] = Date() // O(1) LRU tracking
@@ -693,29 +761,45 @@ class FirebaseManager: ObservableObject {
                         break
                     }
                 }
-
-                self.inFlightFoodEntriesRequests.removeValue(forKey: dateKey)
             }
 
             return entries
         }
 
-        // Register the in-flight request
-        cacheQueue.sync {
+        // RACE CONDITION FIX: Atomically register the in-flight request, but check again
+        // in case another request snuck in while we were creating the task
+        let taskToAwait: Task<[FoodEntry], Error> = cacheQueue.sync {
+            // Double-check: if another request registered while we were creating fetchTask, use that one
+            if let existing = inFlightFoodEntriesRequests[dateKey] {
+                // Cancel our task since we'll use the existing one
+                fetchTask.cancel()
+                return existing
+            }
+            // Register our task
             inFlightFoodEntriesRequests[dateKey] = fetchTask
+            return fetchTask
         }
 
-        return try await fetchTask.value
+        return try await taskToAwait.value
     }
 
     /// Count food entries for a specific date (used for free tier limit checking)
     /// Note: Bypasses cache to get accurate count for limit enforcement
+    /// Count food entries for a specific date (used for free tier limit checking)
+    /// Uses cached data when available to prevent excessive network requests
+    /// The cache is automatically invalidated when entries are added/deleted
     func countFoodEntries(for date: Date) async throws -> Int {
-        // Clear cache for this date to ensure fresh count
+        // Use cached entries - the cache is already invalidated in saveFoodEntry/deleteFoodEntry
+        // This prevents N network requests when user taps "Add" multiple times quickly
+        let entries = try await getFoodEntries(for: date)
+        return entries.count
+    }
+
+    /// Force a fresh count by bypassing cache (use sparingly - only when cache might be stale)
+    func countFoodEntriesFresh(for date: Date) async throws -> Int {
         if let userId = currentUser?.uid {
             invalidateFoodEntriesCache(for: date, userId: userId)
         }
-
         let entries = try await getFoodEntries(for: date)
         return entries.count
     }
@@ -728,46 +812,54 @@ class FirebaseManager: ObservableObject {
     }
 
     // MARK: - Period Cache (for Micronutrient Dashboard)
-    private var periodCache: [Int: (entries: [FoodEntry], timestamp: Date)] = [:]
+    // Key format: "userId_days" to prevent data leakage between users
+    private var periodCache: [String: (entries: [FoodEntry], timestamp: Date)] = [:]
     // PERFORMANCE: Separate LRU tracking for O(1) access time updates
-    private var periodCacheAccessTime: [Int: Date] = [:]
+    private var periodCacheAccessTime: [String: Date] = [:]
     private let periodCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
     private let maxPeriodCacheSize: Int = 50 // Maximum number of cached periods
 
     // In-flight request tracking for period queries
-    private var inFlightPeriodRequests: [Int: Task<[FoodEntry], Error>] = [:]
+    // Key format: "userId_days" to prevent data leakage between users
+    private var inFlightPeriodRequests: [String: Task<[FoodEntry], Error>] = [:]
 
     // Get food entries for the past N days for nutritional analysis
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
+        // Cache key includes userId to prevent data leakage between users
+        let cacheKey = "\(userId)_\(days)"
+
         // Check cache first (async-safe synchronization)
-        let cachedPeriod = cacheQueue.sync { periodCache[days] }
+        let cachedPeriod = cacheQueue.sync { periodCache[cacheKey] }
 
         if let cached = cachedPeriod,
            Date().timeIntervalSince(cached.timestamp) < periodCacheExpirationSeconds {
             // PERFORMANCE: Update access time for LRU tracking - O(1) operation
-            cacheQueue.sync { periodCacheAccessTime[days] = Date() }
+            cacheQueue.sync { periodCacheAccessTime[cacheKey] = Date() }
             return cached.entries
         }
 
         // Check for in-flight request to prevent duplicate fetches
-        let existingTask = cacheQueue.sync { inFlightPeriodRequests[days] }
+        let existingTask = cacheQueue.sync { inFlightPeriodRequests[cacheKey] }
         if let task = existingTask {
             return try await task.value
         }
 
         // Create new fetch task
         let fetchTask = Task<[FoodEntry], Error> {
+            // CRITICAL: Check for cancellation before starting work (prevents race condition)
+            try Task.checkCancellation()
+
             let calendar = Calendar.current
             let today = Date()
             let startOfToday = calendar.startOfDay(for: today)
             guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)?.addingTimeInterval(-0.001) else {
-                                return []
+                throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate end of day for period query"])
             }
             let endDate = endOfToday
             guard let startDate = calendar.date(byAdding: .day, value: -days, to: today) else {
-                                return []
+                throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate start date for period query"])
             }
             let queryStart = calendar.startOfDay(for: startDate)
 
@@ -775,8 +867,17 @@ class FirebaseManager: ObservableObject {
             // ~20 entries/day is generous: 7 days = 150, 30 days = 300, 90 days = 500
             let entryLimit = min(500, max(150, days * 20))
 
+            // Use defer to ensure in-flight request is always cleaned up, even on error/cancellation
+            defer {
+                _ = self.cacheQueue.sync {
+                    self.inFlightPeriodRequests.removeValue(forKey: cacheKey)
+                }
+            }
+
             let snapshot = try await withRetry {
-                try await self.db.collection("users").document(userId)
+                // Check cancellation before each retry attempt
+                try Task.checkCancellation()
+                return try await self.db.collection("users").document(userId)
                     .collection("foodEntries")
                     .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
                     .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
@@ -784,6 +885,9 @@ class FirebaseManager: ObservableObject {
                     .limit(to: entryLimit)
                     .getDocuments()
             }
+
+            // CRITICAL: Check cancellation after network call - cache may have been invalidated
+            try Task.checkCancellation()
 
             let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
                 // Use Firestore's native Codable decoder for safe, crash-proof parsing
@@ -800,10 +904,14 @@ class FirebaseManager: ObservableObject {
                 }
             }
 
-            // Store in cache and remove from in-flight (async-safe with DispatchQueue)
+            // CRITICAL: Final cancellation check before writing to cache
+            // This prevents a cancelled task from overwriting fresh data
+            try Task.checkCancellation()
+
+            // Store in cache (in-flight cleanup handled by defer above)
             self.cacheQueue.sync {
-                self.periodCache[days] = (entries, Date())
-                self.periodCacheAccessTime[days] = Date() // O(1) LRU tracking
+                self.periodCache[cacheKey] = (entries, Date())
+                self.periodCacheAccessTime[cacheKey] = Date() // O(1) LRU tracking
 
                 // PERFORMANCE: Evict LRU entries - O(n) find min instead of O(n log n) sort
                 while self.periodCache.count > self.maxPeriodCacheSize {
@@ -815,19 +923,26 @@ class FirebaseManager: ObservableObject {
                         break
                     }
                 }
-
-                self.inFlightPeriodRequests.removeValue(forKey: days)
             }
 
             return entries
         }
 
-        // Register the in-flight request
-        cacheQueue.sync {
-            inFlightPeriodRequests[days] = fetchTask
+        // RACE CONDITION FIX: Atomically register the in-flight request, but check again
+        // in case another request snuck in while we were creating the task
+        let taskToAwait: Task<[FoodEntry], Error> = cacheQueue.sync {
+            // Double-check: if another request registered while we were creating fetchTask, use that one
+            if let existing = inFlightPeriodRequests[cacheKey] {
+                // Cancel our task since we'll use the existing one
+                fetchTask.cancel()
+                return existing
+            }
+            // Register our task
+            inFlightPeriodRequests[cacheKey] = fetchTask
+            return fetchTask
         }
 
-        return try await fetchTask.value
+        return try await taskToAwait.value
     }
 
     // Get food entries for a period using fromDictionary for proper additives decoding
@@ -913,6 +1028,8 @@ class FirebaseManager: ObservableObject {
     }
 
     // Delete all food entries older than today (for clearing test data)
+    /// Delete all food entries older than today (for clearing test data)
+    /// Uses batch operations for efficiency (max 500 per batch)
     func deleteOldFoodEntries() async throws {
         guard let userId = currentUser?.uid else { return }
 
@@ -925,10 +1042,39 @@ class FirebaseManager: ObservableObject {
             .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: startOfToday))
             .getDocuments()
 
+        guard !snapshot.documents.isEmpty else { return }
 
-        // Delete each old entry
-        for document in snapshot.documents {
-            try await document.reference.delete()
+        // PERFORMANCE: Use batch operations instead of sequential deletes
+        // Firestore batch limit is 500 operations, so chunk if needed
+        let documents = snapshot.documents
+        let chunkSize = 500
+
+        for chunkStart in stride(from: 0, to: documents.count, by: chunkSize) {
+            let chunkEnd = min(chunkStart + chunkSize, documents.count)
+            let chunk = Array(documents[chunkStart..<chunkEnd])
+
+            let batch = db.batch()
+            for document in chunk {
+                batch.deleteDocument(document.reference)
+            }
+            try await batch.commit()
+        }
+
+        // Clear caches since we deleted potentially many entries
+        cacheQueue.sync {
+            foodEntriesCache.removeAll()
+            foodEntriesCacheAccessTime.removeAll()
+            periodCache.removeAll()
+            periodCacheAccessTime.removeAll()
+            inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+            inFlightFoodEntriesRequests.removeAll()
+            inFlightPeriodRequests.values.forEach { $0.cancel() }
+            inFlightPeriodRequests.removeAll()
+        }
+
+        // Notify UI
+        await MainActor.run {
+            NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
         }
     }
 
@@ -938,8 +1084,13 @@ class FirebaseManager: ObservableObject {
     ///   - date: Optional date of the entry - if provided, only invalidates cache for that date (more efficient)
     func deleteFoodEntry(entryId: String, date: Date? = nil) async throws {
         guard let userId = currentUser?.uid else { return }
-        try await db.collection("users").document(userId)
-            .collection("foodEntries").document(entryId).delete()
+
+        // OFFLINE-FIRST: Mark as deleted in local SQLite database
+        // OfflineSyncManager will push delete to Firebase in the background
+        OfflineDataManager.shared.deleteFoodEntry(entryId: entryId)
+
+        // Trigger background sync to push delete to Firebase
+        OfflineSyncManager.shared.triggerSync()
 
         // PERFORMANCE: Granular cache invalidation when date is known
         if let date = date {
@@ -1079,7 +1230,7 @@ class FirebaseManager: ObservableObject {
     // MARK: - Food Reactions
 
     func saveReaction(_ reaction: FoodReaction) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save reactions"])
@@ -1106,34 +1257,38 @@ class FirebaseManager: ObservableObject {
 
     /// Save a new reaction log entry
     func saveReactionLog(_ entry: ReactionLogEntry) async throws -> ReactionLogEntry {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save reaction logs"])
         }
 
-        // Create a new document reference to get an ID
-        let docRef = db.collection("users").document(userId)
-            .collection("reactionLogs").document()
-
-        // Create entry with the Firebase-generated ID
+        // Generate an ID if not present
         var entryWithId = entry
-        entryWithId.id = docRef.documentID
-
-        // Save to Firestore with retry logic
-        try await withRetry {
-            try docRef.setData(from: entryWithId)
+        if entryWithId.id == nil {
+            entryWithId.id = UUID().uuidString
         }
+
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveReactionLog(entryWithId)
+
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
 
         return entryWithId
     }
 
     /// Delete a reaction log entry
     func deleteReactionLog(entryId: String) async throws {
-        guard let userId = currentUser?.uid else { return }
+        guard currentUser?.uid != nil else { return }
 
-        try await db.collection("users").document(userId)
-            .collection("reactionLogs").document(entryId).delete()
+        // OFFLINE-FIRST: Mark as deleted in local SQLite database
+        // OfflineSyncManager will push delete to Firebase in the background
+        OfflineDataManager.shared.deleteReactionLog(id: entryId)
+
+        // Trigger background sync to push delete to Firebase
+        OfflineSyncManager.shared.triggerSync()
     }
 
     /// Get food entries within a date range (for reaction analysis)
@@ -1167,31 +1322,22 @@ class FirebaseManager: ObservableObject {
     // MARK: - Use By Inventory
 
     func addUseByItem(_ item: UseByInventoryItem) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add use by items"])
         }
 
-        try await addUseByItemHelper(item, userId: userId)
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveUseByItem(item)
+
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
     }
 
-    // Local storage helpers
-    private func saveUseByItemLocally(_ item: UseByInventoryItem) {
-        var localItems = getLocalUseByItems()
-        localItems.append(item)
-        if let encoded = try? JSONEncoder().encode(localItems) {
-            UserDefaults.standard.set(encoded, forKey: "localUseByItems")
-        }
-    }
-
-    private func getLocalUseByItems() -> [UseByInventoryItem] {
-        guard let data = UserDefaults.standard.data(forKey: "localUseByItems"),
-              let items = try? JSONDecoder().decode([UseByInventoryItem].self, from: data) else {
-            return []
-        }
-        return items
-    }
+    // NOTE: Legacy UserDefaults storage for Use By items has been removed.
+    // All Use By items are now stored in SQLite via OfflineDataManager for offline-first support.
 
     private func addUseByItemHelper(_ item: UseByInventoryItem, userId: String) async throws {
         var dict: [String: Any] = [
@@ -1212,7 +1358,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func getUseByItems() async throws -> [UseByInventoryItem] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view use by items"])
@@ -1234,7 +1380,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func updateUseByItem(_ item: UseByInventoryItem) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update use by items"])
@@ -1257,18 +1403,22 @@ class FirebaseManager: ObservableObject {
             }
 
     func deleteUseByItem(itemId: String) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete use by items"])
         }
 
-        try await db.collection("users").document(userId)
-            .collection("useByInventory").document(itemId).delete()
-            }
+        // OFFLINE-FIRST: Mark as deleted in local SQLite database
+        // OfflineSyncManager will push delete to Firebase in the background
+        OfflineDataManager.shared.deleteUseByItem(itemId: itemId)
+
+        // Trigger background sync to push delete to Firebase
+        OfflineSyncManager.shared.triggerSync()
+    }
 
     func clearUseByInventory() async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to clear use by inventory"])
@@ -1284,38 +1434,78 @@ class FirebaseManager: ObservableObject {
     // MARK: - Food Search Functions
 
     func searchFoods(query: String) async throws -> [FoodSearchResult] {
-        let cacheKey = query.lowercased().trimmingCharacters(in: .whitespaces) as NSString
+        let cacheKeyString = query.lowercased().trimmingCharacters(in: .whitespaces)
+        let cacheKey = cacheKeyString as NSString
 
-        // Check cache first - instant results!
-        if let cached = searchCache.object(forKey: cacheKey) {
-            let age = Date().timeIntervalSince(cached.timestamp)
-            if age < cacheExpirationSeconds {
-                // Check if cached results have ingredients - if not, invalidate and fetch fresh
-                let hasIngredients = cached.results.first?.ingredients?.isEmpty == false
-                                if hasIngredients {
-                    return cached.results
+        // Thread-safe cache check with atomic read-check-modify
+        let cachedResult: [FoodSearchResult]? = searchCacheQueue.sync {
+            if let cached = searchCache.object(forKey: cacheKey) {
+                let age = Date().timeIntervalSince(cached.timestamp)
+                if age < cacheExpirationSeconds {
+                    // Check if cached results have ingredients - if not, invalidate and fetch fresh
+                    let hasIngredients = cached.results.first?.ingredients?.isEmpty == false
+                    if hasIngredients {
+                        return cached.results
+                    } else {
+                        // Cache is stale (missing ingredients from Algolia) - force refresh
+                        searchCache.removeObject(forKey: cacheKey)
+                    }
                 } else {
-                    // Cache is stale (missing ingredients from Algolia) - force refresh
-                                        searchCache.removeObject(forKey: cacheKey)
+                    // Cache expired, remove it
+                    searchCache.removeObject(forKey: cacheKey)
                 }
-            } else {
-                // Cache expired, remove it
-                searchCache.removeObject(forKey: cacheKey)
             }
+            return nil
         }
 
-        
-        // Use Algolia for all searches - it already searches all indices (user-added, AI-enhanced, AI-manual, foods)
-        // This is MUCH faster than making 4 separate Firestore queries
-        let limitedResults = try await searchMainDatabase(query: query)
+        if let results = cachedResult {
+            return results
+        }
 
-        // Store in cache for next time (NSCache auto-manages memory)
-        searchCache.setObject(
-            SearchCacheEntry(results: limitedResults, timestamp: Date()),
-            forKey: cacheKey
-        )
+        // Check for in-flight request to prevent duplicate fetches
+        let existingTask: Task<[FoodSearchResult], Error>? = searchCacheQueue.sync {
+            inFlightSearchRequests[cacheKeyString]
+        }
+        if let task = existingTask {
+            return try await task.value
+        }
 
-        return limitedResults
+        // Create new fetch task
+        let fetchTask = Task<[FoodSearchResult], Error> {
+            // Use defer to ensure in-flight request is always cleaned up, even on error/cancellation
+            defer {
+                _ = self.searchCacheQueue.sync {
+                    self.inFlightSearchRequests.removeValue(forKey: cacheKeyString)
+                }
+            }
+
+            // Use Algolia for all searches - it already searches all indices (user-added, AI-enhanced, AI-manual, foods)
+            // This is MUCH faster than making 4 separate Firestore queries
+            let results = try await AlgoliaSearchManager.shared.search(query: query, hitsPerPage: 100)
+
+            // Store in cache for next time (NSCache auto-manages memory)
+            self.searchCacheQueue.sync {
+                self.searchCache.setObject(
+                    SearchCacheEntry(results: results, timestamp: Date()),
+                    forKey: cacheKey
+                )
+            }
+
+            return results
+        }
+
+        // Atomically register the in-flight request
+        let taskToAwait: Task<[FoodSearchResult], Error> = searchCacheQueue.sync {
+            // Double-check: if another request registered while we were creating fetchTask, use that one
+            if let existing = inFlightSearchRequests[cacheKeyString] {
+                fetchTask.cancel()
+                return existing
+            }
+            inFlightSearchRequests[cacheKeyString] = fetchTask
+            return fetchTask
+        }
+
+        return try await taskToAwait.value
     }
 
     /// Search main food database via Direct Algolia SDK (instant search)
@@ -1328,7 +1518,11 @@ class FirebaseManager: ObservableObject {
 
     /// Clear the search cache (useful for testing or memory management)
     func clearSearchCache() {
-        searchCache.removeAllObjects()
+        searchCacheQueue.sync {
+            searchCache.removeAllObjects()
+            inFlightSearchRequests.values.forEach { $0.cancel() }
+            inFlightSearchRequests.removeAll()
+        }
         AlgoliaSearchManager.shared.clearCache()
     }
 
@@ -1354,7 +1548,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func getReactions() async throws -> [FoodReaction] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
                         throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view reactions"])
@@ -1378,7 +1572,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func deleteReaction(reactionId: UUID) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
                         throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete reactions"])
@@ -1411,7 +1605,9 @@ class FirebaseManager: ObservableObject {
         }
     }
 
-    func getUseByItems() async throws -> [UseByItem] {
+    /// Get legacy UseByItem records (distinct from UseByInventoryItem)
+    /// Note: This uses the "useByItems" collection, while getUseByItems() uses "useByInventory"
+    func getLegacyUseByItems() async throws -> [UseByItem] {
         guard let userId = currentUser?.uid else { return [] }
         let snapshot = try await db.collection("users").document(userId)
             .collection("useByItems")
@@ -1511,7 +1707,7 @@ class FirebaseManager: ObservableObject {
 
     // Upload multiple photos in parallel for better performance
     func uploadWeightPhotos(_ images: [UIImage]) async throws -> [String] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
@@ -1557,7 +1753,7 @@ class FirebaseManager: ObservableObject {
 
     // Legacy single photo upload (using optimized version)
     func uploadWeightPhoto(_ image: UIImage) async throws -> String {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
@@ -1608,7 +1804,7 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Use By Item Photo Upload
     func uploadUseByItemPhoto(_ image: UIImage) async throws -> String {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
@@ -1641,42 +1837,21 @@ class FirebaseManager: ObservableObject {
     }
 
     func saveWeightEntry(_ entry: WeightEntry) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save weight entries"])
         }
 
         // Validate weight entry before saving
         try NutritionValidator.validateWeightEntry(weight: entry.weight, date: entry.date)
 
-        var entryData: [String: Any] = [
-            "id": entry.id.uuidString,
-            "weight": entry.weight,
-            "date": FirebaseFirestore.Timestamp(date: entry.date),
-            "bmi": entry.bmi as Any,
-            "note": entry.note as Any
-        ]
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveWeightEntry(entry)
 
-        // Add optional fields
-        if let photoURL = entry.photoURL {
-            entryData["photoURL"] = photoURL
-        }
-        if let photoURLs = entry.photoURLs {
-            entryData["photoURLs"] = photoURLs
-        }
-        if let waistSize = entry.waistSize {
-            entryData["waistSize"] = waistSize
-        }
-        if let dressSize = entry.dressSize {
-            entryData["dressSize"] = dressSize
-        }
-
-        // Wrap with retry for network resilience (consistent with saveFoodEntry)
-        try await withRetry {
-            try await self.db.collection("users").document(userId)
-                .collection("weightHistory").document(entry.id.uuidString).setData(entryData)
-        }
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
 
         // Update cached weight history immediately after successful save
         // This ensures the cache is always in sync and prevents stale data issues
@@ -1696,7 +1871,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func getWeightHistory() async throws -> [WeightEntry] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view weight history"])
@@ -1730,14 +1905,18 @@ class FirebaseManager: ObservableObject {
     }
 
     func deleteWeightEntry(id: UUID) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete weight entries"])
         }
 
-        try await db.collection("users").document(userId)
-            .collection("weightHistory").document(id.uuidString).delete()
+        // OFFLINE-FIRST: Mark as deleted in local SQLite database
+        // OfflineSyncManager will push delete to Firebase in the background
+        OfflineDataManager.shared.deleteWeightEntry(id: id)
+
+        // Trigger background sync to push delete to Firebase
+        OfflineSyncManager.shared.triggerSync()
 
         // Update cached weight history after successful delete
         await MainActor.run {
@@ -1749,88 +1928,40 @@ class FirebaseManager: ObservableObject {
 
     /// Saves a food to user's favorites
     func saveFavoriteFood(_ food: FoodSearchResult) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save favorites"])
         }
 
-        var favoriteData: [String: Any] = [
-            "id": food.id,
-            "name": food.name,
-            "brand": food.brand as Any,
-            "calories": food.calories,
-            "protein": food.protein,
-            "carbs": food.carbs,
-            "fat": food.fat,
-            "saturatedFat": food.saturatedFat as Any,
-            "fiber": food.fiber,
-            "sugar": food.sugar,
-            "sodium": food.sodium,
-            "servingDescription": food.servingDescription as Any,
-            "servingSizeG": food.servingSizeG as Any,
-            "isPerUnit": food.isPerUnit as Any,
-            "barcode": food.barcode as Any,
-            "ingredients": food.ingredients as Any,
-            "isVerified": food.isVerified,
-            "processingScore": food.processingScore as Any,
-            "processingGrade": food.processingGrade as Any,
-            "processingLabel": food.processingLabel as Any,
-            "addedAt": FirebaseFirestore.Timestamp(date: Date())
-        ]
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveFavoriteFood(food)
 
-        // Encode additives as JSON array
-        if let additives = food.additives {
-            let encoder = JSONEncoder()
-            if let additivesData = try? encoder.encode(additives),
-               let additivesArray = try? JSONSerialization.jsonObject(with: additivesData) as? [[String: Any]] {
-                favoriteData["additives"] = additivesArray
-            }
-        }
-
-        // Encode micronutrientProfile as JSON
-        if let micronutrients = food.micronutrientProfile {
-            let encoder = JSONEncoder()
-            if let microData = try? encoder.encode(micronutrients),
-               let microDict = try? JSONSerialization.jsonObject(with: microData) as? [String: Any] {
-                favoriteData["micronutrientProfile"] = microDict
-            }
-        }
-
-        // Encode portions as JSON array
-        if let portions = food.portions {
-            let encoder = JSONEncoder()
-            if let portionsData = try? encoder.encode(portions),
-               let portionsArray = try? JSONSerialization.jsonObject(with: portionsData) as? [[String: Any]] {
-                favoriteData["portions"] = portionsArray
-            }
-        }
-
-        // Use retry logic for network resilience
-        try await withRetry(maxAttempts: 3, totalTimeout: 10.0) {
-            try await self.db.collection("users").document(userId)
-                .collection("favoriteFoods").document(food.id).setData(favoriteData)
-        }
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
     }
 
     /// Removes a food from user's favorites
-    /// Uses retry logic for network resilience
+    /// Uses offline-first pattern for network resilience
     func removeFavoriteFood(foodId: String) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to remove favorites"])
         }
 
-        try await withRetry(maxAttempts: 3, totalTimeout: 10.0) {
-            try await self.db.collection("users").document(userId)
-                .collection("favoriteFoods").document(foodId).delete()
-        }
+        // OFFLINE-FIRST: Mark as deleted in local SQLite database
+        // OfflineSyncManager will push delete to Firebase in the background
+        OfflineDataManager.shared.deleteFavoriteFood(id: foodId)
+
+        // Trigger background sync to push delete to Firebase
+        OfflineSyncManager.shared.triggerSync()
     }
 
     /// Gets user's favorite foods
     func getFavoriteFoods() async throws -> [FoodSearchResult] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view favorites"])
@@ -1914,25 +2045,22 @@ class FirebaseManager: ObservableObject {
     }
 
     /// Checks if a food is in user's favorites
-    /// Uses retry logic for network resilience
+    /// Uses offline-first pattern - checks local database first
     func isFavoriteFood(foodId: String) async throws -> Bool {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             return false
         }
 
-        return try await withRetry(maxAttempts: 2, totalTimeout: 8.0) {
-            let doc = try await self.db.collection("users").document(userId)
-                .collection("favoriteFoods").document(foodId).getDocument()
-            return doc.exists
-        }
+        // OFFLINE-FIRST: Check local database first for instant response
+        return OfflineDataManager.shared.isFavoriteFood(id: foodId)
     }
 
     // MARK: - User Settings (Height, Goal Weight, Caloric Goal)
 
     func saveUserSettings(height: Double?, goalWeight: Double?, caloricGoal: Int? = nil, exerciseGoal: Int? = nil, stepGoal: Int? = nil) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save settings"])
@@ -1977,7 +2105,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?) {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view settings"])
@@ -2013,8 +2141,10 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Fast Allergen Access
     /// Get user allergens from cache if available, otherwise fetch from Firebase
+    /// Uses MainActor for thread-safe access to allergensLastFetched and cachedUserAllergens
+    @MainActor
     func getUserAllergensWithCache() async -> [Allergen] {
-        // Check if cache is still valid
+        // Check if cache is still valid (thread-safe on MainActor)
         if let lastFetched = allergensLastFetched,
            Date().timeIntervalSince(lastFetched) < allergenCacheExpirationSeconds,
            !cachedUserAllergens.isEmpty {
@@ -2026,12 +2156,12 @@ class FirebaseManager: ObservableObject {
             let settings = try await getUserSettings()
             return settings.allergens ?? []
         } catch {
-                        return cachedUserAllergens
+            return cachedUserAllergens
         }
     }
 
     func saveMacroPercentages(protein: Int, carbs: Int, fat: Int) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save macro settings"])
@@ -2050,7 +2180,7 @@ class FirebaseManager: ObservableObject {
     // MARK: - Macro Management (Customizable Macros)
 
     func saveMacroGoals(_ macroGoals: [MacroGoal], dietType: DietType?) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save macro goals"])
@@ -2086,7 +2216,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func getMacroGoals() async throws -> [MacroGoal] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view macro goals"])
@@ -2166,7 +2296,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func getDietType() async throws -> DietType? {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             return nil
@@ -2195,7 +2325,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func saveAllergens(_ allergens: [Allergen]) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save allergens"])
@@ -2214,7 +2344,7 @@ class FirebaseManager: ObservableObject {
     // MARK: - Fasting Tracking
 
     func saveFastingState(isFasting: Bool, startTime: Date?, goal: Int, notificationsEnabled: Bool, reminderInterval: Int) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting state"])
@@ -2236,7 +2366,7 @@ class FirebaseManager: ObservableObject {
             }
 
     func getFastingState() async throws -> (isFasting: Bool, startTime: Date?, goal: Int, notificationsEnabled: Bool, reminderInterval: Int) {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting state"])
@@ -2261,7 +2391,7 @@ class FirebaseManager: ObservableObject {
     // MARK: - User-Submitted Food Data
 
     func saveUserSubmittedFood(_ food: [String: Any]) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to submit foods"])
@@ -2273,7 +2403,7 @@ class FirebaseManager: ObservableObject {
             }
 
     func getUserSubmittedFoods() async throws -> [[String: Any]] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view submitted foods"])
@@ -2286,7 +2416,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func saveUserIngredients(foodKey: String, ingredients: String) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save ingredients"])
@@ -2302,7 +2432,7 @@ class FirebaseManager: ObservableObject {
             }
 
     func getUserIngredients(foodKey: String) async throws -> String? {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view ingredients"])
@@ -2315,7 +2445,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func saveVerifiedFood(foodKey: String) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to verify foods"])
@@ -2331,7 +2461,7 @@ class FirebaseManager: ObservableObject {
             }
 
     func getVerifiedFoods() async throws -> [String] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view verified foods"])
@@ -2346,7 +2476,7 @@ class FirebaseManager: ObservableObject {
     // MARK: - User Enhanced Product Data
 
     func saveUserEnhancedProduct(data: [String: Any]) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save enhanced product data"])
@@ -2384,7 +2514,7 @@ class FirebaseManager: ObservableObject {
 
     /// Save a manually added food to the global userAdded collection (accessible by all users)
     func saveUserAddedFood(_ food: [String: Any]) async throws -> String {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add foods"])
@@ -2392,16 +2522,6 @@ class FirebaseManager: ObservableObject {
 
         guard let foodName = food["foodName"] as? String else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name is required"])
-        }
-
-        // Check for profanity
-        if containsProfanity(foodName) {
-            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name contains inappropriate language. Please use appropriate terms."])
-        }
-
-        // Also check brand name if present
-        if let brandName = food["brandName"] as? String, containsProfanity(brandName) {
-            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
         }
 
         // Use sanitized food name as document ID for easier identification
@@ -2433,7 +2553,7 @@ class FirebaseManager: ObservableObject {
     /// Save an AI-enhanced food to the global aiManuallyAdded collection (accessible by all users)
     /// This is used when a user uses the "Find with AI" feature to auto-fill ingredient data from trusted UK sources
     func saveAIEnhancedFood(_ food: [String: Any], sourceURL: String?, aiProductName: String?) async throws -> String {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add foods"])
@@ -2441,16 +2561,6 @@ class FirebaseManager: ObservableObject {
 
         guard let foodName = food["foodName"] as? String else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name is required"])
-        }
-
-        // Check for profanity
-        if containsProfanity(foodName) {
-            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name contains inappropriate language. Please use appropriate terms."])
-        }
-
-        // Also check brand name if present
-        if let brandName = food["brandName"] as? String, containsProfanity(brandName) {
-            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
         }
 
         // Use sanitized food name as document ID for easier identification
@@ -2837,29 +2947,45 @@ class FirebaseManager: ObservableObject {
         var allResults: [FoodSearchResult] = []
         var seenIds = Set<String>()
 
-        // Search collections in parallel
-        await withTaskGroup(of: [FoodSearchResult].self) { group in
-            for (collectionName, nameField) in collections {
-                group.addTask {
-                    do {
-                        return try await self.searchFirebaseCollection(
-                            collectionName: collectionName,
-                            nameField: nameField,
-                            searchTerm: searchTerm,
-                            limit: limit
-                        )
-                    } catch {
-                        print("⚠️ Firebase fallback search failed for \(collectionName): \(error.localizedDescription)")
-                        return []
+        // PERFORMANCE: Limit concurrent requests to avoid overwhelming Firestore
+        // Search in batches of 2 collections at a time to balance speed vs resource usage
+        let batchSize = 2
+        for batchStart in stride(from: 0, to: collections.count, by: batchSize) {
+            let batchEnd = min(batchStart + batchSize, collections.count)
+            let batch = Array(collections[batchStart..<batchEnd])
+
+            await withTaskGroup(of: [FoodSearchResult].self) { group in
+                for (collectionName, nameField) in batch {
+                    group.addTask {
+                        do {
+                            return try await self.searchFirebaseCollection(
+                                collectionName: collectionName,
+                                nameField: nameField,
+                                searchTerm: searchTerm,
+                                limit: limit
+                            )
+                        } catch {
+                            PrivacyLogger.warning(
+                                "Firebase fallback search failed for \(collectionName): \(error.localizedDescription)",
+                                subsystem: .firebase,
+                                category: .dataSync
+                            )
+                            return []
+                        }
+                    }
+                }
+
+                for await results in group {
+                    for result in results where !seenIds.contains(result.id) {
+                        seenIds.insert(result.id)
+                        allResults.append(result)
                     }
                 }
             }
 
-            for await results in group {
-                for result in results where !seenIds.contains(result.id) {
-                    seenIds.insert(result.id)
-                    allResults.append(result)
-                }
+            // If we have enough results, stop early to save network calls
+            if allResults.count >= 20 {
+                break
             }
         }
 
@@ -2884,29 +3010,31 @@ class FirebaseManager: ObservableObject {
     }
 
     /// Search a single Firebase collection with prefix matching
+    /// Combines capitalized and lowercase searches for better coverage
     private func searchFirebaseCollection(
         collectionName: String,
         nameField: String,
         searchTerm: String,
         limit: Int
     ) async throws -> [FoodSearchResult] {
-        // Firestore prefix search using range query
-        // This matches documents where the name starts with searchTerm
-        let snapshot = try await db.collection(collectionName)
+        // PERFORMANCE: Run both case variants in parallel instead of sequentially
+        async let capitalizedTask = db.collection(collectionName)
             .whereField(nameField, isGreaterThanOrEqualTo: searchTerm.capitalized)
             .whereField(nameField, isLessThan: searchTerm.capitalized + "\u{f8ff}")
             .limit(to: limit)
             .getDocuments()
 
-        // Also try lowercase search
-        let lowercaseSnapshot = try await db.collection(collectionName)
+        async let lowercaseTask = db.collection(collectionName)
             .whereField(nameField, isGreaterThanOrEqualTo: searchTerm)
             .whereField(nameField, isLessThan: searchTerm + "\u{f8ff}")
             .limit(to: limit)
             .getDocuments()
 
-        // Combine results
-        var allDocs = snapshot.documents
+        // Await both in parallel
+        let (capitalizedSnapshot, lowercaseSnapshot) = try await (capitalizedTask, lowercaseTask)
+
+        // Combine results, removing duplicates
+        var allDocs = capitalizedSnapshot.documents
         let existingIds = Set(allDocs.map { $0.documentID })
         for doc in lowercaseSnapshot.documents where !existingIds.contains(doc.documentID) {
             allDocs.append(doc)
@@ -3048,7 +3176,7 @@ class FirebaseManager: ObservableObject {
 
     /// Save AI-improved food data to Firebase
     func saveAIImprovedFood(originalFood: FoodSearchResult, enhancedData: [String: Any]) async throws -> String {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save AI-improved foods"])
@@ -3096,27 +3224,6 @@ class FirebaseManager: ObservableObject {
     func hasAIImprovedVersion(originalFoodId: String) async throws -> Bool {
         let improved = try await getAIImprovedFood(originalFoodId: originalFoodId)
         return improved != nil
-    }
-
-    /// Profanity filter - basic implementation
-    private func containsProfanity(_ text: String) -> Bool {
-        let lowercased = text.lowercased()
-
-        // Common profanity list (basic implementation)
-        let profanityList = [
-            "fuck", "shit", "damn", "bitch", "ass", "bastard", "cunt",
-            "dick", "piss", "cock", "whore", "slut", "wanker", "bollocks",
-            "arse", "bugger", "bloody", "crap", "twat", "prick", "tosser"
-        ]
-
-        // Check for exact matches or words containing profanity
-        for profanity in profanityList {
-            if lowercased.contains(profanity) {
-                return true
-            }
-        }
-
-        return false
     }
 
     // MARK: - Incomplete Food Notification
@@ -3253,7 +3360,7 @@ class FirebaseManager: ObservableObject {
 
             }
     func saveFastingStreakSettings(_ settings: [String: Any]) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting settings"])
         }
@@ -3270,7 +3377,7 @@ class FirebaseManager: ObservableObject {
     }
 
     func getFastingStreakSettings() async throws -> [String: Any] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting settings"])
         }
@@ -3296,23 +3403,40 @@ class FirebaseManager: ObservableObject {
     // MARK: - New Fasting System Methods
 
     func saveFastingPlan(_ plan: FastingPlan) async throws -> String {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
+        await ensureAuthStateLoadedAsync()
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting plans"])
         }
-                                        
-        let docRef = db.collection("users").document(userId)
-            .collection("fastingPlans").document(plan.id ?? UUID().uuidString)
 
-        try docRef.setData(from: plan, merge: true)
-        return docRef.documentID
+        let planId = plan.id ?? UUID().uuidString
+        var planWithId = plan
+        planWithId.id = planId
+
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveFastingPlan(planWithId)
+
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
+
+        return planId
     }
 
     func getFastingPlans() async throws -> [FastingPlan] {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting plans"])
         }
+
+        // First try to get from local database for instant response
+        let localPlans = OfflineDataManager.shared.getFastingPlans()
+        if !localPlans.isEmpty {
+            // Trigger background sync to get latest from server
+            OfflineSyncManager.shared.triggerSync()
+            return localPlans
+        }
+
+        // If local is empty, fetch from Firebase (first launch or empty local)
         let snapshot = try await db.collection("users").document(userId)
             .collection("fastingPlans").order(by: "created_at", descending: true).getDocuments()
 
@@ -3321,40 +3445,51 @@ class FirebaseManager: ObservableObject {
             do {
                 let plan = try doc.data(as: FastingPlan.self)
                 plans.append(plan)
+                // Import to local database
+                OfflineDataManager.shared.saveFastingPlan(plan)
             } catch {
                 // Skip malformed documents
             }
         }
 
-                return plans
+        return plans
     }
 
     func updateFastingPlan(_ plan: FastingPlan) async throws {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
+        await ensureAuthStateLoadedAsync()
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update fasting plans"])
         }
-        guard let planId = plan.id else {
+        guard plan.id != nil else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Plan ID is required for updates"])
         }
-        let docRef = db.collection("users").document(userId)
-            .collection("fastingPlans").document(planId)
-        try docRef.setData(from: plan, merge: true)
+
+        // OFFLINE-FIRST: Update in local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveFastingPlan(plan)
+
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
     }
 
     func deleteFastingPlan(id: String) async throws {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
+        await ensureAuthStateLoadedAsync()
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fasting plans"])
         }
-        try await db.collection("users").document(userId)
-            .collection("fastingPlans").document(id).delete()
+
+        // OFFLINE-FIRST: Mark as deleted in local SQLite database
+        // OfflineSyncManager will push delete to Firebase in the background
+        OfflineDataManager.shared.deleteFastingPlan(id: id)
+
+        // Trigger background sync to push delete to Firebase
+        OfflineSyncManager.shared.triggerSync()
     }
 
     /// Clean up corrupted fasting plans that failed to decode
     /// Uses batch operations for efficient deletion (max 500 per batch)
     func cleanupCorruptedFastingPlans() async throws -> Int {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to cleanup fasting plans"])
         }
@@ -3398,30 +3533,31 @@ class FirebaseManager: ObservableObject {
     }
 
     func saveFastingSession(_ session: FastingSession) async throws -> String {
-                
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
-                        throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting sessions"])
+        await ensureAuthStateLoadedAsync()
+        guard currentUser?.uid != nil else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting sessions"])
         }
 
-        
-        let docRef = db.collection("users").document(userId)
-            .collection("fastingSessions").document(session.id ?? UUID().uuidString)
+        let sessionId = session.id ?? UUID().uuidString
+        var sessionWithId = session
+        sessionWithId.id = sessionId
 
-                
-        try docRef.setData(from: session, merge: true)
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveFastingSession(sessionWithId)
 
-        
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
+
         await MainActor.run {
             NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
         }
 
-        
-        return docRef.documentID
+        return sessionId
     }
 
     func getFastingSessions() async throws -> [FastingSession] {
-                ensureAuthStateLoaded()
+                await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else {
                         throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting sessions"])
         }
@@ -3437,28 +3573,39 @@ class FirebaseManager: ObservableObject {
     }
 
     func updateFastingSession(_ session: FastingSession) async throws {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
+        await ensureAuthStateLoadedAsync()
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update fasting sessions"])
         }
-        guard let sessionId = session.id else {
+        guard session.id != nil else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Session ID is required for updates"])
         }
-        let docRef = db.collection("users").document(userId)
-            .collection("fastingSessions").document(sessionId)
-        try docRef.setData(from: session, merge: true)
+
+        // OFFLINE-FIRST: Update in local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveFastingSession(session)
+
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
+
         await MainActor.run {
             NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
         }
     }
 
     func deleteFastingSession(id: String) async throws {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
+        await ensureAuthStateLoadedAsync()
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fasting sessions"])
         }
-        try await db.collection("users").document(userId)
-            .collection("fastingSessions").document(id).delete()
+
+        // OFFLINE-FIRST: Mark as deleted in local SQLite database
+        // OfflineSyncManager will push delete to Firebase in the background
+        OfflineDataManager.shared.deleteFastingSession(id: id)
+
+        // Trigger background sync to push delete to Firebase
+        OfflineSyncManager.shared.triggerSync()
+
         await MainActor.run {
             NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
         }
@@ -3499,7 +3646,7 @@ extension FirebaseManager {
     ]
 
     func getPremiumOverride() async throws -> Bool {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
 
         if let email = currentUser?.email?.lowercased() {
             // Domain-based override for staff/users with nutrasafe.co.uk emails
@@ -3536,7 +3683,7 @@ struct IngredientCacheEntry: Codable {
 
 extension FirebaseManager {
     func getIngredientCache(productName: String, brand: String?) async throws -> IngredientResult? {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else { return nil }
         let key = cacheKey(productName: productName, brand: brand)
         let doc = try await db.collection("users").document(userId)
@@ -3549,7 +3696,7 @@ extension FirebaseManager {
     }
 
     func setIngredientCache(productName: String, brand: String?, ingredientsText: String, sourceUrl: String?) async throws {
-        ensureAuthStateLoaded()
+        await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else { return }
         let key = cacheKey(productName: productName, brand: brand)
         let payload: [String: Any] = [

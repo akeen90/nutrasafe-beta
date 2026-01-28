@@ -52,6 +52,9 @@ class MealManager: ObservableObject {
     private func startListening() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
 
+        // RACE CONDITION FIX: Prevent duplicate listeners if auth state changes rapidly
+        guard listenerRegistration == nil else { return }
+
         listenerRegistration = db.collection("users")
             .document(userId)
             .collection("meals")

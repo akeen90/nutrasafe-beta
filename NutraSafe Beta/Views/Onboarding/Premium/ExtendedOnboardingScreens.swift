@@ -21,10 +21,16 @@ struct PersonalDetailsScreen: View {
     @State private var hasBirthdayBeenSet = false
     @State private var heightText: String = ""
     @State private var weightText: String = ""
+    @State private var weightStoneText: String = ""
+    @State private var weightPoundsText: String = ""
     @State private var isEditingHeight = false
     @State private var isEditingWeight = false
+    @State private var selectedWeightUnit: WeightUnit = .kg
+    @State private var isInitializingStoneFields = false  // Prevents race condition during initialization
     @FocusState private var heightFieldFocused: Bool
     @FocusState private var weightFieldFocused: Bool
+    @FocusState private var stoneFieldFocused: Bool
+    @FocusState private var poundsFieldFocused: Bool
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     private var isIPad: Bool {
@@ -178,70 +184,168 @@ struct PersonalDetailsScreen: View {
                     }
                 }
 
-                // Weight - with text input option
+                // Weight - with unit selector and text input
                 PersonalDetailCard(
                     icon: "scalemass",
                     title: "Current weight",
                     palette: state.palette
                 ) {
-                    VStack(spacing: 8) {
-                        HStack(spacing: 12) {
-                            Slider(value: $state.weightKg, in: weightRange, step: 0.5)
-                                .accentColor(state.palette.primary)
-
-                            // Tappable text field - larger on iPad
-                            Button {
-                                weightText = String(format: "%.1f", state.weightKg)
-                                isEditingWeight = true
-                                weightFieldFocused = true
-                            } label: {
-                                if isEditingWeight {
-                                    TextField("", text: $weightText)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.center)
-                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                        .foregroundColor(Color(white: 0.3))
-                                        .frame(width: horizontalSizeClass == .regular ? 90 : 55)
-                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.white.opacity(0.7))
-                                        )
-                                        .focused($weightFieldFocused)
-                                        .onChange(of: weightFieldFocused) { _, focused in
-                                            if !focused {
-                                                isEditingWeight = false
-                                                if let value = Double(weightText), weightRange.contains(value) {
-                                                    state.weightKg = value
+                    VStack(spacing: 12) {
+                        // Unit selector
+                        HStack(spacing: 8) {
+                            ForEach([WeightUnit.kg, .stones], id: \.self) { unit in
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        // Convert current weight to new unit for display
+                                        if unit != selectedWeightUnit {
+                                            if unit == .stones {
+                                                // Converting from kg to stone - prevent onChange from firing
+                                                isInitializingStoneFields = true
+                                                let converted = WeightUnit.stones.fromKg(state.weightKg)
+                                                weightStoneText = String(format: "%.0f", converted.primary)
+                                                weightPoundsText = String(format: "%.0f", converted.secondary ?? 0)
+                                                DispatchQueue.main.async {
+                                                    isInitializingStoneFields = false
                                                 }
+                                            } else {
+                                                // Converting from stone to kg
+                                                weightText = String(format: "%.1f", state.weightKg)
                                             }
+                                            selectedWeightUnit = unit
                                         }
-                                } else {
-                                    Text(String(format: "%.1f", state.weightKg))
-                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                        .foregroundColor(Color(white: 0.3))
-                                        .frame(width: horizontalSizeClass == .regular ? 90 : 55)
-                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                    }
+                                } label: {
+                                    Text(unit == .kg ? "kg" : "stone")
+                                        .font(.system(size: isIPad ? 15 : 13, weight: selectedWeightUnit == unit ? .semibold : .regular))
+                                        .foregroundColor(selectedWeightUnit == unit ? .white : Color(white: 0.4))
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.white.opacity(0.5))
+                                            Capsule()
+                                                .fill(selectedWeightUnit == unit ? state.palette.primary : Color.white.opacity(0.6))
                                         )
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
-
-                            Text("kg")
-                                .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
-                                .foregroundColor(Color(white: 0.5))
+                            Spacer()
                         }
 
-                        // Show stone/pounds conversion
-                        let totalPounds = state.weightKg * 2.20462
-                        let stone = Int(totalPounds / 14)
-                        let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
-                        Text("\(stone) st \(pounds) lb")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(white: 0.5))
+                        if selectedWeightUnit == .kg {
+                            // Kilograms input
+                            HStack(spacing: 12) {
+                                Slider(value: $state.weightKg, in: weightRange, step: 0.5)
+                                    .accentColor(state.palette.primary)
+
+                                // Tappable text field
+                                Button {
+                                    weightText = String(format: "%.1f", state.weightKg)
+                                    isEditingWeight = true
+                                    weightFieldFocused = true
+                                } label: {
+                                    if isEditingWeight {
+                                        TextField("", text: $weightText)
+                                            .keyboardType(.decimalPad)
+                                            .multilineTextAlignment(.center)
+                                            .font(.system(size: isIPad ? 22 : 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: isIPad ? 90 : 55)
+                                            .padding(.vertical, isIPad ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.7))
+                                            )
+                                            .focused($weightFieldFocused)
+                                            .onChange(of: weightFieldFocused) { _, focused in
+                                                if !focused {
+                                                    isEditingWeight = false
+                                                    if let value = Double(weightText), weightRange.contains(value) {
+                                                        state.weightKg = value
+                                                    }
+                                                }
+                                            }
+                                    } else {
+                                        Text(String(format: "%.1f", state.weightKg))
+                                            .font(.system(size: isIPad ? 22 : 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: isIPad ? 90 : 55)
+                                            .padding(.vertical, isIPad ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.5))
+                                            )
+                                    }
+                                }
+                                .buttonStyle(.plain)
+
+                                Text("kg")
+                                    .font(.system(size: isIPad ? 18 : 14))
+                                    .foregroundColor(Color(white: 0.5))
+                            }
+
+                            // Show stone/pounds conversion
+                            let totalPounds = state.weightKg * 2.20462
+                            let stone = Int(totalPounds / 14)
+                            let pounds = Int(totalPounds.truncatingRemainder(dividingBy: 14))
+                            Text("\(stone) st \(pounds) lb")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.5))
+                        } else {
+                            // Stone & pounds input
+                            HStack(spacing: 8) {
+                                // Stone field
+                                VStack(spacing: 4) {
+                                    TextField("0", text: $weightStoneText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(.system(size: isIPad ? 24 : 18, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: isIPad ? 70 : 50)
+                                        .padding(.vertical, isIPad ? 12 : 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.white.opacity(0.7))
+                                        )
+                                        .focused($stoneFieldFocused)
+                                        .onChange(of: weightStoneText) { _, _ in
+                                            guard !isInitializingStoneFields else { return }
+                                            updateWeightFromStone()
+                                        }
+                                    Text("stone")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(Color(white: 0.5))
+                                }
+
+                                // Pounds field
+                                VStack(spacing: 4) {
+                                    TextField("0", text: $weightPoundsText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(.system(size: isIPad ? 24 : 18, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: isIPad ? 70 : 50)
+                                        .padding(.vertical, isIPad ? 12 : 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.white.opacity(0.7))
+                                        )
+                                        .focused($poundsFieldFocused)
+                                        .onChange(of: weightPoundsText) { _, _ in
+                                            guard !isInitializingStoneFields else { return }
+                                            updateWeightFromStone()
+                                        }
+                                    Text("lbs")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(Color(white: 0.5))
+                                }
+
+                                Spacer()
+                            }
+
+                            // Show kg conversion
+                            Text(String(format: "%.1f kg", state.weightKg))
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.5))
+                        }
                     }
                 }
 
@@ -295,8 +399,40 @@ struct PersonalDetailsScreen: View {
             // Dismiss keyboard on tap outside
             heightFieldFocused = false
             weightFieldFocused = false
+            stoneFieldFocused = false
+            poundsFieldFocused = false
         }
         .keyboardDismissButton()
+        .onAppear {
+            // Initialize stone/pounds fields from current weight
+            // Use flag to prevent onChange handlers from triggering during initialization
+            isInitializingStoneFields = true
+            let converted = WeightUnit.stones.fromKg(state.weightKg)
+            weightStoneText = String(format: "%.0f", converted.primary)
+            weightPoundsText = String(format: "%.0f", converted.secondary ?? 0)
+            // Clear flag after a brief delay to ensure SwiftUI has processed the state changes
+            DispatchQueue.main.async {
+                isInitializingStoneFields = false
+            }
+        }
+    }
+
+    /// Updates state.weightKg from stone/pounds text fields
+    private func updateWeightFromStone() {
+        let stoneValue = Double(weightStoneText) ?? 0
+        let poundsValue = Double(weightPoundsText) ?? 0
+
+        // Validate pounds (0-13 in a stone)
+        let validPounds = min(max(poundsValue, 0), 13.9)
+
+        // Convert to kg: (stone * 14 + pounds) / 2.20462
+        let totalPounds = (stoneValue * 14) + validPounds
+        let kg = totalPounds / 2.20462
+
+        // Only update if within valid range
+        if weightRange.contains(kg) {
+            state.weightKg = kg
+        }
     }
 
     private func savePersonalDetails() {
@@ -308,6 +444,9 @@ struct PersonalDetailsScreen: View {
         if state.gender != .notSet {
             manager.saveGender(state.gender)
         }
+
+        // Save weight unit preference for use elsewhere in the app
+        UserDefaults.standard.set(selectedWeightUnit.rawValue, forKey: "weightUnit")
     }
 }
 
@@ -691,6 +830,7 @@ struct CameraPermissionScreen: View {
 
     @State private var permissionRequested = false
     @State private var permissionGranted = false
+    @State private var hasAdvanced = false  // Prevents race condition on double-trigger
 
     var body: some View {
         VStack(spacing: 0) {
@@ -753,6 +893,8 @@ struct CameraPermissionScreen: View {
                     )
 
                     Button(action: {
+                        guard !hasAdvanced else { return }
+                        hasAdvanced = true
                         permissionRequested = true
                         onContinue()
                     }) {
@@ -777,12 +919,15 @@ struct CameraPermissionScreen: View {
     }
 
     private func requestCameraPermission() {
+        guard !hasAdvanced else { return }
         AVCaptureDevice.requestAccess(for: .video) { granted in
             DispatchQueue.main.async {
                 permissionRequested = true
                 permissionGranted = granted
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    guard !hasAdvanced else { return }
+                    hasAdvanced = true
                     onContinue()
                 }
             }
@@ -799,6 +944,7 @@ struct HealthPermissionScreen: View {
 
     @State private var permissionRequested = false
     @State private var permissionGranted = false
+    @State private var hasAdvanced = false  // Prevents race condition on double-trigger
 
     var body: some View {
         VStack(spacing: 0) {
@@ -879,6 +1025,8 @@ struct HealthPermissionScreen: View {
                     }
 
                     Button(action: {
+                        guard !hasAdvanced else { return }
+                        hasAdvanced = true
                         permissionRequested = true
                         onContinue()
                     }) {
@@ -903,6 +1051,7 @@ struct HealthPermissionScreen: View {
     }
 
     private func requestHealthPermission() {
+        guard !hasAdvanced else { return }
         Task {
             await healthKitManager.requestAuthorization()
             await MainActor.run {
@@ -910,6 +1059,8 @@ struct HealthPermissionScreen: View {
                 permissionGranted = healthKitManager.isAuthorized
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    guard !hasAdvanced else { return }
+                    hasAdvanced = true
                     onContinue()
                 }
             }
@@ -946,6 +1097,7 @@ struct NotificationsPermissionScreen: View {
 
     @State private var permissionRequested = false
     @State private var permissionGranted = false
+    @State private var hasAdvanced = false  // Prevents race condition on double-trigger
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1017,6 +1169,8 @@ struct NotificationsPermissionScreen: View {
                     )
 
                     Button(action: {
+                        guard !hasAdvanced else { return }
+                        hasAdvanced = true
                         permissionRequested = true
                         onContinue()
                     }) {
@@ -1041,12 +1195,15 @@ struct NotificationsPermissionScreen: View {
     }
 
     private func requestNotificationPermission() {
+        guard !hasAdvanced else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             DispatchQueue.main.async {
                 permissionRequested = true
                 permissionGranted = granted
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    guard !hasAdvanced else { return }
+                    hasAdvanced = true
                     onContinue()
                 }
             }
@@ -1211,10 +1368,12 @@ struct PostAuthPermissionsView: View {
     @State private var transitionOpacity: Double = 1
     @State private var showingPaywall = false
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     let onComplete: () -> Void
 
     // Permission screens + paywall: Camera(0) → Health(1) → Notifications(2) → ProUpgrade(3) → Done(4)
+    // Note: ProUpgrade screen is skipped if user already has subscription access
     private let totalScreens = 5
 
     var body: some View {
@@ -1234,11 +1393,16 @@ struct PostAuthPermissionsView: View {
                     NotificationsPermissionScreen(state: state, onContinue: { advanceScreen() })
                 case 3:
                     // Paywall shown after permissions, before entering the app
-                    ProUpgradeScreen(
-                        state: state,
-                        onUpgrade: { showingPaywall = true },
-                        onContinueFree: { advanceScreen() }
-                    )
+                    // Skip if user already has subscription access (prevents showing upsell to subscribers)
+                    if subscriptionManager.hasAccess {
+                        Color.clear.onAppear { advanceScreen() }
+                    } else {
+                        ProUpgradeScreen(
+                            state: state,
+                            onUpgrade: { showingPaywall = true },
+                            onContinueFree: { advanceScreen() }
+                        )
+                    }
                 case 4:
                     PermissionsCompletionScreen(state: state, onComplete: {
                         OnboardingManager.shared.completePermissions()

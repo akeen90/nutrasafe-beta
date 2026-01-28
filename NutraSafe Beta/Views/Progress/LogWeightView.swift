@@ -33,12 +33,14 @@ struct LogWeightView: View {
     @AppStorage("cachedCurrentWeight") private var cachedCurrentWeight: Double = 0
 
     // Weight state
-    @State private var weightValue: Double = 70.0
+    @State private var weightValue: Double = 70.0  // For kg/lbs: whole number; For stones: stones value
     @State private var hasInitializedWeight = false
-    @State private var weightDecimal: Int = 0
+    @State private var weightDecimal: Int = 0  // For kg/lbs: decimal (0-9); For stones: pounds (0-13)
     @State private var isEditingWeight = false
     @State private var weightTextInput: String = ""
+    @State private var secondaryWeightInput: String = ""  // For stones: pounds input
     @FocusState private var weightFieldFocused: Bool
+    @FocusState private var secondaryWeightFieldFocused: Bool
 
     // Height state
     @State private var primaryHeight: String = ""
@@ -82,14 +84,32 @@ struct LogWeightView: View {
     // MARK: - Computed Properties
 
     private var weightInKg: Double {
-        let decimal = Double(weightDecimal) / 10.0
-        let total = weightValue + decimal
-        return selectedUnit.toKg(primary: total, secondary: nil)
+        switch selectedUnit {
+        case .kg, .lbs:
+            // For kg/lbs, weightDecimal is a decimal digit (0-9)
+            let decimal = Double(weightDecimal) / 10.0
+            let total = weightValue + decimal
+            return selectedUnit.toKg(primary: total, secondary: nil)
+        case .stones:
+            // For stones, weightValue is stones and weightDecimal is pounds (0-13)
+            return selectedUnit.toKg(primary: weightValue, secondary: Double(weightDecimal))
+        }
     }
 
     private var displayWeight: String {
-        let decimal = Double(weightDecimal) / 10.0
-        return String(format: "%.1f", weightValue + decimal)
+        switch selectedUnit {
+        case .kg, .lbs:
+            let decimal = Double(weightDecimal) / 10.0
+            return String(format: "%.1f", weightValue + decimal)
+        case .stones:
+            // For stones, show just the stone value (lbs shown separately)
+            return String(format: "%.0f", weightValue)
+        }
+    }
+
+    private var displayPounds: String {
+        // Only used for stones mode
+        return String(format: "%.0f", Double(weightDecimal))
     }
 
     private var heightInCm: Double? {
@@ -174,22 +194,35 @@ struct LogWeightView: View {
         .onChange(of: currentWeight) { _, newWeight in
             // If weight binding updates after view appeared (data loaded late)
             // and user hasn't manually edited yet, update to the correct weight
+            // Note: Only respond to currentWeight if weightHistory hasn't provided a value yet
             if !hasInitializedWeight && existingEntry == nil && newWeight > 0 {
                 let converted = selectedUnit.fromKg(newWeight)
                 weightValue = floor(converted.primary)
-                weightDecimal = Int(round((converted.primary - weightValue) * 10))
+                switch selectedUnit {
+                case .kg, .lbs:
+                    weightDecimal = Int(round((converted.primary - weightValue) * 10))
+                case .stones:
+                    weightDecimal = Int(round(converted.secondary ?? 0))
+                }
                 hasInitializedWeight = true
             }
         }
         .onChange(of: weightHistory) { _, newHistory in
             // If weight history binding updates after view appeared
             // and we still haven't initialized, use the latest entry
-            if !hasInitializedWeight && existingEntry == nil, let latest = newHistory.first {
-                let converted = selectedUnit.fromKg(latest.weight)
-                weightValue = floor(converted.primary)
+            // Priority: weightHistory > currentWeight (history is more authoritative)
+            guard !hasInitializedWeight && existingEntry == nil else { return }
+            guard let latest = newHistory.first else { return }
+
+            let converted = selectedUnit.fromKg(latest.weight)
+            weightValue = floor(converted.primary)
+            switch selectedUnit {
+            case .kg, .lbs:
                 weightDecimal = Int(round((converted.primary - weightValue) * 10))
-                hasInitializedWeight = true
+            case .stones:
+                weightDecimal = Int(round(converted.secondary ?? 0))
             }
+            hasInitializedWeight = true
         }
         .fullScreenCover(item: $activePickerType) { pickerType in
             if pickerType == .camera {
@@ -299,53 +332,59 @@ struct LogWeightView: View {
             // Weight display card
             VStack(spacing: DesignTokens.Spacing.sm) {
                 // Large weight value - tap to edit
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    if isEditingWeight {
-                        // Text input mode
-                        TextField("", text: $weightTextInput)
-                            .keyboardType(.decimalPad)
-                            .font(.system(size: 64, weight: .bold, design: .rounded))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [palette.accent, palette.primary],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                if selectedUnit == .stones {
+                    // Stones mode: show two values (stones + lbs)
+                    stonesWeightDisplay
+                } else {
+                    // kg/lbs mode: single value with decimal
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        if isEditingWeight {
+                            // Text input mode
+                            TextField("", text: $weightTextInput)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 64, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [palette.accent, palette.primary],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
                                 )
-                            )
-                            .multilineTextAlignment(.center)
-                            .frame(minWidth: 120)
-                            .focused($weightFieldFocused)
-                            .onSubmit {
-                                commitWeightInput()
-                            }
-                            .onChange(of: weightFieldFocused) { _, focused in
-                                if !focused {
+                                .multilineTextAlignment(.center)
+                                .frame(minWidth: 120)
+                                .focused($weightFieldFocused)
+                                .onSubmit {
                                     commitWeightInput()
                                 }
-                            }
-                    } else {
-                        // Display mode - tap to edit
-                        Text(displayWeight)
-                            .font(.system(size: 64, weight: .bold, design: .rounded))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [palette.accent, palette.primary],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                                .onChange(of: weightFieldFocused) { _, focused in
+                                    if !focused {
+                                        commitWeightInput()
+                                    }
+                                }
+                        } else {
+                            // Display mode - tap to edit
+                            Text(displayWeight)
+                                .font(.system(size: 64, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [palette.accent, palette.primary],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
                                 )
-                            )
-                            .onTapGesture {
-                                startWeightEditing()
-                            }
-                    }
+                                .onTapGesture {
+                                    startWeightEditing()
+                                }
+                        }
 
-                    Text(selectedUnit.shortName)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundColor(palette.textSecondary)
+                        Text(selectedUnit.shortName)
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(palette.textSecondary)
+                    }
                 }
 
                 // Tap to edit hint
-                if !isEditingWeight {
+                if !isEditingWeight && selectedUnit != .stones {
                     Text("Tap to type")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(palette.textTertiary)
@@ -443,6 +482,132 @@ struct LogWeightView: View {
         }
     }
 
+    // MARK: - Stones Weight Display
+
+    private var stonesWeightDisplay: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            // Stones value
+            VStack(spacing: 2) {
+                if isEditingWeight {
+                    TextField("", text: $weightTextInput)
+                        .keyboardType(.numberPad)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [palette.accent, palette.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .multilineTextAlignment(.center)
+                        .frame(width: 80)
+                        .focused($weightFieldFocused)
+                        .onSubmit {
+                            commitStonesInput()
+                        }
+                        .onChange(of: weightFieldFocused) { _, focused in
+                            if !focused && !secondaryWeightFieldFocused {
+                                commitStonesInput()
+                            }
+                        }
+                } else {
+                    Text(displayWeight)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [palette.accent, palette.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .onTapGesture {
+                            startStonesEditing(editingStones: true)
+                        }
+                }
+
+                Text("st")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(palette.textSecondary)
+            }
+
+            // Pounds value
+            VStack(spacing: 2) {
+                if isEditingWeight {
+                    TextField("", text: $secondaryWeightInput)
+                        .keyboardType(.numberPad)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [palette.accent, palette.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .multilineTextAlignment(.center)
+                        .frame(width: 80)
+                        .focused($secondaryWeightFieldFocused)
+                        .onSubmit {
+                            commitStonesInput()
+                        }
+                        .onChange(of: secondaryWeightFieldFocused) { _, focused in
+                            if !focused && !weightFieldFocused {
+                                commitStonesInput()
+                            }
+                        }
+                } else {
+                    Text(displayPounds)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [palette.accent, palette.primary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .onTapGesture {
+                            startStonesEditing(editingStones: false)
+                        }
+                }
+
+                Text("lbs")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(palette.textSecondary)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func startStonesEditing(editingStones: Bool) {
+        weightTextInput = String(format: "%.0f", weightValue)
+        secondaryWeightInput = String(format: "%.0f", Double(weightDecimal))
+        isEditingWeight = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if editingStones {
+                weightFieldFocused = true
+            } else {
+                secondaryWeightFieldFocused = true
+            }
+        }
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+    }
+
+    private func commitStonesInput() {
+        isEditingWeight = false
+        weightFieldFocused = false
+        secondaryWeightFieldFocused = false
+
+        // Parse stones input
+        if let stones = Double(weightTextInput), stones >= 0 {
+            weightValue = floor(max(3, min(50, stones)))  // 3-50 stone range
+        }
+
+        // Parse pounds input
+        if let pounds = Int(secondaryWeightInput) {
+            weightDecimal = max(0, min(13, pounds))  // 0-13 lbs range
+        }
+    }
+
     private var weightStepperControls: some View {
         VStack(spacing: DesignTokens.Spacing.xs) {
             // Label row
@@ -490,7 +655,7 @@ struct LogWeightView: View {
                     .font(.system(size: isLarge ? 16 : 12, weight: .semibold))
                     .foregroundColor(palette.accent)
 
-                Text(amount >= 1 ? "±\(Int(amount))" : "±0.1")
+                Text(stepperLabel(amount: amount, isLarge: isLarge))
                     .font(.system(size: 9, weight: .medium))
                     .foregroundColor(palette.textTertiary)
             }
@@ -503,24 +668,71 @@ struct LogWeightView: View {
         .buttonStyle(.plain)
     }
 
+    private func stepperLabel(amount: Double, isLarge: Bool) -> String {
+        switch selectedUnit {
+        case .kg:
+            return isLarge ? "±1 kg" : "±0.1"
+        case .lbs:
+            return isLarge ? "±1 lb" : "±0.1"
+        case .stones:
+            return isLarge ? "±1 st" : "±1 lb"
+        }
+    }
+
     private func adjustWeight(by amount: Double) {
         withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
-            let currentTotal = weightValue + Double(weightDecimal) / 10.0
-            var newTotal = currentTotal + amount
+            switch selectedUnit {
+            case .kg, .lbs:
+                // For kg/lbs: decimal is 0-9 representing 0.0-0.9
+                let currentTotal = weightValue + Double(weightDecimal) / 10.0
+                var newTotal = currentTotal + amount
 
-            // Clamp to reasonable range
-            newTotal = max(20.0, min(300.0, newTotal))
+                // Clamp to reasonable range (20-300 for kg, or equivalent)
+                newTotal = max(20.0, min(300.0, newTotal))
 
-            weightValue = floor(newTotal)
-            weightDecimal = Int(round((newTotal - weightValue) * 10))
+                weightValue = floor(newTotal)
+                weightDecimal = Int(round((newTotal - weightValue) * 10))
 
-            // Handle decimal overflow
-            if weightDecimal >= 10 {
-                weightValue += 1
-                weightDecimal = 0
-            } else if weightDecimal < 0 {
-                weightValue -= 1
-                weightDecimal = 9
+                // Handle decimal overflow
+                if weightDecimal >= 10 {
+                    weightValue += 1
+                    weightDecimal = 0
+                } else if weightDecimal < 0 {
+                    weightValue -= 1
+                    weightDecimal = 9
+                }
+
+            case .stones:
+                // For stones: weightDecimal is pounds (0-13)
+                // amount of 1.0 = 1 stone, amount of 0.1 = 1 lb
+                if abs(amount) >= 1.0 {
+                    // Adjusting stones
+                    let stoneChange = amount >= 0 ? 1.0 : -1.0
+                    var newStones = weightValue + stoneChange
+
+                    // Clamp to 3-50 stone range
+                    newStones = max(3.0, min(50.0, newStones))
+                    weightValue = newStones
+                } else {
+                    // Adjusting pounds (0.1 = 1 lb)
+                    let lbChange = amount >= 0 ? 1 : -1
+                    var newLbs = weightDecimal + lbChange
+
+                    // Handle rollover
+                    if newLbs >= 14 {
+                        weightValue += 1
+                        newLbs = 0
+                    } else if newLbs < 0 {
+                        if weightValue > 3 {
+                            weightValue -= 1
+                            newLbs = 13
+                        } else {
+                            newLbs = 0
+                        }
+                    }
+
+                    weightDecimal = newLbs
+                }
             }
         }
     }
@@ -1167,7 +1379,12 @@ struct LogWeightView: View {
             // Load weight from existing entry
             let converted = selectedUnit.fromKg(entry.weight)
             weightValue = floor(converted.primary)
-            weightDecimal = Int(round((converted.primary - weightValue) * 10))
+            switch selectedUnit {
+            case .kg, .lbs:
+                weightDecimal = Int(round((converted.primary - weightValue) * 10))
+            case .stones:
+                weightDecimal = Int(round(converted.secondary ?? 0))
+            }
             hasInitializedWeight = true
 
             // Load date
@@ -1214,7 +1431,12 @@ struct LogWeightView: View {
             if weightToUse > 0 {
                 let converted = selectedUnit.fromKg(weightToUse)
                 weightValue = floor(converted.primary)
-                weightDecimal = Int(round((converted.primary - weightValue) * 10))
+                switch selectedUnit {
+                case .kg, .lbs:
+                    weightDecimal = Int(round((converted.primary - weightValue) * 10))
+                case .stones:
+                    weightDecimal = Int(round(converted.secondary ?? 0))
+                }
                 hasInitializedWeight = true
             }
         }
@@ -1277,7 +1499,7 @@ struct LogWeightView: View {
     }
 
     private func convertAndSetUnit(to newUnit: WeightUnit) {
-        // Get current weight in kg
+        // Get current weight in kg (before changing unit)
         let currentKg = weightInKg
 
         // Update unit
@@ -1285,8 +1507,27 @@ struct LogWeightView: View {
 
         // Convert to new unit
         let converted = newUnit.fromKg(currentKg)
-        weightValue = floor(converted.primary)
-        weightDecimal = Int(round((converted.primary - weightValue) * 10))
+
+        switch newUnit {
+        case .kg, .lbs:
+            // For kg/lbs: weightDecimal is a decimal digit (0-9)
+            weightValue = floor(converted.primary)
+            weightDecimal = Int(round((converted.primary - weightValue) * 10))
+            // Handle overflow
+            if weightDecimal >= 10 {
+                weightValue += 1
+                weightDecimal = 0
+            }
+        case .stones:
+            // For stones: weightValue is stones, weightDecimal is pounds (0-13)
+            weightValue = floor(converted.primary)
+            weightDecimal = Int(round(converted.secondary ?? 0))
+            // Ensure pounds is in valid range
+            if weightDecimal >= 14 {
+                weightValue += 1
+                weightDecimal = 0
+            }
+        }
 
         // Update goal weight display
         if goalWeight > 0 {

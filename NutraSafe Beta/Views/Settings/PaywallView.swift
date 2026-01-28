@@ -144,7 +144,9 @@ struct PaywallView: View {
                             Button(action: {
                                 Task {
                                     try? await subscriptionManager.purchase()
-                                    if subscriptionManager.isSubscribed {
+                                    // Check hasAccess after purchase completes (includes isSubscribed, isInTrial, isPremiumOverride)
+                                    // Status is refreshed inside purchase() so no race condition
+                                    if subscriptionManager.hasAccess {
                                         dismiss()
                                     }
                                 }
@@ -187,7 +189,8 @@ struct PaywallView: View {
                                 Button("Restore") {
                                     Task {
                                         try? await subscriptionManager.restore()
-                                        if subscriptionManager.isSubscribed {
+                                        // Check hasAccess after restore (may include premium override)
+                                        if subscriptionManager.hasAccess {
                                             dismiss()
                                         }
                                     }

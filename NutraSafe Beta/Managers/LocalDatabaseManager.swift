@@ -631,12 +631,16 @@ final class LocalDatabaseManager {
     /// Search by barcode (exact match)
     /// - Parameter barcode: The barcode to search for
     /// - Returns: FoodSearchResult if found
+    /// Note: Handles GTIN-14 ↔ EAN-13 conversion for Tesco products
     func searchByBarcode(_ barcode: String) -> FoodSearchResult? {
         guard isAvailable else { return nil }
 
         var result: FoodSearchResult?
 
         dbQueue.sync {
+            // Search barcode column with both original and converted formats
+            // Tesco uses GTIN-14 (14 digits with leading 0), scanners provide EAN-13 (13 digits)
+            // Also search barcodes JSON array for alternative barcodes
             let sql = """
                 SELECT id, name, brand, barcode,
                        calories, protein, carbs, fat,
@@ -645,7 +649,10 @@ final class LocalDatabaseManager {
                        ingredients_text, is_verified, image_url, source,
                        category
                 FROM foods
-                WHERE barcode = ? OR barcodes LIKE ?
+                WHERE barcode = ?1
+                   OR barcode = ?2
+                   OR barcodes LIKE ?3
+                   OR barcodes LIKE ?4
                 ORDER BY source_priority ASC
                 LIMIT 1
             """
@@ -653,8 +660,29 @@ final class LocalDatabaseManager {
             var stmt: OpaquePointer?
 
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, barcode, -1, nil)
-                sqlite3_bind_text(stmt, 2, "%\(barcode)%", -1, nil)
+                // ?1 = original barcode
+                sqlite3_bind_text(stmt, 1, barcode, -1, SQLITE_TRANSIENT)
+
+                // ?2 = converted barcode (EAN-13 ↔ GTIN-14)
+                // If 13 digits not starting with 0, add leading 0 for GTIN-14
+                // If 14 digits starting with 0, remove leading 0 for EAN-13
+                let convertedBarcode: String
+                if barcode.count == 13 && !barcode.hasPrefix("0") {
+                    convertedBarcode = "0" + barcode  // EAN-13 → GTIN-14
+                } else if barcode.count == 14 && barcode.hasPrefix("0") {
+                    convertedBarcode = String(barcode.dropFirst())  // GTIN-14 → EAN-13
+                } else {
+                    convertedBarcode = barcode  // No conversion needed
+                }
+                sqlite3_bind_text(stmt, 2, convertedBarcode, -1, SQLITE_TRANSIENT)
+
+                // ?3 = LIKE pattern for original barcode in barcodes JSON array
+                let likePattern = "%\(barcode)%"
+                sqlite3_bind_text(stmt, 3, likePattern, -1, SQLITE_TRANSIENT)
+
+                // ?4 = LIKE pattern for converted barcode in barcodes JSON array
+                let convertedLikePattern = "%\(convertedBarcode)%"
+                sqlite3_bind_text(stmt, 4, convertedLikePattern, -1, SQLITE_TRANSIENT)
 
                 if sqlite3_step(stmt) == SQLITE_ROW {
                     result = parseFoodRow(stmt)

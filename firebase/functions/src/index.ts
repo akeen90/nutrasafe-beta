@@ -96,3 +96,6 @@ export { syncTescoImageQuality } from './sync-tesco-quality';
 
 // Master database sync to Algolia
 export { clearAlgoliaIndex, syncMasterDatabaseToAlgolia, getMasterDatabaseStats } from './sync-master-database';
+
+// Local database sync - version tracking and delta sync for iOS offline database
+export { getCurrentDatabaseVersion, getFoodDatabaseDelta, recordFoodUpdate, initializeDatabaseVersion, getSyncStats, cleanupOldFoodUpdates } from './database-sync';

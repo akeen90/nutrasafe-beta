@@ -26,7 +26,7 @@ struct PortionOption: Codable, Equatable, Identifiable {
     }
 }
 
-struct FoodSearchResult: Identifiable, Decodable, Equatable {
+struct FoodSearchResult: Identifiable, Codable, Equatable {
     let id: String
     let name: String
     let brand: String?
@@ -264,6 +264,44 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.suggestedServingUnit = try? c.decode(String.self, forKey: .suggestedServingUnit)
         self.suggestedServingDescription = try? c.decode(String.self, forKey: .suggestedServingDescription)
         self.unitOverrideLocked = try? c.decode(Bool.self, forKey: .unitOverrideLocked)
+    }
+
+    // Custom encoder - only encode actual properties (skip verifiedBy, verificationMethod, verifiedAt which are decode-only)
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(brand, forKey: .brand)
+        try c.encode(calories, forKey: .calories)
+        try c.encode(protein, forKey: .protein)
+        try c.encode(carbs, forKey: .carbs)
+        try c.encode(fat, forKey: .fat)
+        try c.encodeIfPresent(saturatedFat, forKey: .saturatedFat)
+        try c.encode(fiber, forKey: .fiber)
+        try c.encode(sugar, forKey: .sugar)
+        try c.encode(sodium, forKey: .sodium)
+        try c.encodeIfPresent(servingDescription, forKey: .servingDescription)
+        try c.encodeIfPresent(servingSizeG, forKey: .servingSizeG)
+        try c.encodeIfPresent(ingredients, forKey: .ingredients)
+        try c.encodeIfPresent(confidence, forKey: .confidence)
+        try c.encode(isVerified, forKey: .isVerified)
+        try c.encodeIfPresent(additives, forKey: .additives)
+        try c.encodeIfPresent(additivesDatabaseVersion, forKey: .additivesDatabaseVersion)
+        try c.encodeIfPresent(processingScore, forKey: .processingScore)
+        try c.encodeIfPresent(processingGrade, forKey: .processingGrade)
+        try c.encodeIfPresent(processingLabel, forKey: .processingLabel)
+        try c.encodeIfPresent(barcode, forKey: .barcode)
+        try c.encodeIfPresent(gtin, forKey: .gtin)
+        try c.encodeIfPresent(micronutrientProfile, forKey: .micronutrientProfile)
+        try c.encodeIfPresent(isPerUnit, forKey: .isPerUnit)
+        try c.encodeIfPresent(portions, forKey: .portions)
+        try c.encodeIfPresent(source, forKey: .source)
+        try c.encodeIfPresent(imageUrl, forKey: .imageUrl)
+        try c.encodeIfPresent(foodCategory, forKey: .foodCategory)
+        try c.encodeIfPresent(suggestedServingSize, forKey: .suggestedServingSize)
+        try c.encodeIfPresent(suggestedServingUnit, forKey: .suggestedServingUnit)
+        try c.encodeIfPresent(suggestedServingDescription, forKey: .suggestedServingDescription)
+        try c.encodeIfPresent(unitOverrideLocked, forKey: .unitOverrideLocked)
     }
 
     /// Returns true if this food has multiple portion options (e.g., McNuggets with 6pc, 9pc, 20pc)

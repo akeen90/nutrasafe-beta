@@ -26,7 +26,7 @@ function validateServingSize(servingSizeG, servingDescription) {
     if (servingSizeG < 50 && servingSizeG > 0) {
         // Check if description suggests it's actually a small portion item
         const smallPortionKeywords = ['biscuit', 'sweet', 'chocolate', 'crisp', 'snack', 'bar', 'piece'];
-        const isSmallItem = smallPortionKeywords.some(kw => servingDescription.toLowerCase().includes(kw));
+        const isSmallItem = (typeof servingDescription === 'string') ? smallPortionKeywords.some(kw => servingDescription.toLowerCase().includes(kw)) : false;
         if (!isSmallItem) {
             return 100; // Reset to 100g for meals with bad data
         }
@@ -299,13 +299,14 @@ exports.searchFoods = functions
         }
         // Search all collections in parallel (much faster!)
         const startTime = Date.now();
-        const [verifiedCount, foodsCount, tescoCount] = await Promise.all([
+        const [verifiedCount, foodsCount, ukCleanedCount, tescoCount] = await Promise.all([
             fastSearch('verifiedFoods', queryWords),
             fastSearch('foods', queryWords),
+            fastSearch('uk_foods_cleaned', queryWords),
             fastSearchTesco(queryWords)
         ]);
         const searchTime = Date.now() - startTime;
-        console.log(`⚡ Fast search completed in ${searchTime}ms - found ${allDocs.size} candidates (${verifiedCount} verified, ${foodsCount} foods, ${tescoCount} Tesco)`);
+        console.log(`⚡ Fast search completed in ${searchTime}ms - found ${allDocs.size} candidates (${verifiedCount} verified, ${foodsCount} foods, ${ukCleanedCount} uk_cleaned, ${tescoCount} Tesco)`);
         const verifiedSnapshot = { docs: Array.from(allDocs.values()) };
         // Convert to results and add relevance scoring
         let allResults = verifiedSnapshot.docs.map(doc => {
@@ -406,6 +407,8 @@ exports.searchFoods = functions
                 sodium: sodiumValue ? (typeof sodiumValue === 'object' ? sodiumValue : { per100g: sodiumValue }) : null,
                 servingDescription: servingDescription,
                 servingSizeG: servingSizeG,
+                suggestedServingUnit: data.suggestedServingUnit || null,
+                unitOverrideLocked: data.unitOverrideLocked || false,
                 // CRITICAL FIX: Map ingredients field for iOS app - keep as array
                 ingredients: (() => {
                     const ingredientsData = data.extractedIngredients || data.ingredients || null;

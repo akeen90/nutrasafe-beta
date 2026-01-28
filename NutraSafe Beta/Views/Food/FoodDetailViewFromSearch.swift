@@ -404,6 +404,7 @@ struct FoodDetailViewFromSearch: View {
     // Redesigned additive analysis (Yuka-style)
     @State private var additiveAnalysis: AdditiveAnalysisResult? = nil
     @State private var expandedAdditiveId: UUID? = nil
+    @State private var additiveAnalysisTask: Task<Void, Never>? = nil  // Track task to prevent race conditions
 
     // Scroll proxy for jumping to sections
     @State private var mainScrollProxy: ScrollViewProxy?
@@ -1920,7 +1921,9 @@ struct FoodDetailViewFromSearch: View {
         .onChange(of: cachedIngredients) {
             recomputeDetectedNutrients()
             // Re-run additive analysis when ingredients change
-            Task {
+            // Cancel any existing analysis task to prevent race conditions
+            additiveAnalysisTask?.cancel()
+            additiveAnalysisTask = Task {
                 await runAdditiveAnalysis()
             }
         }

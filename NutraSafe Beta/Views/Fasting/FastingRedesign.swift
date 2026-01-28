@@ -138,6 +138,83 @@ struct FastingMainViewRedesigned: View {
                     .environmentObject(viewModel)
             }
         }
+        .sheet(isPresented: $viewModel.showingStartConfirmation) {
+            if let context = viewModel.confirmationContext {
+                FastingStartConfirmationRedesigned(
+                    context: context,
+                    onConfirmScheduledTime: { [viewModel] in
+                        Task {
+                            await viewModel.confirmStartAtScheduledTime()
+                        }
+                    },
+                    onConfirmCustomTime: { [viewModel] customTime in
+                        Task {
+                            await viewModel.confirmStartAtCustomTime(customTime)
+                        }
+                    },
+                    onSkipFast: {
+                        viewModel.confirmationContext = nil
+                    },
+                    onSnoozeUntil: { snoozeTime in
+                        // Schedule snooze notification
+                        let content = UNMutableNotificationContent()
+                        content.title = "Time to start your fast"
+                        content.body = "Snoozed reminder - \(context.planName)"
+                        content.sound = .default
+                        content.userInfo = [
+                            "type": "fasting",
+                            "fastingType": "start",
+                            "planId": context.planId,
+                            "planName": context.planName,
+                            "durationHours": context.durationHours,
+                            "scheduledStartTime": context.scheduledTime.timeIntervalSince1970
+                        ]
+
+                        let trigger = UNCalendarNotificationTrigger(
+                            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: snoozeTime),
+                            repeats: false
+                        )
+                        let request = UNNotificationRequest(
+                            identifier: "fast_snooze_\(UUID().uuidString)",
+                            content: content,
+                            trigger: trigger
+                        )
+                        UNUserNotificationCenter.current().add(request)
+                        viewModel.confirmationContext = nil
+                    },
+                    onDismiss: {
+                        viewModel.showingStartConfirmation = false
+                        viewModel.confirmationContext = nil
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $viewModel.showingEndConfirmation) {
+            if let context = viewModel.confirmationContext,
+               let session = viewModel.activeSession {
+                FastingEndConfirmationRedesigned(
+                    context: context,
+                    actualStartTime: session.startTime,
+                    onConfirmNow: { [viewModel] in
+                        Task {
+                            await viewModel.confirmEndNow()
+                        }
+                    },
+                    onConfirmCustomTime: { [viewModel] customTime in
+                        Task {
+                            await viewModel.confirmEndAtCustomTime(customTime)
+                        }
+                    },
+                    onContinueFasting: {
+                        viewModel.confirmationContext = nil
+                    },
+                    onDismiss: {
+                        viewModel.showingEndConfirmation = false
+                        viewModel.confirmationContext = nil
+                    }
+                )
+            }
+        }
         .onAppear {
             viewModel.timerViewDidAppear()
         }

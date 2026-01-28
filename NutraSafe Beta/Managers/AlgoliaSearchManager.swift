@@ -520,8 +520,9 @@ final class AlgoliaSearchManager {
     // MARK: - Search Methods
 
     /// Multi-stage search pipeline for optimal UK food database results
-    /// Stage 1: Exact/canonical matches
-    /// Stage 2: Strong partial matches
+    /// Stage 0: Local SQLite database (offline-first, instant results)
+    /// Stage 1: Exact/canonical matches (Algolia)
+    /// Stage 2: Strong partial matches (Algolia)
     /// Stage 3: Fuzzy matches (misspellings)
     /// Stage 4: Generic fallbacks
     /// Stage 5: Firebase fallback (when Algolia unavailable)
@@ -552,6 +553,32 @@ final class AlgoliaSearchManager {
             } else {
                 searchCache.removeObject(forKey: cacheKey)
             }
+        }
+
+        // === STAGE 0: LOCAL DATABASE (PREFERRED - INSTANT RESULTS) ===
+        // Always check local database first for instant results
+        // Local DB is the primary source, Algolia supplements with newer items
+        var localResults: [FoodSearchResult] = []
+        if LocalDatabaseManager.shared.isAvailable {
+            localResults = LocalDatabaseManager.shared.search(query: trimmedQuery, limit: hitsPerPage * 2)
+            print("📱 LocalDB: Found \(localResults.count) results for '\(trimmedQuery)'")
+
+            // If we have good local results (>= 10), we can skip Algolia for common queries
+            // This dramatically reduces API costs and improves speed
+            if localResults.count >= 10 && !trimmedQuery.contains("@") {
+                // Cache local results
+                searchCache.setObject(
+                    SearchCacheEntry(results: Array(localResults.prefix(hitsPerPage)), timestamp: Date()),
+                    forKey: cacheKey
+                )
+                return Array(localResults.prefix(hitsPerPage))
+            }
+        }
+
+        // If offline, return local results immediately
+        if !NetworkMonitor.shared.isConnected {
+            print("📴 Offline mode: Returning \(localResults.count) local results")
+            return localResults
         }
 
         var allResults: [FoodSearchResult] = []
@@ -649,10 +676,18 @@ final class AlgoliaSearchManager {
             }
         }
 
+        // === MERGE LOCAL + ALGOLIA RESULTS ===
+        // Add local results that aren't already in Algolia results
+        var mergedResults = allResults
+        let algoliaIds = Set(allResults.map { $0.id })
+        for localResult in localResults where !algoliaIds.contains(localResult.id) {
+            mergedResults.append(localResult)
+        }
+
         // === FINAL RANKING ===
         // Apply multi-stage ranking with intent awareness
         let rankedResults = rankResultsMultiStage(
-            allResults,
+            mergedResults,
             originalQuery: trimmedQuery,
             normalizedQuery: normalized,
             hitsPerPage: hitsPerPage
@@ -960,23 +995,13 @@ final class AlgoliaSearchManager {
             // Solution: BOOST items WITH images, PENALIZE items WITHOUT images
             let hasImage = result.imageUrl != nil && !result.imageUrl!.isEmpty
 
-            if queryWords.count <= 2 {
-                // Generic search: user wants to see product variants with photos
-                if hasImage {
-                    // Items WITH images get massive boost to show first
-                    score += 50000
-                } else {
-                    // Items WITHOUT images get massive penalty - user wants visual results
-                    // This ensures "Twix" without image ranks below "Twix Chocolate Bar" with image
-                    score -= 40000
-                }
-            } else {
-                // Specific search (3+ words): user knows what they want, images are nice but optional
-                if hasImage {
-                    score += 500  // Small boost for images
-                }
-                // No penalty for missing images on specific searches - exact match matters more
+            // Image boost is now a TIEBREAKER, not a dominant factor
+            // Relevance comes first - if two "Mars Bar" results have similar relevance,
+            // prefer the one with an image
+            if hasImage {
+                score += 500  // Small tiebreaker boost for items with images
             }
+            // No penalty for missing images - relevance should dominate
 
             // === INTENT-SPECIFIC SCORING ===
 
@@ -1508,6 +1533,9 @@ final class AlgoliaSearchManager {
             // Check multiple field name variants for verification status
             let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? (hit["is_verified"] as? Bool) ?? false
             let barcode = hit["barcode"] as? String
+            // Extract GTIN (used by Tesco products instead of barcode)
+            // GTIN-14 format: 14 digits starting with 0 (e.g., "05000119018663")
+            let gtin = hit["gtin"] as? String
 
             // Extract ingredients - VERY EXPLICIT type handling
             var ingredients: [String]? = nil
@@ -1603,8 +1631,12 @@ final class AlgoliaSearchManager {
             }
             #endif
 
+            // Construct full ID with source prefix to match local database/image mapping format
+            // Format: "source:objectID" (e.g., "tesco_products:307760281")
+            let fullId = "\(source):\(objectID)"
+
             return FoodSearchResult(
-                id: objectID,
+                id: fullId,
                 name: name,
                 brand: brand,
                 calories: calories,
@@ -1621,6 +1653,7 @@ final class AlgoliaSearchManager {
                 ingredients: ingredients,
                 isVerified: verified,
                 barcode: barcode,
+                gtin: gtin,
                 micronutrientProfile: micronutrientProfile,
                 portions: portions,
                 source: source,
@@ -1699,17 +1732,53 @@ final class AlgoliaSearchManager {
     }
 
     // MARK: - Barcode Search
-    /// Exact barcode lookup across indices using Algolia filters
+    /// Exact barcode lookup - prefers local database, falls back to Algolia
     func searchByBarcode(_ barcode: String) async throws -> FoodSearchResult? {
         let variations: [String] = {
-            var v = [barcode]
+            var v: [String] = []
+            // GTIN-14 (14 digits starting with 0) → EAN-13 (remove leading 0)
+            // Local database stores EAN-13 format, so check this FIRST
+            if barcode.count == 14 && barcode.hasPrefix("0") {
+                v.append(String(barcode.dropFirst()))  // EAN-13 (13 digits)
+            }
+            // EAN-13 (13 digits not starting with 0) → GTIN-14 (add leading 0)
+            // Tesco's Algolia index uses GTIN-14, so add this for online search
+            if barcode.count == 13 && !barcode.hasPrefix("0") { v.append("0" + barcode) }
+            // Original barcode
+            v.append(barcode)
+            // EAN-13 with leading 0 → UPC-A (12 digits)
             if barcode.count == 13 && barcode.hasPrefix("0") { v.append(String(barcode.dropFirst())) }
-            if barcode.count == 12 { v.append("0" + barcode) }
+            // UPC-A (12 digits) → EAN-13 and GTIN-14
+            if barcode.count == 12 {
+                v.append("0" + barcode)   // EAN-13
+                v.append("00" + barcode)  // GTIN-14
+            }
             return v
         }()
 
+        // === PREFER LOCAL DATABASE (INSTANT) ===
+        // Check local SQLite database first for instant barcode lookup
+        if LocalDatabaseManager.shared.isAvailable {
+            for variation in variations {
+                if let localResult = LocalDatabaseManager.shared.searchByBarcode(variation) {
+                    print("📱 LocalDB: Found barcode \(variation) locally")
+                    return localResult
+                }
+            }
+        }
+
+        // If offline, no local result means no result
+        if !NetworkMonitor.shared.isConnected {
+            print("📴 Offline: Barcode \(barcode) not found in local database")
+            return nil
+        }
+
+        // === FALL BACK TO ALGOLIA (ONLINE) ===
+        // Only search online if local database didn't have the barcode
+        // This handles newly added products not yet synced locally
         for variation in variations {
             if let hit = try await searchBarcodeInIndices(variation) {
+                print("🌐 Algolia: Found barcode \(variation) online")
                 return hit
             }
         }

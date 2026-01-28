@@ -166,6 +166,7 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func restore() async throws {
+        purchaseError = nil
 
         // IMPORTANT: We MUST call AppStore.sync() when user explicitly requests restore
         // This syncs with Apple's servers to fetch existing purchases
@@ -177,10 +178,16 @@ final class SubscriptionManager: ObservableObject {
             await refreshEligibility()
             try await refreshStatus()
             await refreshPremiumOverride()
+
+            // If still not subscribed after restore, let user know
+            if !hasAccess {
+                purchaseError = "No active subscription found. If you believe this is an error, please contact support."
+            }
         } catch {
             // Still try to refresh premium override and eligibility even if status refresh fails
             await refreshEligibility()
             await refreshPremiumOverride()
+            purchaseError = "Unable to restore purchases. Please check your internet connection and try again."
             throw error
         }
     }
