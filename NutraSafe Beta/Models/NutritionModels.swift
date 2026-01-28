@@ -1010,6 +1010,20 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return unit == "ml"
         }
 
+        // PRIORITY 1.5: Unambiguous drink brands - ALWAYS liquid regardless of database suggestedServingUnit
+        // These brands only sell drinks, so if the database says "g" it's almost certainly wrong AI categorization
+        let nameLowerForBrand = name.lowercased()
+        let brandLowerForCheck = (brand ?? "").lowercased()
+        let unambiguousDrinkBrands = ["coca-cola", "coca cola", "coke", "diet coke", "coke zero",
+                                      "pepsi", "pepsi max", "fanta", "sprite", "7up", "7-up",
+                                      "dr pepper", "irn-bru", "irn bru", "lucozade", "red bull",
+                                      "monster energy", "relentless", "rockstar", "tango", "oasis",
+                                      "tropicana", "innocent", "naked juice", "copella",
+                                      "evian", "volvic", "buxton", "highland spring", "perrier"]
+        if unambiguousDrinkBrands.contains(where: { brandLowerForCheck.contains($0) || nameLowerForBrand.contains($0) }) {
+            return true  // These brands are ALWAYS drinks
+        }
+
         // PRIORITY 2: Firebase category data is authoritative (from AI categorization)
         // If the backend says it uses "ml", it's a liquid (unless explicitly overridden above)
         if let unit = suggestedServingUnit, !unit.isEmpty {
@@ -1100,7 +1114,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
         // Short words that could be substrings - use word boundary matching
         // "tea" in "steak", "water" in "freshwater", "cola" in "chocolate", "juice" in various
-        let shortDrinkWords = ["tea", "coffee", "water", "cola", "juice", "drink", "shake",
+        let shortDrinkWords = ["tea", "coffee", "water", "cola", "coke", "juice", "drink", "shake",
                                "squash", "cordial", "latte", "mocha", "cocoa", "pepsi", "fanta", "sprite"]
         if shortDrinkWords.contains(where: { containsWholeWord(nameLower, $0) }) {
             return true
