@@ -11,6 +11,317 @@ import SwiftUI
 import Foundation
 import UIKit
 
+// MARK: - Food Image View Component
+
+/// A reusable image view that prefers local bundled images over network images
+/// Provides instant display of local images with no network delay
+struct FoodImageView: View {
+    let foodId: String
+    let remoteImageUrl: String?
+    let size: CGFloat
+    let cornerRadius: CGFloat
+
+    @State private var localImage: UIImage?
+    @State private var isLoadingLocal = true
+
+    init(foodId: String, remoteImageUrl: String?, size: CGFloat = 48, cornerRadius: CGFloat = 8) {
+        self.foodId = foodId
+        self.remoteImageUrl = remoteImageUrl
+        self.size = size
+        self.cornerRadius = cornerRadius
+    }
+
+    var body: some View {
+        Group {
+            if let localImage = localImage {
+                // Local image found - display instantly
+                Image(uiImage: localImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .fill(Color.white)
+                    )
+            } else if isLoadingLocal {
+                // Still checking for local image
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(Color.gray.opacity(0.1))
+                    .frame(width: size, height: size)
+            } else if let imageUrl = remoteImageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                // No local image, fall back to network
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: size, height: size)
+                            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                            .background(
+                                RoundedRectangle(cornerRadius: cornerRadius)
+                                    .fill(Color.white)
+                            )
+                    case .failure(_):
+                        placeholderView
+                    case .empty:
+                        loadingView
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            } else {
+                // No image at all
+                placeholderView
+            }
+        }
+        .onAppear {
+            loadLocalImage()
+        }
+    }
+
+    private var placeholderView: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(Color.gray.opacity(0.1))
+            .frame(width: size, height: size)
+            .overlay(
+                Image(systemName: "photo")
+                    .font(.system(size: size * 0.4))
+                    .foregroundColor(.gray)
+            )
+    }
+
+    private var loadingView: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(Color.gray.opacity(0.1))
+            .frame(width: size, height: size)
+            .overlay(
+                ProgressView()
+                    .tint(.secondary)
+            )
+    }
+
+    private func loadLocalImage() {
+        // Check if LocalFoodImageManager has loaded its mapping
+        let imageCount = LocalFoodImageManager.shared.localImageCount
+        if imageCount == 0 {
+            // Manager not yet loaded - this shouldn't happen if init is correct
+            print("⚠️ FoodImageView: LocalFoodImageManager has 0 images, may not be initialized")
+        }
+
+        // Check local image manager for bundled image
+        if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
+            // Debug: log found URL
+            print("🖼️ FoodImageView: Found local URL for \(foodId): \(localURL.lastPathComponent)")
+            if let data = try? Data(contentsOf: localURL),
+               let image = UIImage(data: data) {
+                localImage = image
+                print("🖼️ FoodImageView: Loaded image for \(foodId) (\(Int(image.size.width))x\(Int(image.size.height)))")
+            } else {
+                print("🖼️ FoodImageView: Failed to load data/image from \(localURL.path)")
+            }
+        } else {
+            // Log to help debug - show what ID we're looking for
+            print("🖼️ FoodImageView: No local mapping for '\(foodId)' (manager has \(imageCount) mappings)")
+        }
+        isLoadingLocal = false
+    }
+}
+
+/// A larger header-style image view for food detail screens
+/// Displays image at full width with white background
+struct FoodImageHeaderView: View {
+    let foodId: String
+    let remoteImageUrl: String?
+    let height: CGFloat
+
+    @State private var localImage: UIImage?
+    @State private var isLoadingLocal = false  // Changed: start as false, check synchronously
+    @State private var hasImage = false
+    @State private var didCheckLocal = false
+
+    init(foodId: String, remoteImageUrl: String?, height: CGFloat = 100) {
+        self.foodId = foodId
+        self.remoteImageUrl = remoteImageUrl
+        self.height = height
+    }
+
+    var body: some View {
+        Group {
+            if let localImage = localImage {
+                // Local image found
+                ZStack {
+                    Color.white
+                    Image(uiImage: localImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: height)
+                }
+                .frame(height: height)
+            } else if isLoadingLocal {
+                // Still checking for local image - show nothing to avoid flicker
+                EmptyView()
+            } else if let imageUrl = remoteImageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                // Fall back to network image
+                ZStack {
+                    Color.white
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: height)
+                        case .failure(_):
+                            EmptyView()
+                        case .empty:
+                            ProgressView()
+                                .tint(.secondary)
+                                .frame(height: height)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                }
+                .frame(height: height)
+            }
+            // No image available - show nothing (category icon used elsewhere)
+        }
+        .onAppear {
+            if !didCheckLocal {
+                loadLocalImage()
+            }
+        }
+        .task(id: foodId) {
+            // Use .task for reliable execution - triggers on foodId change too
+            if !didCheckLocal {
+                loadLocalImage()
+            }
+        }
+    }
+
+    private func loadLocalImage() {
+        guard !didCheckLocal else { return }
+        didCheckLocal = true
+
+        // Debug: check what ID we're looking for
+        let imageCount = LocalFoodImageManager.shared.localImageCount
+
+        if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
+            print("🖼️ FoodImageHeaderView: Found local URL for \(foodId)")
+            if let data = try? Data(contentsOf: localURL),
+               let image = UIImage(data: data) {
+                localImage = image
+                hasImage = true
+                print("🖼️ FoodImageHeaderView: Loaded local image for \(foodId)")
+            } else {
+                print("🖼️ FoodImageHeaderView: Failed to load image data from \(localURL.path)")
+            }
+        } else {
+            // Log what we're searching for (limit logging to avoid spam - just first few)
+            if imageCount > 0 {
+                print("🖼️ FoodImageHeaderView: No local image for '\(foodId)' (have \(imageCount) mappings)")
+            }
+        }
+        isLoadingLocal = false
+    }
+}
+
+/// A detail page image view with background detection callback
+/// Used in food detail screens where image background affects UI colors
+struct FoodDetailImageView: View {
+    let foodId: String
+    let remoteImageUrl: String?
+    let maxHeight: CGFloat
+    let onBackgroundDetected: ((URL) -> Void)?
+
+    @State private var localImage: UIImage?
+    @State private var isLoadingLocal = false  // Start false - check synchronously
+    @State private var didCheckLocal = false
+
+    init(foodId: String, remoteImageUrl: String?, maxHeight: CGFloat = 160, onBackgroundDetected: ((URL) -> Void)? = nil) {
+        self.foodId = foodId
+        self.remoteImageUrl = remoteImageUrl
+        self.maxHeight = maxHeight
+        self.onBackgroundDetected = onBackgroundDetected
+    }
+
+    var body: some View {
+        Group {
+            if let localImage = localImage {
+                // Local image found - display instantly
+                Image(uiImage: localImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxHeight: maxHeight)
+            } else if isLoadingLocal {
+                // Still checking local - show nothing to avoid flicker
+                EmptyView()
+            } else if let imageUrl = remoteImageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                // Fall back to network image
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: maxHeight)
+                            .onAppear {
+                                onBackgroundDetected?(url)
+                            }
+                    case .failure(_):
+                        EmptyView()
+                    case .empty:
+                        ProgressView()
+                            .tint(.secondary)
+                            .frame(height: maxHeight - 20)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .frame(maxHeight: maxHeight + 20)
+            }
+            // No image - show nothing
+        }
+        .onAppear {
+            if !didCheckLocal {
+                loadLocalImage()
+            }
+        }
+        .task(id: foodId) {
+            // Use .task for reliable execution - triggers on foodId change too
+            if !didCheckLocal {
+                loadLocalImage()
+            }
+        }
+    }
+
+    private func loadLocalImage() {
+        guard !didCheckLocal else { return }
+        didCheckLocal = true
+
+        let imageCount = LocalFoodImageManager.shared.localImageCount
+        print("🖼️ FoodDetailImageView: Checking local image for '\(foodId)' (have \(imageCount) mappings)")
+
+        if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
+            print("🖼️ FoodDetailImageView: Found local URL for \(foodId)")
+            if let data = try? Data(contentsOf: localURL),
+               let image = UIImage(data: data) {
+                localImage = image
+                print("🖼️ FoodDetailImageView: Loaded local image for \(foodId)")
+                // Trigger background detection for local images too
+                onBackgroundDetected?(localURL)
+            } else {
+                print("🖼️ FoodDetailImageView: Failed to load data from \(localURL.path)")
+            }
+        } else {
+            print("🖼️ FoodDetailImageView: No local image for '\(foodId)'")
+        }
+        isLoadingLocal = false
+    }
+}
+
 final class LocalGradeCache {
     static let processing = NSCache<NSString, NSString>()
     static let sugar = NSCache<NSString, NSString>()
@@ -92,54 +403,13 @@ struct FoodSearchResultRow: View {
     var body: some View {
         Button(action: onAdd) {
             HStack(spacing: 12) {
-                // Product image thumbnail (48x48)
-                if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 48, height: 48)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.white)
-                                )
-                        case .failure(_):
-                            // Show placeholder on image load failure
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.1))
-                                .frame(width: 48, height: 48)
-                                .overlay(
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.gray)
-                                )
-                        case .empty:
-                            // Show loading indicator
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.1))
-                                .frame(width: 48, height: 48)
-                                .overlay(
-                                    ProgressView()
-                                        .tint(.secondary)
-                                )
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                } else {
-                    // No image - show placeholder icon
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.1))
-                        .frame(width: 48, height: 48)
-                        .overlay(
-                            Image(systemName: "photo")
-                                .font(.system(size: 20))
-                                .foregroundColor(.gray)
-                        )
-                }
+                // Product image thumbnail (48x48) - prefers local bundled images
+                FoodImageView(
+                    foodId: food.id,
+                    remoteImageUrl: food.imageUrl,
+                    size: 48,
+                    cornerRadius: 8
+                )
 
                 VStack(alignment: .leading) {
                     Text(food.name)
@@ -181,7 +451,10 @@ struct FoodSearchResultRowEnhanced: View {
     @Binding var selectedTab: TabItem
     @Binding var foodDetailSheetOpen: Bool
     var onComplete: ((TabItem) -> Void)?
-    @State private var showingFoodDetail = false
+    // CRITICAL FIX: Use item-based sheet to capture the food when tapping
+    // Previously used Bool `showingFoodDetail` which could show wrong food if
+    // the LazyVStack row was recycled or parent view re-rendered
+    @State private var selectedFoodForDetail: FoodSearchResult? = nil
     @State private var isPressed = false
     @State private var showingQuickAddConfirmation = false
     @State private var quickAddMealType = ""
@@ -192,6 +465,9 @@ struct FoodSearchResultRowEnhanced: View {
     @State private var showingServingEditor = false
     @State private var editedServingSize: String = ""
     @FocusState private var servingEditorFocused: Bool
+
+    // RACE CONDITION FIX: Prevent double-tap on quick add
+    @State private var isQuickAdding = false
 
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
@@ -561,39 +837,22 @@ struct FoodSearchResultRowEnhanced: View {
                 #selector(UIResponder.resignFirstResponder),
                 to: nil, from: nil, for: nil
             )
-            showingFoodDetail = true
+            // CRITICAL: Capture the food when tapping, not when presenting
+            // This prevents showing wrong food if row is recycled in LazyVStack
+            selectedFoodForDetail = food
+            print("🔍 DEBUG Row tapped: \(food.name) (id: \(food.id))")
         }) {
             VStack(spacing: 0) {
-                // Product image header (only when available) with white background
-                if let imageUrl = food.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
-                    ZStack {
-                        // White background so product images blend in
-                        Color.white
-
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(height: 100)
-                            case .failure(_):
-                                EmptyView()
-                            case .empty:
-                                ProgressView()
-                                    .tint(.secondary)
-                                    .frame(height: 100)
-                            @unknown default:
-                                EmptyView()
-                            }
-                        }
-                    }
-                    .frame(height: 100)
-                }
+                // Product image header - prefers local bundled images
+                FoodImageHeaderView(
+                    foodId: food.id,
+                    remoteImageUrl: food.imageUrl,
+                    height: 100
+                )
 
                 HStack(spacing: 14) {
-                    // Category icon (only when no image)
-                    if food.imageUrl == nil || food.imageUrl?.isEmpty == true {
+                    // Category icon (only when no image available)
+                    if !LocalFoodImageManager.shared.hasLocalImage(for: food.id) && (food.imageUrl == nil || food.imageUrl?.isEmpty == true) {
                         ZStack {
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
                                 .fill(foodIcon.color.opacity(colorScheme == .dark ? 0.25 : 0.15))
@@ -730,8 +989,10 @@ struct FoodSearchResultRowEnhanced: View {
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 8, y: 3)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .fullScreenCover(isPresented: $showingFoodDetail) {
-            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
+        .fullScreenCover(item: $selectedFoodForDetail) { capturedFood in
+            // CRITICAL: Use `capturedFood` (the item captured when tapped), NOT `food` (current row's food)
+            // This ensures the detail view shows the food the user actually tapped
+            FoodDetailViewFromSearch(food: capturedFood, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
                 print("[FoodSearchResultRowEnhanced] FoodDetail onComplete called with tab: \(tab)")
                 onComplete?(tab)
             }
@@ -741,7 +1002,7 @@ struct FoodSearchResultRowEnhanced: View {
             .interactiveDismissDisabled(false)
             // Note: presentationBackground is handled by FoodDetailViewFromSearch internally
             .onAppear {
-                print("[FoodDetailViewFromSearch] onAppear - fullScreenCover presented")
+                print("[FoodDetailViewFromSearch] onAppear - fullScreenCover presented for \(capturedFood.name)")
                 // Set parent sheet state AFTER the sheet fully appears
                 DispatchQueue.main.async {
                     foodDetailSheetOpen = true
@@ -754,7 +1015,6 @@ struct FoodSearchResultRowEnhanced: View {
                     foodDetailSheetOpen = false
                 }
             }
-            .id(food.id) // Stable ID prevents dismissal when parent view redraws
         }
         .overlay(
             Group {
@@ -1013,6 +1273,10 @@ struct FoodSearchResultRowEnhanced: View {
 
     // Shared diary entry creation logic
     private func addFoodToDiary(mealType: String, servingMultiplier: Double, servingDesc: String) {
+        // RACE CONDITION FIX: Prevent double-tap on quick add
+        guard !isQuickAdding else { return }
+        isQuickAdding = true
+
         // Analyze additives from ingredients if available (like FoodDetailViewFromSearch does)
         let additivesToSave: [NutritionAdditiveInfo]?
         if let ingredients = food.ingredients, !ingredients.isEmpty {
@@ -1085,6 +1349,7 @@ struct FoodSearchResultRowEnhanced: View {
                 try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: targetDate, hasProAccess: true)
 
                 await MainActor.run {
+                    isQuickAdding = false  // Reset after successful add
                     quickAddMealType = mealType
                     withAnimation(.spring(response: 0.3)) {
                         showingQuickAddConfirmation = true
@@ -1097,9 +1362,11 @@ struct FoodSearchResultRowEnhanced: View {
                         }
                     }
                 }
-
-                            } catch {
-                            }
+            } catch {
+                await MainActor.run {
+                    isQuickAdding = false  // Reset on error too
+                }
+            }
         }
     }
 }

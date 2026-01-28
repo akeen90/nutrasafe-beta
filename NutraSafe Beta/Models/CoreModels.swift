@@ -444,10 +444,30 @@ struct WaterEntry: Codable, Identifiable {
     }
 }
 
+// RACE CONDITION FIX: Actor to serialize diary mutations
+// Prevents read-modify-write races when multiple food items are added simultaneously
+private actor DiaryMutationActor {
+    private var isOperationInProgress = false
+
+    func withSerialExecution<T>(_ operation: @Sendable () async throws -> T) async rethrows -> T {
+        // Wait for any in-progress operation to complete
+        while isOperationInProgress {
+            await Task.yield()
+        }
+        isOperationInProgress = true
+        defer { isOperationInProgress = false }
+        return try await operation()
+    }
+}
+
 class DiaryDataManager: ObservableObject {
     static let shared = DiaryDataManager()
 
     @Published var dataReloadTrigger: UUID = UUID()
+
+    // RACE CONDITION FIX: Serial actor for diary mutations
+    // Prevents read-modify-write races when multiple food items are added simultaneously
+    private let diaryActor = DiaryMutationActor()
 
     // PERFORMANCE: Static DateFormatter to avoid recreation on every call
     // DateFormatter creation is expensive (~10ms per instance)
@@ -518,8 +538,14 @@ class DiaryDataManager: ObservableObject {
     }
     
     // Add a single food item to a specific meal
+    // RACE CONDITION FIX: Uses actor to serialize mutations and prevent read-modify-write races
     func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date, hasProAccess: Bool = false) async throws {
+        try await diaryActor.withSerialExecution { [self] in
+            try await addFoodItemInternal(item, to: meal, for: date, hasProAccess: hasProAccess)
+        }
+    }
 
+    private func addFoodItemInternal(_ item: DiaryFoodItem, to meal: String, for date: Date, hasProAccess: Bool = false) async throws {
         // Create item with correct meal time (time property is immutable, so we need a new instance)
         let itemWithCorrectTime = DiaryFoodItem(
             id: item.id,
@@ -658,8 +684,14 @@ class DiaryDataManager: ObservableObject {
     }
 
     // Replace an existing food item in the diary (used when enhancing from diary)
+    // RACE CONDITION FIX: Uses actor to serialize mutations
     func replaceFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date, hasProAccess: Bool = false) async throws {
+        try await diaryActor.withSerialExecution { [self] in
+            try await replaceFoodItemInternal(item, to: meal, for: date, hasProAccess: hasProAccess)
+        }
+    }
 
+    private func replaceFoodItemInternal(_ item: DiaryFoodItem, to meal: String, for date: Date, hasProAccess: Bool = false) async throws {
         // Load current data from Firebase (single source of truth)
         let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
 
@@ -722,8 +754,14 @@ class DiaryDataManager: ObservableObject {
     }
 
     // Move an existing food item from one meal to another for a given date
+    // RACE CONDITION FIX: Uses actor to serialize mutations
     func moveFoodItem(_ item: DiaryFoodItem, from originalMeal: String, to newMeal: String, for date: Date, hasProAccess: Bool = false) async throws {
+        try await diaryActor.withSerialExecution { [self] in
+            try await moveFoodItemInternal(item, from: originalMeal, to: newMeal, for: date, hasProAccess: hasProAccess)
+        }
+    }
 
+    private func moveFoodItemInternal(_ item: DiaryFoodItem, from originalMeal: String, to newMeal: String, for date: Date, hasProAccess: Bool = false) async throws {
         // Load current data from Firebase (single source of truth)
         let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
 

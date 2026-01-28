@@ -367,6 +367,13 @@ struct FoodDetailViewFromSearch: View {
     @FocusState private var servingEditorFocused: Bool
     private let highCalorieThreshold: Double = 600
 
+    // RACE CONDITION FIX: Prevent double-tap on Add to Diary button
+    @State private var isAddingToLog = false
+
+    // One-time serving size education popup
+    @State private var showingServingEducation = false
+    @AppStorage("hasSeenServingEducation") private var hasSeenServingEducation = false
+
     // PERFORMANCE: Cache additive analysis result to prevent re-computation on every render
     @State private var cachedAdditives: [DetailedAdditive]? = nil
 
@@ -1808,16 +1815,10 @@ struct FoodDetailViewFromSearch: View {
             }
 
             // Load user allergens from cache (instant) and detect if present in this food
-            // Wrapped in error handling to prevent network issues from affecting view stability
             Task {
-                do {
-                    await loadAndDetectUserAllergensOptimized()
-                    // Re-run additive analysis with user sensitivities after allergens are loaded
-                    await runAdditiveAnalysis()
-                } catch {
-                    // Silently handle - allergens will use cached data or defaults
-                    print("⚠️ Failed to load allergens: \(error.localizedDescription)")
-                }
+                await loadAndDetectUserAllergensOptimized()
+                // Re-run additive analysis with user sensitivities after allergens are loaded
+                await runAdditiveAnalysis()
             }
 
             // Check if food is in favorites - with timeout to prevent hanging on slow networks
@@ -2211,6 +2212,10 @@ struct FoodDetailViewFromSearch: View {
         .sheet(isPresented: $showingHighCalorieWarning) {
             highCalorieWarningSheet
         }
+        // One-time Serving Size Education Sheet
+        .sheet(isPresented: $showingServingEducation) {
+            servingEducationSheet
+        }
         } // End NavigationView
     }
 
@@ -2466,6 +2471,116 @@ struct FoodDetailViewFromSearch: View {
         .presentationDragIndicator(.visible)
     }
 
+    // MARK: - Serving Size Education Sheet (One-time)
+    private var servingEducationSheet: some View {
+        VStack(spacing: 0) {
+            // Header with friendly icon
+            VStack(spacing: 16) {
+                Image(systemName: "hand.raised.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [palette.accent, palette.primary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .padding(.top, 32)
+
+                Text("Just a quick check")
+                    .font(.system(size: 26, weight: .bold, design: .serif))
+                    .foregroundColor(.primary)
+            }
+
+            // Body text
+            VStack(spacing: 20) {
+                Text("Most people accidentally over- or under-log food because serving sizes are easy to miss.")
+                    .font(.system(size: 17))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Highlighted serving amount
+                HStack(spacing: 8) {
+                    Text("You're about to log")
+                        .font(.system(size: 17))
+                        .foregroundColor(.primary)
+
+                    Text(currentServingDescription)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(palette.accent)
+                }
+
+                Text("Does that reflect what you actually ate?")
+                    .font(.system(size: 17))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Take a second to adjust it if needed.")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 28)
+
+            Spacer()
+
+            // Action buttons
+            VStack(spacing: 12) {
+                // Primary: Looks right
+                Button {
+                    hasSeenServingEducation = true
+                    showingServingEducation = false
+                    // Proceed with logging
+                    pendingAction?()
+                    pendingAction = nil
+                } label: {
+                    Text("Looks right")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [palette.accent, palette.primary],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        )
+                }
+
+                // Secondary: Edit amount
+                Button {
+                    hasSeenServingEducation = true
+                    showingServingEducation = false
+                    pendingAction = nil
+                    // Don't proceed - let user edit the serving
+                } label: {
+                    Text("Edit amount")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(palette.accent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(palette.accent, lineWidth: 2)
+                        )
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 34)
+        }
+        .background(Color.adaptiveBackground)
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
     // Current serving description for display
     private var currentServingDescription: String {
         if isPerUnit {
@@ -2479,6 +2594,27 @@ struct FoodDetailViewFromSearch: View {
 
     // MARK: - Add to Food Log Functionality
     private func addToFoodLog() {
+        // RACE CONDITION FIX: Prevent double-tap
+        guard !isAddingToLog else { return }
+        isAddingToLog = true
+
+        // One-time education popup for first-time loggers
+        // Only show for non-per-unit foods (where serving size matters)
+        // Don't show when editing existing entries
+        if !hasSeenServingEducation && diaryEntryId == nil && food.isPerUnit != true {
+            // Store the action to continue after education
+            pendingAction = { [self] in
+                self.continueAfterEducation()
+            }
+            showingServingEducation = true
+            return
+        }
+
+        continueAfterEducation()
+    }
+
+    /// Continue logging flow after education popup (or skip if already seen)
+    private func continueAfterEducation() {
         // Skip high calorie warning for per-unit items (they're already validated)
         // Also skip if editing an existing entry
         if food.isPerUnit != true && diaryEntryId == nil && adjustedCalories >= highCalorieThreshold {
@@ -2518,6 +2654,10 @@ struct FoodDetailViewFromSearch: View {
 
     /// Log food and optionally start a new fast
     private func addToFoodLogAndStartFast() {
+        // RACE CONDITION FIX: Prevent double-tap
+        guard !isAddingToLog else { return }
+        isAddingToLog = true
+
         // Skip high calorie warning for per-unit items
         if food.isPerUnit != true && adjustedCalories >= highCalorieThreshold {
             // Store the action to perform after confirmation
@@ -6494,33 +6634,17 @@ extension FoodDetailViewFromSearch {
     // MARK: - Redesigned Header Section
     private var redesignedHeaderSection: some View {
         VStack(spacing: 4) {
-            // Product image (only when available) - no background for clean look
-            if let imageUrl = displayFood.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 160)
-                            .onAppear {
-                                // Detect if image has a light/white background
-                                detectImageBackground(from: url)
-                            }
-                    case .failure(_):
-                        EmptyView()
-                    case .empty:
-                        ProgressView()
-                            .tint(.secondary)
-                            .frame(height: 140)
-                    @unknown default:
-                        EmptyView()
-                    }
+            // Product image - prefers local bundled images for instant display
+            FoodDetailImageView(
+                foodId: displayFood.id,
+                remoteImageUrl: displayFood.imageUrl,
+                maxHeight: 160,
+                onBackgroundDetected: { url in
+                    detectImageBackground(from: url)
                 }
-                .frame(maxHeight: 180)
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.bottom, 12)
-            }
+            )
+            .padding(.horizontal, DesignTokens.Spacing.md)
+            .padding(.bottom, 12)
 
             // Product name - prominent
             Text(displayFood.name)
@@ -6598,8 +6722,14 @@ extension FoodDetailViewFromSearch {
             // Primary: Add to Diary
             Button(action: addToFoodLog) {
                 HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                    if isAddingToLog {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
                     Text(diaryEntryId != nil ? "Update Diary Entry" : "Add to Diary")
                         .font(.system(size: 15, weight: .semibold))
                 }
@@ -6610,7 +6740,7 @@ extension FoodDetailViewFromSearch {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(
                             LinearGradient(
-                                colors: [palette.accent, palette.primary],
+                                colors: isAddingToLog ? [palette.accent.opacity(0.6), palette.primary.opacity(0.6)] : [palette.accent, palette.primary],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -6618,6 +6748,7 @@ extension FoodDetailViewFromSearch {
                         .shadow(color: palette.accent.opacity(0.25), radius: 8, y: 3)
                 )
             }
+            .disabled(isAddingToLog)
 
             // Secondary: Log & Start Fast
             if !isCurrentlyFasting && diaryEntryId == nil {
@@ -6628,7 +6759,7 @@ extension FoodDetailViewFromSearch {
                         Text("Log Last Meal & Start Fast")
                             .font(.system(size: 14, weight: .medium))
                     }
-                    .foregroundColor(palette.accent)
+                    .foregroundColor(isAddingToLog ? palette.accent.opacity(0.5) : palette.accent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
                     .background(
@@ -6640,6 +6771,7 @@ extension FoodDetailViewFromSearch {
                             .stroke(palette.accent.opacity(0.2), lineWidth: 1)
                     )
                 }
+                .disabled(isAddingToLog)
             }
         }
     }
