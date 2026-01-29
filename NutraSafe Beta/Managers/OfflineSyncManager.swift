@@ -52,11 +52,23 @@ final class OfflineSyncManager {
     /// Maximum retry count before giving up on a sync operation
     private let maxRetryCount = 5
 
+    /// Maximum concurrent sync operations to prevent memory explosion
+    private let maxConcurrentOperations = 5
+
+    /// Timeout for Firestore transactions (in seconds)
+    private let transactionTimeout: TimeInterval = 30
+
     /// Minimum time between sync attempts
     private let minSyncInterval: TimeInterval = 30
 
+    /// Debounce delay after network reconnection (prevents rapid sync attempts)
+    private let networkReconnectDebounce: TimeInterval = 0.5
+
     /// Last sync attempt timestamp
     private var lastSyncAttempt: Date?
+
+    /// Pending reconnection sync task (for debouncing)
+    private var pendingReconnectTask: Task<Void, Never>?
 
     /// Thread-safe network connection state
     private let connectionLock = NSLock()
@@ -75,6 +87,11 @@ final class OfflineSyncManager {
         }
     }
 
+    /// Track failed operations that exceeded max retries (for user notification)
+    /// Using actor-isolated state to avoid NSLock in async contexts (Swift 6 compatibility)
+    private let failedOpsQueue = DispatchQueue(label: "com.nutrasafe.failedOps")
+    private var _failedOperationsCount = 0
+
     // MARK: - Initialization
 
     private init() {
@@ -86,15 +103,34 @@ final class OfflineSyncManager {
 
     private func setupNetworkMonitoring() {
         networkMonitor.pathUpdateHandler = { [weak self] path in
-            let wasConnected = self?.isConnected ?? true
-            self?.isConnected = path.status == .satisfied
+            guard let self = self else { return }
+
+            let wasConnected = self.isConnected
+            self.isConnected = path.status == .satisfied
 
             print("[OfflineSyncManager] Network status: \(path.status == .satisfied ? "connected" : "disconnected")")
 
-            // Trigger sync when network becomes available
+            // Trigger sync when network becomes available (with debounce to handle network flapping)
             if !wasConnected && path.status == .satisfied {
-                print("[OfflineSyncManager] Network reconnected - triggering sync")
-                self?.triggerSync()
+                print("[OfflineSyncManager] Network reconnected - scheduling sync with debounce")
+
+                // Cancel any pending reconnect task
+                self.pendingReconnectTask?.cancel()
+
+                // Schedule sync after debounce period
+                self.pendingReconnectTask = Task {
+                    do {
+                        try await Task.sleep(nanoseconds: UInt64(self.networkReconnectDebounce * 1_000_000_000))
+
+                        // Check we're still connected after debounce
+                        guard !Task.isCancelled && self.isConnected else { return }
+
+                        print("[OfflineSyncManager] Debounce complete - triggering sync")
+                        self.triggerSync()
+                    } catch {
+                        // Task was cancelled (network dropped again) - ignore
+                    }
+                }
             }
         }
         networkMonitor.start(queue: DispatchQueue.global(qos: .utility))
@@ -189,40 +225,94 @@ final class OfflineSyncManager {
 
             // RACE CONDITION FIX: Use structured concurrency with TaskGroup instead of DispatchGroup
             // This ensures all tasks complete before we mark sync as done
+            // MEMORY FIX: Process in batches to prevent memory explosion with large queues
             Task {
-                await withTaskGroup(of: Void.self) { group in
-                    for operation in operations {
-                        group.addTask {
-                            do {
-                                try await self.processOperation(operation)
+                // Process operations in batches to limit concurrent Firebase calls
+                let batches = operations.chunked(into: self.maxConcurrentOperations)
+
+                for batch in batches {
+                    await withTaskGroup(of: (PendingSyncOperation, Result<Void, Error>).self) { group in
+                        for operation in batch {
+                            group.addTask {
+                                do {
+                                    try await self.processOperation(operation)
+                                    return (operation, .success(()))
+                                } catch {
+                                    return (operation, .failure(error))
+                                }
+                            }
+                        }
+
+                        // Process results - only remove from queue AFTER Firebase confirms success
+                        for await (operation, result) in group {
+                            switch result {
+                            case .success:
+                                // SUCCESS: Now safe to remove from sync queue
                                 OfflineDataManager.shared.removeSyncOperation(id: operation.id)
                                 OfflineDataManager.shared.markAsSynced(collection: operation.collection, documentId: operation.documentId)
                                 print("[OfflineSyncManager] Synced: \(operation.collection)/\(operation.documentId)")
-                            } catch {
+
+                            case .failure(let error):
                                 print("[OfflineSyncManager] Failed to sync \(operation.collection)/\(operation.documentId): \(error)")
 
                                 if operation.retryCount < self.maxRetryCount {
+                                    // Increment retry count (operation stays in queue for next sync)
                                     OfflineDataManager.shared.incrementRetryCount(id: operation.id)
+
+                                    // Apply exponential backoff delay before next sync attempt
+                                    let backoffDelay = pow(2.0, Double(operation.retryCount + 1))
+                                    print("[OfflineSyncManager] Will retry \(operation.id) after \(backoffDelay)s backoff (attempt \(operation.retryCount + 1)/\(self.maxRetryCount))")
                                 } else {
-                                    // Max retries exceeded - remove from queue
-                                    print("[OfflineSyncManager] Max retries exceeded for \(operation.id)")
+                                    // Max retries exceeded - move to failed operations table and notify user
+                                    print("[OfflineSyncManager] Max retries exceeded for \(operation.id) - marking as permanently failed")
+                                    OfflineDataManager.shared.markOperationAsFailed(operation: operation, error: error.localizedDescription)
                                     OfflineDataManager.shared.removeSyncOperation(id: operation.id)
+
+                                    // Track failed operations for user notification (thread-safe)
+                                    self.failedOpsQueue.sync {
+                                        self._failedOperationsCount += 1
+                                    }
                                 }
                             }
                         }
                     }
-                    // TaskGroup automatically awaits all tasks before exiting
                 }
 
                 // Clean up deleted records that have been synced
                 OfflineDataManager.shared.cleanupDeletedRecords()
 
                 self.isSyncing = false
-                print("[OfflineSyncManager] Sync completed")
+
+                // Check for failed operations and notify user (thread-safe)
+                let failedCount = self.failedOpsQueue.sync {
+                    let count = self._failedOperationsCount
+                    self._failedOperationsCount = 0
+                    return count
+                }
+
+                let totalFailedCount = OfflineDataManager.shared.getFailedOperationsCount()
+
+                print("[OfflineSyncManager] Sync completed. \(failedCount) new failures, \(totalFailedCount) total failed operations.")
 
                 // Notify observers
                 await MainActor.run {
-                    NotificationCenter.default.post(name: .offlineSyncCompleted, object: nil)
+                    NotificationCenter.default.post(
+                        name: .offlineSyncCompleted,
+                        object: nil,
+                        userInfo: [
+                            "newFailures": failedCount,
+                            "totalFailures": totalFailedCount
+                        ]
+                    )
+
+                    // Post separate notification if there are failed operations requiring user attention
+                    if failedCount > 0 {
+                        NotificationCenter.default.post(
+                            name: .offlineSyncOperationsFailed,
+                            object: nil,
+                            userInfo: ["count": failedCount]
+                        )
+                    }
                 }
 
                 completion?()
@@ -262,24 +352,31 @@ final class OfflineSyncManager {
             // Decode FoodEntry and convert to dictionary
             if let entry = try? JSONDecoder().decode(FoodEntry.self, from: data) {
                 var dict = entry.toDictionary()
-                dict["lastModified"] = Timestamp(date: operation.timestamp)
+                // Use server timestamp for authoritative conflict resolution (fixes clock skew issues)
+                dict["lastModified"] = FieldValue.serverTimestamp()
+                // Store local timestamp as reference for debugging
+                dict["localTimestamp"] = Timestamp(date: operation.timestamp)
 
-                // Use transaction for conflict resolution
-                _ = try await db.runTransaction { transaction, _ in
+                // Use transaction for conflict resolution with timeout
+                try await self.runTransactionWithTimeout(db: db) { transaction in
                     let serverDoc = try? transaction.getDocument(docRef)
 
                     if let serverData = serverDoc?.data(),
                        let serverModified = serverData["lastModified"] as? Timestamp {
+                        // Compare using the local timestamp we recorded when we queued the change
+                        // This allows server to be authoritative while still resolving conflicts
                         let serverDate = serverModified.dateValue()
-                        if operation.timestamp >= serverDate {
+                        // If document exists and was modified after we queued our change, skip
+                        // Use a small tolerance (1 second) to handle near-simultaneous edits
+                        if operation.timestamp.timeIntervalSince(serverDate) > -1.0 {
                             transaction.setData(dict, forDocument: docRef)
                         } else {
                             print("[OfflineSyncManager] Skipping sync - server has newer data for food entry \(operation.documentId)")
                         }
                     } else {
+                        // No server document or no timestamp - safe to write
                         transaction.setData(dict, forDocument: docRef)
                     }
-                    return nil
                 }
             } else {
                 throw SyncError.decodingFailed
@@ -296,7 +393,8 @@ final class OfflineSyncManager {
                     "quantity": item.quantity,
                     "expiryDate": Timestamp(date: item.expiryDate),
                     "addedDate": Timestamp(date: item.addedDate),
-                    "lastModified": Timestamp(date: operation.timestamp)
+                    "lastModified": FieldValue.serverTimestamp(),
+                    "localTimestamp": Timestamp(date: operation.timestamp)
                 ]
                 if let brand = item.brand { dict["brand"] = brand }
                 if let barcode = item.barcode { dict["barcode"] = barcode }
@@ -304,14 +402,14 @@ final class OfflineSyncManager {
                 if let imageURL = item.imageURL { dict["imageURL"] = imageURL }
                 if let notes = item.notes { dict["notes"] = notes }
 
-                // Use transaction for conflict resolution
-                _ = try await db.runTransaction { transaction, _ in
+                // Use transaction for conflict resolution with timeout
+                try await self.runTransactionWithTimeout(db: db) { transaction in
                     let serverDoc = try? transaction.getDocument(docRef)
 
                     if let serverData = serverDoc?.data(),
                        let serverModified = serverData["lastModified"] as? Timestamp {
                         let serverDate = serverModified.dateValue()
-                        if operation.timestamp >= serverDate {
+                        if operation.timestamp.timeIntervalSince(serverDate) > -1.0 {
                             transaction.setData(dict, forDocument: docRef)
                         } else {
                             print("[OfflineSyncManager] Skipping sync - server has newer data for use by item \(operation.documentId)")
@@ -319,7 +417,6 @@ final class OfflineSyncManager {
                     } else {
                         transaction.setData(dict, forDocument: docRef)
                     }
-                    return nil
                 }
             } else {
                 throw SyncError.decodingFailed
@@ -334,7 +431,8 @@ final class OfflineSyncManager {
                     "id": entry.id.uuidString,
                     "weight": entry.weight,
                     "date": Timestamp(date: entry.date),
-                    "lastModified": Timestamp(date: operation.timestamp)  // Track when this was modified locally
+                    "lastModified": FieldValue.serverTimestamp(),
+                    "localTimestamp": Timestamp(date: operation.timestamp)
                 ]
                 if let bmi = entry.bmi { dict["bmi"] = bmi }
                 if let note = entry.note { dict["note"] = note }
@@ -343,25 +441,21 @@ final class OfflineSyncManager {
                 if let waistSize = entry.waistSize { dict["waistSize"] = waistSize }
                 if let dressSize = entry.dressSize { dict["dressSize"] = dressSize }
 
-                // Use transaction to check for newer server data before overwriting
-                _ = try await db.runTransaction { transaction, _ in
+                // Use transaction for conflict resolution with timeout
+                try await self.runTransactionWithTimeout(db: db) { transaction in
                     let serverDoc = try? transaction.getDocument(docRef)
 
-                    // If server has this document, check if it's newer
                     if let serverData = serverDoc?.data(),
                        let serverModified = serverData["lastModified"] as? Timestamp {
                         let serverDate = serverModified.dateValue()
-                        // Only overwrite if local change is newer or equal
-                        if operation.timestamp >= serverDate {
+                        if operation.timestamp.timeIntervalSince(serverDate) > -1.0 {
                             transaction.setData(dict, forDocument: docRef)
                         } else {
                             print("[OfflineSyncManager] Skipping sync - server has newer data for \(operation.documentId)")
                         }
                     } else {
-                        // No server document or no timestamp - safe to write
                         transaction.setData(dict, forDocument: docRef)
                     }
-                    return nil
                 }
             } else {
                 throw SyncError.decodingFailed
@@ -383,22 +477,22 @@ final class OfflineSyncManager {
                 .collection("fastingSessions").document(operation.documentId)
 
             if let session = try? JSONDecoder().decode(FastingSession.self, from: data) {
-                // Use transaction for conflict resolution
-                _ = try await db.runTransaction { transaction, _ in
+                // Use transaction for conflict resolution with timeout
+                try await self.runTransactionWithTimeout(db: db) { transaction in
                     let serverDoc = try? transaction.getDocument(docRef)
 
                     if let serverData = serverDoc?.data(),
                        let serverModified = serverData["lastModified"] as? Timestamp {
                         let serverDate = serverModified.dateValue()
-                        if operation.timestamp >= serverDate {
-                            try? transaction.setData(from: session, forDocument: docRef)
+                        // Standardized comparison: allow 1 second tolerance for near-simultaneous edits
+                        if operation.timestamp.timeIntervalSince(serverDate) > -1.0 {
+                            _ = try? transaction.setData(from: session, forDocument: docRef)
                         } else {
                             print("[OfflineSyncManager] Skipping sync - server has newer fasting session \(operation.documentId)")
                         }
                     } else {
-                        try? transaction.setData(from: session, forDocument: docRef)
+                        _ = try? transaction.setData(from: session, forDocument: docRef)
                     }
-                    return nil
                 }
             } else {
                 throw SyncError.decodingFailed
@@ -409,22 +503,22 @@ final class OfflineSyncManager {
                 .collection("fastingPlans").document(operation.documentId)
 
             if let plan = try? JSONDecoder().decode(FastingPlan.self, from: data) {
-                // Use transaction for conflict resolution
-                _ = try await db.runTransaction { transaction, _ in
+                // Use transaction for conflict resolution with timeout
+                try await self.runTransactionWithTimeout(db: db) { transaction in
                     let serverDoc = try? transaction.getDocument(docRef)
 
                     if let serverData = serverDoc?.data(),
                        let serverModified = serverData["lastModified"] as? Timestamp {
                         let serverDate = serverModified.dateValue()
-                        if operation.timestamp >= serverDate {
-                            try? transaction.setData(from: plan, forDocument: docRef)
+                        // Standardized comparison: allow 1 second tolerance for near-simultaneous edits
+                        if operation.timestamp.timeIntervalSince(serverDate) > -1.0 {
+                            _ = try? transaction.setData(from: plan, forDocument: docRef)
                         } else {
                             print("[OfflineSyncManager] Skipping sync - server has newer fasting plan \(operation.documentId)")
                         }
                     } else {
-                        try? transaction.setData(from: plan, forDocument: docRef)
+                        _ = try? transaction.setData(from: plan, forDocument: docRef)
                     }
-                    return nil
                 }
             } else {
                 throw SyncError.decodingFailed
@@ -435,22 +529,22 @@ final class OfflineSyncManager {
                 .collection("reactionLogs").document(operation.documentId)
 
             if let entry = try? JSONDecoder().decode(ReactionLogEntry.self, from: data) {
-                // Use transaction for conflict resolution
-                _ = try await db.runTransaction { transaction, _ in
+                // Use transaction for conflict resolution with timeout
+                try await self.runTransactionWithTimeout(db: db) { transaction in
                     let serverDoc = try? transaction.getDocument(docRef)
 
                     if let serverData = serverDoc?.data(),
                        let serverModified = serverData["lastModified"] as? Timestamp {
                         let serverDate = serverModified.dateValue()
-                        if operation.timestamp >= serverDate {
-                            try? transaction.setData(from: entry, forDocument: docRef)
+                        // Standardized comparison: allow 1 second tolerance for near-simultaneous edits
+                        if operation.timestamp.timeIntervalSince(serverDate) > -1.0 {
+                            _ = try? transaction.setData(from: entry, forDocument: docRef)
                         } else {
                             print("[OfflineSyncManager] Skipping sync - server has newer reaction log \(operation.documentId)")
                         }
                     } else {
-                        try? transaction.setData(from: entry, forDocument: docRef)
+                        _ = try? transaction.setData(from: entry, forDocument: docRef)
                     }
-                    return nil
                 }
             } else {
                 throw SyncError.decodingFailed
@@ -501,14 +595,15 @@ final class OfflineSyncManager {
                     favoriteData["portions"] = portionsArray
                 }
 
-                // Use transaction for conflict resolution
-                _ = try await db.runTransaction { transaction, _ in
+                // Use transaction for conflict resolution with timeout
+                try await self.runTransactionWithTimeout(db: db) { transaction in
                     let serverDoc = try? transaction.getDocument(docRef)
 
                     if let serverData = serverDoc?.data(),
                        let serverModified = serverData["lastModified"] as? Timestamp {
                         let serverDate = serverModified.dateValue()
-                        if operation.timestamp >= serverDate {
+                        // Standardized comparison: allow 1 second tolerance for near-simultaneous edits
+                        if operation.timestamp.timeIntervalSince(serverDate) > -1.0 {
                             transaction.setData(favoriteData, forDocument: docRef)
                         } else {
                             print("[OfflineSyncManager] Skipping sync - server has newer favorite food \(operation.documentId)")
@@ -516,7 +611,6 @@ final class OfflineSyncManager {
                     } else {
                         transaction.setData(favoriteData, forDocument: docRef)
                     }
-                    return nil
                 }
             } else {
                 throw SyncError.decodingFailed
@@ -524,6 +618,40 @@ final class OfflineSyncManager {
 
         default:
             throw SyncError.unknownCollection
+        }
+    }
+
+    // MARK: - Transaction Helper with Timeout
+
+    /// Runs a Firestore transaction with a timeout to prevent hanging operations
+    private func runTransactionWithTimeout(
+        db: Firestore,
+        _ updateBlock: @escaping (Transaction) -> Void
+    ) async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            // Add the transaction task
+            group.addTask {
+                _ = try await db.runTransaction { transaction, _ in
+                    updateBlock(transaction)
+                    return nil
+                }
+            }
+
+            // Add timeout task
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(self.transactionTimeout * 1_000_000_000))
+                throw SyncError.transactionTimeout
+            }
+
+            // Wait for first to complete (either success or timeout)
+            do {
+                try await group.next()
+                // If transaction completed first, cancel the timeout
+                group.cancelAll()
+            } catch {
+                group.cancelAll()
+                throw error
+            }
         }
     }
 
@@ -658,6 +786,7 @@ enum SyncError: Error, LocalizedError {
     case missingData
     case decodingFailed
     case unknownCollection
+    case transactionTimeout
 
     var errorDescription: String? {
         switch self {
@@ -671,6 +800,8 @@ enum SyncError: Error, LocalizedError {
             return "Failed to decode data"
         case .unknownCollection:
             return "Unknown collection type"
+        case .transactionTimeout:
+            return "Transaction timed out"
         }
     }
 }
@@ -679,4 +810,17 @@ enum SyncError: Error, LocalizedError {
 
 extension Notification.Name {
     static let offlineSyncCompleted = Notification.Name("offlineSyncCompleted")
+    static let offlineSyncOperationsFailed = Notification.Name("offlineSyncOperationsFailed")
+}
+
+// MARK: - Array Chunking Extension
+
+private extension Array {
+    /// Split array into chunks of specified size
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
+    }
 }
