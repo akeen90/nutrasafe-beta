@@ -33,6 +33,60 @@ class FirebaseManager: ObservableObject {
     private let cacheQueue = DispatchQueue(label: "com.nutrasafe.cacheQueue")
     private var authListenerHandle: AuthStateDidChangeListenerHandle?
 
+    // Auth state generation counter - increments on each auth state change
+    // Used by long-running operations to detect if auth changed mid-operation
+    private let authGenerationLock = NSLock()
+    private var _authGeneration: UInt64 = 0
+    private var authGeneration: UInt64 {
+        authGenerationLock.lock()
+        defer { authGenerationLock.unlock() }
+        return _authGeneration
+    }
+    private func incrementAuthGeneration() {
+        authGenerationLock.lock()
+        defer { authGenerationLock.unlock() }
+        _authGeneration &+= 1 // Wrapping add to avoid overflow
+    }
+
+    /// Error thrown when auth state changes during an operation
+    enum AuthStateError: LocalizedError {
+        case authStateChanged
+        case notAuthenticated
+
+        var errorDescription: String? {
+            switch self {
+            case .authStateChanged:
+                return "Your authentication state changed. Please try again."
+            case .notAuthenticated:
+                return "You must be signed in to perform this action."
+            }
+        }
+    }
+
+    /// Captures the current auth generation for comparison during long-running operations.
+    /// Call at the start of an operation, then use `checkAuthStateUnchanged` at checkpoints.
+    private func captureAuthState() -> UInt64 {
+        authGeneration
+    }
+
+    /// Throws if auth state has changed since the operation started.
+    /// Use at checkpoints in long-running operations to abort early if user signed out.
+    private func checkAuthStateUnchanged(since generation: UInt64) throws {
+        guard authGeneration == generation else {
+            throw AuthStateError.authStateChanged
+        }
+    }
+
+    /// Guards that user is authenticated and returns the user ID.
+    /// Use at the start of operations that require authentication.
+    @MainActor
+    private func requireAuthenticatedUserId() throws -> String {
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
+        return userId
+    }
+
     // Apple Sign In nonce storage - protected by dedicated queue to prevent race conditions
     private let nonceQueue = DispatchQueue(label: "com.nutrasafe.nonceQueue")
     private var _currentNonce: String?
@@ -100,6 +154,8 @@ class FirebaseManager: ObservableObject {
                 // orphaned observers receiving events for deallocated managers
                 Task { @MainActor in
                     guard let self = self else { return }
+                    // Increment auth generation to invalidate any in-flight operations
+                    self.incrementAuthGeneration()
                     self.currentUser = user
                     self.isAuthenticated = user != nil
                     NotificationCenter.default.post(name: .authStateChanged, object: nil)
@@ -229,7 +285,10 @@ class FirebaseManager: ObservableObject {
     /// - Throws: Firebase auth errors if sign out fails
     @MainActor
     func signOut() throws {
-        // Clear auth state FIRST (synchronously on MainActor) before signing out
+        // Increment auth generation FIRST to invalidate any in-flight operations immediately
+        incrementAuthGeneration()
+
+        // Clear auth state synchronously before signing out
         // This ensures no code can see an inconsistent state
         self.currentUser = nil
         self.isAuthenticated = false
@@ -273,8 +332,11 @@ class FirebaseManager: ObservableObject {
     func deleteAllUserData() async throws {
         await ensureAuthStateLoadedAsync()
 
+        // Capture auth state at start to detect mid-operation sign-out
+        let startingAuthGeneration = captureAuthState()
+
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete data"])
+            throw AuthStateError.notAuthenticated
         }
 
         // Log data deletion (user ID is automatically redacted in production logs)
@@ -298,6 +360,9 @@ class FirebaseManager: ObservableObject {
 
         var totalDeleted = 0
         for collection in collections {
+            // Check auth state before each collection deletion
+            try checkAuthStateUnchanged(since: startingAuthGeneration)
+
             let snapshot = try await db.collection("users").document(userId)
                 .collection(collection).getDocuments()
 
@@ -310,6 +375,9 @@ class FirebaseManager: ObservableObject {
             let chunkSize = 500
 
             for chunkStart in stride(from: 0, to: documents.count, by: chunkSize) {
+                // Check auth state before each batch
+                try checkAuthStateUnchanged(since: startingAuthGeneration)
+
                 let chunkEnd = min(chunkStart + chunkSize, documents.count)
                 let chunk = Array(documents[chunkStart..<chunkEnd])
 
@@ -588,16 +656,20 @@ class FirebaseManager: ObservableObject {
     }
 
     func saveFoodEntry(_ entry: FoodEntry, hasProAccess: Bool = false) async throws {
-        guard let userId = currentUser?.uid else { return }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
 
         // Check daily limit for free users BEFORE saving
+        // Use local SQLite count to work offline (Firebase check would fail when offline)
         if !hasProAccess {
-            let currentCount = try await countFoodEntries(for: entry.date)
+            let localEntries = OfflineDataManager.shared.getFoodEntries(for: entry.date, userId: userId)
+            let currentCount = localEntries.count
             let limit = SubscriptionManager.freeDiaryEntriesPerDay
             if currentCount >= limit {
-                                throw DiaryLimitError.dailyLimitReached(current: currentCount, limit: limit)
+                throw DiaryLimitError.dailyLimitReached(current: currentCount, limit: limit)
             }
-                    }
+        }
 
         // Validate food entry before saving to prevent corrupt data
         // Validate entry before saving
@@ -636,17 +708,29 @@ class FirebaseManager: ObservableObject {
         let ringsEnabled = UserDefaults.standard.bool(forKey: "healthKitRingsEnabled")
         if ringsEnabled {
             Task {
+                // Add timeout to prevent hanging HealthKit operations
+                let timeoutTask = Task {
+                    try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+                }
+
                 await HealthKitManager.shared.requestAuthorization()
                 do {
                     try await HealthKitManager.shared.writeDietaryEnergyConsumed(calories: entry.calories, date: entry.date)
+                    timeoutTask.cancel()
                 } catch {
                     // Retry once on HealthKit write failure
                     do {
                         try await Task.sleep(nanoseconds: 300_000_000)
                         try await HealthKitManager.shared.writeDietaryEnergyConsumed(calories: entry.calories, date: entry.date)
+                        timeoutTask.cancel()
                     } catch {
+                        timeoutTask.cancel()
                         // HealthKit sync failed - non-fatal, food entry is already saved
-                        print("HealthKit sync failed after retry: \(error.localizedDescription)")
+                        PrivacyLogger.warning(
+                            "HealthKit sync failed after retry: \(error.localizedDescription)",
+                            subsystem: .healthKit,
+                            category: .dataSync
+                        )
                     }
                 }
             }
@@ -670,7 +754,9 @@ class FirebaseManager: ObservableObject {
     }
     
     func getFoodEntries(for date: Date) async throws -> [FoodEntry] {
-        guard let userId = currentUser?.uid else { return [] }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
 
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
@@ -825,7 +911,12 @@ class FirebaseManager: ObservableObject {
 
     // Get food entries for the past N days for nutritional analysis
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
-        guard let userId = currentUser?.uid else { return [] }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
+
+        // Capture auth state at start for mid-operation validation
+        let authGen = captureAuthState()
 
         // Cache key includes userId to prevent data leakage between users
         let cacheKey = "\(userId)_\(days)"
@@ -889,6 +980,9 @@ class FirebaseManager: ObservableObject {
             // CRITICAL: Check cancellation after network call - cache may have been invalidated
             try Task.checkCancellation()
 
+            // CRITICAL: Check auth state hasn't changed during network call
+            try self.checkAuthStateUnchanged(since: authGen)
+
             let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
                 // Use Firestore's native Codable decoder for safe, crash-proof parsing
                 do {
@@ -947,18 +1041,20 @@ class FirebaseManager: ObservableObject {
 
     // Get food entries for a period using fromDictionary for proper additives decoding
     func getFoodEntriesWithAdditivesForPeriod(days: Int) async throws -> [FoodEntry] {
-        guard let userId = currentUser?.uid else { return [] }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
 
         let calendar = Calendar.current
         let today = Date()
         let startOfToday = calendar.startOfDay(for: today)
         guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)?.addingTimeInterval(-0.001) else {
-            return []
+            throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate end of day for additives period query"])
         }
         // For "days" period, we want today + (days-1) previous days
         // e.g., Week (7 days) = today + 6 previous days
         guard let startDate = calendar.date(byAdding: .day, value: -(days - 1), to: startOfToday) else {
-            return []
+            throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate start date for additives period query"])
         }
         let queryStart = startDate  // Already at start of day
 
@@ -998,7 +1094,9 @@ class FirebaseManager: ObservableObject {
     // Get food entries within a specific date range (used by ReactionLogManager)
     // NOTE: Caller is responsible for passing correct date boundaries
     func getFoodEntriesInRange(from startDate: Date, to endDate: Date) async throws -> [FoodEntry] {
-        guard let userId = currentUser?.uid else { return [] }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
 
         // Query Firebase with the provided date range with retry logic
         // ReactionLogManager uses this for time-based reaction analysis
@@ -1031,7 +1129,9 @@ class FirebaseManager: ObservableObject {
     /// Delete all food entries older than today (for clearing test data)
     /// Uses batch operations for efficiency (max 500 per batch)
     func deleteOldFoodEntries() async throws {
-        guard let userId = currentUser?.uid else { return }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
 
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
@@ -1083,7 +1183,9 @@ class FirebaseManager: ObservableObject {
     ///   - entryId: The ID of the entry to delete
     ///   - date: Optional date of the entry - if provided, only invalidates cache for that date (more efficient)
     func deleteFoodEntry(entryId: String, date: Date? = nil) async throws {
-        guard let userId = currentUser?.uid else { return }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
 
         // OFFLINE-FIRST: Mark as deleted in local SQLite database
         // OfflineSyncManager will push delete to Firebase in the background
@@ -1128,7 +1230,9 @@ class FirebaseManager: ObservableObject {
     ///   - entryIds: Array of entry IDs to delete
     ///   - dates: Optional set of dates for these entries - if provided, only invalidates cache for those dates (more efficient)
     func deleteFoodEntries(entryIds: [String], dates: Set<Date>? = nil) async throws {
-        guard let userId = currentUser?.uid else { return }
+        guard let userId = currentUser?.uid else {
+            throw AuthStateError.notAuthenticated
+        }
         guard !entryIds.isEmpty else { return }
 
         // Firestore batches support up to 500 operations
@@ -1281,7 +1385,9 @@ class FirebaseManager: ObservableObject {
 
     /// Delete a reaction log entry
     func deleteReactionLog(entryId: String) async throws {
-        guard currentUser?.uid != nil else { return }
+        guard currentUser?.uid != nil else {
+            throw AuthStateError.notAuthenticated
+        }
 
         // OFFLINE-FIRST: Mark as deleted in local SQLite database
         // OfflineSyncManager will push delete to Firebase in the background
@@ -1382,25 +1488,17 @@ class FirebaseManager: ObservableObject {
     func updateUseByItem(_ item: UseByInventoryItem) async throws {
         await ensureAuthStateLoadedAsync()
 
-        guard let userId = currentUser?.uid else {
+        guard currentUser?.uid != nil else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update use by items"])
         }
-        var dict: [String: Any] = [
-            "id": item.id,
-            "name": item.name,
-            "quantity": item.quantity,
-            "expiryDate": Timestamp(date: item.expiryDate),
-            "addedDate": Timestamp(date: item.addedDate)
-        ]
-        if let brand = item.brand { dict["brand"] = brand } else { dict["brand"] = FieldValue.delete() }
-        if let barcode = item.barcode { dict["barcode"] = barcode } else { dict["barcode"] = FieldValue.delete() }
-        if let category = item.category { dict["category"] = category } else { dict["category"] = FieldValue.delete() }
-        if let imageURL = item.imageURL { dict["imageURL"] = imageURL } else { dict["imageURL"] = FieldValue.delete() }
-        if let notes = item.notes { dict["notes"] = notes } else { dict["notes"] = FieldValue.delete() }
 
-        try await db.collection("users").document(userId)
-            .collection("useByInventory").document(item.id).setData(dict, merge: true)
-            }
+        // OFFLINE-FIRST: Save to local SQLite database first
+        // OfflineSyncManager will push to Firebase in the background
+        OfflineDataManager.shared.saveUseByItem(item)
+
+        // Trigger background sync to push to Firebase
+        OfflineSyncManager.shared.triggerSync()
+    }
 
     func deleteUseByItem(itemId: String) async throws {
         await ensureAuthStateLoadedAsync()
@@ -2286,7 +2384,16 @@ class FirebaseManager: ObservableObject {
             ]
 
             // Automatically migrate to new structure
-            try? await saveMacroGoals(migratedMacros, dietType: nil)
+            do {
+                try await saveMacroGoals(migratedMacros, dietType: nil)
+            } catch {
+                PrivacyLogger.warning(
+                    "Macro goals migration failed: \(error.localizedDescription)",
+                    subsystem: .firebase,
+                    category: .dataSync
+                )
+                // Continue with migration - non-fatal, user still gets their macros
+            }
 
             return migratedMacros
         }
@@ -3557,17 +3664,31 @@ class FirebaseManager: ObservableObject {
     }
 
     func getFastingSessions() async throws -> [FastingSession] {
-                await ensureAuthStateLoadedAsync()
+        await ensureAuthStateLoadedAsync()
         guard let userId = currentUser?.uid else {
-                        throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting sessions"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting sessions"])
         }
 
-                
+        // OFFLINE-FIRST: Try local database first for instant response
+        let localSessions = OfflineDataManager.shared.getFastingSessions()
+        if !localSessions.isEmpty {
+            // Trigger background sync to get latest from server
+            OfflineSyncManager.shared.triggerSync()
+            return localSessions
+        }
+
+        // If local is empty, fetch from Firebase (first launch or empty local)
         let snapshot = try await db.collection("users").document(userId)
             .collection("fastingSessions").order(by: "start_time", descending: true).getDocuments()
 
-        
-        let sessions = snapshot.documents.compactMap { try? $0.data(as: FastingSession.self) }
+        var sessions: [FastingSession] = []
+        for doc in snapshot.documents {
+            if let session = try? doc.data(as: FastingSession.self) {
+                sessions.append(session)
+                // Import to local database
+                OfflineDataManager.shared.saveFastingSession(session)
+            }
+        }
 
         return sessions
     }
