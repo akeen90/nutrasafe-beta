@@ -188,6 +188,18 @@ final class OfflineDataManager {
         executeSQL("CREATE INDEX IF NOT EXISTS idx_food_entries_user ON food_entries(user_id)")
         executeSQL("CREATE INDEX IF NOT EXISTS idx_food_entries_sync ON food_entries(sync_status)")
 
+        // Add serving_size_source column if not exists (migration for existing databases)
+        executeSQL("ALTER TABLE food_entries ADD COLUMN serving_size_source TEXT")
+
+        // DATA CONSISTENCY: Unique index to prevent accidental duplicate entries
+        // Allows same food in same meal but prevents exact duplicates (same serving size/unit)
+        // This catches crashes/double-taps that would otherwise create duplicate nutrition
+        executeSQL("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_food_entries_no_duplicates
+            ON food_entries (user_id, food_name, date, meal_type, serving_size, serving_unit)
+            WHERE sync_status != 'deleted'
+        """)
+
         // Use By inventory table
         executeSQL("""
             CREATE TABLE IF NOT EXISTS use_by_items (
@@ -1384,6 +1396,48 @@ final class OfflineDataManager {
         return isFavorite
     }
 
+    // MARK: - Deletion Status Check
+
+    /// Check if a document has been marked as deleted locally
+    /// Used by OfflineSyncManager to skip stale add/update operations that were queued before a delete
+    func isDocumentDeleted(collection: String, documentId: String) -> Bool {
+        var isDeleted = false
+
+        dbQueue.sync {
+            guard self.isInitialized, self.db != nil else { return }
+
+            // Map collection name to table name
+            let tableName: String
+            switch collection {
+            case "foodEntries": tableName = "food_entries"
+            case "useByInventory": tableName = "use_by_items"
+            case "weightEntries": tableName = "weight_entries"
+            case "fastingSessions": tableName = "fasting_sessions"
+            case "fastingPlans": tableName = "fasting_plans"
+            case "reactionLogs": tableName = "reaction_logs"
+            case "favoriteFoods": tableName = "favorite_foods"
+            default: return
+            }
+
+            let sql = "SELECT sync_status FROM \(tableName) WHERE id = ?"
+            var statement: OpaquePointer?
+
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    if let statusCString = sqlite3_column_text(statement, 0) {
+                        let status = String(cString: statusCString)
+                        isDeleted = (status == "deleted")
+                    }
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return isDeleted
+    }
+
     // MARK: - Sync Queue Operations
 
     private func addToSyncQueue<T: Encodable>(type: SyncOperationType, collection: String, documentId: String, data: T) {
@@ -1395,37 +1449,79 @@ final class OfflineDataManager {
     /// Add to sync queue - MUST be called from within dbQueue context
     /// All callers (save/delete methods) already execute within dbQueue.async blocks,
     /// so this method executes synchronously within that context for atomic transactions.
+    /// DEDUPLICATION: If operation already pending for (collection, documentId, type), update instead of duplicate
     private func addToSyncQueueRaw(type: SyncOperationType, collection: String, documentId: String, data: Data? = nil) {
         // Safety check - this should always be true since callers are in dbQueue.async
         guard isInitialized, db != nil else { return }
 
+        // DEDUPLICATION CHECK: See if operation already exists for this document/type
+        let checkSql = "SELECT id FROM sync_queue WHERE collection = ? AND document_id = ? AND type = ?"
+        var checkStatement: OpaquePointer?
+        var existingId: String?
+
+        if sqlite3_prepare_v2(db, checkSql, -1, &checkStatement, nil) == SQLITE_OK {
+            sqlite3_bind_text(checkStatement, 1, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_text(checkStatement, 2, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_text(checkStatement, 3, type.rawValue, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+            if sqlite3_step(checkStatement) == SQLITE_ROW {
+                existingId = String(cString: sqlite3_column_text(checkStatement, 0))
+            }
+            sqlite3_finalize(checkStatement)
+        }
+
         let operation = PendingSyncOperation(type: type, collection: collection, documentId: documentId, data: data)
 
-        let sql = """
-            INSERT INTO sync_queue (id, type, collection, document_id, data, timestamp, retry_count)
-            VALUES (?, ?, ?, ?, ?, ?, 0)
-        """
+        if let existingId = existingId {
+            // UPDATE existing operation with new data and timestamp (keeps queue lean)
+            let updateSql = "UPDATE sync_queue SET data = ?, timestamp = ?, retry_count = 0 WHERE id = ?"
+            var updateStatement: OpaquePointer?
 
-        var statement: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, operation.id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-            sqlite3_bind_text(statement, 2, operation.type.rawValue, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-            sqlite3_bind_text(statement, 3, operation.collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-            sqlite3_bind_text(statement, 4, operation.documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            if sqlite3_prepare_v2(db, updateSql, -1, &updateStatement, nil) == SQLITE_OK {
+                if let data = data {
+                    sqlite3_bind_blob(updateStatement, 1, (data as NSData).bytes, Int32(data.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(updateStatement, 1)
+                }
+                sqlite3_bind_double(updateStatement, 2, operation.timestamp.timeIntervalSince1970)
+                sqlite3_bind_text(updateStatement, 3, existingId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
 
-            if let data = operation.data {
-                sqlite3_bind_blob(statement, 5, (data as NSData).bytes, Int32(data.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-            } else {
-                sqlite3_bind_null(statement, 5)
+                if sqlite3_step(updateStatement) != SQLITE_DONE {
+                    print("[OfflineDataManager] Failed to update sync queue: \(String(cString: sqlite3_errmsg(db)))")
+                }
+                sqlite3_finalize(updateStatement)
             }
+            #if DEBUG
+            print("[OfflineDataManager] Deduplicated sync op: \(type) \(collection)/\(documentId)")
+            #endif
+        } else {
+            // INSERT new operation
+            let sql = """
+                INSERT INTO sync_queue (id, type, collection, document_id, data, timestamp, retry_count)
+                VALUES (?, ?, ?, ?, ?, ?, 0)
+            """
 
-            sqlite3_bind_double(statement, 6, operation.timestamp.timeIntervalSince1970)
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, operation.id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 2, operation.type.rawValue, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 3, operation.collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 4, operation.documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
 
-            if sqlite3_step(statement) != SQLITE_DONE {
-                print("[OfflineDataManager] Failed to add to sync queue: \(String(cString: sqlite3_errmsg(db)))")
+                if let data = operation.data {
+                    sqlite3_bind_blob(statement, 5, (data as NSData).bytes, Int32(data.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(statement, 5)
+                }
+
+                sqlite3_bind_double(statement, 6, operation.timestamp.timeIntervalSince1970)
+
+                if sqlite3_step(statement) != SQLITE_DONE {
+                    print("[OfflineDataManager] Failed to add to sync queue: \(String(cString: sqlite3_errmsg(db)))")
+                }
+
+                sqlite3_finalize(statement)
             }
-
-            sqlite3_finalize(statement)
         }
 
         // Notify that there are pending operations (dispatch to main thread from dbQueue)
@@ -1477,8 +1573,12 @@ final class OfflineDataManager {
     }
 
     /// Remove a sync operation after successful sync
+    /// Remove sync operation from queue (asynchronous - for general use)
     func removeSyncOperation(id: String) {
-        dbQueue.async {
+        // RACE CONDITION FIX: Use sync instead of async to prevent duplicate processing
+        // When using async, getPendingSyncOperations() called immediately after this
+        // could see the same operation before the DELETE executes, causing double-sync
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = "DELETE FROM sync_queue WHERE id = ?"
@@ -1509,8 +1609,10 @@ final class OfflineDataManager {
     }
 
     /// Mark a record as synced
+    /// Mark a document as synced with Firebase
+    /// RACE CONDITION FIX: Uses sync instead of async to ensure status is updated before next batch
     func markAsSynced(collection: String, documentId: String) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let tableName: String

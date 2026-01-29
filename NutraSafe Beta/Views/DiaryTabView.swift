@@ -82,6 +82,11 @@ struct DiaryTabView: View {
     @StateObject private var additiveTrackerVM = AdditiveTrackerViewModel()
     @State private var insightsSubTab: InsightsSubTab = .additives
 
+    // MARK: - Network & Sync Status (UX Truth)
+    @State private var isOffline: Bool = false
+    @State private var lastSyncError: String?
+    @State private var showingSyncError: Bool = false
+
     // MARK: - Scroll Reset Trigger
     // Combines main tab and subtab to reset scroll when returning to this tab
     private var scrollResetTrigger: String {
@@ -93,6 +98,7 @@ struct DiaryTabView: View {
         var totalProtein: Double = 0
         var totalCarbs: Double = 0
         var totalFat: Double = 0
+        var lastUpdated: Date = Date() // UX TRUTH: Track when data was last refreshed
         var totalFiber: Double = 0
         var breakfastCalories: Int = 0
         var lunchCalories: Int = 0
@@ -149,6 +155,7 @@ struct DiaryTabView: View {
             totalProtein: breakfast.protein + lunch.protein + dinner.protein + snacks.protein,
             totalCarbs: breakfast.carbs + lunch.carbs + dinner.carbs + snacks.carbs,
             totalFat: breakfast.fat + lunch.fat + dinner.fat + snacks.fat,
+            lastUpdated: Date(), // UX TRUTH: Record when this data was calculated
             totalFiber: breakfast.fiber + lunch.fiber + dinner.fiber + snacks.fiber,
             breakfastCalories: breakfast.calories,
             lunchCalories: lunch.calories,
@@ -205,11 +212,48 @@ struct DiaryTabView: View {
 
     // MARK: - Top Navigation Row (Tab Picker + Settings on same line)
     private var topNavigationRow: some View {
-        TabHeaderView(
-            tabs: DiarySubTab.allCases,
-            selectedTab: $diarySubTab,
-            onSettingsTapped: { showingSettings = true }
+        VStack(spacing: 0) {
+            TabHeaderView(
+                tabs: DiarySubTab.allCases,
+                selectedTab: $diarySubTab,
+                onSettingsTapped: { showingSettings = true }
+            )
+
+            // UX TRUTH: Show offline/sync status so users know when data is stale
+            if isOffline || lastSyncError != nil {
+                networkStatusBanner
+            }
+        }
+    }
+
+    // MARK: - Network Status Banner (UX Truth)
+    private var networkStatusBanner: some View {
+        HStack(spacing: 6) {
+            if isOffline {
+                Image(systemName: "wifi.slash")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Offline")
+                    .font(.system(size: 12, weight: .medium))
+            } else if lastSyncError != nil {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Sync issue")
+                    .font(.system(size: 12, weight: .medium))
+            }
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(isOffline ? Color.orange : Color.red.opacity(0.8))
         )
+        .padding(.top, 4)
+        .onTapGesture {
+            if lastSyncError != nil {
+                showingSyncError = true
+            }
+        }
     }
 
     // MARK: - Horizontal Week Picker (Palette-Aware, Onboarding Style)
@@ -577,9 +621,11 @@ struct DiaryTabView: View {
     }
 
     // MARK: - Loading State View
+    // UX TRUTH FIX: Show loading indicator on ALL refreshes, not just first load
     @ViewBuilder
     private var loadingStateView: some View {
         if isLoadingData && !hasLoadedOnce {
+            // Full-screen loading for initial load
             VStack(spacing: 16) {
                 Spacer()
                 ProgressView()
@@ -592,6 +638,51 @@ struct DiaryTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(diaryBlueBackground)
+        } else if isLoadingData && hasLoadedOnce {
+            // UX TRUTH FIX: Subtle refresh indicator for subsequent loads
+            // Shows user that fresh data is being fetched (not stale cache)
+            HStack(spacing: 6) {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Refreshing...")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.ultraThinMaterial, in: Capsule())
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        }
+    }
+
+    // MARK: - Cached Data Indicator
+    // UX TRUTH: Shows when nutrition data is from cache vs fresh
+    @ViewBuilder
+    private var cachedDataIndicator: some View {
+        if isOffline {
+            // Offline indicator - data may be stale
+            HStack(spacing: 4) {
+                Image(systemName: "wifi.slash")
+                    .font(.system(size: 10))
+                Text("Offline")
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .foregroundColor(.orange)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.orange.opacity(0.15), in: Capsule())
+        } else if Date().timeIntervalSince(cachedNutrition.lastUpdated) > 300 {
+            // Data is >5 minutes old and we're online - might be stale
+            HStack(spacing: 4) {
+                Image(systemName: "clock")
+                    .font(.system(size: 10))
+                Text("Cached")
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.secondary.opacity(0.1), in: Capsule())
         }
     }
 
@@ -719,6 +810,43 @@ struct DiaryTabView: View {
                 // Refresh additive insights immediately
                 additiveTrackerVM.loadData()
             }
+            // MARK: - Network & Sync Status Monitoring (UX Truth)
+            .onReceive(NotificationCenter.default.publisher(for: .networkStatusChanged)) { notification in
+                // Update offline status when network changes
+                if let isConnected = notification.userInfo?["isConnected"] as? Bool {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isOffline = !isConnected
+                        // Clear sync error when back online
+                        if isConnected {
+                            lastSyncError = nil
+                        }
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .offlineSyncOperationsFailed)) { notification in
+                // Show sync error indicator
+                if let count = notification.userInfo?["count"] as? Int, count > 0 {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        lastSyncError = "\(count) item\(count == 1 ? "" : "s") failed to sync"
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .offlineSyncCompleted)) { notification in
+                // Clear error if sync completed successfully
+                if let failures = notification.userInfo?["newFailures"] as? Int, failures == 0 {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        lastSyncError = nil
+                    }
+                }
+            }
+            .alert("Sync Issue", isPresented: $showingSyncError) {
+                Button("OK", role: .cancel) { }
+                Button("View Details") {
+                    showingSettings = true
+                }
+            } message: {
+                Text(lastSyncError ?? "Some changes couldn't be synced. Check your connection and try again.")
+            }
             // NOTE: HealthKit refresh now handled automatically by HealthKitManager
             .onChange(of: moveTrigger) { _, newValue in
                 guard newValue else { return }
@@ -840,22 +968,30 @@ struct DiaryTabView: View {
 
     @ViewBuilder
     private var overviewTabContent: some View {
-        DiaryDailySummaryCard(
-            totalCalories: totalCalories,
-            totalProtein: totalProtein,
-            totalCarbs: totalCarbs,
-            totalFat: totalFat,
-            totalFiber: totalFiber,
-            currentDate: selectedDate,
-            breakfastFoods: breakfastFoods,
-            lunchFoods: lunchFoods,
-            dinnerFoods: dinnerFoods,
-            snackFoods: snackFoods,
-            fetchWeeklySummary: fetchWeeklySummary,
-            setSelectedDate: { date in
-                selectedDate = date
-            }
-        )
+        // UX TRUTH: Overlay cached data indicator on summary card
+        ZStack(alignment: .topTrailing) {
+            DiaryDailySummaryCard(
+                totalCalories: totalCalories,
+                totalProtein: totalProtein,
+                totalCarbs: totalCarbs,
+                totalFat: totalFat,
+                totalFiber: totalFiber,
+                currentDate: selectedDate,
+                breakfastFoods: breakfastFoods,
+                lunchFoods: lunchFoods,
+                dinnerFoods: dinnerFoods,
+                snackFoods: snackFoods,
+                fetchWeeklySummary: fetchWeeklySummary,
+                setSelectedDate: { date in
+                    selectedDate = date
+                }
+            )
+
+            // UX TRUTH: Show cached/offline indicator
+            cachedDataIndicator
+                .padding(.top, 8)
+                .padding(.trailing, 8)
+        }
         .padding(.horizontal, 12)
         .padding(.top, 4)
 

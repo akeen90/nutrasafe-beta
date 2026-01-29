@@ -32,8 +32,10 @@ final class LocalDatabaseManager {
     private var isInitialized = false
 
     /// Path to the writable database in the app's Documents directory
+    /// Falls back to temp directory if Documents is unavailable (should never happen on iOS)
     private var writableDatabasePath: URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return documentsPath.appendingPathComponent("nutrasafe_foods_writable.sqlite")
     }
 
@@ -108,7 +110,9 @@ final class LocalDatabaseManager {
                 print("✅ LocalDB: Writable database opened successfully")
 
                 // Set WAL mode for better concurrent access and crash recovery
-                sqlite3_exec(db, "PRAGMA journal_mode=WAL", nil, nil, nil)
+                if sqlite3_exec(db, "PRAGMA journal_mode=WAL", nil, nil, nil) != SQLITE_OK {
+                    print("⚠️ LocalDB: Failed to set WAL mode, continuing with default")
+                }
 
                 // Ensure sync-related tables exist
                 createSyncTables()
@@ -166,8 +170,12 @@ final class LocalDatabaseManager {
             )
         """
 
-        sqlite3_exec(db, createUsageTable, nil, nil, nil)
-        sqlite3_exec(db, createEvictedTable, nil, nil, nil)
+        if sqlite3_exec(db, createUsageTable, nil, nil, nil) != SQLITE_OK {
+            print("⚠️ LocalDB: Failed to create food_usage table")
+        }
+        if sqlite3_exec(db, createEvictedTable, nil, nil, nil) != SQLITE_OK {
+            print("⚠️ LocalDB: Failed to create evicted_foods table")
+        }
 
         // Ensure sync_state table exists (should be in bundled DB, but be safe)
         let createSyncStateTable = """
@@ -177,7 +185,9 @@ final class LocalDatabaseManager {
                 updated_at INTEGER
             )
         """
-        sqlite3_exec(db, createSyncStateTable, nil, nil, nil)
+        if sqlite3_exec(db, createSyncStateTable, nil, nil, nil) != SQLITE_OK {
+            print("⚠️ LocalDB: Failed to create sync_state table")
+        }
     }
 
     /// Reset database to fresh bundled version
@@ -569,7 +579,7 @@ final class LocalDatabaseManager {
 
             // === TIER 5: IMAGE BOOST ===
             // Products with images are slightly preferred (tiebreaker)
-            if result.imageUrl != nil && !result.imageUrl!.isEmpty {
+            if let imageUrl = result.imageUrl, !imageUrl.isEmpty {
                 score += 200
             }
 
@@ -850,7 +860,12 @@ final class LocalDatabaseManager {
 
         dbQueue.sync {
             // Begin transaction for atomicity
-            sqlite3_exec(db, "BEGIN TRANSACTION", nil, nil, nil)
+            if sqlite3_exec(db, "BEGIN TRANSACTION", nil, nil, nil) != SQLITE_OK {
+                print("❌ LocalDB: Failed to begin transaction for delta updates")
+                return
+            }
+
+            var transactionFailed = false
 
             for update in updates {
                 guard let action = update["action"] as? String,
@@ -861,6 +876,10 @@ final class LocalDatabaseManager {
                     if let food = update["food"] as? [String: Any] {
                         if applyUpsert(foodId: foodId, food: food) {
                             appliedCount += 1
+                        } else {
+                            transactionFailed = true
+                            print("❌ LocalDB: Failed to upsert food \(foodId)")
+                            break
                         }
                     }
 
@@ -868,6 +887,7 @@ final class LocalDatabaseManager {
                     if applyDelete(foodId: foodId) {
                         appliedCount += 1
                     }
+                    // Note: Delete failures are non-critical (food may already be gone)
 
                 default:
                     // Handle batch operations by marking for full resync
@@ -877,14 +897,33 @@ final class LocalDatabaseManager {
                         }
                     }
                 }
+
+                if transactionFailed { break }
             }
 
-            sqlite3_exec(db, "COMMIT", nil, nil, nil)
+            // Rollback on failure, commit on success
+            if transactionFailed {
+                if sqlite3_exec(db, "ROLLBACK", nil, nil, nil) != SQLITE_OK {
+                    print("❌ LocalDB: Failed to rollback transaction")
+                }
+                appliedCount = 0  // Reset count since we rolled back
+            } else {
+                if sqlite3_exec(db, "COMMIT", nil, nil, nil) != SQLITE_OK {
+                    print("❌ LocalDB: Failed to commit transaction")
+                    appliedCount = 0
+                }
+            }
         }
 
         // Rebuild FTS index after batch changes
         if appliedCount > 0 {
             rebuildFTSIndex()
+
+            // DATA CONSISTENCY FIX: Notify to invalidate search cache
+            // This ensures stale nutrition data isn't shown after database updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .localDatabaseUpdated, object: nil, userInfo: ["updatedCount": appliedCount])
+            }
         }
 
         return appliedCount
@@ -995,23 +1034,39 @@ final class LocalDatabaseManager {
     }
 
     /// Rebuild FTS index after delta changes
+    /// RACE CONDITION FIX: Use sync instead of async to prevent stale db pointer
+    /// The db pointer can become nil if closeDatabase() is called while async block is waiting
     private func rebuildFTSIndex() {
-        dbQueue.async { [weak self] in
-            guard let self = self, self.db != nil else { return }
+        // FIX: Use sync instead of async to ensure db pointer is valid throughout operation
+        // This prevents use-after-free crash when database closes during async operation
+        dbQueue.sync { [weak self] in
+            guard let self = self else { return }
+            // Double-check db and isInitialized under lock to prevent race
+            guard self.isInitialized, let db = self.db else {
+                print("⚠️ Delta: Cannot rebuild FTS - database not initialized or closed")
+                return
+            }
             // Rebuild FTS content
-            sqlite3_exec(self.db, "INSERT INTO foods_fts(foods_fts) VALUES('rebuild')", nil, nil, nil)
-            print("📝 Delta: Rebuilt FTS index")
+            if sqlite3_exec(db, "INSERT INTO foods_fts(foods_fts) VALUES('rebuild')", nil, nil, nil) != SQLITE_OK {
+                let errorMsg = String(cString: sqlite3_errmsg(db))
+                print("⚠️ Delta: Failed to rebuild FTS index: \(errorMsg)")
+            } else {
+                print("📝 Delta: Rebuilt FTS index")
+            }
         }
     }
 
     // MARK: - Usage Tracking (for LRU eviction)
 
     /// Record that a food was accessed (for LRU tracking)
+    /// Note: Uses async for performance since this is non-critical tracking data
+    /// The db check inside the block prevents crashes if database closes
     func recordFoodAccess(_ foodId: String) {
         guard isAvailable else { return }
 
         dbQueue.async { [weak self] in
-            guard let self = self, self.db != nil else { return }
+            // FIX: Check isInitialized AND db in one guard to prevent race
+            guard let self = self, self.isInitialized, let db = self.db else { return }
 
             let now = Int64(Date().timeIntervalSince1970 * 1000)
             let sql = """
@@ -1023,7 +1078,7 @@ final class LocalDatabaseManager {
             """
 
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
             defer { sqlite3_finalize(stmt) }
 
             sqlite3_bind_text(stmt, 1, foodId, -1, SQLITE_TRANSIENT)
@@ -1088,20 +1143,36 @@ final class LocalDatabaseManager {
     }
 
     /// Get current database file size
+    /// Note: File size is accessed from filesystem, not database, so it's safe to call outside dbQueue
+    /// However, for accurate size after WAL mode writes, we should checkpoint first
     private func getDatabaseSize() -> Int64 {
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: writableDatabasePath.path),
               let size = attrs[.size] as? Int64 else {
             return 0
         }
-        return size
+        // Also add WAL file size if it exists (WAL mode writes there first)
+        let walPath = writableDatabasePath.path + "-wal"
+        let walSize: Int64
+        if let walAttrs = try? FileManager.default.attributesOfItem(atPath: walPath),
+           let ws = walAttrs[.size] as? Int64 {
+            walSize = ws
+        } else {
+            walSize = 0
+        }
+        return size + walSize
     }
 
     /// Evict least-used foods until database is under target size
     private func performEviction(targetSize: Int64) {
         let batchSize = 500
         var evictedCount = 0
+        var iterationCount = 0
+        let maxIterations = 20  // Safety limit: max eviction rounds
 
-        while getDatabaseSize() > targetSize {
+        while getDatabaseSize() > targetSize && iterationCount < maxIterations {
+            iterationCount += 1
+            let previousSize = getDatabaseSize()
+
             let toEvict = getLeastUsedFoods(limit: batchSize)
 
             if toEvict.isEmpty {
@@ -1110,7 +1181,10 @@ final class LocalDatabaseManager {
             }
 
             dbQueue.sync {
-                sqlite3_exec(db, "BEGIN TRANSACTION", nil, nil, nil)
+                if sqlite3_exec(db, "BEGIN TRANSACTION", nil, nil, nil) != SQLITE_OK {
+                    print("❌ LocalDB: Failed to begin eviction transaction")
+                    return
+                }
 
                 for foodId in toEvict {
                     // Move to evicted_foods table before deleting
@@ -1147,22 +1221,52 @@ final class LocalDatabaseManager {
                     evictedCount += 1
                 }
 
-                sqlite3_exec(db, "COMMIT", nil, nil, nil)
+                if sqlite3_exec(db, "COMMIT", nil, nil, nil) != SQLITE_OK {
+                    print("❌ LocalDB: Failed to commit eviction transaction")
+                }
             }
 
-            // Safety limit
+            // Safety limit on total evicted items
             if evictedCount >= 5000 {
-                print("⚠️ LocalDB: Hit eviction safety limit")
+                print("⚠️ LocalDB: Hit eviction safety limit (5000 items)")
                 break
             }
+
+            // Check if size actually decreased - if not, VACUUM and check again
+            let currentSize = getDatabaseSize()
+            if currentSize >= previousSize {
+                print("⚠️ LocalDB: Size didn't decrease after eviction batch, running VACUUM...")
+                dbQueue.sync {
+                    if sqlite3_exec(db, "VACUUM", nil, nil, nil) != SQLITE_OK {
+                        print("❌ LocalDB: VACUUM failed")
+                    }
+                }
+                // Check again after VACUUM
+                let sizeAfterVacuum = getDatabaseSize()
+                if sizeAfterVacuum >= previousSize {
+                    print("⚠️ LocalDB: Size still didn't decrease after VACUUM, stopping eviction")
+                    break
+                }
+            }
         }
 
-        // VACUUM to reclaim space
-        dbQueue.async { [weak self] in
-            guard let self = self, self.db != nil else { return }
-            sqlite3_exec(self.db, "VACUUM", nil, nil, nil)
-            print("✅ LocalDB: Evicted \(evictedCount) foods, new size: \(self.getDatabaseSize() / 1024 / 1024)MB")
+        if iterationCount >= maxIterations {
+            print("⚠️ LocalDB: Hit eviction iteration limit (\(maxIterations))")
         }
+
+        // Final VACUUM to reclaim space
+        // FIX: Use sync to ensure db pointer is valid and operation completes before method returns
+        dbQueue.sync { [weak self] in
+            guard let self = self, self.isInitialized, let db = self.db else {
+                print("⚠️ LocalDB: Cannot VACUUM - database not initialized or closed")
+                return
+            }
+            if sqlite3_exec(db, "VACUUM", nil, nil, nil) != SQLITE_OK {
+                let errorMsg = String(cString: sqlite3_errmsg(db))
+                print("⚠️ LocalDB: Final VACUUM failed: \(errorMsg)")
+            }
+        }
+        print("✅ LocalDB: Evicted \(evictedCount) foods, new size: \(getDatabaseSize() / 1024 / 1024)MB")
     }
 
     /// Check if a food was evicted (for on-demand re-fetch)
@@ -1254,8 +1358,23 @@ class DatabaseSyncManager {
     /// Key for storing last synced version
     private let lastVersionKey = "lastSyncedDatabaseVersion"
 
-    /// Whether sync is currently in progress
-    private var isSyncing = false
+    /// Thread-safe storage for sync state
+    private let syncStateLock = NSLock()
+    private var _isSyncing = false
+
+    /// Thread-safe access to sync status - can be called from any context
+    private var isSyncing: Bool {
+        get {
+            syncStateLock.lock()
+            defer { syncStateLock.unlock() }
+            return _isSyncing
+        }
+        set {
+            syncStateLock.lock()
+            defer { syncStateLock.unlock() }
+            _isSyncing = newValue
+        }
+    }
 
     private init() {
         setupNetworkObserver()
@@ -1353,9 +1472,18 @@ class DatabaseSyncManager {
             var currentVersion = localVersion
             var hasMore = true
             var iterations = 0
-            let maxIterations = 20 // Safety limit
+            let maxIterations = 20 // Safety limit: max pagination rounds
+            let maxTotalTime: TimeInterval = 20 // Safety limit: 20 second timeout (iOS background ~30s)
+            let syncStartTime = Date()
 
             while hasMore && iterations < maxIterations {
+                // Check total timeout to prevent infinite sync loops
+                let elapsed = Date().timeIntervalSince(syncStartTime)
+                if elapsed > maxTotalTime {
+                    print("⚠️ Sync: Total timeout exceeded (\(Int(elapsed))s), stopping")
+                    break
+                }
+
                 let result = try await fetchDelta(sinceVersion: currentVersion)
 
                 if result.updates.isEmpty {
@@ -1473,15 +1601,36 @@ import Network
 /// Notification posted when network reconnects (was offline, now online)
 extension Notification.Name {
     static let networkReconnected = Notification.Name("networkReconnected")
+    /// UX TRUTH: Posted on any network status change with userInfo["isConnected": Bool]
+    static let networkStatusChanged = Notification.Name("networkStatusChanged")
+    /// DATA CONSISTENCY: Posted when local database updates from delta sync (invalidate caches)
+    static let localDatabaseUpdated = Notification.Name("localDatabaseUpdated")
 }
 
 /// Network reachability monitor using NWPathMonitor
 /// Posts .networkReconnected notification when connection is restored
+/// Thread-safe: isConnected can be accessed from any thread/actor context
 class NetworkMonitor: ObservableObject {
     static let shared = NetworkMonitor()
 
-    @Published private(set) var isConnected: Bool = true
-    @Published private(set) var connectionType: ConnectionType = .unknown
+    /// Thread-safe storage for connection state (accessed via lock)
+    private let connectionLock = NSLock()
+    private var _isConnected: Bool = true
+    private var _connectionType: ConnectionType = .unknown
+
+    /// Thread-safe access to connection status - can be called from any context
+    var isConnected: Bool {
+        connectionLock.lock()
+        defer { connectionLock.unlock() }
+        return _isConnected
+    }
+
+    /// Thread-safe access to connection type
+    var connectionType: ConnectionType {
+        connectionLock.lock()
+        defer { connectionLock.unlock() }
+        return _connectionType
+    }
 
     enum ConnectionType {
         case wifi
@@ -1506,21 +1655,48 @@ class NetworkMonitor: ObservableObject {
 
     private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
+            guard let self = self else { return }
+
+            // Thread-safe read of previous state
+            self.connectionLock.lock()
+            let wasConnected = self._isConnected
+            self.connectionLock.unlock()
+
+            let isNowConnected = path.status == .satisfied
+            let newType = self.getConnectionType(path)
+
+            // Thread-safe write of new state
+            self.connectionLock.lock()
+            self._isConnected = isNowConnected
+            self._connectionType = newType
+            self.connectionLock.unlock()
+
+            // Notify SwiftUI observers on main thread (for ObservableObject conformance)
             DispatchQueue.main.async {
-                guard let self = self else { return }
+                self.objectWillChange.send()
+            }
 
-                let wasConnected = self.isConnected
-                let isNowConnected = path.status == .satisfied
-
-                self.isConnected = isNowConnected
-                self.connectionType = self.getConnectionType(path)
-
-                // Detect reconnection: was offline, now online
-                if !wasConnected && isNowConnected {
-                    print("🌐 Network: Reconnected (\(self.connectionType))")
+            // Detect reconnection: was offline, now online
+            if !wasConnected && isNowConnected {
+                print("🌐 Network: Reconnected (\(newType))")
+                DispatchQueue.main.async {
                     NotificationCenter.default.post(name: .networkReconnected, object: nil)
-                } else if wasConnected && !isNowConnected {
-                    print("📴 Network: Disconnected")
+                    // UX TRUTH: Also post generic status change for UI updates
+                    NotificationCenter.default.post(
+                        name: .networkStatusChanged,
+                        object: nil,
+                        userInfo: ["isConnected": true, "connectionType": "\(newType)"]
+                    )
+                }
+            } else if wasConnected && !isNowConnected {
+                print("📴 Network: Disconnected")
+                DispatchQueue.main.async {
+                    // UX TRUTH: Notify UI of offline status
+                    NotificationCenter.default.post(
+                        name: .networkStatusChanged,
+                        object: nil,
+                        userInfo: ["isConnected": false]
+                    )
                 }
             }
         }

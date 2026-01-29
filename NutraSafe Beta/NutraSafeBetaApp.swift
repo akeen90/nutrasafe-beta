@@ -276,21 +276,82 @@ struct MainAppView: View {
     }
 
     /// Prewarm settings caches for instant settings load
+    /// OFFLINE FIX: Uses timeout to prevent blocking on network issues
+    /// Falls back to cached values if Firebase is unavailable
     private func prewarmSettingsCache() async {
+        // Check network status first - don't block on network if offline
+        guard NetworkMonitor.shared.isConnected else {
+            #if DEBUG
+            print("[SettingsCache] Offline - using cached values")
+            #endif
+            return
+        }
+
         let manager = FirebaseManager.shared
-        do {
-            async let settingsTask = manager.getUserSettings()
-            async let macroTask = manager.getMacroGoals()
-            let settings = try await settingsTask
-            _ = try await macroTask
+
+        // OFFLINE FIX: Use Task with timeout to prevent blocking UI
+        // Timeout after 10 seconds and fall back to cached values
+        let timeoutSeconds: UInt64 = 10
+        let timeoutNanoseconds = timeoutSeconds * 1_000_000_000
+
+        // Use a struct to wrap the settings result for TaskGroup compatibility
+        struct SettingsResult: Sendable {
+            let caloricGoal: Int?
+            let exerciseGoal: Int?
+            let stepGoal: Int?
+        }
+
+        // Fetch settings with timeout
+        let settings: SettingsResult? = await withTaskGroup(of: SettingsResult?.self) { group in
+            group.addTask {
+                if let result = try? await manager.getUserSettings() {
+                    return SettingsResult(
+                        caloricGoal: result.caloricGoal,
+                        exerciseGoal: result.exerciseGoal,
+                        stepGoal: result.stepGoal
+                    )
+                }
+                return nil
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+                return nil
+            }
+            // Return first result (either success or nil from timeout)
+            if let result = await group.next() {
+                group.cancelAll()
+                return result
+            }
+            return nil
+        }
+
+        // Fetch macro goals with timeout (in parallel)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                _ = try? await manager.getMacroGoals()
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+            }
+            _ = await group.next()
+            group.cancelAll()
+        }
+
+        // Only update cache if we got fresh data
+        if let settings = settings {
             let caloric = settings.caloricGoal ?? UserDefaults.standard.integer(forKey: "cachedCaloricGoal")
             let exercise = settings.exerciseGoal ?? UserDefaults.standard.integer(forKey: "cachedExerciseGoal")
             let steps = settings.stepGoal ?? UserDefaults.standard.integer(forKey: "cachedStepGoal")
             UserDefaults.standard.set(caloric, forKey: "cachedCaloricGoal")
             UserDefaults.standard.set(exercise, forKey: "cachedExerciseGoal")
             UserDefaults.standard.set(steps, forKey: "cachedStepGoal")
-                    } catch {
-                    }
+            // Store cache timestamp for UX truth indicator
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "settingsCacheTimestamp")
+        } else {
+            #if DEBUG
+            print("[SettingsCache] Timeout or error - using cached values")
+            #endif
+        }
     }
 }
 
