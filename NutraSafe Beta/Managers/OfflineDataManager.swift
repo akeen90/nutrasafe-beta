@@ -47,6 +47,43 @@ enum SyncOperationType: String, Codable {
     case delete = "delete"
 }
 
+/// Represents a sync operation that failed after max retries
+struct FailedSyncOperation: Identifiable {
+    let id: String
+    let type: SyncOperationType
+    let collection: String
+    let documentId: String
+    let timestamp: Date
+    let failedAt: Date
+    let errorMessage: String?
+    let retryCount: Int
+
+    /// Human-readable description of what this operation was trying to do
+    var description: String {
+        let action: String
+        switch type {
+        case .add: action = "Add"
+        case .update: action = "Update"
+        case .delete: action = "Delete"
+        }
+
+        let target: String
+        switch collection {
+        case "foodEntries": target = "food diary entry"
+        case "useByInventory": target = "use-by item"
+        case "weightHistory": target = "weight entry"
+        case "fastingSessions": target = "fasting session"
+        case "fastingPlans": target = "fasting plan"
+        case "reactionLogs": target = "reaction log"
+        case "favoriteFoods": target = "favorite food"
+        case "settings": target = "settings"
+        default: target = collection
+        }
+
+        return "\(action) \(target)"
+    }
+}
+
 // MARK: - Offline Data Manager
 
 /// Manages offline-first storage for all user-generated data
@@ -64,8 +101,10 @@ final class OfflineDataManager {
     private var isInitialized = false
 
     /// Path to writable database in Documents directory
+    /// Falls back to temp directory if Documents is unavailable (should never happen on iOS)
     private var databasePath: URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return documentsPath.appendingPathComponent("nutrasafe_user_data.sqlite")
     }
 
@@ -265,6 +304,24 @@ final class OfflineDataManager {
                 server_version TEXT
             )
         """)
+
+        // Failed operations table - tracks operations that exceeded max retries
+        // These require user attention to resolve
+        executeSQL("""
+            CREATE TABLE IF NOT EXISTS failed_operations (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                collection TEXT NOT NULL,
+                document_id TEXT NOT NULL,
+                data BLOB,
+                timestamp REAL NOT NULL,
+                failed_at REAL NOT NULL,
+                error_message TEXT,
+                retry_count INTEGER DEFAULT 0
+            )
+        """)
+
+        executeSQL("CREATE INDEX IF NOT EXISTS idx_failed_ops_collection ON failed_operations(collection)")
 
         print("[OfflineDataManager] Tables created successfully")
     }
@@ -496,13 +553,17 @@ final class OfflineDataManager {
         var ingredients: [String]?
         if sqlite3_column_type(statement, 14) != SQLITE_NULL {
             let json = String(cString: sqlite3_column_text(statement, 14))
-            ingredients = try? JSONDecoder().decode([String].self, from: json.data(using: .utf8)!)
+            if let jsonData = json.data(using: .utf8) {
+                ingredients = try? JSONDecoder().decode([String].self, from: jsonData)
+            }
         }
 
         var additives: [NutritionAdditiveInfo]?
         if sqlite3_column_type(statement, 15) != SQLITE_NULL {
             let json = String(cString: sqlite3_column_text(statement, 15))
-            additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: json.data(using: .utf8)!)
+            if let jsonData = json.data(using: .utf8) {
+                additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: jsonData)
+            }
         }
 
         let barcode: String? = sqlite3_column_type(statement, 16) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 16)) : nil
@@ -510,7 +571,9 @@ final class OfflineDataManager {
         var micronutrientProfile: MicronutrientProfile?
         if sqlite3_column_type(statement, 17) != SQLITE_NULL {
             let json = String(cString: sqlite3_column_text(statement, 17))
-            micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: json.data(using: .utf8)!)
+            if let jsonData = json.data(using: .utf8) {
+                micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: jsonData)
+            }
         }
 
         let isPerUnit = sqlite3_column_int(statement, 18) == 1
@@ -519,7 +582,9 @@ final class OfflineDataManager {
         var portions: [PortionOption]?
         if sqlite3_column_type(statement, 20) != SQLITE_NULL {
             let json = String(cString: sqlite3_column_text(statement, 20))
-            portions = try? JSONDecoder().decode([PortionOption].self, from: json.data(using: .utf8)!)
+            if let jsonData = json.data(using: .utf8) {
+                portions = try? JSONDecoder().decode([PortionOption].self, from: jsonData)
+            }
         }
 
         let mealTypeRaw = String(cString: sqlite3_column_text(statement, 21))
@@ -531,7 +596,9 @@ final class OfflineDataManager {
         var inferredIngredients: [InferredIngredient]?
         if sqlite3_column_type(statement, 24) != SQLITE_NULL {
             let json = String(cString: sqlite3_column_text(statement, 24))
-            inferredIngredients = try? JSONDecoder().decode([InferredIngredient].self, from: json.data(using: .utf8)!)
+            if let jsonData = json.data(using: .utf8) {
+                inferredIngredients = try? JSONDecoder().decode([InferredIngredient].self, from: jsonData)
+            }
         }
 
         return FoodEntry(
@@ -833,7 +900,9 @@ final class OfflineDataManager {
         var photoUrls: [String]?
         if sqlite3_column_type(statement, 6) != SQLITE_NULL {
             let json = String(cString: sqlite3_column_text(statement, 6))
-            photoUrls = try? JSONDecoder().decode([String].self, from: json.data(using: .utf8)!)
+            if let jsonData = json.data(using: .utf8) {
+                photoUrls = try? JSONDecoder().decode([String].self, from: jsonData)
+            }
         }
 
         let waistSize: Double? = sqlite3_column_type(statement, 7) != SQLITE_NULL ? sqlite3_column_double(statement, 7) : nil
@@ -1323,7 +1392,13 @@ final class OfflineDataManager {
         }
     }
 
+    /// Add to sync queue - MUST be called from within dbQueue context
+    /// All callers (save/delete methods) already execute within dbQueue.async blocks,
+    /// so this method executes synchronously within that context for atomic transactions.
     private func addToSyncQueueRaw(type: SyncOperationType, collection: String, documentId: String, data: Data? = nil) {
+        // Safety check - this should always be true since callers are in dbQueue.async
+        guard isInitialized, db != nil else { return }
+
         let operation = PendingSyncOperation(type: type, collection: collection, documentId: documentId, data: data)
 
         let sql = """
@@ -1353,8 +1428,10 @@ final class OfflineDataManager {
             sqlite3_finalize(statement)
         }
 
-        // Notify that there are pending operations
-        NotificationCenter.default.post(name: .offlineDataPendingSync, object: nil)
+        // Notify that there are pending operations (dispatch to main thread from dbQueue)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .offlineDataPendingSync, object: nil)
+        }
     }
 
     /// Get all pending sync operations
@@ -1379,7 +1456,9 @@ final class OfflineDataManager {
                     if sqlite3_column_type(statement, 4) != SQLITE_NULL {
                         let bytes = sqlite3_column_blob(statement, 4)
                         let length = sqlite3_column_bytes(statement, 4)
-                        data = Data(bytes: bytes!, count: Int(length))
+                        if let bytes = bytes {
+                            data = Data(bytes: bytes, count: Int(length))
+                        }
                     }
 
                     _ = sqlite3_column_double(statement, 5) // timestamp
@@ -1491,6 +1570,208 @@ final class OfflineDataManager {
         }
 
         return count
+    }
+
+    // MARK: - Failed Operations Management
+
+    /// Move a failed operation to the failed_operations table for later retry
+    func markOperationAsFailed(operation: PendingSyncOperation, error: String) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            let sql = """
+                INSERT OR REPLACE INTO failed_operations (
+                    id, type, collection, document_id, data, timestamp, failed_at, error_message, retry_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, operation.id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 2, operation.type.rawValue, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 3, operation.collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 4, operation.documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                if let data = operation.data {
+                    sqlite3_bind_blob(statement, 5, (data as NSData).bytes, Int32(data.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(statement, 5)
+                }
+
+                sqlite3_bind_double(statement, 6, operation.timestamp.timeIntervalSince1970)
+                sqlite3_bind_double(statement, 7, Date().timeIntervalSince1970)
+                sqlite3_bind_text(statement, 8, error, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_int(statement, 9, Int32(operation.retryCount))
+
+                if sqlite3_step(statement) != SQLITE_DONE {
+                    print("[OfflineDataManager] Failed to save failed operation: \(String(cString: sqlite3_errmsg(self.db)))")
+                }
+
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+
+    /// Get count of failed operations
+    func getFailedOperationsCount() -> Int {
+        var count = 0
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "SELECT COUNT(*) FROM failed_operations"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    count = Int(sqlite3_column_int(statement, 0))
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return count
+    }
+
+    /// Get all failed operations for display to user
+    func getFailedOperations() -> [FailedSyncOperation] {
+        var operations: [FailedSyncOperation] = []
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "SELECT * FROM failed_operations ORDER BY failed_at DESC"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    let id = String(cString: sqlite3_column_text(statement, 0))
+                    let typeRaw = String(cString: sqlite3_column_text(statement, 1))
+                    let collection = String(cString: sqlite3_column_text(statement, 2))
+                    let documentId = String(cString: sqlite3_column_text(statement, 3))
+                    let timestamp = Date(timeIntervalSince1970: sqlite3_column_double(statement, 5))
+                    let failedAt = Date(timeIntervalSince1970: sqlite3_column_double(statement, 6))
+                    let errorMessage: String? = sqlite3_column_type(statement, 7) != SQLITE_NULL
+                        ? String(cString: sqlite3_column_text(statement, 7)) : nil
+                    let retryCount = Int(sqlite3_column_int(statement, 8))
+
+                    if let type = SyncOperationType(rawValue: typeRaw) {
+                        let operation = FailedSyncOperation(
+                            id: id,
+                            type: type,
+                            collection: collection,
+                            documentId: documentId,
+                            timestamp: timestamp,
+                            failedAt: failedAt,
+                            errorMessage: errorMessage,
+                            retryCount: retryCount
+                        )
+                        operations.append(operation)
+                    }
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return operations
+    }
+
+    /// Retry a failed operation by moving it back to the sync queue
+    func retryFailedOperation(id: String) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            // First, get the operation data
+            let selectSql = "SELECT type, collection, document_id, data, timestamp FROM failed_operations WHERE id = ?"
+
+            var selectStatement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, selectSql, -1, &selectStatement, nil) == SQLITE_OK {
+                sqlite3_bind_text(selectStatement, 1, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                if sqlite3_step(selectStatement) == SQLITE_ROW {
+                    let typeRaw = String(cString: sqlite3_column_text(selectStatement, 0))
+                    let collection = String(cString: sqlite3_column_text(selectStatement, 1))
+                    let documentId = String(cString: sqlite3_column_text(selectStatement, 2))
+
+                    var data: Data?
+                    if sqlite3_column_type(selectStatement, 3) != SQLITE_NULL {
+                        let bytes = sqlite3_column_blob(selectStatement, 3)
+                        let length = sqlite3_column_bytes(selectStatement, 3)
+                        if let bytes = bytes {
+                            data = Data(bytes: bytes, count: Int(length))
+                        }
+                    }
+
+                    let timestamp = sqlite3_column_double(selectStatement, 4)
+
+                    sqlite3_finalize(selectStatement)
+
+                    // Insert into sync queue with reset retry count
+                    let insertSql = """
+                        INSERT INTO sync_queue (id, type, collection, document_id, data, timestamp, retry_count)
+                        VALUES (?, ?, ?, ?, ?, ?, 0)
+                    """
+
+                    var insertStatement: OpaquePointer?
+                    if sqlite3_prepare_v2(self.db, insertSql, -1, &insertStatement, nil) == SQLITE_OK {
+                        let newId = UUID().uuidString
+                        sqlite3_bind_text(insertStatement, 1, newId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                        sqlite3_bind_text(insertStatement, 2, typeRaw, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                        sqlite3_bind_text(insertStatement, 3, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                        sqlite3_bind_text(insertStatement, 4, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                        if let data = data {
+                            sqlite3_bind_blob(insertStatement, 5, (data as NSData).bytes, Int32(data.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                        } else {
+                            sqlite3_bind_null(insertStatement, 5)
+                        }
+
+                        sqlite3_bind_double(insertStatement, 6, timestamp)
+
+                        sqlite3_step(insertStatement)
+                        sqlite3_finalize(insertStatement)
+                    }
+
+                    // Delete from failed operations
+                    let deleteSql = "DELETE FROM failed_operations WHERE id = ?"
+                    var deleteStatement: OpaquePointer?
+                    if sqlite3_prepare_v2(self.db, deleteSql, -1, &deleteStatement, nil) == SQLITE_OK {
+                        sqlite3_bind_text(deleteStatement, 1, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                        sqlite3_step(deleteStatement)
+                        sqlite3_finalize(deleteStatement)
+                    }
+
+                    // Notify that there are pending operations
+                    NotificationCenter.default.post(name: .offlineDataPendingSync, object: nil)
+                } else {
+                    sqlite3_finalize(selectStatement)
+                }
+            }
+        }
+    }
+
+    /// Discard a failed operation (user chose to abandon it)
+    func discardFailedOperation(id: String) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            let sql = "DELETE FROM failed_operations WHERE id = ?"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+
+    /// Clear all failed operations
+    func clearAllFailedOperations() {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+            self.executeSQL("DELETE FROM failed_operations")
+        }
     }
 
     // MARK: - Data Import from Firebase
@@ -1638,6 +1919,87 @@ final class OfflineDataManager {
 
             self.executeSQL("COMMIT")
             print("[OfflineDataManager] Imported \(items.count) Use By items from Firebase")
+        }
+    }
+
+    /// Merge Use By items from server, respecting local deletions
+    /// Items marked as 'deleted' locally will NOT be overwritten by server data
+    /// This prevents deleted items from "coming back" while sync is pending
+    func mergeUseByItemsFromServer(_ items: [UseByInventoryItem]) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            self.executeSQL("BEGIN TRANSACTION")
+
+            for item in items {
+                // First check if this item exists locally with 'deleted' status
+                let checkSql = "SELECT sync_status FROM use_by_items WHERE id = ?"
+                var checkStmt: OpaquePointer?
+                var isLocallyDeleted = false
+
+                if sqlite3_prepare_v2(self.db, checkSql, -1, &checkStmt, nil) == SQLITE_OK {
+                    sqlite3_bind_text(checkStmt, 1, item.id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    if sqlite3_step(checkStmt) == SQLITE_ROW {
+                        if let statusPtr = sqlite3_column_text(checkStmt, 0) {
+                            let status = String(cString: statusPtr)
+                            isLocallyDeleted = (status == "deleted")
+                        }
+                    }
+                    sqlite3_finalize(checkStmt)
+                }
+
+                // Skip items that are marked for deletion locally
+                if isLocallyDeleted {
+                    print("[OfflineDataManager] Skipping server item \(item.id) - locally marked as deleted")
+                    continue
+                }
+
+                // Insert or update the item (not locally deleted)
+                let sql = """
+                    INSERT OR REPLACE INTO use_by_items (
+                        id, name, brand, quantity, expiry_date, added_date,
+                        barcode, category, image_url, notes, sync_status, last_modified
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)
+                """
+
+                var statement: OpaquePointer?
+                if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                    sqlite3_bind_text(statement, 1, item.id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    sqlite3_bind_text(statement, 2, item.name, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                    if let brand = item.brand {
+                        sqlite3_bind_text(statement, 3, brand, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    } else { sqlite3_bind_null(statement, 3) }
+
+                    sqlite3_bind_text(statement, 4, item.quantity, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    sqlite3_bind_double(statement, 5, item.expiryDate.timeIntervalSince1970)
+                    sqlite3_bind_double(statement, 6, item.addedDate.timeIntervalSince1970)
+
+                    if let barcode = item.barcode {
+                        sqlite3_bind_text(statement, 7, barcode, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    } else { sqlite3_bind_null(statement, 7) }
+
+                    if let category = item.category {
+                        sqlite3_bind_text(statement, 8, category, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    } else { sqlite3_bind_null(statement, 8) }
+
+                    if let imageUrl = item.imageURL {
+                        sqlite3_bind_text(statement, 9, imageUrl, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    } else { sqlite3_bind_null(statement, 9) }
+
+                    if let notes = item.notes {
+                        sqlite3_bind_text(statement, 10, notes, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    } else { sqlite3_bind_null(statement, 10) }
+
+                    sqlite3_bind_double(statement, 11, Date().timeIntervalSince1970)
+
+                    sqlite3_step(statement)
+                    sqlite3_finalize(statement)
+                }
+            }
+
+            self.executeSQL("COMMIT")
+            print("[OfflineDataManager] Merged \(items.count) Use By items from server (respecting local deletions)")
         }
     }
 

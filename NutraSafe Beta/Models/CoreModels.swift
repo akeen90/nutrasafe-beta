@@ -1458,23 +1458,52 @@ class UseByDataManager: ObservableObject {
 
         await MainActor.run { self.isLoading = true }
 
-        do {
-            let loadedItems: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
+        // OFFLINE-FIRST: Read from local SQLite database first
+        // This ensures deleted items (marked sync_status='deleted') don't reappear
+        // while waiting for the delete to sync to Firebase
+        let localItems = OfflineDataManager.shared.getUseByItems()
+
+        if !localItems.isEmpty {
+            // Local data available - use it immediately
             await MainActor.run {
-                self.items = loadedItems
+                self.items = localItems
                 self.hasLoadedOnce = true
                 self.isLoading = false
             }
-        } catch {
-            await MainActor.run {
-                self.items = []
-                self.isLoading = false
+        } else {
+            // No local data - fall back to Firebase (first launch or empty inventory)
+            do {
+                let loadedItems: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
+                // Import to local storage for future offline access
+                OfflineDataManager.shared.importUseByItems(loadedItems)
+                await MainActor.run {
+                    self.items = loadedItems
+                    self.hasLoadedOnce = true
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.items = []
+                    self.hasLoadedOnce = true
+                    self.isLoading = false
+                }
             }
         }
     }
 
     func forceReload() async {
         hasLoadedOnce = false
+        // For force reload, sync with Firebase first then read local
+        // This ensures we get any server-side changes while respecting local deletions
+        if NetworkMonitor.shared.isConnected {
+            do {
+                let serverItems = try await FirebaseManager.shared.getUseByItems()
+                // Merge: import server items but don't overwrite local deletions
+                OfflineDataManager.shared.mergeUseByItemsFromServer(serverItems)
+            } catch {
+                print("[UseByDataManager] Force reload failed to fetch from server: \(error)")
+            }
+        }
         await loadItems()
     }
 }
