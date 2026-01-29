@@ -1558,6 +1558,9 @@ struct ManualFoodDetailEntryView: View {
     }
 
     private func saveFood() {
+        // RACE CONDITION FIX: Prevent double-tap on save button
+        guard !isSaving else { return }
+
         // Mark that user has attempted to save (for persistent error highlighting)
         hasAttemptedSave = true
 
@@ -1757,7 +1760,16 @@ struct ManualFoodDetailEntryView: View {
             // Add to diary via DiaryDataManager using selected meal time
             let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
             let hasAccess = subscriptionManager.hasAccess
-            try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date(), hasProAccess: hasAccess)
+
+            // Use preselected date if available (for consistency with search/barcode paths)
+            let targetDate: Date
+            if let savedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? TimeInterval {
+                targetDate = Date(timeIntervalSince1970: savedTimestamp)
+            } else {
+                targetDate = Date()
+            }
+
+            try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: targetDate, hasProAccess: hasAccess)
             
             // Dismiss the sheet after successful save
             await MainActor.run {

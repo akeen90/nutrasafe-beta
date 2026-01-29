@@ -330,24 +330,18 @@ final class LocalGradeCache {
 // MARK: - Pre-compiled Regex Patterns (Performance Optimization)
 // Regex compilation is expensive (~100x slower than string ops)
 // Pre-compile once at app launch instead of per-call
-// Using lazy closures with explicit error handling for safety
+// Using try? for safety - patterns are compile-time verified so failure is impossible,
+// but we avoid fatalError to be production-safe
 private enum ServingSizePatterns {
-    static let gramPattern: NSRegularExpression = {
-        do {
-            return try NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*g"#, options: [])
-        } catch {
-            // Pattern is compile-time verified - failure is impossible
-            fatalError("Invalid regex pattern gramPattern - this is a programming error")
-        }
-    }()
-    static let parenthesesGramPattern: NSRegularExpression = {
-        do {
-            return try NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
-        } catch {
-            fatalError("Invalid regex pattern parenthesesGramPattern - this is a programming error")
-        }
-    }()
-    static let allPatterns: [NSRegularExpression] = [gramPattern, parenthesesGramPattern]
+    static let gramPattern: NSRegularExpression? = try? NSRegularExpression(
+        pattern: #"(\d+(?:\.\d+)?)\s*g"#,
+        options: []
+    )
+    static let parenthesesGramPattern: NSRegularExpression? = try? NSRegularExpression(
+        pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#,
+        options: []
+    )
+    static let allPatterns: [NSRegularExpression] = [gramPattern, parenthesesGramPattern].compactMap { $0 }
 }
 
 // MARK: - Search UI Helper Components
@@ -1343,10 +1337,11 @@ struct FoodSearchResultRowEnhanced: View {
             targetDate = Date()
         }
 
-        // Add to diary
+        // Add to diary - check subscription status for diary limits
+        let hasAccess = subscriptionManager.hasAccess
         Task {
             do {
-                try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: targetDate, hasProAccess: true)
+                try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: targetDate, hasProAccess: hasAccess)
 
                 await MainActor.run {
                     isQuickAdding = false  // Reset after successful add
@@ -1362,9 +1357,17 @@ struct FoodSearchResultRowEnhanced: View {
                         }
                     }
                 }
+            } catch is FirebaseManager.DiaryLimitError {
+                // Free user hit daily diary limit
+                await MainActor.run {
+                    isQuickAdding = false
+                    // Show error feedback - the limit error should bubble up
+                    print("[FoodDetailViewFromSearch] Daily diary limit reached")
+                }
             } catch {
                 await MainActor.run {
                     isQuickAdding = false  // Reset on error too
+                    print("[FoodDetailViewFromSearch] Failed to add food: \(error.localizedDescription)")
                 }
             }
         }
@@ -1424,6 +1427,8 @@ struct AddFoodSearchView: View {
     @State private var hasInitiallyLoaded = false  // Prevent setup from running on appear/disappear/appear cycle
     @State private var searchTask: Task<Void, Never>?
     @State private var keyboardHeight: CGFloat = 0
+    @State private var keyboardShowObserver: NSObjectProtocol?
+    @State private var keyboardHideObserver: NSObjectProtocol?
     @State private var isEditingMode = false
     @State private var hasScrolledToResults = false  // Prevents repeated auto-scrolling
     @State private var foodDetailSheetOpen = false  // Track if any food detail sheet is open
@@ -1920,7 +1925,7 @@ struct AddFoodSearchView: View {
     }
     
     private func setupKeyboardObservers() {
-        NotificationCenter.default.addObserver(
+        keyboardShowObserver = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillShowNotification,
             object: nil,
             queue: .main
@@ -1931,8 +1936,8 @@ struct AddFoodSearchView: View {
                 }
             }
         }
-        
-        NotificationCenter.default.addObserver(
+
+        keyboardHideObserver = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillHideNotification,
             object: nil,
             queue: .main
@@ -1942,10 +1947,16 @@ struct AddFoodSearchView: View {
             }
         }
     }
-    
+
     private func removeKeyboardObservers() {
-        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
-        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+        if let observer = keyboardShowObserver {
+            NotificationCenter.default.removeObserver(observer)
+            keyboardShowObserver = nil
+        }
+        if let observer = keyboardHideObserver {
+            NotificationCenter.default.removeObserver(observer)
+            keyboardHideObserver = nil
+        }
     }
 }
 
