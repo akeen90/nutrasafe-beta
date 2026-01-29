@@ -64,11 +64,43 @@ final class OfflineSyncManager {
     /// Debounce delay after network reconnection (prevents rapid sync attempts)
     private let networkReconnectDebounce: TimeInterval = 0.5
 
-    /// Last sync attempt timestamp
-    private var lastSyncAttempt: Date?
+    /// Interval for periodic full sync (5 minutes) to keep local data fresh
+    private let periodicSyncInterval: TimeInterval = 300
 
-    /// Pending reconnection sync task (for debouncing)
-    private var pendingReconnectTask: Task<Void, Never>?
+    /// Timer for periodic sync
+    private var periodicSyncTimer: Timer?
+
+    /// Thread-safe last sync attempt timestamp using NSLock
+    private let lastSyncAttemptLock = NSLock()
+    private var _lastSyncAttempt: Date?
+    private var lastSyncAttempt: Date? {
+        get {
+            lastSyncAttemptLock.lock()
+            defer { lastSyncAttemptLock.unlock() }
+            return _lastSyncAttempt
+        }
+        set {
+            lastSyncAttemptLock.lock()
+            defer { lastSyncAttemptLock.unlock() }
+            _lastSyncAttempt = newValue
+        }
+    }
+
+    /// Thread-safe pending reconnection sync task (for debouncing)
+    private let reconnectTaskLock = NSLock()
+    private var _pendingReconnectTask: Task<Void, Never>?
+    private var pendingReconnectTask: Task<Void, Never>? {
+        get {
+            reconnectTaskLock.lock()
+            defer { reconnectTaskLock.unlock() }
+            return _pendingReconnectTask
+        }
+        set {
+            reconnectTaskLock.lock()
+            defer { reconnectTaskLock.unlock() }
+            _pendingReconnectTask = newValue
+        }
+    }
 
     /// Thread-safe network connection state
     private let connectionLock = NSLock()
@@ -97,6 +129,37 @@ final class OfflineSyncManager {
     private init() {
         setupNetworkMonitoring()
         setupNotificationObservers()
+        startPeriodicSync()
+    }
+
+    // MARK: - Periodic Sync
+
+    /// Start a timer that runs full sync every 5 minutes to keep local data fresh
+    private func startPeriodicSync() {
+        // Must run on main thread for timer
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.periodicSyncTimer?.invalidate()
+            self.periodicSyncTimer = Timer.scheduledTimer(withTimeInterval: self.periodicSyncInterval, repeats: true) { [weak self] _ in
+                guard let self = self, self.isConnected else { return }
+                print("[OfflineSyncManager] Periodic sync triggered (every 5 mins)")
+                Task {
+                    do {
+                        try await self.pullAllData()
+                    } catch {
+                        print("[OfflineSyncManager] Periodic sync failed: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+    }
+
+    /// Stop the periodic sync timer
+    func stopPeriodicSync() {
+        DispatchQueue.main.async { [weak self] in
+            self?.periodicSyncTimer?.invalidate()
+            self?.periodicSyncTimer = nil
+        }
     }
 
     // MARK: - Network Monitoring
@@ -709,7 +772,10 @@ final class OfflineSyncManager {
         print("[OfflineSyncManager] Pulling all data from Firebase...")
 
         // Pull food entries (last 90 days)
-        let ninetyDaysAgo = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
+        guard let ninetyDaysAgo = Calendar.current.date(byAdding: .day, value: -90, to: Date()) else {
+            print("[OfflineSyncManager] Failed to calculate date 90 days ago")
+            throw SyncError.decodingFailed
+        }
         let foodEntries = try await FirebaseManager.shared.getFoodEntriesInRange(from: ninetyDaysAgo, to: Date())
         OfflineDataManager.shared.importFoodEntries(foodEntries)
         print("[OfflineSyncManager] Pulled \(foodEntries.count) food entries")

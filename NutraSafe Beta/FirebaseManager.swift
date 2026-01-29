@@ -765,6 +765,14 @@ class FirebaseManager: ObservableObject {
         formatter.timeZone = calendar.timeZone
         let dateKey = "\(userId)_\(formatter.string(from: startOfDay))"
 
+        // OFFLINE-FIRST: Always try local SQLite database first for instant response
+        let localEntries = OfflineDataManager.shared.getFoodEntries(for: date, userId: userId)
+        if !localEntries.isEmpty {
+            // Trigger background sync to pull latest from server
+            OfflineSyncManager.shared.triggerSync()
+            return localEntries
+        }
+
         // Return cached entries if still valid (with async-safe synchronization)
         let cachedEntry = cacheQueue.sync { foodEntriesCache[dateKey] }
 
@@ -789,7 +797,7 @@ class FirebaseManager: ObservableObject {
             // Query using local day boundaries (Firebase stores UTC timestamps but we query by local day)
             let queryStart = calendar.startOfDay(for: date)
             guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: queryStart)?.addingTimeInterval(-0.001) else {
-                                throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date range"])
+                throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date range"])
             }
             let queryEnd = endOfDay
 
@@ -847,6 +855,11 @@ class FirebaseManager: ObservableObject {
                         break
                     }
                 }
+            }
+
+            // Import fetched entries to local SQLite for offline access
+            for entry in entries {
+                OfflineDataManager.shared.saveFoodEntry(entry)
             }
 
             return entries
@@ -1349,14 +1362,30 @@ class FirebaseManager: ObservableObject {
 
     /// Get all reaction logs for a user
     func getReactionLogs(userId: String) async throws -> [ReactionLogEntry] {
+        // OFFLINE-FIRST: Try local SQLite database first for instant response
+        let localLogs = OfflineDataManager.shared.getReactionLogs()
+        if !localLogs.isEmpty {
+            // Trigger background sync to get latest from server
+            OfflineSyncManager.shared.triggerSync()
+            return localLogs
+        }
+
+        // If local is empty, fetch from Firebase (first launch or empty local)
         let snapshot = try await db.collection("users").document(userId)
             .collection("reactionLogs")
             .order(by: "reactionDate", descending: true)
             .getDocuments()
 
-        return try snapshot.documents.compactMap { doc in
+        let logs = try snapshot.documents.compactMap { doc in
             try doc.data(as: ReactionLogEntry.self)
         }
+
+        // Import to local database for offline access
+        for log in logs {
+            OfflineDataManager.shared.saveReactionLog(log)
+        }
+
+        return logs
     }
 
     /// Save a new reaction log entry
@@ -1470,6 +1499,15 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view use by items"])
         }
 
+        // OFFLINE-FIRST: Try local SQLite database first for instant response
+        let localItems = OfflineDataManager.shared.getUseByItems()
+        if !localItems.isEmpty {
+            // Trigger background sync to get latest from server
+            OfflineSyncManager.shared.triggerSync()
+            return localItems
+        }
+
+        // If local is empty, fetch from Firebase (first launch or empty local)
         return try await getUseByItemsHelper(userId: userId)
     }
 
@@ -1480,9 +1518,16 @@ class FirebaseManager: ObservableObject {
             .getDocuments()
 
         // Use Firestore's direct Codable support (handles FIRTimestamp properly)
-        return snapshot.documents.compactMap { doc in
+        let items = snapshot.documents.compactMap { doc in
             try? doc.data(as: UseByInventoryItem.self)
         }
+
+        // Import to local database for offline access
+        for item in items {
+            OfflineDataManager.shared.saveUseByItem(item)
+        }
+
+        return items
     }
 
     func updateUseByItem(_ item: UseByInventoryItem) async throws {
