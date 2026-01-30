@@ -17,6 +17,9 @@ struct CustomTabBar: View {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
     }
 
+    // FIX: Fixed height prevents layout recalculation when content changes
+    private let tabBarHeight: CGFloat = 80
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(TabItem.allCases, id: \.self) { tab in
@@ -48,7 +51,8 @@ struct CustomTabBar: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .offset(y: -10)
+                    // FIX: Use fixed positioning within allocated space instead of offset
+                    .alignmentGuide(.bottom) { d in d[.bottom] + 10 }
                     .buttonStyle(PlainButtonStyle())
                 } else {
                     // Regular tab buttons with palette-aware colors
@@ -77,7 +81,6 @@ struct CustomTabBar: View {
                                     .foregroundColor(selectedTab == tab ? palette.accent : palette.textTertiary)
                                     .lineLimit(1)
                                     .fixedSize()
-                                    .offset(y: tab == .useBy ? -3 : 0)
                             }
                         }
                         .frame(maxWidth: .infinity, minHeight: 52)
@@ -89,8 +92,8 @@ struct CustomTabBar: View {
                 }
             }
         }
+        .frame(height: tabBarHeight) // FIX: Fixed height prevents layout shifts
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
         .background(
             // Glassmorphic tab bar background
             ZStack {

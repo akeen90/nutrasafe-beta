@@ -624,28 +624,27 @@ struct ContentView: View {
             .zIndex(1000)
             
             // Persistent bottom menu when food items are selected - properly overlays tab bar
-            if selectedTab == .diary && !selectedFoodItems.isEmpty {
-                VStack {
-                    Spacer()
-                    PersistentBottomMenu(
-                        selectedCount: selectedFoodItems.count,
-                        onEdit: editSelectedFood,
-                        onMove: {
-                            moveTrigger = true
-                        },
-                        onCopy: {
-                            copyTrigger = true
-                        },
-                        onDelete: deleteSelectedFoods,
-                        onCancel: {
-                            selectedFoodItems.removeAll() // Clear selection
-                        }
-                    )
-                    .offset(y: 34) // Same offset as tab bar to replace it
-                }
-                .transition(.move(edge: .bottom))
-                .animation(.easeInOut(duration: 0.3), value: selectedFoodItems.isEmpty)
+            // FIX: Always render but control visibility to prevent layout shifts
+            VStack {
+                Spacer()
+                PersistentBottomMenu(
+                    selectedCount: selectedFoodItems.count,
+                    onEdit: editSelectedFood,
+                    onMove: {
+                        moveTrigger = true
+                    },
+                    onCopy: {
+                        copyTrigger = true
+                    },
+                    onDelete: deleteSelectedFoods,
+                    onCancel: {
+                        selectedFoodItems.removeAll() // Clear selection
+                    }
+                )
+                .offset(y: 34) // Same offset as tab bar to replace it
             }
+            .opacity(selectedTab == .diary && !selectedFoodItems.isEmpty ? 1 : 0)
+            .allowsHitTesting(selectedTab == .diary && !selectedFoodItems.isEmpty)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .fullScreenCover(isPresented: $showingSettings) {

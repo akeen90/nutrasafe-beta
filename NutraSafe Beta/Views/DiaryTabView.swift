@@ -687,32 +687,33 @@ struct DiaryTabView: View {
     }
 
     // MARK: - Main Content Section
+    // FIX: Always render content but control visibility with opacity to prevent layout shifts
     @ViewBuilder
     private var mainContentSection: some View {
-        if !(isLoadingData && !hasLoadedOnce) {
-            ZStack {
-                // Overview tab - show/hide with opacity (no animation)
-                // Reduced spacing for tighter layout - foods feel more immediate
-                ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
-                    LazyVStack(spacing: 10) {
-                        overviewTabContent
-                    }
-                }
-                .opacity(diarySubTab == .overview ? 1 : 0)
-                .allowsHitTesting(diarySubTab == .overview)
+        let showContent = !(isLoadingData && !hasLoadedOnce)
 
-                // Nutrients tab - show/hide with opacity (no animation)
-                ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
-                    LazyVStack(spacing: 16) {
-                        nutrientsTabContent
-                    }
+        ZStack {
+            // Overview tab - show/hide with opacity (no animation)
+            // Reduced spacing for tighter layout - foods feel more immediate
+            ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
+                LazyVStack(spacing: 10) {
+                    overviewTabContent
                 }
-                .opacity(diarySubTab == .insights ? 1 : 0)
-                .allowsHitTesting(diarySubTab == .insights)
             }
-            .background(diaryBlueBackground)
-            .navigationBarHidden(true)
+            .opacity(showContent && diarySubTab == .overview ? 1 : 0)
+            .allowsHitTesting(showContent && diarySubTab == .overview)
+
+            // Nutrients tab - show/hide with opacity (no animation)
+            ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
+                LazyVStack(spacing: 16) {
+                    nutrientsTabContent
+                }
+            }
+            .opacity(showContent && diarySubTab == .insights ? 1 : 0)
+            .allowsHitTesting(showContent && diarySubTab == .insights)
         }
+        .background(diaryBlueBackground)
+        .navigationBarHidden(true)
     }
 
     var body: some View {
