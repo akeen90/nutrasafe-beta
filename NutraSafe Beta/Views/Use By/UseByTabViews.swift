@@ -2128,7 +2128,6 @@ struct ModernExpiryRow: View {
     let item: UseByInventoryItem
     @Environment(\.colorScheme) var colorScheme
     @State private var showingDetail = false
-    @State private var showingDeleteAlert = false
 
     private var daysLeft: Int { item.daysUntilExpiry }
     private var brandText: String { item.brand ?? "" }
@@ -2230,20 +2229,12 @@ struct ModernExpiryRow: View {
             }
             .tint(AppPalette.standard.accent)
 
-            Button(role: .destructive) {
-                showingDeleteAlert = true
-            } label: {
+            Button(role: .destructive, action: confirmDelete) {
                 Label("Delete", systemImage: "trash.fill")
             }
         }
         .fullScreenCover(isPresented: $showingDetail) {
             UseByFoodDetailSheetRedesigned(item: item)
-        }
-        .alert("Delete Item", isPresented: $showingDeleteAlert) {
-            Button("Delete", role: .destructive) { confirmDelete() }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Are you sure you want to delete \(item.name) from your useBy inventory?")
         }
     }
 
@@ -2284,10 +2275,6 @@ struct ModernExpiryRow: View {
             try? await FirebaseManager.shared.updateUseByItem(updated)
             NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
         }
-    }
-
-    private func deleteItem() {
-        showingDeleteAlert = true
     }
 
     private func confirmDelete() {
