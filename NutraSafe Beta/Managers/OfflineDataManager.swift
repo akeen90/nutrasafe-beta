@@ -671,9 +671,22 @@ final class OfflineDataManager {
 
     /// Save a Use By item locally (offline-first)
     /// CRITICAL: Uses sync to ensure data is written before returning
+    /// RESURRECTION FIX: Skips items that are marked as deleted or have delete pending
     func saveUseByItem(_ item: UseByInventoryItem) {
         dbQueue.sync {
             guard self.isInitialized else { return }
+
+            // RESURRECTION FIX: Don't resurrect items that are marked as deleted locally
+            if self.isDocumentDeletedInternal(collection: "useByInventory", documentId: item.id) {
+                print("[OfflineDataManager] Save skipped - UseBy item \(item.id) is marked deleted")
+                return
+            }
+
+            // RESURRECTION FIX: Don't resurrect items that have a pending delete
+            if self.hasDeletePendingInternal(collection: "useByInventory", documentId: item.id) {
+                print("[OfflineDataManager] Save skipped - UseBy item \(item.id) has delete pending")
+                return
+            }
 
             let sql = """
                 INSERT OR REPLACE INTO use_by_items (
@@ -2220,8 +2233,9 @@ final class OfflineDataManager {
     /// Import Use By items from Firebase
     /// HIGH-8 FIX: Skips items that have pending local changes
     /// RESURRECTION FIX: Also skips items that are marked deleted or have delete pending
+    /// RACE FIX: Uses sync instead of async to prevent race with hardDeleteRecord
     func importUseByItems(_ items: [UseByInventoryItem]) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             self.executeSQL("BEGIN TRANSACTION")
@@ -2303,8 +2317,9 @@ final class OfflineDataManager {
     /// Merge Use By items from server, respecting local deletions
     /// Items marked as 'deleted' locally will NOT be overwritten by server data
     /// This prevents deleted items from "coming back" while sync is pending
+    /// RACE FIX: Uses sync instead of async to prevent race with hardDeleteRecord
     func mergeUseByItemsFromServer(_ items: [UseByInventoryItem]) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             self.executeSQL("BEGIN TRANSACTION")
@@ -2329,6 +2344,12 @@ final class OfflineDataManager {
                 // Skip items that are marked for deletion locally
                 if isLocallyDeleted {
                     print("[OfflineDataManager] Skipping server item \(item.id) - locally marked as deleted")
+                    continue
+                }
+
+                // RESURRECTION FIX: Also check for pending delete in sync queue
+                if self.hasDeletePendingInternal(collection: "useByInventory", documentId: item.id) {
+                    print("[OfflineDataManager] Skipping server item \(item.id) - delete pending in sync queue")
                     continue
                 }
 

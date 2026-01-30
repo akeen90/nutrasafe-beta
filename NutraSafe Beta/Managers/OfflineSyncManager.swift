@@ -923,8 +923,9 @@ final class OfflineSyncManager {
         OfflineDataManager.shared.importFoodEntries(foodEntries)
         print("[OfflineSyncManager] Pulled \(foodEntries.count) food entries")
 
-        // Pull Use By items
-        let useByItems: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
+        // Pull Use By items - MUST use getUseByItemsFromServer to actually fetch from Firebase
+        // Using getUseByItems() would return local items if they exist, defeating the purpose
+        let useByItems: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItemsFromServer()
         // CRIT-2 FIX: Check auth state before importing
         try FirebaseManager.shared.checkAuthStateUnchanged(since: authGeneration)
         OfflineDataManager.shared.importUseByItems(useByItems)

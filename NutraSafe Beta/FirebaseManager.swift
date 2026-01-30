@@ -1562,12 +1562,31 @@ class FirebaseManager: ObservableObject {
             try? doc.data(as: UseByInventoryItem.self)
         }
 
-        // Import to local database for offline access
-        for item in items {
-            OfflineDataManager.shared.saveUseByItem(item)
-        }
+        // RESURRECTION FIX: Use importUseByItems which respects deleted status
+        // This prevents deleted items from being resurrected when fetching from Firebase
+        OfflineDataManager.shared.importUseByItems(items)
 
         return items
+    }
+
+    /// Fetch Use By items directly from Firebase server (bypassing local cache)
+    /// Used by pullAllData to get actual server state for sync
+    /// IMPORTANT: This does NOT auto-import - caller must handle import with proper checks
+    func getUseByItemsFromServer() async throws -> [UseByInventoryItem] {
+        await ensureAuthStateLoadedAsync()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view use by items"])
+        }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("useByInventory")
+            .order(by: "expiryDate", descending: false)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { doc in
+            try? doc.data(as: UseByInventoryItem.self)
+        }
     }
 
     func updateUseByItem(_ item: UseByInventoryItem) async throws {
