@@ -953,10 +953,25 @@ class FirebaseManager: ObservableObject {
     private var inFlightPeriodRequests: [String: Task<[FoodEntry], Error>] = [:]
 
     // Get food entries for the past N days for nutritional analysis
+    // LOCAL-FIRST: Returns SQLite data immediately, syncs from Firebase in background
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else {
             throw AuthStateError.notAuthenticated
         }
+
+        // LOCAL-FIRST FIX: Check SQLite first for instant response
+        let localEntries = OfflineDataManager.shared.getFoodEntriesForPeriod(days: days, userId: userId)
+
+        if !localEntries.isEmpty {
+            // Return local data immediately, trigger background sync
+            Task.detached(priority: .background) { [weak self] in
+                try? await self?.syncFoodEntriesForPeriodInBackground(days: days, userId: userId)
+            }
+            return localEntries
+        }
+
+        // If local is empty but user has entries elsewhere, try to fetch them
+        // This handles first launch or cache cleared scenarios
 
         // Capture auth state at start for mid-operation validation
         let authGen = captureAuthState()
@@ -964,7 +979,7 @@ class FirebaseManager: ObservableObject {
         // Cache key includes userId to prevent data leakage between users
         let cacheKey = "\(userId)_\(days)"
 
-        // Check cache first (async-safe synchronization)
+        // Check memory cache (async-safe synchronization)
         let cachedPeriod = cacheQueue.sync { periodCache[cacheKey] }
 
         if let cached = cachedPeriod,
@@ -1080,6 +1095,70 @@ class FirebaseManager: ObservableObject {
         }
 
         return try await taskToAwait.value
+    }
+
+    /// Background sync for period food entries - fetches from Firebase and updates local SQLite
+    /// Called automatically by getFoodEntriesForPeriod when local data is returned
+    /// Does not block UI - failures are logged but not surfaced to user
+    private func syncFoodEntriesForPeriodInBackground(days: Int, userId: String) async throws {
+        // Rate limit background syncs
+        let cacheKey = "\(userId)_\(days)_bgSync"
+        let lastSyncKey = "lastBgSync_\(cacheKey)"
+
+        // Don't sync more than once per minute for the same period
+        if let lastSync = UserDefaults.standard.object(forKey: lastSyncKey) as? Date,
+           Date().timeIntervalSince(lastSync) < 60 {
+            return
+        }
+
+        let calendar = Calendar.current
+        let today = Date()
+        let startOfToday = calendar.startOfDay(for: today)
+        guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)?.addingTimeInterval(-0.001),
+              let startDate = calendar.date(byAdding: .day, value: -days, to: today) else {
+            return
+        }
+        let queryStart = calendar.startOfDay(for: startDate)
+
+        let entryLimit = min(500, max(150, days * 20))
+
+        do {
+            let snapshot = try await db.collection("users").document(userId)
+                .collection("foodEntries")
+                .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
+                .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endOfToday))
+                .order(by: "date", descending: true)
+                .limit(to: entryLimit)
+                .getDocuments()
+
+            let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
+                try? doc.data(as: FoodEntry.self)
+            }
+
+            // Import fetched entries to local SQLite (merge, don't overwrite deletes)
+            for entry in entries {
+                OfflineDataManager.shared.saveFoodEntry(entry)
+            }
+
+            // Update memory cache too
+            let periodCacheKey = "\(userId)_\(days)"
+            cacheQueue.sync {
+                periodCache[periodCacheKey] = (entries, Date())
+                periodCacheAccessTime[periodCacheKey] = Date()
+            }
+
+            // Record sync time
+            UserDefaults.standard.set(Date(), forKey: lastSyncKey)
+
+            #if DEBUG
+            print("[FirebaseManager] Background sync completed for \(days)-day period: \(entries.count) entries")
+            #endif
+        } catch {
+            // Silent failure - local data is source of truth
+            #if DEBUG
+            print("[FirebaseManager] Background sync failed for \(days)-day period: \(error.localizedDescription)")
+            #endif
+        }
     }
 
     // Get food entries for a period using fromDictionary for proper additives decoding

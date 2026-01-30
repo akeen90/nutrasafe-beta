@@ -675,6 +675,79 @@ final class OfflineDataManager {
         return entries
     }
 
+    /// Get food entries for the past N days (LOCAL-FIRST for offline support)
+    /// Used by nutrition summaries, micronutrient dashboards, and additive tracking
+    /// Returns data instantly from SQLite - caller should trigger background sync separately
+    func getFoodEntriesForPeriod(days: Int, userId: String) -> [FoodEntry] {
+        var entries: [FoodEntry] = []
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let calendar = Calendar.current
+            let today = Date()
+            let startOfToday = calendar.startOfDay(for: today)
+
+            // End of today (just before midnight)
+            guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)?.addingTimeInterval(-0.001) else {
+                return
+            }
+
+            // Start of the period (N days ago at midnight)
+            guard let startDate = calendar.date(byAdding: .day, value: -days, to: today) else {
+                return
+            }
+            let queryStart = calendar.startOfDay(for: startDate)
+
+            let sql = """
+                SELECT * FROM food_entries
+                WHERE user_id = ?
+                  AND date >= ?
+                  AND date <= ?
+                  AND sync_status != 'deleted'
+                ORDER BY date DESC
+            """
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, userId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_double(statement, 2, queryStart.timeIntervalSince1970)
+                sqlite3_bind_double(statement, 3, endOfToday.timeIntervalSince1970)
+
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    if let entry = self.parseFoodEntryRow(statement) {
+                        entries.append(entry)
+                    }
+                }
+
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return entries
+    }
+
+    /// Check if local database has any food entries for a user
+    /// Used to determine if we should show local data or need to fetch from server
+    func hasLocalFoodEntries(userId: String) -> Bool {
+        var hasEntries = false
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "SELECT 1 FROM food_entries WHERE user_id = ? AND sync_status != 'deleted' LIMIT 1"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, userId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                hasEntries = sqlite3_step(statement) == SQLITE_ROW
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return hasEntries
+    }
+
     /// Delete a food entry locally
     /// CRITICAL: Uses sync instead of async to ensure delete is written before returning
     /// This prevents race conditions where the UI reads before the delete completes

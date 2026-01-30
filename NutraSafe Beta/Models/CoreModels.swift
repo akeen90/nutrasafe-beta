@@ -1510,18 +1510,37 @@ class UseByDataManager: ObservableObject {
     }
 
     func forceReload() async {
-        hasLoadedOnce = false
-        // For force reload, sync with Firebase first then read local
-        // This ensures we get any server-side changes while respecting local deletions
+        // RACE CONDITION FIX: Don't clear hasLoadedOnce until we actually have new data
+        // This prevents the UI from getting stuck in a loading state if the network request fails
+
+        await MainActor.run { self.isLoading = true }
+
+        // First, try to get server data (if online)
+        var serverFetchSucceeded = false
         if NetworkMonitor.shared.isConnected {
             do {
                 let serverItems = try await FirebaseManager.shared.getUseByItems()
                 // Merge: import server items but don't overwrite local deletions
                 OfflineDataManager.shared.mergeUseByItemsFromServer(serverItems)
+                serverFetchSucceeded = true
             } catch {
                 print("[UseByDataManager] Force reload failed to fetch from server: \(error)")
+                // Continue with local data - don't fail the whole operation
             }
         }
-        await loadItems()
+
+        // Always read from local (which now has merged data if fetch succeeded)
+        let localItems = OfflineDataManager.shared.getUseByItems()
+
+        await MainActor.run {
+            self.items = localItems
+            self.hasLoadedOnce = true
+            self.isLoading = false
+        }
+
+        // Only trigger background sync if server fetch failed (to retry later)
+        if !serverFetchSucceeded && NetworkMonitor.shared.isConnected {
+            OfflineSyncManager.shared.triggerSync()
+        }
     }
 }

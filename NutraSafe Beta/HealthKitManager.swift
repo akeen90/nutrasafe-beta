@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import UIKit
+import SwiftUI  // For @AppStorage
 
 extension HKWorkoutActivityType {
     var name: String {
@@ -68,7 +69,26 @@ class HealthKitManager: ObservableObject {
     @Published var userWeight: Double = 70.0 // Default weight in kg
     @Published var errorMessage: String?
     @Published var showError = false
-    
+
+    // OFFLINE-FIRST: Cached HealthKit values persisted to UserDefaults
+    // These are shown immediately on launch while fresh data is fetched in background
+    @AppStorage("cachedExerciseCalories") private var cachedExerciseCalories: Double = 0
+    @AppStorage("cachedStepCount") private var cachedStepCount: Double = 0
+    @AppStorage("cachedActiveEnergy") private var cachedActiveEnergy: Double = 0
+    @AppStorage("cachedUserWeight") private var cachedUserWeight: Double = 70.0
+    @AppStorage("healthKitCacheDate") private var healthKitCacheDateTimestamp: Double = 0
+
+    /// Date when the cached values were last updated
+    private var healthKitCacheDate: Date {
+        get { Date(timeIntervalSince1970: healthKitCacheDateTimestamp) }
+        set { healthKitCacheDateTimestamp = newValue.timeIntervalSince1970 }
+    }
+
+    /// Whether cached values are from today (still relevant)
+    var cachedValuesAreFromToday: Bool {
+        Calendar.current.isDateInToday(healthKitCacheDate)
+    }
+
     private let healthStore = HKHealthStore()
 
     // Track which date the current HealthKit values represent (prevents race conditions)
@@ -99,6 +119,15 @@ class HealthKitManager: ObservableObject {
 
     private init() {
         setupAppLifecycleObservers()
+
+        // OFFLINE-FIRST: Load cached values immediately for instant UI display
+        // Only use cached values if they're from today (otherwise they're stale)
+        if cachedValuesAreFromToday {
+            exerciseCalories = cachedExerciseCalories
+            stepCount = cachedStepCount
+            activeEnergyBurned = cachedActiveEnergy
+            userWeight = cachedUserWeight
+        }
     }
 
     deinit {
@@ -533,6 +562,12 @@ class HealthKitManager: ObservableObject {
                 self.exerciseCalories = calories
                 self.errorMessage = nil
                 self.showError = false
+
+                // OFFLINE-FIRST: Cache today's value for instant display on next launch
+                if Calendar.current.isDateInToday(date) {
+                    self.cachedExerciseCalories = calories
+                    self.healthKitCacheDate = Date()
+                }
             } catch {
                 guard !Task.isCancelled else { return }
 
@@ -618,6 +653,12 @@ class HealthKitManager: ObservableObject {
                 self.stepCount = steps
                 self.errorMessage = nil
                 self.showError = false
+
+                // OFFLINE-FIRST: Cache today's value for instant display on next launch
+                if Calendar.current.isDateInToday(date) {
+                    self.cachedStepCount = steps
+                    self.healthKitCacheDate = Date()
+                }
             } catch {
                 guard !Task.isCancelled else { return }
 
@@ -659,6 +700,12 @@ class HealthKitManager: ObservableObject {
                 self.activeEnergyBurned = energy
                 self.errorMessage = nil
                 self.showError = false
+
+                // OFFLINE-FIRST: Cache today's value for instant display on next launch
+                if Calendar.current.isDateInToday(date) {
+                    self.cachedActiveEnergy = energy
+                    self.healthKitCacheDate = Date()
+                }
             } catch {
                 guard !Task.isCancelled else { return }
 
@@ -766,9 +813,13 @@ class HealthKitManager: ObservableObject {
                 self.userWeight = weight
                 self.errorMessage = nil
                 self.showError = false
+
+                // OFFLINE-FIRST: Cache weight for instant display on next launch
+                // Weight changes slowly so caching is safe even across days
+                self.cachedUserWeight = weight
             }
         } catch {
-            
+
             // Don't show error for "no data" case - use default
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
