@@ -97,6 +97,10 @@ class FirebaseManager: ObservableObject {
         set { nonceQueue.sync { _currentNonce = newValue } }
     }
 
+    // Guard flag to prevent concurrent background weight sync calls
+    // FIX: Prevents infinite loop where sync → notification → getWeightHistory → sync
+    private var isBackgroundWeightSyncInProgress = false
+
     // MARK: - Search Cache (Optimized with NSCache)
     private class SearchCacheEntry {
         let results: [FoodSearchResult]
@@ -2156,6 +2160,8 @@ class FirebaseManager: ObservableObject {
         }
     }
 
+    /// Get weight history - OFFLINE-FIRST: Returns local SQLite data immediately,
+    /// then syncs with Firebase in background. UI never blocks on network.
     func getWeightHistory() async throws -> [WeightEntry] {
         await ensureAuthStateLoadedAsync()
 
@@ -2163,12 +2169,45 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view weight history"])
         }
 
+        // OFFLINE-FIRST: Always return local data immediately
+        // This ensures UI renders instantly even when offline
+        let localEntries = OfflineDataManager.shared.getWeightHistory()
+
+        // If we have local data, return it immediately and sync in background
+        if !localEntries.isEmpty {
+            // Background sync: pull latest from Firebase and merge into local DB
+            Task.detached(priority: .utility) {
+                await self.syncWeightHistoryFromFirebase(userId: userId)
+            }
+            return localEntries
+        }
+
+        // No local data - try to fetch from Firebase (first-time setup or post-recovery)
+        // This is the only case where we wait for network
+        do {
+            let firebaseEntries = try await fetchWeightHistoryFromFirebase(userId: userId)
+
+            // Import into local SQLite for future offline access
+            if !firebaseEntries.isEmpty {
+                OfflineDataManager.shared.importWeightEntries(firebaseEntries)
+            }
+
+            return firebaseEntries
+        } catch {
+            // Network failed and no local data - return empty (graceful degradation)
+            print("[FirebaseManager] getWeightHistory failed, no local data: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    /// Fetch weight history directly from Firebase (internal helper)
+    private func fetchWeightHistoryFromFirebase(userId: String) async throws -> [WeightEntry] {
         let snapshot = try await db.collection("users").document(userId)
             .collection("weightHistory")
             .order(by: "date", descending: true)
             .getDocuments()
 
-        let entries = snapshot.documents.compactMap { doc -> WeightEntry? in
+        return snapshot.documents.compactMap { doc -> WeightEntry? in
             let data = doc.data()
             guard let idString = data["id"] as? String,
                   let id = UUID(uuidString: idString),
@@ -2186,8 +2225,38 @@ class FirebaseManager: ObservableObject {
 
             return WeightEntry(id: id, weight: weight, date: timestamp.dateValue(), bmi: bmi, note: note, photoURL: photoURL, photoURLs: photoURLs, waistSize: waistSize, dressSize: dressSize)
         }
+    }
 
-                return entries
+    /// Background sync: Pull latest from Firebase and merge into local SQLite
+    /// Does NOT throw - failures are silent (user already has local data)
+    /// FIX: No longer posts notification to prevent infinite loop:
+    /// sync → notification → UI refresh → getWeightHistory → sync
+    /// UI should observe `cachedWeightHistory` directly (it's @Published)
+    private func syncWeightHistoryFromFirebase(userId: String) async {
+        // Guard against concurrent background syncs to prevent infinite loop
+        guard !isBackgroundWeightSyncInProgress else {
+            print("[FirebaseManager] Background weight sync already in progress, skipping")
+            return
+        }
+        isBackgroundWeightSyncInProgress = true
+        defer { isBackgroundWeightSyncInProgress = false }
+
+        do {
+            let firebaseEntries = try await fetchWeightHistoryFromFirebase(userId: userId)
+
+            // Merge Firebase data into local SQLite (preserves pending local changes)
+            OfflineDataManager.shared.importWeightEntries(firebaseEntries)
+
+            // Update in-memory cache on main thread
+            // NOTE: cachedWeightHistory is @Published, so UI observing it will update automatically
+            // Do NOT post notification here - that causes infinite loop with getWeightHistory observers
+            await MainActor.run {
+                self.cachedWeightHistory = OfflineDataManager.shared.getWeightHistory()
+            }
+        } catch {
+            // Silent failure - user already has local data displayed
+            print("[FirebaseManager] Background weight sync failed: \(error.localizedDescription)")
+        }
     }
 
     func deleteWeightEntry(id: UUID) async throws {
@@ -2390,6 +2459,8 @@ class FirebaseManager: ObservableObject {
         }
     }
 
+    /// Get user settings - OFFLINE-FIRST: Returns local SQLite data immediately,
+    /// then syncs with Firebase in background. UI never blocks on network.
     func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?) {
         await ensureAuthStateLoadedAsync()
 
@@ -2397,6 +2468,63 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view settings"])
         }
 
+        // OFFLINE-FIRST: Always check local SQLite first
+        let localSettings = OfflineDataManager.shared.getUserSettings()
+        let hasLocalData = localSettings.height != nil || localSettings.goalWeight != nil ||
+                          localSettings.caloricGoal != nil || localSettings.allergens != nil
+
+        if hasLocalData {
+            // Cache allergens for fast access
+            if let allergens = localSettings.allergens {
+                await MainActor.run {
+                    self.cachedUserAllergens = allergens
+                    self.allergensLastFetched = Date()
+                }
+            }
+
+            // Background sync: pull latest from Firebase
+            Task.detached(priority: .utility) {
+                await self.syncUserSettingsFromFirebase(userId: userId)
+            }
+
+            return localSettings
+        }
+
+        // No local data - try to fetch from Firebase (first-time setup or post-recovery)
+        do {
+            let firebaseSettings = try await fetchUserSettingsFromFirebase(userId: userId)
+
+            // Save to local SQLite for future offline access
+            OfflineDataManager.shared.saveUserSettings(
+                height: firebaseSettings.height,
+                goalWeight: firebaseSettings.goalWeight,
+                caloricGoal: firebaseSettings.caloricGoal,
+                exerciseGoal: firebaseSettings.exerciseGoal,
+                stepGoal: firebaseSettings.stepGoal,
+                proteinPercent: firebaseSettings.proteinPercent,
+                carbsPercent: firebaseSettings.carbsPercent,
+                fatPercent: firebaseSettings.fatPercent,
+                allergens: firebaseSettings.allergens
+            )
+
+            // Cache allergens
+            if let allergens = firebaseSettings.allergens {
+                await MainActor.run {
+                    self.cachedUserAllergens = allergens
+                    self.allergensLastFetched = Date()
+                }
+            }
+
+            return firebaseSettings
+        } catch {
+            // Network failed and no local data - return empty (graceful degradation)
+            print("[FirebaseManager] getUserSettings failed, no local data: \(error.localizedDescription)")
+            return (nil, nil, nil, nil, nil, nil, nil, nil, nil)
+        }
+    }
+
+    /// Fetch user settings directly from Firebase (internal helper)
+    private func fetchUserSettingsFromFirebase(userId: String) async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?) {
         let document = try await db.collection("users").document(userId)
             .collection("settings").document("preferences").getDocument()
 
@@ -2414,15 +2542,48 @@ class FirebaseManager: ObservableObject {
         let exerciseGoal = data["exerciseGoal"] as? Int
         let stepGoal = data["stepGoal"] as? Int
 
-        // Cache allergens for fast access
-        if let allergens = allergens {
-            await MainActor.run {
-                self.cachedUserAllergens = allergens
-                self.allergensLastFetched = Date()
-            }
-        }
-
         return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent, allergens, exerciseGoal, stepGoal)
+    }
+
+    /// Background sync: Pull latest settings from Firebase and merge into local SQLite
+    private func syncUserSettingsFromFirebase(userId: String) async {
+        do {
+            let firebaseSettings = try await fetchUserSettingsFromFirebase(userId: userId)
+
+            // Only update local if Firebase has data (don't overwrite local with empty)
+            let hasFirebaseData = firebaseSettings.height != nil || firebaseSettings.goalWeight != nil ||
+                                 firebaseSettings.caloricGoal != nil || firebaseSettings.allergens != nil
+
+            if hasFirebaseData {
+                OfflineDataManager.shared.saveUserSettings(
+                    height: firebaseSettings.height,
+                    goalWeight: firebaseSettings.goalWeight,
+                    caloricGoal: firebaseSettings.caloricGoal,
+                    exerciseGoal: firebaseSettings.exerciseGoal,
+                    stepGoal: firebaseSettings.stepGoal,
+                    proteinPercent: firebaseSettings.proteinPercent,
+                    carbsPercent: firebaseSettings.carbsPercent,
+                    fatPercent: firebaseSettings.fatPercent,
+                    allergens: firebaseSettings.allergens
+                )
+
+                // Update allergen cache
+                if let allergens = firebaseSettings.allergens {
+                    await MainActor.run {
+                        self.cachedUserAllergens = allergens
+                        self.allergensLastFetched = Date()
+                    }
+                }
+
+                // Notify UI of settings update
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .userSettingsUpdated, object: nil)
+                }
+            }
+        } catch {
+            // Silent failure - user already has local data displayed
+            print("[FirebaseManager] Background settings sync failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Fast Allergen Access

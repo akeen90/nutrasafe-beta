@@ -280,8 +280,14 @@ class SyncStatusViewModel: ObservableObject {
 
     func triggerManualSync() {
         guard isConnected else { return }
-        OfflineSyncManager.shared.triggerSync()
-        isSyncing = true
+
+        // Force sync bypassing the minimum interval for manual user action
+        Task {
+            await OfflineSyncManager.shared.forceSync()
+            await MainActor.run {
+                self.refresh()
+            }
+        }
     }
 
     func pullAllDataFromServer() {

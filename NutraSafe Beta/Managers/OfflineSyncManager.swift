@@ -281,11 +281,22 @@ final class OfflineSyncManager {
     }
 
     /// Force a sync regardless of timing constraints
+    /// Also resets backoff timers so all stuck operations become eligible
     func forceSync() async {
         guard isConnected else {
             print("[OfflineSyncManager] No network connection - cannot force sync")
             return
         }
+
+        print("[OfflineSyncManager] 🔄 FORCE SYNC: Resetting all backoff timers...")
+
+        // Reset all backoff timers so all pending operations become eligible immediately
+        OfflineDataManager.shared.resetAllBackoffTimers()
+
+        // Also reset the minimum sync interval check for force sync
+        lastSyncAttempt = nil
+
+        print("[OfflineSyncManager] 🔄 FORCE SYNC: Starting sync...")
 
         await withCheckedContinuation { continuation in
             performSync {
@@ -316,15 +327,20 @@ final class OfflineSyncManager {
 
             // Get pending operations
             let operations = OfflineDataManager.shared.getPendingSyncOperations()
+            let totalPending = OfflineDataManager.shared.getPendingSyncCount()
 
             if operations.isEmpty {
-                print("[OfflineSyncManager] No pending operations")
+                if totalPending > 0 {
+                    print("[OfflineSyncManager] ⚠️ No ELIGIBLE operations (0 ready), but \(totalPending) total in queue (likely in backoff)")
+                } else {
+                    print("[OfflineSyncManager] No pending operations")
+                }
                 self.isSyncing = false
                 completion?()
                 return
             }
 
-            print("[OfflineSyncManager] Found \(operations.count) pending operations")
+            print("[OfflineSyncManager] Found \(operations.count) eligible operations (of \(totalPending) total)")
 
             // CIRCUIT BREAKER: Check if we should skip sync due to recent high failure rate
             if self.circuitBreakerTripped {
@@ -542,7 +558,9 @@ final class OfflineSyncManager {
                         if serverVersion > localVersion {
                             print("[OfflineSyncManager] CRIT-1: Conflict detected for food entry \(operation.documentId) - server v\(serverVersion), local v\(localVersion). Applying local changes (last-write-wins).")
                             // HIGH-4 FIX: Track conflict for user notification
-                            let serverDataJSON = try? JSONSerialization.data(withJSONObject: serverData)
+                            // Convert Firestore data to JSON-safe format (Timestamps -> ISO strings)
+                            let jsonSafeData = self.convertToJSONSafe(serverData)
+                            let serverDataJSON = try? JSONSerialization.data(withJSONObject: jsonSafeData)
                             OfflineDataManager.shared.saveConflict(
                                 collection: "foodEntries",
                                 documentId: operation.documentId,
@@ -980,6 +998,35 @@ final class OfflineSyncManager {
             isSyncing: isSyncing,
             lastSyncAttempt: lastSyncAttempt
         )
+    }
+
+    // MARK: - Helpers
+
+    /// Convert Firestore data to JSON-safe format by converting Timestamps to ISO8601 strings
+    private func convertToJSONSafe(_ data: [String: Any]) -> [String: Any] {
+        var result: [String: Any] = [:]
+        for (key, value) in data {
+            if let timestamp = value as? Timestamp {
+                // Convert Firestore Timestamp to ISO8601 string
+                result[key] = ISO8601DateFormatter().string(from: timestamp.dateValue())
+            } else if let nestedDict = value as? [String: Any] {
+                // Recursively convert nested dictionaries
+                result[key] = convertToJSONSafe(nestedDict)
+            } else if let array = value as? [Any] {
+                // Convert arrays
+                result[key] = array.map { item -> Any in
+                    if let timestamp = item as? Timestamp {
+                        return ISO8601DateFormatter().string(from: timestamp.dateValue())
+                    } else if let nestedDict = item as? [String: Any] {
+                        return convertToJSONSafe(nestedDict)
+                    }
+                    return item
+                }
+            } else {
+                result[key] = value
+            }
+        }
+        return result
     }
 }
 

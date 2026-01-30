@@ -3510,158 +3510,189 @@ struct PremiumUseByRow: View {
     }
 
     var body: some View {
-        ZStack {
-            // Delete action background
-            if offset < -1 {
-                HStack {
-                    Spacer()
-                    Button(action: deleteItem) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 20, weight: .medium))
-                            Text("Remove")
-                                .font(.system(size: 11, weight: .medium))
-                        }
-                        .foregroundColor(.white)
-                        .frame(width: 80)
-                    }
-                    .frame(maxHeight: .infinity)
-                    .background(Color(red: 0.85, green: 0.25, blue: 0.25))
+        ZStack(alignment: .trailing) {
+            deleteBackground
+            mainContent
+        }
+        .fullScreenCover(isPresented: $showingDetail) {
+            UseByFoodDetailSheetRedesigned(item: item)
+        }
+    }
+
+    private var deleteBackground: some View {
+        HStack {
+            Spacer()
+            Button(action: performAnimatedDelete) {
+                VStack(spacing: 4) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 20, weight: .medium))
+                    Text("Remove")
+                        .font(.system(size: 11, weight: .medium))
                 }
+                .foregroundColor(.white)
+                .frame(width: 80, height: 80)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .background(Color(red: 0.85, green: 0.25, blue: 0.25))
+        }
+        .frame(maxHeight: .infinity)
+        .opacity(offset < -10 ? 1 : 0)
+    }
 
-            // Main content
-            HStack(spacing: 14) {
-                // Product image
-                ZStack {
-                    CachedUseByImage(
-                        itemId: item.id,
-                        imageURL: item.imageURL,
-                        width: 56,
-                        height: 56,
-                        cornerRadius: 12
-                    )
-                    .frame(width: 56, height: 56)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(statusColor.opacity(0.25), lineWidth: 1.5)
-                    )
-                    .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
-                }
-
-                // Item info
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(item.name)
-                        .font(.system(size: 16, weight: .semibold, design: .serif))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-
-                    if let brand = item.brand, !brand.isEmpty {
-                        Text(brand)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer()
-
-                // Status indicator
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(statusMessage)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(statusColor)
-
-                    if item.expiryStatus != .expired {
-                        Text(formatExpiryDate(item.expiryDate))
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // Chevron
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.4))
-            }
+    private var mainContent: some View {
+        rowContent
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.04) : Color.white)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04), lineWidth: 1)
-            )
-            // Status accent bar
-            .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(statusColor)
-                    .frame(width: 3)
-                    .padding(.vertical, 10)
-            }
+            .background(rowBackground)
+            .overlay(rowBorder)
+            .overlay(alignment: .leading) { statusAccentBar }
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.15 : 0.04), radius: 6, x: 0, y: 2)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .offset(x: offset)
             .scaleEffect(isPressed ? 0.98 : 1.0)
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 20)
-                    .onChanged { gesture in
-                        let dx = gesture.translation.width
-                        let dy = gesture.translation.height
-                        if !isHorizontalDragging {
-                            if abs(dx) > 20 && abs(dx) > abs(dy) * 2 {
-                                isHorizontalDragging = true
-                            } else {
-                                return
-                            }
-                        }
-                        if isHorizontalDragging && dx < 0 {
-                            offset = dx
-                        }
-                    }
-                    .onEnded { gesture in
-                        if isHorizontalDragging {
-                            let dx = gesture.translation.width
-                            if dx < -100 {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    offset = -UIScreen.main.bounds.width
-                                }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    deleteItem()
-                                }
-                            } else if dx < -40 {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    offset = -80
-                                }
-                            } else {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    offset = 0
-                                }
-                            }
-                        }
-                        isHorizontalDragging = false
-                    }
-            )
+            .contentShape(Rectangle())
+            .onTapGesture(perform: handleTap)
+            .onLongPressGesture(minimumDuration: 0, pressing: handlePress, perform: {})
+            .simultaneousGesture(swipeGesture)
+    }
+
+    private var rowContent: some View {
+        HStack(spacing: 14) {
+            productImage
+            itemInfo
+            Spacer()
+            statusIndicator
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.secondary.opacity(0.4))
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if offset == 0 {
-                showingDetail = true
+    }
+
+    private var productImage: some View {
+        CachedUseByImage(
+            itemId: item.id,
+            imageURL: item.imageURL,
+            width: 56,
+            height: 56,
+            cornerRadius: 12
+        )
+        .frame(width: 56, height: 56)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(statusColor.opacity(0.25), lineWidth: 1.5)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+    }
+
+    private var itemInfo: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.name)
+                .font(.system(size: 16, weight: .semibold, design: .serif))
+                .foregroundColor(.primary)
+                .lineLimit(2)
+
+            if let brand = item.brand, !brand.isEmpty {
+                Text(brand)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var statusIndicator: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text(statusMessage)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(statusColor)
+
+            if item.expiryStatus != .expired {
+                Text(formatExpiryDate(item.expiryDate))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private var rowBackground: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(colorScheme == .dark ? Color.white.opacity(0.04) : Color.white)
+    }
+
+    private var rowBorder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04), lineWidth: 1)
+    }
+
+    private var statusAccentBar: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(statusColor)
+            .frame(width: 3)
+            .padding(.vertical, 10)
+    }
+
+    private var swipeGesture: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged(handleDragChange)
+            .onEnded(handleDragEnd)
+    }
+
+    private func handleTap() {
+        if offset == 0 {
+            showingDetail = true
+        } else {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                offset = 0
+            }
+        }
+    }
+
+    private func handlePress(_ pressing: Bool) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            isPressed = pressing
+        }
+    }
+
+    private func handleDragChange(_ gesture: DragGesture.Value) {
+        let dx = gesture.translation.width
+        let dy = gesture.translation.height
+        if !isHorizontalDragging {
+            if abs(dx) > 20 && abs(dx) > abs(dy) * 2 {
+                isHorizontalDragging = true
             } else {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    offset = 0
-                }
+                return
             }
         }
-        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isPressed = pressing
+        if isHorizontalDragging && dx < 0 {
+            offset = max(dx, -100)
+        }
+    }
+
+    private func handleDragEnd(_ gesture: DragGesture.Value) {
+        guard isHorizontalDragging else { return }
+        let dx = gesture.translation.width
+
+        if dx < -80 {
+            performAnimatedDelete()
+        } else if dx < -30 {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                offset = -85
             }
-        }, perform: {})
-        .fullScreenCover(isPresented: $showingDetail) {
-            UseByFoodDetailSheetRedesigned(item: item)
+        } else {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                offset = 0
+            }
+        }
+        isHorizontalDragging = false
+    }
+
+    private func performAnimatedDelete() {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            offset = -UIScreen.main.bounds.width
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            deleteItem()
         }
     }
 

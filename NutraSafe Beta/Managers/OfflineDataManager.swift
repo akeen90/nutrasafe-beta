@@ -151,6 +151,9 @@ final class OfflineDataManager {
             // HIGH-3 FIX: Clean up old soft-deleted records to prevent database bloat
             cleanupOldDeletedRecords()
 
+            // PRODUCTION FIX: Trim sync queue if it grew too large during offline period
+            trimSyncQueueIfNeeded()
+
             isInitialized = true
             print("[OfflineDataManager] Initialized successfully at: \(databasePath.path)")
         }
@@ -502,6 +505,83 @@ final class OfflineDataManager {
         return true
     }
 
+    // MARK: - SQLITE_BUSY Retry Logic (PRODUCTION FIX)
+
+    /// Maximum retry attempts for SQLITE_BUSY errors
+    private static let maxBusyRetries = 5
+
+    /// Base delay in microseconds for SQLITE_BUSY backoff (100ms)
+    private static let baseBusyDelayMicros: useconds_t = 100_000
+
+    /// Execute sqlite3_step with SQLITE_BUSY retry and exponential backoff
+    /// Returns the final result code after retries
+    /// PRODUCTION FIX: Prevents data loss when database is locked by concurrent operations
+    private func stepWithRetry(_ statement: OpaquePointer?) -> Int32 {
+        guard let statement = statement else { return SQLITE_ERROR }
+
+        var result = sqlite3_step(statement)
+        var retries = 0
+
+        while result == SQLITE_BUSY && retries < Self.maxBusyRetries {
+            retries += 1
+            // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
+            let delay = Self.baseBusyDelayMicros * useconds_t(1 << (retries - 1))
+            usleep(delay)
+            sqlite3_reset(statement)  // Reset statement before retry
+            result = sqlite3_step(statement)
+            print("[OfflineDataManager] SQLITE_BUSY retry \(retries)/\(Self.maxBusyRetries)")
+        }
+
+        if result == SQLITE_BUSY {
+            print("[OfflineDataManager] CRITICAL: Database busy after \(Self.maxBusyRetries) retries - operation failed")
+        }
+
+        return result
+    }
+
+    // MARK: - Sync Queue Size Management (PRODUCTION FIX)
+
+    /// Maximum pending sync operations before we start dropping oldest ones
+    /// 10,000 ops = ~10MB of queue data, prevents storage exhaustion during long offline periods
+    private static let maxSyncQueueSize = 10_000
+
+    /// Check sync queue size and trim oldest operations if over limit
+    /// Called during cleanup and before adding new operations
+    private func trimSyncQueueIfNeeded() {
+        guard isInitialized, db != nil else { return }
+
+        // Get current queue size
+        let countSql = "SELECT COUNT(*) FROM sync_queue"
+        var countStmt: OpaquePointer?
+        var currentCount = 0
+
+        if sqlite3_prepare_v2(db, countSql, -1, &countStmt, nil) == SQLITE_OK {
+            if sqlite3_step(countStmt) == SQLITE_ROW {
+                currentCount = Int(sqlite3_column_int(countStmt, 0))
+            }
+            sqlite3_finalize(countStmt)
+        }
+
+        // If over limit, delete oldest operations (FIFO - keeps newest)
+        if currentCount > Self.maxSyncQueueSize {
+            let excess = currentCount - Self.maxSyncQueueSize + 1000  // Remove extra buffer
+            let trimSql = """
+                DELETE FROM sync_queue WHERE id IN (
+                    SELECT id FROM sync_queue ORDER BY timestamp ASC LIMIT ?
+                )
+            """
+            var trimStmt: OpaquePointer?
+
+            if sqlite3_prepare_v2(db, trimSql, -1, &trimStmt, nil) == SQLITE_OK {
+                sqlite3_bind_int(trimStmt, 1, Int32(excess))
+                if stepWithRetry(trimStmt) == SQLITE_DONE {
+                    print("[OfflineDataManager] PRODUCTION FIX: Trimmed \(excess) oldest sync operations (queue was \(currentCount))")
+                }
+                sqlite3_finalize(trimStmt)
+            }
+        }
+    }
+
     // MARK: - Food Entry Operations
 
     /// Save a food entry locally (offline-first)
@@ -627,8 +707,11 @@ final class OfflineDataManager {
 
                 sqlite3_bind_double(statement, 26, Date().timeIntervalSince1970)
 
-                if sqlite3_step(statement) != SQLITE_DONE {
-                    print("[OfflineDataManager] Failed to save food entry: \(String(cString: sqlite3_errmsg(self.db)))")
+                // PRODUCTION FIX: Use stepWithRetry to handle SQLITE_BUSY
+                if self.stepWithRetry(statement) != SQLITE_DONE {
+                    // Safe error message access
+                    let errMsg = self.db != nil ? String(cString: sqlite3_errmsg(self.db)) : "Unknown error"
+                    print("[OfflineDataManager] Failed to save food entry: \(errMsg)")
                 }
 
                 sqlite3_finalize(statement)
@@ -648,7 +731,11 @@ final class OfflineDataManager {
 
             let calendar = Calendar.current
             let startOfDay = calendar.startOfDay(for: date)
-            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+            // PRODUCTION FIX: Use guard let instead of force unwrap to prevent crash on edge cases
+            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+                print("[OfflineDataManager] Failed to calculate end of day for date: \(date)")
+                return
+            }
 
             let sql = """
                 SELECT * FROM food_entries
@@ -778,12 +865,24 @@ final class OfflineDataManager {
     private func parseFoodEntryRow(_ statement: OpaquePointer?) -> FoodEntry? {
         guard let statement = statement else { return nil }
 
-        let id = String(cString: sqlite3_column_text(statement, 0))
-        let userId = String(cString: sqlite3_column_text(statement, 1))
-        let foodName = String(cString: sqlite3_column_text(statement, 2))
-        let brandName: String? = sqlite3_column_type(statement, 3) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 3)) : nil
+        // PRODUCTION FIX: Safe string extraction with NULL checks to prevent crashes
+        // sqlite3_column_text returns NULL for NULL columns or on error - String(cString:) crashes on NULL
+        func safeString(_ col: Int32) -> String? {
+            guard let ptr = sqlite3_column_text(statement, col) else { return nil }
+            return String(cString: ptr)
+        }
+
+        // Required fields - return nil if any are missing (corrupt row)
+        guard let id = safeString(0),
+              let userId = safeString(1),
+              let foodName = safeString(2),
+              let servingUnit = safeString(5) else {
+            print("[OfflineDataManager] Skipping corrupt food entry row - missing required fields")
+            return nil
+        }
+
+        let brandName: String? = sqlite3_column_type(statement, 3) != SQLITE_NULL ? safeString(3) : nil
         let servingSize = sqlite3_column_double(statement, 4)
-        let servingUnit = String(cString: sqlite3_column_text(statement, 5))
         let calories = sqlite3_column_double(statement, 6)
         let protein = sqlite3_column_double(statement, 7)
         let carbs = sqlite3_column_double(statement, 8)
@@ -793,53 +892,48 @@ final class OfflineDataManager {
         let sodium: Double? = sqlite3_column_type(statement, 12) != SQLITE_NULL ? sqlite3_column_double(statement, 12) : nil
         let calcium: Double? = sqlite3_column_type(statement, 13) != SQLITE_NULL ? sqlite3_column_double(statement, 13) : nil
 
-        // Decode JSON fields
+        // Decode JSON fields - using safeString helper for NULL safety
         var ingredients: [String]?
-        if sqlite3_column_type(statement, 14) != SQLITE_NULL {
-            let json = String(cString: sqlite3_column_text(statement, 14))
+        if sqlite3_column_type(statement, 14) != SQLITE_NULL, let json = safeString(14) {
             if let jsonData = json.data(using: .utf8) {
                 ingredients = try? JSONDecoder().decode([String].self, from: jsonData)
             }
         }
 
         var additives: [NutritionAdditiveInfo]?
-        if sqlite3_column_type(statement, 15) != SQLITE_NULL {
-            let json = String(cString: sqlite3_column_text(statement, 15))
+        if sqlite3_column_type(statement, 15) != SQLITE_NULL, let json = safeString(15) {
             if let jsonData = json.data(using: .utf8) {
                 additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: jsonData)
             }
         }
 
-        let barcode: String? = sqlite3_column_type(statement, 16) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 16)) : nil
+        let barcode: String? = sqlite3_column_type(statement, 16) != SQLITE_NULL ? safeString(16) : nil
 
         var micronutrientProfile: MicronutrientProfile?
-        if sqlite3_column_type(statement, 17) != SQLITE_NULL {
-            let json = String(cString: sqlite3_column_text(statement, 17))
+        if sqlite3_column_type(statement, 17) != SQLITE_NULL, let json = safeString(17) {
             if let jsonData = json.data(using: .utf8) {
                 micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: jsonData)
             }
         }
 
         let isPerUnit = sqlite3_column_int(statement, 18) == 1
-        let imageUrl: String? = sqlite3_column_type(statement, 19) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 19)) : nil
+        let imageUrl: String? = sqlite3_column_type(statement, 19) != SQLITE_NULL ? safeString(19) : nil
 
         var portions: [PortionOption]?
-        if sqlite3_column_type(statement, 20) != SQLITE_NULL {
-            let json = String(cString: sqlite3_column_text(statement, 20))
+        if sqlite3_column_type(statement, 20) != SQLITE_NULL, let json = safeString(20) {
             if let jsonData = json.data(using: .utf8) {
                 portions = try? JSONDecoder().decode([PortionOption].self, from: jsonData)
             }
         }
 
-        let mealTypeRaw = String(cString: sqlite3_column_text(statement, 21))
+        let mealTypeRaw = safeString(21) ?? "snacks"
         let mealType = MealType(rawValue: mealTypeRaw) ?? .snacks
 
         let date = Date(timeIntervalSince1970: sqlite3_column_double(statement, 22))
         let dateLogged = Date(timeIntervalSince1970: sqlite3_column_double(statement, 23))
 
         var inferredIngredients: [InferredIngredient]?
-        if sqlite3_column_type(statement, 24) != SQLITE_NULL {
-            let json = String(cString: sqlite3_column_text(statement, 24))
+        if sqlite3_column_type(statement, 24) != SQLITE_NULL, let json = safeString(24) {
             if let jsonData = json.data(using: .utf8) {
                 inferredIngredients = try? JSONDecoder().decode([InferredIngredient].self, from: jsonData)
             }
@@ -943,8 +1037,10 @@ final class OfflineDataManager {
 
                 sqlite3_bind_double(statement, 11, Date().timeIntervalSince1970)
 
-                if sqlite3_step(statement) != SQLITE_DONE {
-                    print("[OfflineDataManager] Failed to save use by item: \(String(cString: sqlite3_errmsg(self.db)))")
+                // PRODUCTION FIX: Use stepWithRetry to handle SQLITE_BUSY
+                if self.stepWithRetry(statement) != SQLITE_DONE {
+                    let errMsg = self.db != nil ? String(cString: sqlite3_errmsg(self.db)) : "Unknown error"
+                    print("[OfflineDataManager] Failed to save use by item: \(errMsg)")
                 }
 
                 sqlite3_finalize(statement)
@@ -1005,16 +1101,27 @@ final class OfflineDataManager {
     private func parseUseByItemRow(_ statement: OpaquePointer?) -> UseByInventoryItem? {
         guard let statement = statement else { return nil }
 
-        let id = String(cString: sqlite3_column_text(statement, 0))
-        let name = String(cString: sqlite3_column_text(statement, 1))
-        let brand: String? = sqlite3_column_type(statement, 2) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 2)) : nil
-        let quantity = String(cString: sqlite3_column_text(statement, 3))
+        // PRODUCTION FIX: Safe string extraction with NULL checks to prevent crashes
+        func safeString(_ col: Int32) -> String? {
+            guard let ptr = sqlite3_column_text(statement, col) else { return nil }
+            return String(cString: ptr)
+        }
+
+        // Required fields - return nil if any are missing (corrupt row)
+        guard let id = safeString(0),
+              let name = safeString(1),
+              let quantity = safeString(3) else {
+            print("[OfflineDataManager] Skipping corrupt use-by item row - missing required fields")
+            return nil
+        }
+
+        let brand: String? = sqlite3_column_type(statement, 2) != SQLITE_NULL ? safeString(2) : nil
         let expiryDate = Date(timeIntervalSince1970: sqlite3_column_double(statement, 4))
         let addedDate = Date(timeIntervalSince1970: sqlite3_column_double(statement, 5))
-        let barcode: String? = sqlite3_column_type(statement, 6) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 6)) : nil
-        let category: String? = sqlite3_column_type(statement, 7) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 7)) : nil
-        let imageUrl: String? = sqlite3_column_type(statement, 8) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 8)) : nil
-        let notes: String? = sqlite3_column_type(statement, 9) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 9)) : nil
+        let barcode: String? = sqlite3_column_type(statement, 6) != SQLITE_NULL ? safeString(6) : nil
+        let category: String? = sqlite3_column_type(statement, 7) != SQLITE_NULL ? safeString(7) : nil
+        let imageUrl: String? = sqlite3_column_type(statement, 8) != SQLITE_NULL ? safeString(8) : nil
+        let notes: String? = sqlite3_column_type(statement, 9) != SQLITE_NULL ? safeString(9) : nil
 
         return UseByInventoryItem(
             id: id,
@@ -1149,25 +1256,34 @@ final class OfflineDataManager {
     private func parseWeightEntryRow(_ statement: OpaquePointer?) -> WeightEntry? {
         guard let statement = statement else { return nil }
 
-        let idString = String(cString: sqlite3_column_text(statement, 0))
-        guard let id = UUID(uuidString: idString) else { return nil }
+        // PRODUCTION FIX: Safe string extraction with NULL checks to prevent crashes
+        func safeString(_ col: Int32) -> String? {
+            guard let ptr = sqlite3_column_text(statement, col) else { return nil }
+            return String(cString: ptr)
+        }
+
+        // Required field - return nil if missing (corrupt row)
+        guard let idString = safeString(0),
+              let id = UUID(uuidString: idString) else {
+            print("[OfflineDataManager] Skipping corrupt weight entry row - invalid ID")
+            return nil
+        }
 
         let weight = sqlite3_column_double(statement, 1)
         let date = Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))
         let bmi: Double? = sqlite3_column_type(statement, 3) != SQLITE_NULL ? sqlite3_column_double(statement, 3) : nil
-        let note: String? = sqlite3_column_type(statement, 4) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 4)) : nil
-        let photoUrl: String? = sqlite3_column_type(statement, 5) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 5)) : nil
+        let note: String? = sqlite3_column_type(statement, 4) != SQLITE_NULL ? safeString(4) : nil
+        let photoUrl: String? = sqlite3_column_type(statement, 5) != SQLITE_NULL ? safeString(5) : nil
 
         var photoUrls: [String]?
-        if sqlite3_column_type(statement, 6) != SQLITE_NULL {
-            let json = String(cString: sqlite3_column_text(statement, 6))
+        if sqlite3_column_type(statement, 6) != SQLITE_NULL, let json = safeString(6) {
             if let jsonData = json.data(using: .utf8) {
                 photoUrls = try? JSONDecoder().decode([String].self, from: jsonData)
             }
         }
 
         let waistSize: Double? = sqlite3_column_type(statement, 7) != SQLITE_NULL ? sqlite3_column_double(statement, 7) : nil
-        let dressSize: String? = sqlite3_column_type(statement, 8) != SQLITE_NULL ? String(cString: sqlite3_column_text(statement, 8)) : nil
+        let dressSize: String? = sqlite3_column_type(statement, 8) != SQLITE_NULL ? safeString(8) : nil
 
         return WeightEntry(id: id, weight: weight, date: date, bmi: bmi, note: note, photoURL: photoUrl, photoURLs: photoUrls, waistSize: waistSize, dressSize: dressSize)
     }
@@ -2094,6 +2210,26 @@ final class OfflineDataManager {
         }
 
         return count
+    }
+
+    /// Reset all backoff timers to allow immediate retry
+    /// Called when user manually triggers sync to bypass exponential backoff
+    func resetAllBackoffTimers() {
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "UPDATE sync_queue SET next_retry_time = 0, retry_count = 0"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                if sqlite3_step(statement) != SQLITE_DONE {
+                    print("[OfflineDataManager] Failed to reset backoff timers: \(String(cString: sqlite3_errmsg(self.db)))")
+                } else {
+                    print("[OfflineDataManager] Reset backoff timers for all pending operations")
+                }
+                sqlite3_finalize(statement)
+            }
+        }
     }
 
     // MARK: - Conflict Tracking (HIGH-4 FIX)
