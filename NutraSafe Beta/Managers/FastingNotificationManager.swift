@@ -448,6 +448,32 @@ class FastingNotificationManager {
 
             }
 
+    /// HIGH-5 FIX: Cancel notifications for a session by ID
+    /// Used when deleting a session where we only have the ID (not the full object)
+    /// Searches all pending notifications for any that reference this session ID
+    func cancelSessionNotifications(sessionId: String) {
+        Task {
+            let pendingRequests = await notificationCenter.pendingNotificationRequests()
+
+            // Find all notifications that reference this session ID in their userInfo
+            let identifiersToRemove = pendingRequests
+                .filter { request in
+                    if let type = request.content.userInfo["type"] as? String,
+                       type == "fasting",
+                       let notificationSessionId = request.content.userInfo["sessionId"] as? String {
+                        return notificationSessionId == sessionId
+                    }
+                    return false
+                }
+                .map { $0.identifier }
+
+            if !identifiersToRemove.isEmpty {
+                notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
+                print("[FastingNotificationManager] HIGH-5: Cancelled \(identifiersToRemove.count) notifications for deleted session \(sessionId)")
+            }
+        }
+    }
+
     /// Cancel all fasting notifications
     func cancelAllFastingNotifications() async {
         let pendingRequests = await notificationCenter.pendingNotificationRequests()

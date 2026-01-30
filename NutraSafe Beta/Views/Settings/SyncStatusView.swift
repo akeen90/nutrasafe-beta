@@ -259,13 +259,23 @@ class SyncStatusViewModel: ObservableObject {
     var syncStatusDescription: String {
         if isSyncing {
             return "Syncing..."
+        } else if failedCount > 0 {
+            // LOW-9 FIX: Prioritize showing failed count over pending
+            // Failed operations need user attention, pending will auto-resolve
+            return "\(failedCount) failed - needs attention"
         } else if pendingCount > 0 {
             return "\(pendingCount) pending"
-        } else if failedCount > 0 {
-            return "\(failedCount) failed"
+        } else if unresolvedConflictCount > 0 {
+            // HIGH-4: Show conflict count if any unresolved
+            return "\(unresolvedConflictCount) conflict(s) detected"
         } else {
             return "Up to date"
         }
+    }
+
+    /// HIGH-4: Count of unresolved multi-device conflicts
+    var unresolvedConflictCount: Int {
+        OfflineDataManager.shared.getUnresolvedConflictCount()
     }
 
     func triggerManualSync() {

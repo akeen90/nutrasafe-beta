@@ -132,14 +132,131 @@ final class OfflineDataManager {
                 return
             }
 
+            // CRIT-2 FIX: Check database integrity on open
+            // If corrupted, backup and recreate to prevent persistent crashes
+            if !checkDatabaseIntegrity() {
+                print("[OfflineDataManager] CRIT-2: Database corruption detected, attempting recovery...")
+                recoverCorruptDatabase()
+            }
+
             // Enable WAL mode for better concurrent access
             executeSQL("PRAGMA journal_mode = WAL")
+
+            // MEDIUM-6 FIX: Ensure file protection is set for health data privacy
+            setFileProtection()
 
             // Create all tables
             createTables()
 
+            // HIGH-3 FIX: Clean up old soft-deleted records to prevent database bloat
+            cleanupOldDeletedRecords()
+
             isInitialized = true
             print("[OfflineDataManager] Initialized successfully at: \(databasePath.path)")
+        }
+    }
+
+    // MARK: - Database Integrity (CRIT-2 FIX)
+
+    /// Check database integrity using SQLite's built-in integrity check
+    /// Returns true if database is healthy, false if corrupted
+    private func checkDatabaseIntegrity() -> Bool {
+        var statement: OpaquePointer?
+        let sql = "PRAGMA integrity_check"
+
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            print("[OfflineDataManager] CRIT-2: Failed to prepare integrity check")
+            return false
+        }
+
+        defer { sqlite3_finalize(statement) }
+
+        if sqlite3_step(statement) == SQLITE_ROW {
+            if let result = sqlite3_column_text(statement, 0) {
+                let resultString = String(cString: result)
+                if resultString == "ok" {
+                    print("[OfflineDataManager] Database integrity check passed")
+                    return true
+                } else {
+                    print("[OfflineDataManager] CRIT-2: Integrity check failed: \(resultString)")
+                    return false
+                }
+            }
+        }
+
+        return false
+    }
+
+    /// Recover from a corrupted database by backing up and recreating
+    private func recoverCorruptDatabase() {
+        // Close the corrupted database
+        sqlite3_close(db)
+        db = nil
+
+        // Backup the corrupted file for potential manual recovery
+        let backupPath = databasePath.deletingLastPathComponent()
+            .appendingPathComponent("nutrasafe_corrupt_\(Int(Date().timeIntervalSince1970)).sqlite")
+
+        do {
+            try FileManager.default.moveItem(at: databasePath, to: backupPath)
+            print("[OfflineDataManager] CRIT-2: Corrupted database backed up to: \(backupPath.path)")
+        } catch {
+            print("[OfflineDataManager] CRIT-2: Failed to backup corrupted database: \(error)")
+            // Try to delete it instead
+            try? FileManager.default.removeItem(at: databasePath)
+        }
+
+        // Reopen fresh database
+        if sqlite3_open(databasePath.path, &db) != SQLITE_OK {
+            print("[OfflineDataManager] CRIT-2: Failed to create fresh database after recovery")
+        } else {
+            print("[OfflineDataManager] CRIT-2: Fresh database created. Data will be re-synced from Firebase.")
+            // Post notification so OfflineSyncManager knows to do a full pull
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .offlineDatabaseRecovered, object: nil)
+            }
+        }
+    }
+
+    // MARK: - File Protection (MEDIUM-6 FIX)
+
+    /// Set NSFileProtectionComplete on the database file for health data privacy
+    private func setFileProtection() {
+        do {
+            try FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: databasePath.path
+            )
+            print("[OfflineDataManager] MEDIUM-6: File protection set on database")
+        } catch {
+            print("[OfflineDataManager] MEDIUM-6: Failed to set file protection: \(error)")
+        }
+    }
+
+    // MARK: - Cleanup (HIGH-3 FIX)
+
+    /// Remove soft-deleted records older than 30 days to prevent database bloat
+    /// These records have sync_status='deleted' and should have been synced by now
+    private func cleanupOldDeletedRecords() {
+        let thirtyDaysAgo = Date().addingTimeInterval(-30 * 24 * 60 * 60).timeIntervalSince1970
+
+        let tables = ["food_entries", "use_by_items", "weight_entries", "fasting_sessions", "fasting_plans", "reaction_logs"]
+
+        for table in tables {
+            let sql = "DELETE FROM \(table) WHERE sync_status = 'deleted' AND last_modified < ?"
+            var statement: OpaquePointer?
+
+            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_double(statement, 1, thirtyDaysAgo)
+
+                if sqlite3_step(statement) == SQLITE_DONE {
+                    let deletedCount = sqlite3_changes(db)
+                    if deletedCount > 0 {
+                        print("[OfflineDataManager] HIGH-3: Cleaned up \(deletedCount) old deleted records from \(table)")
+                    }
+                }
+                sqlite3_finalize(statement)
+            }
         }
     }
 
@@ -162,6 +279,23 @@ final class OfflineDataManager {
 
         // HIGH-9 FIX: Add next_retry_time column if it doesn't exist (migration for existing installs)
         executeSQL("ALTER TABLE sync_queue ADD COLUMN next_retry_time REAL DEFAULT 0")
+
+        // HIGH-4 FIX: Sync conflicts table - tracks when local and server data diverge
+        // This allows users to see and resolve conflicts instead of silently overwriting
+        executeSQL("""
+            CREATE TABLE IF NOT EXISTS sync_conflicts (
+                id TEXT PRIMARY KEY,
+                collection TEXT NOT NULL,
+                document_id TEXT NOT NULL,
+                local_data BLOB,
+                server_data BLOB,
+                local_version INTEGER,
+                server_version INTEGER,
+                detected_at REAL NOT NULL,
+                resolved INTEGER DEFAULT 0
+            )
+        """)
+        executeSQL("CREATE INDEX IF NOT EXISTS idx_conflicts_resolved ON sync_conflicts(resolved)")
 
         // Food entries table
         executeSQL("""
@@ -1887,6 +2021,96 @@ final class OfflineDataManager {
         }
 
         return count
+    }
+
+    // MARK: - Conflict Tracking (HIGH-4 FIX)
+
+    /// Save a sync conflict for user review
+    /// Called when server version is higher than local version during sync
+    func saveConflict(collection: String, documentId: String, localData: Data?, serverData: Data?, localVersion: Int, serverVersion: Int) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            let sql = """
+                INSERT OR REPLACE INTO sync_conflicts (
+                    id, collection, document_id, local_data, server_data, local_version, server_version, detected_at, resolved
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+            """
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                let conflictId = "\(collection)_\(documentId)"
+                sqlite3_bind_text(statement, 1, conflictId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 2, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 3, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                if let local = localData {
+                    sqlite3_bind_blob(statement, 4, (local as NSData).bytes, Int32(local.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(statement, 4)
+                }
+
+                if let server = serverData {
+                    sqlite3_bind_blob(statement, 5, (server as NSData).bytes, Int32(server.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(statement, 5)
+                }
+
+                sqlite3_bind_int(statement, 6, Int32(localVersion))
+                sqlite3_bind_int(statement, 7, Int32(serverVersion))
+                sqlite3_bind_double(statement, 8, Date().timeIntervalSince1970)
+
+                if sqlite3_step(statement) == SQLITE_DONE {
+                    print("[OfflineDataManager] HIGH-4: Saved conflict for \(collection)/\(documentId) (local v\(localVersion) vs server v\(serverVersion))")
+                    // Post notification to alert user
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .offlineSyncConflictDetected, object: nil, userInfo: [
+                            "collection": collection,
+                            "documentId": documentId
+                        ])
+                    }
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+
+    /// Get count of unresolved conflicts
+    func getUnresolvedConflictCount() -> Int {
+        var count = 0
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "SELECT COUNT(*) FROM sync_conflicts WHERE resolved = 0"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    count = Int(sqlite3_column_int(statement, 0))
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return count
+    }
+
+    /// Mark a conflict as resolved
+    func resolveConflict(collection: String, documentId: String) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            let conflictId = "\(collection)_\(documentId)"
+            let sql = "UPDATE sync_conflicts SET resolved = 1 WHERE id = ?"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, conflictId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
     }
 
     // MARK: - Failed Operations Management

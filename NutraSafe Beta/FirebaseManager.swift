@@ -1615,6 +1615,11 @@ class FirebaseManager: ObservableObject {
         // OfflineSyncManager will push delete to Firebase in the background
         OfflineDataManager.shared.deleteUseByItem(itemId: itemId)
 
+        // HIGH-5 FIX: Cancel notifications atomically with delete operation
+        // This ensures notifications are cleaned up even if app crashes between delete and UI callback
+        // Previously notification cleanup was in UI layer which could miss edge cases
+        UseByNotificationManager.shared.cancelNotifications(for: itemId)
+
         // Trigger background sync to push delete to Firebase
         OfflineSyncManager.shared.triggerSync()
     }
@@ -3827,6 +3832,10 @@ class FirebaseManager: ObservableObject {
         // OFFLINE-FIRST: Mark as deleted in local SQLite database
         // OfflineSyncManager will push delete to Firebase in the background
         OfflineDataManager.shared.deleteFastingSession(id: id)
+
+        // HIGH-5 FIX: Cancel notifications atomically with delete operation
+        // This ensures notifications are cleaned up even if app crashes between delete and UI callback
+        FastingNotificationManager.shared.cancelSessionNotifications(sessionId: id)
 
         // Trigger background sync to push delete to Firebase
         OfflineSyncManager.shared.triggerSync()

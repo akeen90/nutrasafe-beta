@@ -45,7 +45,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Request background time to complete sync
         var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
         backgroundTaskID = application.beginBackgroundTask(withName: "SyncPendingData") {
-            // Clean up if we run out of time
+            // LOW-10 FIX: Log when iOS terminates background task early for debugging
+            print("[AppDelegate] WARNING: Background sync task expired - iOS terminated early. Pending data may not be synced.")
             application.endBackgroundTask(backgroundTaskID)
             backgroundTaskID = .invalid
         }
@@ -187,6 +188,19 @@ struct NutraSafeBetaApp: App {
         print("🚀 App Init: Initializing offline data manager...")
         OfflineDataManager.shared.initialize()
         print("🚀 App Init: Offline data manager initialized")
+
+        // CRIT-1 FIX: Check if app was terminated with pending sync operations
+        // The flag is set in applicationWillTerminate but was never consumed
+        if UserDefaults.standard.bool(forKey: "pendingSyncOnNextLaunch") {
+            UserDefaults.standard.set(false, forKey: "pendingSyncOnNextLaunch")
+            print("🚀 App Init: CRIT-1 - Pending sync detected from previous termination, triggering urgent sync")
+            // Trigger sync immediately on next run loop to ensure managers are ready
+            DispatchQueue.main.async {
+                Task {
+                    await OfflineSyncManager.shared.forceSync()
+                }
+            }
+        }
     }
 
     // Add theme binding at the scene level so changes apply instantly across sheets and overlays

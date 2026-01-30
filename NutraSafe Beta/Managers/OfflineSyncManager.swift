@@ -538,9 +538,19 @@ final class OfflineSyncManager {
                         let localVersion = dict["_version"] as? Int ?? 0
 
                         // If server has higher version, this is a conflict
-                        // In offline-first, we prefer local changes (user's intent) but log the conflict
+                        // In offline-first, we prefer local changes (user's intent) but track the conflict
                         if serverVersion > localVersion {
                             print("[OfflineSyncManager] CRIT-1: Conflict detected for food entry \(operation.documentId) - server v\(serverVersion), local v\(localVersion). Applying local changes (last-write-wins).")
+                            // HIGH-4 FIX: Track conflict for user notification
+                            let serverDataJSON = try? JSONSerialization.data(withJSONObject: serverData)
+                            OfflineDataManager.shared.saveConflict(
+                                collection: "foodEntries",
+                                documentId: operation.documentId,
+                                localData: data,
+                                serverData: serverDataJSON,
+                                localVersion: localVersion,
+                                serverVersion: serverVersion
+                            )
                         }
 
                         // Always write with incremented version (last-write-wins)
@@ -1027,6 +1037,8 @@ enum SyncError: Error, LocalizedError {
 extension Notification.Name {
     static let offlineSyncCompleted = Notification.Name("offlineSyncCompleted")
     static let offlineSyncOperationsFailed = Notification.Name("offlineSyncOperationsFailed")
+    static let offlineDatabaseRecovered = Notification.Name("offlineDatabaseRecovered")
+    static let offlineSyncConflictDetected = Notification.Name("offlineSyncConflictDetected")
 }
 
 // MARK: - Array Chunking Extension
