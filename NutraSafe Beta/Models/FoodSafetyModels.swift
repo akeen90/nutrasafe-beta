@@ -362,9 +362,9 @@ struct AllergenDetectionResult {
 
 class AllergenDetector {
     static let shared = AllergenDetector()
-    
+
     private init() {}
-    
+
     private func matchesWord(_ text: String, _ pattern: String) -> Bool {
         let escaped = NSRegularExpression.escapedPattern(for: pattern.lowercased())
         let regexPattern = "(?<![A-Za-z0-9])\(escaped)(?![A-Za-z0-9])"
@@ -372,31 +372,82 @@ class AllergenDetector {
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         return regex.firstMatch(in: text, options: [], range: range) != nil
     }
+
+    // MARK: - Free-From Pattern Detection
+
+    /// Patterns that indicate an allergen is ABSENT (e.g., "gluten-free", "free from gluten")
+    private func getFreeFromPatterns(for allergen: Allergen) -> [String] {
+        let name = allergen.displayName.lowercased()
+        return [
+            "\(name)-free",
+            "\(name) free",
+            "free from \(name)",
+            "free-from \(name)",
+            "no \(name)",
+            "without \(name)",
+            "\(name) not detected",
+            "does not contain \(name)",
+            "suitable for \(name)-free",
+            "suitable for \(name) free"
+        ]
+    }
+
+    /// Checks if the text indicates the allergen is explicitly absent (free-from)
+    private func isAllergenExplicitlyAbsent(_ allergen: Allergen, in text: String) -> Bool {
+        let freeFromPatterns = getFreeFromPatterns(for: allergen)
+        return freeFromPatterns.contains { text.contains($0) }
+    }
+
+    /// Central method to check if an allergen is present in text (handles free-from patterns)
+    /// Use this instead of simple keyword matching to avoid false positives
+    func isAllergenPresent(_ allergen: Allergen, in text: String) -> Bool {
+        let lowercased = text.lowercased()
+
+        // First check if the allergen is explicitly marked as absent
+        if isAllergenExplicitlyAbsent(allergen, in: lowercased) {
+            return false
+        }
+
+        // Use centralized detection for dairy (handles plant milks correctly)
+        if allergen == .dairy {
+            return containsDairyMilk(in: lowercased)
+        }
+
+        // Check keywords with word boundary matching for accuracy
+        return allergen.keywords.contains { keyword in
+            matchesWord(lowercased, keyword)
+        }
+    }
     
     func detectAllergens(in foodName: String, ingredients: [String] = [], userAllergens: [Allergen]) -> AllergenDetectionResult {
         let searchText = (foodName + " " + ingredients.joined(separator: " ")).lowercased()
         var detectedAllergens: [Allergen] = []
         var confidence = 0.0
         var warnings: [String] = []
-        
+
         // Check each user allergen against the food
         for allergen in userAllergens {
+            // Skip if allergen is explicitly marked as absent (e.g., "gluten-free")
+            if isAllergenExplicitlyAbsent(allergen, in: searchText) {
+                continue
+            }
+
             let matchingKeywords = allergen.keywords.filter { keyword in
                 matchesWord(searchText, keyword)
             }
-            
+
             if !matchingKeywords.isEmpty {
                 detectedAllergens.append(allergen)
                 warnings.append("Contains \(allergen.displayName): \(matchingKeywords.joined(separator: ", "))")
-                
+
                 // Increase confidence based on number of matches (slightly lower weight)
                 confidence += Double(matchingKeywords.count) * 0.15
             }
         }
-        
+
         // Cap confidence at 1.0
         confidence = min(confidence, 1.0)
-        
+
         // Determine risk level
         let riskLevel: AllergenSeverity
         if detectedAllergens.contains(where: { $0.severity == .high }) {
@@ -409,7 +460,7 @@ class AllergenDetector {
             riskLevel = .low
             confidence = max(confidence, 0.8)
         }
-        
+
         return AllergenDetectionResult(
             detectedAllergens: detectedAllergens,
             confidence: confidence,
@@ -866,6 +917,11 @@ class AdditiveWatchService {
         print("📚 Loading additive database: \(databaseName).json")
 
         do {
+            // NOTE: Synchronous file I/O is acceptable here because:
+            // 1. This is called only once during singleton initialization
+            // 2. It happens before any UI is displayed (during app launch)
+            // 3. The file is in the app bundle (fast local read, not network)
+            // 4. Moving to async would require restructuring callers with no benefit
             let data = try Data(contentsOf: url)
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let ingredients = json["ingredients"] as? [[String: Any]] else {
@@ -1054,6 +1110,10 @@ class AdditiveWatchService {
 
     // MARK: - Ultra-Processed Ingredients Detection
 
+    // NOTE: Lazy initialization with synchronous file I/O is acceptable here because:
+    // 1. This is lazily loaded only when first needed (not at app startup)
+    // 2. The file is in the app bundle (fast local read, not network)
+    // 3. It happens on the same thread that's already doing additive detection work
     private lazy var ultraProcessedDatabase: [String: UltraProcessedIngredientData] = {
         guard let url = Bundle.main.url(forResource: "ingredients_consolidated", withExtension: "json") else {
                         return [:]

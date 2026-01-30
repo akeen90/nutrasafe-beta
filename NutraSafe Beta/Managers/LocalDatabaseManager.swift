@@ -101,8 +101,9 @@ final class LocalDatabaseManager {
                 }
             }
 
-            // Open with read-write access for delta sync support
-            let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX
+            // CRIT-3 FIX: Use SQLITE_OPEN_FULLMUTEX for thread-safe concurrent access
+            // NOMUTEX disables threading protection, which can cause corruption with concurrent access
+            let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
             let result = sqlite3_open_v2(dbPath, &db, flags, nil)
 
             if result == SQLITE_OK {
@@ -140,7 +141,8 @@ final class LocalDatabaseManager {
     private func openBundledDatabaseReadOnly() {
         guard let bundledPath = bundledDatabasePath else { return }
 
-        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX
+        // CRIT-3 FIX: Use SQLITE_OPEN_FULLMUTEX for thread-safe concurrent access
+        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
         let result = sqlite3_open_v2(bundledPath.path, &db, flags, nil)
 
         if result == SQLITE_OK {
@@ -430,7 +432,7 @@ final class LocalDatabaseManager {
                     // FTS5 prefix matching - each word gets a wildcard
                     let words = sanitized.split(separator: " ").map(String.init)
                     let ftsQuery = words.map { "\($0)*" }.joined(separator: " ")
-                    sqlite3_bind_text(stmt, 1, ftsQuery, -1, nil)
+                    sqlite3_bind_text(stmt, 1, ftsQuery, -1, SQLITE_TRANSIENT)
                     sqlite3_bind_int(stmt, 2, Int32(limit * 3)) // Fetch more for ranking
 
                     while sqlite3_step(stmt) == SQLITE_ROW {
@@ -480,7 +482,7 @@ final class LocalDatabaseManager {
 
                         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
                             let ftsQuery = "\(word)*"
-                            sqlite3_bind_text(stmt, 1, ftsQuery, -1, nil)
+                            sqlite3_bind_text(stmt, 1, ftsQuery, -1, SQLITE_TRANSIENT)
                             sqlite3_bind_int(stmt, 2, Int32(limit))
 
                             while sqlite3_step(stmt) == SQLITE_ROW {
@@ -729,7 +731,7 @@ final class LocalDatabaseManager {
             var stmt: OpaquePointer?
 
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, id, -1, nil)
+                sqlite3_bind_text(stmt, 1, id, -1, SQLITE_TRANSIENT)
 
                 if sqlite3_step(stmt) == SQLITE_ROW {
                     result = parseFoodRow(stmt)

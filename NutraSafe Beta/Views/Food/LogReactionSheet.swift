@@ -1556,7 +1556,7 @@ struct RecentMealsListView: View {
 
         // Fetch meals from the last 7 days
         let endDate = Date()
-        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: endDate)!
+        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: endDate) ?? endDate
 
         do {
             let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: endDate)

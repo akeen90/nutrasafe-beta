@@ -12,7 +12,8 @@ const ALGOLIA_APP_ID = 'WK0TIF84M2';
 // Use functions.config() for v1 triggers (more reliable than v2 secrets)
 const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
 // Algolia-only indices (no Firebase backing)
-const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+// NOTE: uk_foods_cleaned was removed - it HAS Firestore backing (see syncUKFoodsCleanedToAlgolia in algolia-sync.ts)
+const ALGOLIA_ONLY_INDICES = ['fast_foods_database', 'generic_database'];
 // Map Algolia index names to Firestore collection names
 const INDEX_TO_COLLECTION = {
     'verified_foods': 'verifiedFoods',
@@ -23,6 +24,7 @@ const INDEX_TO_COLLECTION = {
     'ai_manually_added': 'aiManuallyAdded',
     'tescoProducts': 'tesco_products',
     'tesco_products': 'tesco_products',
+    'uk_foods_cleaned': 'uk_foods_cleaned', // Has Firestore backing with sync trigger
 };
 /**
  * Helper function to apply batch updates with Firebase-first approach
@@ -791,7 +793,8 @@ exports.batchUpdateFoodsWithFirebase = functions
         console.log(`📝 Batch update (Firebase-first) for index: ${indexName}`);
         console.log(`   Updates: ${updates?.length || 0}, Deletes: ${deletes?.length || 0}`);
         // Algolia-only indices (no Firebase backing)
-        const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+        // NOTE: uk_foods_cleaned was removed - it HAS Firestore backing (see syncUKFoodsCleanedToAlgolia in algolia-sync.ts)
+        const ALGOLIA_ONLY_INDICES = ['fast_foods_database', 'generic_database'];
         // Map Algolia index names to Firestore collection names
         const indexToCollection = {
             'verified_foods': 'verifiedFoods',
@@ -802,6 +805,7 @@ exports.batchUpdateFoodsWithFirebase = functions
             'ai_manually_added': 'aiManuallyAdded',
             'tescoProducts': 'tesco_products',
             'tesco_products': 'tesco_products',
+            'uk_foods_cleaned': 'uk_foods_cleaned', // Has Firestore backing with sync trigger
         };
         let updatedCount = 0;
         let deletedCount = 0;

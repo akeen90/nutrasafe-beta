@@ -402,7 +402,7 @@ class PremiumOnboardingState: ObservableObject {
     // Personal details (for BMR calculation)
     @Published var heightCm: Double = 170
     @Published var weightKg: Double = 70
-    @Published var birthDate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date())!
+    @Published var birthDate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
     @Published var gender: UserGender = .notSet
 
     var age: Int {

@@ -28,10 +28,17 @@ struct StaleSessionRecoverySheet: View {
                     .font(.title2.bold())
 
                 // Description
-                Text("A fasting session from \(session.startTime.formatted(date: .abbreviated, time: .shortened)) appears to still be running.")
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
+                VStack(spacing: 8) {
+                    Text("A fasting session from \(session.startTime.formatted(date: .abbreviated, time: .shortened)) appears to still be running.")
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary)
+
+                    Text("This happens when the app was closed during a fast. Please choose how to record this session:")
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
+                .padding(.horizontal)
 
                 // Session info card
                 VStack(alignment: .leading, spacing: 12) {
@@ -71,39 +78,57 @@ struct StaleSessionRecoverySheet: View {
 
                 Spacer()
 
-                // Action buttons
-                VStack(spacing: 12) {
-                    Button {
-                        Task {
-                            await viewModel.resolveStaleSessionAsCompleted(session)
-                            dismiss()
+                // Action buttons with explanations
+                VStack(spacing: 16) {
+                    VStack(spacing: 4) {
+                        Button {
+                            Task {
+                                await viewModel.resolveStaleSessionAsCompleted(session)
+                                dismiss()
+                            }
+                        } label: {
+                            Label("I completed this fast", systemImage: "checkmark.circle.fill")
+                                .frame(maxWidth: .infinity)
                         }
-                    } label: {
-                        Label("I completed this fast", systemImage: "checkmark.circle.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
 
-                    Button {
-                        Task {
-                            await viewModel.resolveStaleSessionAsEarlyEnd(session)
-                            dismiss()
-                        }
-                    } label: {
-                        Label("I ended early", systemImage: "clock.arrow.circlepath")
-                            .frame(maxWidth: .infinity)
+                        Text("Records as completed for the full \(session.targetDurationHours) hours")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
-                    .buttonStyle(.bordered)
 
-                    Button(role: .destructive) {
-                        Task {
-                            await viewModel.resolveStaleSessionAsDiscarded(session)
-                            dismiss()
+                    VStack(spacing: 4) {
+                        Button {
+                            Task {
+                                await viewModel.resolveStaleSessionAsEarlyEnd(session)
+                                dismiss()
+                            }
+                        } label: {
+                            Label("I ended early", systemImage: "clock.arrow.circlepath")
+                                .frame(maxWidth: .infinity)
                         }
-                    } label: {
-                        Label("Discard this session", systemImage: "trash")
-                            .frame(maxWidth: .infinity)
+                        .buttonStyle(.bordered)
+
+                        Text("Records that you stopped before reaching your goal")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+
+                    VStack(spacing: 4) {
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.resolveStaleSessionAsDiscarded(session)
+                                dismiss()
+                            }
+                        } label: {
+                            Label("Discard this session", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+
+                        Text("Deletes this session from your history entirely")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
                 .padding(.horizontal)

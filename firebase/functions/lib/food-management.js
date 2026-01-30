@@ -6,7 +6,6 @@ const params_1 = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const algoliasearch_1 = require("algoliasearch");
 const axios_1 = require("axios");
-const cors = require('cors')({ origin: true });
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -14,9 +13,61 @@ if (!admin.apps.length) {
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 const algoliaAdminKey = (0, params_1.defineSecret)('ALGOLIA_ADMIN_API_KEY');
-// Tesco8 API Configuration
-const TESCO8_API_KEY = '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
+// Tesco8 API Configuration - Use Firebase Secrets (set via: firebase functions:secrets:set TESCO8_API_KEY)
+const tesco8ApiKey = (0, params_1.defineSecret)('TESCO8_API_KEY');
 const TESCO8_HOST = 'tesco8.p.rapidapi.com';
+// Allowed CORS origins for admin endpoints
+const ALLOWED_ORIGINS = [
+    'https://nutrasafe-705c7.web.app',
+    'https://nutrasafe.co.uk',
+    'https://www.nutrasafe.co.uk',
+    'http://localhost:5173',
+    'http://localhost:3000',
+];
+/**
+ * Verify that the request is from an authenticated admin user.
+ * Checks Firebase Auth token and verifies user exists in /admins collection.
+ */
+async function verifyAdmin(req) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return { isAdmin: false, error: 'Missing or invalid Authorization header' };
+    }
+    const token = authHeader.split('Bearer ')[1];
+    try {
+        const decoded = await admin.auth().verifyIdToken(token);
+        const adminDoc = await admin.firestore().doc(`admins/${decoded.uid}`).get();
+        if (!adminDoc.exists) {
+            return { isAdmin: false, userId: decoded.uid, error: 'User is not an admin' };
+        }
+        return { isAdmin: true, userId: decoded.uid };
+    }
+    catch (error) {
+        return { isAdmin: false, error: `Token verification failed: ${error.message}` };
+    }
+}
+/**
+ * Set CORS headers with origin validation.
+ * Only allows requests from approved origins.
+ */
+function setCorsHeaders(req, res) {
+    const origin = req.headers.origin || '';
+    if (ALLOWED_ORIGINS.includes(origin)) {
+        res.set('Access-Control-Allow-Origin', origin);
+    }
+    else if (process.env.FUNCTIONS_EMULATOR) {
+        // Allow any origin in emulator for local development
+        res.set('Access-Control-Allow-Origin', origin || '*');
+    }
+    else {
+        // For production, deny unknown origins
+        res.set('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
+    }
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Allow-Credentials', 'true');
+    return req.method === 'OPTIONS';
+}
 // Map Algolia index names to Firestore collection names (where applicable)
 const INDEX_TO_COLLECTION = {
     'uk_foods_cleaned': 'uk_foods_cleaned', // Has Firestore backing
@@ -33,13 +84,16 @@ const INDEX_TO_COLLECTION = {
 // Algolia-only indices (no Firestore backing)
 const ALGOLIA_ONLY_INDICES = ['fast_foods_database', 'generic_database'];
 // Update verified food
-exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey, tesco8ApiKey] }).https.onRequest(async (req, res) => {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -271,12 +325,15 @@ exports.updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).h
 });
 // Add new food directly to human verified collection
 exports.addVerifiedFood = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -327,12 +384,15 @@ exports.addVerifiedFood = functions.https.onRequest(async (req, res) => {
 });
 // Update foods with realistic serving sizes
 exports.updateServingSizes = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -401,12 +461,15 @@ exports.updateServingSizes = functions.https.onRequest(async (req, res) => {
 });
 // Delete verified foods
 exports.deleteVerifiedFoods = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -439,12 +502,15 @@ exports.deleteFoodFromAlgolia = functions.runWith({
     secrets: [algoliaAdminKey],
     timeoutSeconds: 60,
 }).https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -497,18 +563,17 @@ exports.deleteFoodFromAlgolia = functions.runWith({
 });
 // Move food between collections (for future use when collections are separated)
 exports.moveFoodBetweenCollections = functions.https.onRequest(async (req, res) => {
-    // Enhanced CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.set('Access-Control-Max-Age', '3600');
-    // Handle preflight OPTIONS request
-    if (req.method === 'OPTIONS') {
-        console.log('Handling CORS preflight request');
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
         return;
     }
-    console.log(`Request method: ${req.method}, headers:`, req.headers);
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+        return;
+    }
     try {
         const { foodId, fromCollection, toCollection } = req.body;
         if (!foodId || !fromCollection || !toCollection) {
@@ -562,12 +627,15 @@ exports.moveFoodsBetweenIndices = functions.runWith({
     timeoutSeconds: 540,
     memory: '1GB'
 }).https.onRequest(async (req, res) => {
-    // CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
+        res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -691,12 +759,15 @@ exports.moveFoodsBetweenIndices = functions.runWith({
 });
 // Reset admin_manual foods to unverified (clean slate)
 exports.resetAdminManualFoods = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -759,12 +830,15 @@ exports.resetAdminManualFoods = functions.https.onRequest(async (req, res) => {
 });
 // Reset all foods to initial/unverified status
 exports.resetAllFoodsToInitial = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -799,12 +873,15 @@ exports.resetAllFoodsToInitial = functions.https.onRequest(async (req, res) => {
 });
 // Fix existing foods to have proper verification status (one-time utility function)
 exports.fixExistingFoodsVerification = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -872,13 +949,16 @@ exports.fixExistingFoodsVerification = functions.https.onRequest(async (req, res
     }
 });
 // Search Tesco by GTIN/barcode first, then fallback to name/brand, and update food
-exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], timeoutSeconds: 60 }).https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey, tesco8ApiKey], timeoutSeconds: 60 }).https.onRequest(async (req, res) => {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -898,7 +978,7 @@ exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], t
                     params: { query: barcode, page: '0' },
                     headers: {
                         'x-rapidapi-host': TESCO8_HOST,
-                        'x-rapidapi-key': TESCO8_API_KEY
+                        'x-rapidapi-key': tesco8ApiKey.value()
                     },
                     timeout: 15000
                 });
@@ -911,7 +991,7 @@ exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], t
                             params: { productId: matchingProduct.id },
                             headers: {
                                 'x-rapidapi-host': TESCO8_HOST,
-                                'x-rapidapi-key': TESCO8_API_KEY
+                                'x-rapidapi-key': tesco8ApiKey.value()
                             },
                             timeout: 15000
                         });
@@ -935,7 +1015,7 @@ exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], t
                     params: { query: searchQuery, page: '0' },
                     headers: {
                         'x-rapidapi-host': TESCO8_HOST,
-                        'x-rapidapi-key': TESCO8_API_KEY
+                        'x-rapidapi-key': tesco8ApiKey.value()
                     },
                     timeout: 15000
                 });
@@ -947,7 +1027,7 @@ exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], t
                         params: { productId: firstProduct.id },
                         headers: {
                             'x-rapidapi-host': TESCO8_HOST,
-                            'x-rapidapi-key': TESCO8_API_KEY
+                            'x-rapidapi-key': tesco8ApiKey.value()
                         },
                         timeout: 15000
                     });
@@ -1097,12 +1177,15 @@ exports.searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], t
 exports.adminSaveFood = functions
     .runWith({ secrets: [algoliaAdminKey], timeoutSeconds: 60 })
     .https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     if (req.method !== 'POST') {
@@ -1154,6 +1237,21 @@ exports.adminSaveFood = functions
             if (updates.suggestedServingUnit !== undefined) {
                 updateObj.suggestedServingUnit = updates.suggestedServingUnit;
                 updateObj.unitOverrideLocked = true; // Lock unit to prevent auto-categorization override
+            }
+            // Suggested serving size and description (from default serving type)
+            if (updates.suggestedServingSize !== undefined) {
+                updateObj.suggestedServingSize = updates.suggestedServingSize;
+            }
+            if (updates.suggestedServingDescription !== undefined) {
+                updateObj.suggestedServingDescription = updates.suggestedServingDescription;
+            }
+            // Serving types array (new format for multiple serving options)
+            if (updates.servingTypes !== undefined) {
+                updateObj.servingTypes = updates.servingTypes;
+            }
+            // Portions array (iOS compatibility format)
+            if (updates.portions !== undefined) {
+                updateObj.portions = updates.portions;
             }
             if (updates.ingredients !== undefined) {
                 updateObj.ingredients = updates.ingredients;
@@ -1281,12 +1379,15 @@ exports.deleteFoodComprehensive = functions.runWith({
     timeoutSeconds: 60,
     memory: '256MB',
 }).https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
         res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
         return;
     }
     try {
@@ -1436,284 +1537,320 @@ exports.deleteFoodComprehensive = functions.runWith({
 // Helper to get Algolia admin key (same as scanDatabaseIssues)
 const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
 // Retrieve browse job status and data
-exports.getBrowseJobData = functions.https.onRequest((req, res) => {
-    cors(req, res, async () => {
-        try {
-            const { jobId, batchNumber } = req.query;
-            if (!jobId || typeof jobId !== 'string') {
-                res.status(400).json({ success: false, error: 'Job ID is required' });
+exports.getBrowseJobData = functions.https.onRequest(async (req, res) => {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
+        res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+        return;
+    }
+    try {
+        const { jobId, batchNumber } = req.query;
+        if (!jobId || typeof jobId !== 'string') {
+            res.status(400).json({ success: false, error: 'Job ID is required' });
+            return;
+        }
+        const db = admin.firestore();
+        const jobDoc = await db.collection('browseJobs').doc(jobId).get();
+        if (!jobDoc.exists) {
+            res.status(404).json({ success: false, error: 'Job not found' });
+            return;
+        }
+        const jobData = jobDoc.data();
+        // If batch number is specified, return just that batch
+        if (batchNumber !== undefined) {
+            const batchDoc = await db.collection('browseJobs').doc(jobId)
+                .collection('batches').doc(`batch_${batchNumber}`).get();
+            if (!batchDoc.exists) {
+                res.status(404).json({ success: false, error: 'Batch not found' });
                 return;
             }
-            const db = admin.firestore();
-            const jobDoc = await db.collection('browseJobs').doc(jobId).get();
-            if (!jobDoc.exists) {
-                res.status(404).json({ success: false, error: 'Job not found' });
-                return;
-            }
-            const jobData = jobDoc.data();
-            // If batch number is specified, return just that batch
-            if (batchNumber !== undefined) {
-                const batchDoc = await db.collection('browseJobs').doc(jobId)
-                    .collection('batches').doc(`batch_${batchNumber}`).get();
-                if (!batchDoc.exists) {
-                    res.status(404).json({ success: false, error: 'Batch not found' });
-                    return;
-                }
-                res.json({
-                    success: true,
-                    ...batchDoc.data(),
-                });
-                return;
-            }
-            // Otherwise return job status and metadata
             res.json({
                 success: true,
-                ...jobData,
+                ...batchDoc.data(),
             });
+            return;
         }
-        catch (error) {
-            console.error('❌ Get browse job error:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to retrieve browse job',
-                details: error.message,
-            });
-        }
-    });
+        // Otherwise return job status and metadata
+        res.json({
+            success: true,
+            ...jobData,
+        });
+    }
+    catch (error) {
+        console.error('❌ Get browse job error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve browse job',
+            details: error.message,
+        });
+    }
 });
 // Browse all records from specified indices
 exports.browseAllIndices = functions.runWith({
     timeoutSeconds: 540,
     memory: '2GB'
-}).https.onRequest((req, res) => {
-    cors(req, res, async () => {
-        try {
-            const { indices, limit, offset = 0, pageSize = 5000 } = req.body;
-            if (!indices || !Array.isArray(indices) || indices.length === 0) {
-                res.status(400).json({ success: false, error: 'Indices array is required' });
-                return;
-            }
-            // Only support ONE index at a time with pagination
-            if (indices.length > 1) {
-                res.status(400).json({ success: false, error: 'Only one index supported per request. Use pagination for large indices.' });
-                return;
-            }
-            const indexName = indices[0];
-            console.log(`📦 Browsing all records from 1 indices...`);
-            console.log(`📦 Browsing ${indexName}...`);
-            const adminKey = getAlgoliaAdminKey();
-            if (!adminKey) {
-                res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
-                return;
-            }
-            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
-            const allProducts = [];
-            let browseCount = 0;
-            let totalBrowsed = 0; // Track how many we've seen total (not just returned)
-            const indexLimit = limit || Infinity;
-            await client.browseObjects({
-                indexName,
-                browseParams: {
-                    query: '',
-                    hitsPerPage: 1000,
-                },
-                aggregator: (response) => {
-                    const hits = response.hits || [];
-                    for (const hit of hits) {
-                        totalBrowsed++; // Count every hit we see
-                        // Skip products before offset
-                        if (browseCount < offset) {
-                            browseCount++;
-                            continue;
-                        }
-                        // Stop if we've reached page size
-                        if (allProducts.length >= pageSize) {
-                            throw new Error('PAGE_LIMIT_REACHED');
-                        }
-                        // Stop if we've reached global limit
-                        if (limit && browseCount >= indexLimit) {
-                            throw new Error('LIMIT_REACHED');
-                        }
-                        allProducts.push({
-                            ...hit,
-                            sourceIndex: indexName,
-                        });
+}).https.onRequest(async (req, res) => {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
+        res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+        return;
+    }
+    try {
+        const { indices, limit, offset = 0, pageSize = 5000 } = req.body;
+        if (!indices || !Array.isArray(indices) || indices.length === 0) {
+            res.status(400).json({ success: false, error: 'Indices array is required' });
+            return;
+        }
+        // Only support ONE index at a time with pagination
+        if (indices.length > 1) {
+            res.status(400).json({ success: false, error: 'Only one index supported per request. Use pagination for large indices.' });
+            return;
+        }
+        const indexName = indices[0];
+        console.log(`📦 Browsing all records from 1 indices...`);
+        console.log(`📦 Browsing ${indexName}...`);
+        const adminKey = getAlgoliaAdminKey();
+        if (!adminKey) {
+            res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+            return;
+        }
+        const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+        const allProducts = [];
+        let browseCount = 0;
+        let totalBrowsed = 0; // Track how many we've seen total (not just returned)
+        const indexLimit = limit || Infinity;
+        await client.browseObjects({
+            indexName,
+            browseParams: {
+                query: '',
+                hitsPerPage: 1000,
+            },
+            aggregator: (response) => {
+                const hits = response.hits || [];
+                for (const hit of hits) {
+                    totalBrowsed++; // Count every hit we see
+                    // Skip products before offset
+                    if (browseCount < offset) {
                         browseCount++;
+                        continue;
                     }
-                    if (totalBrowsed % 10000 === 0) {
-                        console.log(`  → Browsed ${totalBrowsed.toLocaleString()} records from ${indexName}...`);
+                    // Stop if we've reached page size
+                    if (allProducts.length >= pageSize) {
+                        throw new Error('PAGE_LIMIT_REACHED');
                     }
-                },
-            }).catch((err) => {
-                if (err.message !== 'LIMIT_REACHED' && err.message !== 'PAGE_LIMIT_REACHED')
-                    throw err;
-            });
-            // If we returned a full page, there might be more
-            // If we returned less than pageSize, we've reached the end
-            const hasMore = allProducts.length === pageSize;
-            console.log(`✅ ${indexName}: Returned ${allProducts.length} products (browsed ${totalBrowsed.toLocaleString()} total, hasMore=${hasMore})`);
-            res.json({
-                success: true,
-                products: allProducts,
-                indexStats: {
-                    [indexName]: { count: totalBrowsed }
-                },
-                pagination: {
-                    offset,
-                    pageSize,
-                    returned: allProducts.length,
-                    total: totalBrowsed, // Total we've browsed so far
-                    hasMore, // True if we returned a full page (likely more data)
-                },
-            });
-        }
-        catch (error) {
-            console.error('❌ Browse all indices error:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to browse indices',
-                details: error.message,
-            });
-        }
-    });
+                    // Stop if we've reached global limit
+                    if (limit && browseCount >= indexLimit) {
+                        throw new Error('LIMIT_REACHED');
+                    }
+                    allProducts.push({
+                        ...hit,
+                        sourceIndex: indexName,
+                    });
+                    browseCount++;
+                }
+                if (totalBrowsed % 10000 === 0) {
+                    console.log(`  → Browsed ${totalBrowsed.toLocaleString()} records from ${indexName}...`);
+                }
+            },
+        }).catch((err) => {
+            if (err.message !== 'LIMIT_REACHED' && err.message !== 'PAGE_LIMIT_REACHED')
+                throw err;
+        });
+        // If we returned a full page, there might be more
+        // If we returned less than pageSize, we've reached the end
+        const hasMore = allProducts.length === pageSize;
+        console.log(`✅ ${indexName}: Returned ${allProducts.length} products (browsed ${totalBrowsed.toLocaleString()} total, hasMore=${hasMore})`);
+        res.json({
+            success: true,
+            products: allProducts,
+            indexStats: {
+                [indexName]: { count: totalBrowsed }
+            },
+            pagination: {
+                offset,
+                pageSize,
+                returned: allProducts.length,
+                total: totalBrowsed, // Total we've browsed so far
+                hasMore, // True if we returned a full page (likely more data)
+            },
+        });
+    }
+    catch (error) {
+        console.error('❌ Browse all indices error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to browse indices',
+            details: error.message,
+        });
+    }
 });
 // Bulk delete from Algolia index (for duplicate merging)
 exports.deleteFromIndex = functions.runWith({
     secrets: [algoliaAdminKey],
     timeoutSeconds: 60,
     memory: '512MB'
-}).https.onRequest((req, res) => {
-    cors(req, res, async () => {
-        try {
-            const { indexName, objectIDs } = req.body;
-            if (!indexName) {
-                res.status(400).json({ success: false, error: 'Index name is required' });
-                return;
-            }
-            if (!objectIDs || !Array.isArray(objectIDs) || objectIDs.length === 0) {
-                res.status(400).json({ success: false, error: 'Object IDs array is required' });
-                return;
-            }
-            console.log(`🗑️ Bulk deleting ${objectIDs.length} objects from ${indexName}...`);
-            const adminKey = getAlgoliaAdminKey();
-            if (!adminKey) {
-                res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
-                return;
-            }
-            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
-            // Delete objects from Algolia
-            await client.deleteObjects({
-                indexName,
-                objectIDs,
-            });
-            console.log(`✅ Deleted ${objectIDs.length} objects from ${indexName}`);
-            // Also try to delete from Firestore if there's a corresponding collection
-            const firestoreCollection = INDEX_TO_COLLECTION[indexName];
-            let firestoreDeleted = 0;
-            if (firestoreCollection) {
-                const db = admin.firestore();
-                const batch = db.batch();
-                objectIDs.forEach(id => {
-                    batch.delete(db.collection(firestoreCollection).doc(id));
-                });
-                try {
-                    await batch.commit();
-                    firestoreDeleted = objectIDs.length;
-                    console.log(`✅ Also deleted ${firestoreDeleted} documents from Firestore collection: ${firestoreCollection}`);
-                }
-                catch (firestoreError) {
-                    console.log(`ℹ️ Could not delete from Firestore collection ${firestoreCollection} (this is OK for Algolia-only indices)`);
-                }
-            }
-            res.json({
-                success: true,
-                message: `Successfully deleted ${objectIDs.length} objects from ${indexName}`,
-                deletedCount: objectIDs.length,
-                indexName: indexName,
-                firestoreDeleted: firestoreDeleted
-            });
+}).https.onRequest(async (req, res) => {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
+        res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+        return;
+    }
+    try {
+        const { indexName, objectIDs } = req.body;
+        if (!indexName) {
+            res.status(400).json({ success: false, error: 'Index name is required' });
+            return;
         }
-        catch (error) {
-            console.error('❌ Bulk delete error:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to delete objects',
-                details: error.message
-            });
+        if (!objectIDs || !Array.isArray(objectIDs) || objectIDs.length === 0) {
+            res.status(400).json({ success: false, error: 'Object IDs array is required' });
+            return;
         }
-    });
+        console.log(`🗑️ Bulk deleting ${objectIDs.length} objects from ${indexName}...`);
+        const adminKey = getAlgoliaAdminKey();
+        if (!adminKey) {
+            res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+            return;
+        }
+        const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+        // Delete objects from Algolia
+        await client.deleteObjects({
+            indexName,
+            objectIDs,
+        });
+        console.log(`✅ Deleted ${objectIDs.length} objects from ${indexName}`);
+        // Also try to delete from Firestore if there's a corresponding collection
+        const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+        let firestoreDeleted = 0;
+        if (firestoreCollection) {
+            const db = admin.firestore();
+            const batch = db.batch();
+            objectIDs.forEach(id => {
+                batch.delete(db.collection(firestoreCollection).doc(id));
+            });
+            try {
+                await batch.commit();
+                firestoreDeleted = objectIDs.length;
+                console.log(`✅ Also deleted ${firestoreDeleted} documents from Firestore collection: ${firestoreCollection}`);
+            }
+            catch (firestoreError) {
+                console.log(`ℹ️ Could not delete from Firestore collection ${firestoreCollection} (this is OK for Algolia-only indices)`);
+            }
+        }
+        res.json({
+            success: true,
+            message: `Successfully deleted ${objectIDs.length} objects from ${indexName}`,
+            deletedCount: objectIDs.length,
+            indexName: indexName,
+            firestoreDeleted: firestoreDeleted
+        });
+    }
+    catch (error) {
+        console.error('❌ Bulk delete error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete objects',
+            details: error.message
+        });
+    }
 });
 // Bulk save/update to Algolia index (for duplicate merging and database updates)
 exports.updateAlgoliaIndex = functions.runWith({
     secrets: [algoliaAdminKey],
     timeoutSeconds: 120,
     memory: '1GB'
-}).https.onRequest((req, res) => {
-    cors(req, res, async () => {
-        try {
-            const { indexName, products } = req.body;
-            if (!indexName) {
-                res.status(400).json({ success: false, error: 'Index name is required' });
-                return;
-            }
-            if (!products || !Array.isArray(products) || products.length === 0) {
-                res.status(400).json({ success: false, error: 'Products array is required' });
-                return;
-            }
-            console.log(`💾 Bulk updating ${products.length} objects in ${indexName}...`);
-            const adminKey = getAlgoliaAdminKey();
-            if (!adminKey) {
-                res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
-                return;
-            }
-            const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
-            // Save/update objects in Algolia (uses objectID to update existing or create new)
-            await client.saveObjects({
-                indexName,
-                objects: products,
-            });
-            console.log(`✅ Updated ${products.length} objects in ${indexName}`);
-            // Also try to save to Firestore if there's a corresponding collection
-            const firestoreCollection = INDEX_TO_COLLECTION[indexName];
-            let firestoreSaved = 0;
-            if (firestoreCollection) {
-                const db = admin.firestore();
-                // Process in batches of 500 (Firestore limit)
-                const batchSize = 500;
-                for (let i = 0; i < products.length; i += batchSize) {
-                    const batch = db.batch();
-                    const chunk = products.slice(i, Math.min(i + batchSize, products.length));
-                    chunk.forEach(product => {
-                        if (product.objectID) {
-                            batch.set(db.collection(firestoreCollection).doc(product.objectID), product, { merge: true });
-                        }
-                    });
-                    try {
-                        await batch.commit();
-                        firestoreSaved += chunk.length;
+}).https.onRequest(async (req, res) => {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
+        res.status(200).send();
+        return;
+    }
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+        res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+        return;
+    }
+    try {
+        const { indexName, products } = req.body;
+        if (!indexName) {
+            res.status(400).json({ success: false, error: 'Index name is required' });
+            return;
+        }
+        if (!products || !Array.isArray(products) || products.length === 0) {
+            res.status(400).json({ success: false, error: 'Products array is required' });
+            return;
+        }
+        console.log(`💾 Bulk updating ${products.length} objects in ${indexName}...`);
+        const adminKey = getAlgoliaAdminKey();
+        if (!adminKey) {
+            res.status(500).json({ success: false, error: 'Algolia admin key not configured' });
+            return;
+        }
+        const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, adminKey);
+        // Save/update objects in Algolia (uses objectID to update existing or create new)
+        await client.saveObjects({
+            indexName,
+            objects: products,
+        });
+        console.log(`✅ Updated ${products.length} objects in ${indexName}`);
+        // Also try to save to Firestore if there's a corresponding collection
+        const firestoreCollection = INDEX_TO_COLLECTION[indexName];
+        let firestoreSaved = 0;
+        if (firestoreCollection) {
+            const db = admin.firestore();
+            // Process in batches of 500 (Firestore limit)
+            const batchSize = 500;
+            for (let i = 0; i < products.length; i += batchSize) {
+                const batch = db.batch();
+                const chunk = products.slice(i, Math.min(i + batchSize, products.length));
+                chunk.forEach(product => {
+                    if (product.objectID) {
+                        batch.set(db.collection(firestoreCollection).doc(product.objectID), product, { merge: true });
                     }
-                    catch (firestoreError) {
-                        console.log(`⚠️ Could not save batch to Firestore collection ${firestoreCollection}:`, firestoreError);
-                    }
+                });
+                try {
+                    await batch.commit();
+                    firestoreSaved += chunk.length;
                 }
-                console.log(`✅ Also saved ${firestoreSaved} documents to Firestore collection: ${firestoreCollection}`);
+                catch (firestoreError) {
+                    console.log(`⚠️ Could not save batch to Firestore collection ${firestoreCollection}:`, firestoreError);
+                }
             }
-            res.json({
-                success: true,
-                message: `Successfully updated ${products.length} objects in ${indexName}`,
-                updatedCount: products.length,
-                indexName: indexName,
-                firestoreSaved: firestoreSaved
-            });
+            console.log(`✅ Also saved ${firestoreSaved} documents to Firestore collection: ${firestoreCollection}`);
         }
-        catch (error) {
-            console.error('❌ Bulk update error:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to update objects',
-                details: error.message
-            });
-        }
-    });
+        res.json({
+            success: true,
+            message: `Successfully updated ${products.length} objects in ${indexName}`,
+            updatedCount: products.length,
+            indexName: indexName,
+            firestoreSaved: firestoreSaved
+        });
+    }
+    catch (error) {
+        console.error('❌ Bulk update error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update objects',
+            details: error.message
+        });
+    }
 });
 //# sourceMappingURL=food-management.js.map

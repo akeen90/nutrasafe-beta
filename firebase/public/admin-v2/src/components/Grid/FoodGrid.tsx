@@ -14,9 +14,11 @@ import {
   ColumnMovedEvent,
   ICellRendererParams,
   RowClassRules,
+  RowDoubleClickedEvent,
 } from 'ag-grid-community';
 import { useGridStore } from '../../store';
 import { UnifiedFood, AlgoliaIndexName, ALGOLIA_INDICES } from '../../types';
+import { FoodDetailModal } from '../FoodDetailModal';
 
 // Cloud Function for saving
 const FUNCTIONS_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
@@ -371,6 +373,7 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
   const [imagePreviewFood, setImagePreviewFoodState] = useState<UnifiedFood | null>(null);
   const [isDeletingImage, setIsDeletingImage] = useState(false);
   const [isSavingImage, setIsSavingImage] = useState(false);
+  const [detailModalFood, setDetailModalFood] = useState<UnifiedFood | null>(null);
 
   // Share setter with ImageRenderer
   useEffect(() => {
@@ -713,6 +716,39 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
     }
   }, [setColumnOrder]);
 
+  // Row double-click handler (open detail modal)
+  const onRowDoubleClicked = useCallback((event: RowDoubleClickedEvent<UnifiedFood>) => {
+    if (event.data) {
+      setDetailModalFood(event.data);
+    }
+  }, []);
+
+  // Handle food update from detail modal
+  const handleDetailModalSaved = useCallback((updatedFood: UnifiedFood) => {
+    updateFood(updatedFood._id, {
+      name: updatedFood.name,
+      brandName: updatedFood.brandName,
+      barcode: updatedFood.barcode,
+      servingDescription: updatedFood.servingDescription,
+      servingSizeG: updatedFood.servingSizeG,
+      category: updatedFood.category,
+      calories: updatedFood.calories,
+      protein: updatedFood.protein,
+      carbs: updatedFood.carbs,
+      fat: updatedFood.fat,
+      fiber: updatedFood.fiber,
+      sugar: updatedFood.sugar,
+      salt: updatedFood.salt,
+      saturatedFat: updatedFood.saturatedFat,
+      imageUrl: updatedFood.imageUrl,
+      isPerUnit: updatedFood.isPerUnit,
+    });
+    // Refresh the grid
+    if (gridApiRef.current) {
+      gridApiRef.current.refreshCells({ force: true });
+    }
+  }, [updateFood]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -896,6 +932,7 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
         onCellValueChanged={onCellValueChanged}
         onRowSelected={onRowSelected}
         onColumnMoved={onColumnMoved}
+        onRowDoubleClicked={onRowDoubleClicked}
         rowClassRules={rowClassRules}
         animateRows={true}
         enableCellTextSelection={true}
@@ -918,6 +955,15 @@ export const FoodGrid: React.FC<FoodGridProps> = () => {
           onSaveImage={handleSaveImage}
           isDeleting={isDeletingImage}
           isSaving={isSavingImage}
+        />
+      )}
+
+      {/* Food Detail Modal (double-click to open) */}
+      {detailModalFood && (
+        <FoodDetailModal
+          food={detailModalFood}
+          onClose={() => setDetailModalFood(null)}
+          onSaved={handleDetailModalSaved}
         />
       )}
     </div>

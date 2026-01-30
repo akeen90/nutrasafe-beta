@@ -1150,38 +1150,38 @@ struct FoodDetailViewFromSearch: View {
 
         // Fallback to manual detection from user ingredients (PERFORMANCE: use cached ingredients)
         guard let ingredients = cachedIngredients else { return [] }
-        
-        let commonAllergens = [
-            ("Gluten", ["wheat", "barley", "rye", "oats", "spelt", "kamut", "gluten", "flour", "bran", "semolina", "durum", "triticale", "farro", "freekeh", "seitan", "malt", "beer", "lager", "ale", "stout"]),
-            ("Dairy", ["milk", "cream", "butter", "cheese", "yogurt", "lactose", "casein", "whey", "skimmed milk powder", "milk powder"]),  // Specific cheeses handled by AllergenDetector.containsDairyMilk()
-            ("Eggs", ["egg", "eggs", "albumin", "lecithin", "egg white", "egg yolk", "ovomucin", "mayonnaise", "meringue", "quiche", "frittata", "omelette", "brioche", "hollandaise", "aioli", "carbonara", "pavlova", "custard", "eggnog", "scotch egg"]),
-            ("Nuts", ["almond", "hazelnut", "walnut", "cashew", "pistachio", "brazil nut", "macadamia", "pecan", "pine nut", "chestnut", "praline", "marzipan", "frangipane", "nougat", "nutella", "gianduja", "filbert"]),
-            ("Peanuts", ["peanut", "groundnut", "arachis oil", "peanut oil", "peanut butter", "satay", "monkey nuts"]),
-            ("Soy", ["soya", "soy", "soybean", "tofu", "tempeh", "miso", "soy lecithin", "soy protein", "shoyu", "tamari", "edamame", "natto", "tvp"]),
-            ("Fish", ["fish", "anchovy", "tuna", "salmon", "cod", "haddock", "fish oil", "worcestershire", "mackerel", "sardine", "trout", "bass", "plaice", "pollock", "hake", "halibut", "herring", "kipper", "fish finger", "fish cake", "fish pie"]),
-            ("Shellfish", ["shellfish", "crab", "lobster", "prawn", "shrimp", "crayfish", "langoustine", "king prawn", "tiger prawn", "crab stick"]),
-            ("Sesame", ["sesame", "tahini", "sesame oil", "sesame seed", "hummus", "houmous", "halvah", "halva", "za'atar"]),
-            ("Sulphites", ["sulphite", "sulfite", "sulphur dioxide", "sulfur dioxide", "e220", "e221", "e222", "e223", "e224", "e225", "e226", "e227", "e228", "metabisulphite", "metabisulfite"]),
-            ("Celery", ["celery", "celeriac", "celery salt", "celery extract"]),
-            ("Mustard", ["mustard", "mustard seed", "dijon", "wholegrain mustard"]),
-            ("Lupin", ["lupin", "lupine", "lupin flour"]),
-            ("Molluscs", ["mollusc", "mussel", "oyster", "clam", "scallop", "squid", "octopus", "snail", "calamari", "cockle", "winkle", "whelk", "cuttlefish", "abalone", "escargot"])
+
+        // Map allergen display names to Allergen enum cases for centralized detection
+        let allergenMappings: [(String, Allergen)] = [
+            ("Gluten", .gluten),
+            ("Dairy", .dairy),
+            ("Eggs", .eggs),
+            ("Nuts", .treeNuts),
+            ("Peanuts", .peanuts),
+            ("Soy", .soy),
+            ("Fish", .fish),
+            ("Shellfish", .shellfish),
+            ("Sesame", .sesame),
+            ("Sulphites", .sulfites),
+            ("Celery", .celery),
+            ("Mustard", .mustard),
+            ("Lupin", .lupin),
+            ("Molluscs", .molluscs)
         ]
-        
+
         var detectedAllergens: [String] = []
-        let ingredientsText = ingredients.joined(separator: " ").lowercased()
-        
-        for (allergen, keywords) in commonAllergens {
-            if allergen == "Dairy" {
-                // Use refined dairy helper to avoid false positives like "coconut milk"
-                if AllergenDetector.shared.containsDairyMilk(in: ingredientsText) {
-                    detectedAllergens.append(allergen)
-                }
-            } else if keywords.contains(where: { ingredientsText.contains($0) }) {
-                detectedAllergens.append(allergen)
+        let ingredientsText = ingredients.joined(separator: " ")
+
+        // Use centralized allergen detection that handles:
+        // - Free-from patterns (e.g., "gluten-free" won't trigger gluten warning)
+        // - Plant milk exclusions (e.g., "oat milk" won't trigger dairy warning)
+        // - Word boundary matching for accuracy
+        for (displayName, allergen) in allergenMappings {
+            if AllergenDetector.shared.isAllergenPresent(allergen, in: ingredientsText) {
+                detectedAllergens.append(displayName)
             }
         }
-        
+
         return detectedAllergens
     }
 
@@ -1229,27 +1229,20 @@ struct FoodDetailViewFromSearch: View {
     // Check if food contains any of the user's allergens
     private func detectUserAllergensInFood(userAllergens: [Allergen]) -> [Allergen] {
         // Get food name and ingredients (PERFORMANCE: use cached ingredients)
-        let foodName = displayFood.name.lowercased()
-        let brand = displayFood.brand?.lowercased() ?? ""
-        let ingredients = cachedIngredients?.map { $0.lowercased() } ?? []
+        let foodName = displayFood.name
+        let brand = displayFood.brand ?? ""
+        let ingredients = cachedIngredients ?? []
 
         let searchText = ([foodName, brand] + ingredients).joined(separator: " ")
 
         var detected: [Allergen] = []
 
+        // Use centralized allergen detection that handles:
+        // - Free-from patterns (e.g., "gluten-free" won't trigger gluten warning)
+        // - Plant milk exclusions (e.g., "oat milk" won't trigger dairy warning)
+        // - Word boundary matching for accuracy
         for allergen in userAllergens {
-            let found: Bool
-            if allergen == .dairy {
-                // Centralized dairy detection – excludes plant-based milks
-                found = AllergenDetector.shared.containsDairyMilk(in: searchText)
-            } else {
-                // Keyword match for other allergens
-                found = allergen.keywords.contains { keyword in
-                    searchText.contains(keyword.lowercased())
-                }
-            }
-
-            if found {
+            if AllergenDetector.shared.isAllergenPresent(allergen, in: searchText) {
                 detected.append(allergen)
             }
         }
@@ -3583,14 +3576,12 @@ struct FoodDetailViewFromSearch: View {
         let combinedIngredients = ingredients.joined(separator: " ").lowercased()
         var detectedAllergens: [Allergen] = []
 
-        // Use centralized keyword lists from Allergen.keywords
+        // Use centralized allergen detection that handles:
+        // - Free-from patterns (e.g., "gluten-free" won't trigger gluten warning)
+        // - Plant milk exclusions (e.g., "oat milk" won't trigger dairy warning)
+        // - Word boundary matching for accuracy
         for allergen in [Allergen.dairy, .eggs, .fish, .shellfish, .treeNuts, .peanuts, .wheat, .gluten, .soy, .sesame] {
-            if allergen == .dairy {
-                // Use refined dairy detection (handles plant milks correctly)
-                if AllergenDetector.shared.containsDairyMilk(in: combinedIngredients) {
-                    detectedAllergens.append(allergen)
-                }
-            } else if allergen.keywords.contains(where: { combinedIngredients.contains($0) }) {
+            if AllergenDetector.shared.isAllergenPresent(allergen, in: combinedIngredients) {
                 detectedAllergens.append(allergen)
             }
         }
@@ -6808,8 +6799,10 @@ extension FoodDetailViewFromSearch {
                         let formatted = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
                         let lowercased = formatted.lowercased()
                         let isConcerning = ["e1", "e2", "e3", "e4", "e5", "e6", "modified", "hydrogenated"].contains { lowercased.contains($0) }
+                        // Use centralized detection to handle free-from patterns
+                        // (e.g., "Gluten free oat flour" won't be highlighted as allergen)
                         let isAllergen = userAllergens.contains { allergen in
-                            allergen.keywords.contains { lowercased.contains($0.lowercased()) }
+                            AllergenDetector.shared.isAllergenPresent(allergen, in: formatted)
                         }
                         return (formatted, isConcerning, isAllergen)
                     },

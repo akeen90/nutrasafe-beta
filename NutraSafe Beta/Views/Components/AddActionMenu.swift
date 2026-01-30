@@ -574,7 +574,7 @@ struct CommandTile: View {
                 ZStack {
                     // Subtle outer glow
                     Circle()
-                        .fill(iconGradient.first!.opacity(0.15))
+                        .fill((iconGradient.first ?? .blue).opacity(0.15))
                         .frame(width: 48, height: 48)
                         .blur(radius: 4)
 
@@ -588,7 +588,7 @@ struct CommandTile: View {
                             )
                         )
                         .frame(width: 44, height: 44)
-                        .shadow(color: iconGradient.first!.opacity(0.4), radius: 8, y: 4)
+                        .shadow(color: (iconGradient.first ?? .blue).opacity(0.4), radius: 8, y: 4)
 
                     // Custom bespoke icon based on type
                     customIcon
@@ -668,8 +668,8 @@ struct CommandTile: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            iconGradient.first!.opacity(colorScheme == .dark ? 0.15 : 0.08),
-                            iconGradient.first!.opacity(colorScheme == .dark ? 0.06 : 0.03)
+                            (iconGradient.first ?? .blue).opacity(colorScheme == .dark ? 0.15 : 0.08),
+                            (iconGradient.first ?? .blue).opacity(colorScheme == .dark ? 0.06 : 0.03)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -681,7 +681,7 @@ struct CommandTile: View {
                 .stroke(
                     colorScheme == .dark
                         ? Color.white.opacity(0.1)
-                        : iconGradient.first!.opacity(0.15),
+                        : (iconGradient.first ?? .blue).opacity(0.15),
                     lineWidth: 1
                 )
         }

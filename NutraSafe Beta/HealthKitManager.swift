@@ -57,9 +57,10 @@ extension HKWorkoutActivityType {
     }
 }
 
+@MainActor
 class HealthKitManager: ObservableObject {
     static let shared = HealthKitManager()
-    
+
     @Published var isAuthorized = false
     @Published var exerciseCalories: Double = 0
     @Published var stepCount: Double = 0
@@ -93,12 +94,23 @@ class HealthKitManager: ObservableObject {
     // Track app foreground state for smart refreshing
     private var isAppInForeground = true
 
+    // Prevent timer task accumulation
+    private var isRefreshing = false
+
     private init() {
         setupAppLifecycleObservers()
     }
 
     deinit {
-        stopLiveUpdates()
+        // Stop observer queries - they hold references and won't auto-cleanup
+        // Note: healthStore.stop() is thread-safe and can be called from deinit
+        if let query = stepObserverQuery {
+            healthStore.stop(query)
+        }
+        if let query = activeEnergyObserverQuery {
+            healthStore.stop(query)
+        }
+        refreshTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -284,14 +296,16 @@ class HealthKitManager: ObservableObject {
         }
 
         let query = HKObserverQuery(sampleType: stepType, predicate: nil) { [weak self] _, completionHandler, error in
-            guard let self = self, error == nil else {
+            guard error == nil else {
                 completionHandler()
                 return
             }
 
-            // Only refresh if we're in foreground and observing today
-            if self.isAppInForeground && Calendar.current.isDateInToday(self.currentDisplayDate) {
-                Task {
+            // Route to MainActor to safely access @MainActor properties
+            Task { @MainActor in
+                guard let self = self else { return }
+                // Only refresh if we're in foreground and observing today
+                if self.isAppInForeground && Calendar.current.isDateInToday(self.currentDisplayDate) {
                     await self.updateStepCount(for: self.currentDisplayDate)
                 }
             }
@@ -312,14 +326,16 @@ class HealthKitManager: ObservableObject {
         }
 
         let query = HKObserverQuery(sampleType: energyType, predicate: nil) { [weak self] _, completionHandler, error in
-            guard let self = self, error == nil else {
+            guard error == nil else {
                 completionHandler()
                 return
             }
 
-            // Only refresh if we're in foreground and observing today
-            if self.isAppInForeground && Calendar.current.isDateInToday(self.currentDisplayDate) {
-                Task {
+            // Route to MainActor to safely access @MainActor properties
+            Task { @MainActor in
+                guard let self = self else { return }
+                // Only refresh if we're in foreground and observing today
+                if self.isAppInForeground && Calendar.current.isDateInToday(self.currentDisplayDate) {
                     await self.updateActiveEnergy(for: self.currentDisplayDate)
                 }
             }
@@ -351,8 +367,14 @@ class HealthKitManager: ObservableObject {
         guard Calendar.current.isDateInToday(currentDisplayDate) else { return }
 
         refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
-            guard let self = self, self.isAppInForeground else { return }
-            self.refreshHealthKitData()
+            guard let self = self else { return }
+            Task { @MainActor in
+                // Prevent task accumulation if previous refresh is still running
+                guard self.isAppInForeground, !self.isRefreshing else { return }
+                self.isRefreshing = true
+                defer { self.isRefreshing = false }
+                self.refreshHealthKitData()
+            }
         }
     }
 
@@ -433,7 +455,8 @@ class HealthKitManager: ObservableObject {
     
     private func estimateCaloriesForWorkout(_ workout: HKWorkout) -> Double {
         let durationInMinutes = workout.duration / 60.0
-        let userWeightKg = userWeight
+        // Use minimum reasonable weight to prevent division issues or unrealistic estimates
+        let userWeightKg = max(userWeight, 30.0)
         
         // Calories per minute based on workout type and user weight
         // These are research-based estimates for a 70kg person, scaled by actual weight

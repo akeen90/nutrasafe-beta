@@ -1251,7 +1251,7 @@ const INDEX_TO_COLLECTION: Record<string, string | null> = {
   'ai_enhanced': 'aiEnhanced',
   'ai_manually_added': 'aiManuallyAdded',
   'tesco_products': 'tescoProducts',
-  'uk_foods_cleaned': null,        // Algolia-only
+  'uk_foods_cleaned': 'uk_foods_cleaned',  // Has Firestore backing with sync trigger
   'fast_foods_database': null,     // Algolia-only
   'generic_database': null,        // Algolia-only
   'consumer_foods': 'consumer_foods',

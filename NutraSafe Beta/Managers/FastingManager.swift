@@ -176,6 +176,10 @@ class FastingManager {
         _ = calculateWeeklyCompletionRate(from: sessions)
         _ = calculateMonthlyCompletionRate(from: sessions)
 
+        let now = Date()
+        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now) ?? now
+
         return FastingAnalytics(
             totalFastsCompleted: totalFastsCount,
             averageCompletionPercentage: completionRate,
@@ -183,8 +187,8 @@ class FastingManager {
             longestFastHours: longestFast,
             mostConsistentDay: calculateMostConsistentDay(from: sessions),
             phaseDistribution: calculatePhaseDistribution(from: sessions),
-            last7DaysSessions: sessions.filter { $0.startTime >= Calendar.current.date(byAdding: .day, value: -7, to: Date())! },
-            last30DaysSessions: sessions.filter { $0.startTime >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! },
+            last7DaysSessions: sessions.filter { $0.startTime >= sevenDaysAgo },
+            last30DaysSessions: sessions.filter { $0.startTime >= thirtyDaysAgo },
             currentWeeklyStreak: currentStreak,
             bestWeeklyStreak: longestStreak
         )

@@ -866,28 +866,46 @@ class DiaryDataManager: ObservableObject {
 
     // Delete food items from both local storage and Firebase
     // Uses batch delete for atomic operations and better performance
-    func deleteFoodItems(_ items: [DiaryFoodItem], for date: Date) {
-        Task {
+    // Set skipReload=true when caller handles UI updates directly (e.g., DiaryTabView immediate updates)
+    func deleteFoodItems(_ items: [DiaryFoodItem], for date: Date, skipReload: Bool = false) {
+        print("🗑️ [DiaryDataManager] deleteFoodItems called with \(items.count) items, skipReload=\(skipReload)")
+        for item in items {
+            print("🗑️ [DiaryDataManager] - \(item.name) (id: \(item.id.uuidString))")
+        }
 
+        Task {
             // Collect all entry IDs for batch delete
             let entryIds = items.map { $0.id.uuidString }
+            print("🗑️ [DiaryDataManager] Entry IDs to delete: \(entryIds)")
 
             do {
                 // Use batch delete for atomic operation and better performance
-                try await FirebaseManager.shared.deleteFoodEntries(entryIds: entryIds)
+                // Pass skipNotification=skipReload to prevent notification from triggering reload
+                print("🗑️ [DiaryDataManager] Calling FirebaseManager.deleteFoodEntries...")
+                try await FirebaseManager.shared.deleteFoodEntries(entryIds: entryIds, skipNotification: skipReload)
+                print("🗑️ [DiaryDataManager] ✅ Batch delete succeeded")
             } catch {
+                print("🗑️ [DiaryDataManager] ⚠️ Batch delete failed: \(error). Trying single deletes...")
                 // Fallback: try deleting one by one
                 for item in items {
                     do {
                         try await FirebaseManager.shared.deleteFoodEntry(entryId: item.id.uuidString)
+                        print("🗑️ [DiaryDataManager] ✅ Single delete succeeded for \(item.id.uuidString)")
                     } catch {
+                        print("🗑️ [DiaryDataManager] ❌ Single delete failed for \(item.id.uuidString): \(error)")
                     }
                 }
             }
 
-            // Trigger reload after deletion
-            await MainActor.run {
-                self.dataReloadTrigger = UUID()
+            // Only trigger reload if caller didn't handle UI updates directly
+            if !skipReload {
+                print("🗑️ [DiaryDataManager] Triggering reload...")
+                await MainActor.run {
+                    self.dataReloadTrigger = UUID()
+                }
+                print("🗑️ [DiaryDataManager] Reload triggered")
+            } else {
+                print("🗑️ [DiaryDataManager] Skipping reload (caller handles UI updates)")
             }
         }
     }

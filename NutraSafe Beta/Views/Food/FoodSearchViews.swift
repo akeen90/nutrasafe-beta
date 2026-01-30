@@ -1773,9 +1773,14 @@ struct AddFoodSearchView: View {
 
             do {
                 results = try await FirebaseManager.shared.searchFoods(query: normalizedQuery)
-
-                } catch {
-                            }
+            } catch {
+                // Network error, timeout, or offline - ensure spinner stops
+                print("⚠️ Search failed: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.isSearching = false
+                }
+                return
+            }
 
             if Task.isCancelled { return }
 
@@ -2389,12 +2394,11 @@ struct FoodDetailView: View {
     }
     
     private func isAllergenPresent(_ allergen: Allergen, in text: String) -> Bool {
-        // Use centralized detection for dairy (handles plant milks correctly)
-        if allergen == .dairy {
-            return AllergenDetector.shared.containsDairyMilk(in: text)
-        }
-        // Use the comprehensive keyword lists defined in Allergen.keywords
-        return allergen.keywords.contains { text.contains($0) }
+        // Use centralized detection that handles:
+        // - Free-from patterns (e.g., "gluten-free" won't trigger gluten warning)
+        // - Plant milk exclusions (e.g., "oat milk" won't trigger dairy warning)
+        // - Word boundary matching for accuracy
+        return AllergenDetector.shared.isAllergenPresent(allergen, in: text)
     }
 }
 

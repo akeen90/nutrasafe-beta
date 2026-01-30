@@ -5334,6 +5334,8 @@ struct AddFoodMainView: View {
     var onDismiss: (() -> Void)?
     var onComplete: ((TabItem) -> Void)?
     @State private var keyboardVisible = false
+    @State private var keyboardShowObserver: NSObjectProtocol?
+    @State private var keyboardHideObserver: NSObjectProtocol?
 
     // Free tier limit checking
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -5557,18 +5559,24 @@ struct AddFoodMainView: View {
             // Check diary entry limit for free users
             checkDiaryLimit()
 
-            // Monitor keyboard
-            NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
+            // Monitor keyboard - store observer tokens for proper cleanup
+            keyboardShowObserver = NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
                 keyboardVisible = true
             }
-            NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
+            keyboardHideObserver = NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
                 keyboardVisible = false
             }
         }
         .onDisappear {
-            // Clean up keyboard observers
-            NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
-            NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+            // Clean up keyboard observers using stored tokens
+            if let observer = keyboardShowObserver {
+                NotificationCenter.default.removeObserver(observer)
+                keyboardShowObserver = nil
+            }
+            if let observer = keyboardHideObserver {
+                NotificationCenter.default.removeObserver(observer)
+                keyboardHideObserver = nil
+            }
         }
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()

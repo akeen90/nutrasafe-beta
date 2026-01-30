@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage, MasterDatabaseBuilderPage, AnalyticsPage } from './components';
+import { FoodGrid, Header, Sidebar, LoadingOverlay, OFFLookupModal, DuplicatesPanel, ImageProcessingPage, GoogleImageScraperPage, ReportsPage, MasterDatabaseBuilderPage, AnalyticsPage, AuthProvider } from './components';
 import { FoodCategorizerPage } from './components/FoodCategorizerPage';
 import { useGridStore } from './store';
 import { searchAllIndices, getIndexStats } from './services/algoliaService';
@@ -462,7 +462,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </QueryClientProvider>
   );
 };

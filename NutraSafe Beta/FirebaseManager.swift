@@ -65,13 +65,15 @@ class FirebaseManager: ObservableObject {
 
     /// Captures the current auth generation for comparison during long-running operations.
     /// Call at the start of an operation, then use `checkAuthStateUnchanged` at checkpoints.
-    private func captureAuthState() -> UInt64 {
+    /// CRIT-2 FIX: Made public for use by OfflineSyncManager.pullAllData() to prevent data leakage
+    func captureAuthState() -> UInt64 {
         authGeneration
     }
 
     /// Throws if auth state has changed since the operation started.
     /// Use at checkpoints in long-running operations to abort early if user signed out.
-    private func checkAuthStateUnchanged(since generation: UInt64) throws {
+    /// CRIT-2 FIX: Made public for use by OfflineSyncManager.pullAllData() to prevent data leakage
+    func checkAuthStateUnchanged(since generation: UInt64) throws {
         guard authGeneration == generation else {
             throw AuthStateError.authStateChanged
         }
@@ -139,8 +141,31 @@ class FirebaseManager: ObservableObject {
 
     private init() {
         // Defer Firebase service initialization until first access
+
+        // DATA CONSISTENCY FIX: Clear search cache when local database updates
+        // This ensures stale nutrition data isn't shown after delta sync
+        NotificationCenter.default.addObserver(
+            forName: .localDatabaseUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.searchCache.removeAllObjects()
+            #if DEBUG
+            print("[FirebaseManager] Search cache cleared after database update")
+            #endif
+        }
     }
-    
+
+    deinit {
+        // Clean up Firebase auth listener to prevent memory leak and zombie callbacks
+        if let handle = authListenerHandle {
+            Auth.auth().removeStateDidChangeListener(handle)
+            print("[FirebaseManager] Auth listener removed in deinit")
+        }
+        // Remove notification observer
+        NotificationCenter.default.removeObserver(self)
+    }
+
     private func initializeFirebaseServices() {
         // Only initialize services when first accessed
         _ = db
@@ -309,6 +334,11 @@ class FirebaseManager: ObservableObject {
 
         // Cancel all Use By notifications to prevent cross-account notification leakage
         UseByNotificationManager.shared.cancelAllNotifications()
+
+        // CRIT-5 FIX: Clear offline SQLite database to prevent data leakage between accounts
+        // This is critical for privacy - previous user's food diary, weight history, fasting data
+        // must not be accessible to the next user who signs in on this device
+        OfflineDataManager.shared.deleteAllUserData()
 
         // Clear all caches to prevent data leakage
         cacheQueue.sync {
@@ -1237,31 +1267,37 @@ class FirebaseManager: ObservableObject {
         }
     }
 
-    /// Delete multiple food entries atomically using Firestore batch writes
-    /// More efficient than deleting one at a time for bulk operations
+    /// Delete multiple food entries using offline-first pattern
+    /// Deletes from local SQLite first, then syncs to Firebase in background
     /// - Parameters:
     ///   - entryIds: Array of entry IDs to delete
     ///   - dates: Optional set of dates for these entries - if provided, only invalidates cache for those dates (more efficient)
-    func deleteFoodEntries(entryIds: [String], dates: Set<Date>? = nil) async throws {
+    ///   - skipNotification: If true, does not post .foodDiaryUpdated notification (use when caller handles UI updates)
+    func deleteFoodEntries(entryIds: [String], dates: Set<Date>? = nil, skipNotification: Bool = false) async throws {
+        print("🗑️ [FirebaseManager] deleteFoodEntries called with \(entryIds.count) IDs, skipNotification=\(skipNotification)")
+
         guard let userId = currentUser?.uid else {
+            print("🗑️ [FirebaseManager] ❌ No authenticated user!")
             throw AuthStateError.notAuthenticated
         }
-        guard !entryIds.isEmpty else { return }
+        print("🗑️ [FirebaseManager] User ID: \(userId)")
 
-        // Firestore batches support up to 500 operations
-        let batches = stride(from: 0, to: entryIds.count, by: 500).map {
-            Array(entryIds[$0..<min($0 + 500, entryIds.count)])
+        guard !entryIds.isEmpty else {
+            print("🗑️ [FirebaseManager] ⚠️ Empty entryIds array - returning early")
+            return
         }
 
-        for batchIds in batches {
-            let batch = db.batch()
-            for entryId in batchIds {
-                let docRef = db.collection("users").document(userId)
-                    .collection("foodEntries").document(entryId)
-                batch.deleteDocument(docRef)
-            }
-            try await batch.commit()
+        // OFFLINE-FIRST: Delete from local SQLite database first
+        // This ensures UI updates immediately even when offline
+        print("🗑️ [FirebaseManager] Deleting \(entryIds.count) entries from local SQLite...")
+        for entryId in entryIds {
+            OfflineDataManager.shared.deleteFoodEntry(entryId: entryId)
+            print("🗑️ [FirebaseManager] - Deleted locally: \(entryId)")
         }
+        print("🗑️ [FirebaseManager] ✅ Local deletes complete")
+
+        // Trigger background sync to push deletes to Firebase
+        OfflineSyncManager.shared.triggerSync()
 
         // PERFORMANCE: Granular cache invalidation when dates are known
         if let dates = dates, !dates.isEmpty {
@@ -1289,9 +1325,13 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        // Notify that food diary was updated
-        await MainActor.run {
-            NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
+        // Notify that food diary was updated (unless caller handles UI updates)
+        if !skipNotification {
+            await MainActor.run {
+                NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
+            }
+        } else {
+            print("🗑️ [FirebaseManager] Skipping .foodDiaryUpdated notification (caller handles UI)")
         }
     }
 

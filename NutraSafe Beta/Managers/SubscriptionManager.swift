@@ -14,6 +14,8 @@ final class SubscriptionManager: ObservableObject {
     @Published var isPremiumOverride = false
     @Published var purchaseError: String?
     @Published var isProductLoaded: Bool = false
+    /// True during initial product load - use to show loading state and prevent false free-tier flash
+    @Published var isInitialLoading: Bool = true
 
     /// Convenience property to check if user has premium access (subscribed, in trial, or override)
     var hasAccess: Bool {
@@ -53,6 +55,8 @@ final class SubscriptionManager: ObservableObject {
 
     func load() async throws {
         // Add timeout to prevent infinite loading
+        defer { isInitialLoading = false }
+
         do {
             try await withTimeout(seconds: 10) {
                 try await self.loadProductInternal()
@@ -168,6 +172,13 @@ final class SubscriptionManager: ObservableObject {
     func restore() async throws {
         purchaseError = nil
 
+        // Check network connectivity before attempting restore
+        // Restore requires network access to sync with App Store
+        if !NetworkMonitor.shared.isConnected {
+            purchaseError = "Network connection required. Please check your internet connection and try again."
+            throw SubscriptionError.networkUnavailable
+        }
+
         // IMPORTANT: We MUST call AppStore.sync() when user explicitly requests restore
         // This syncs with Apple's servers to fetch existing purchases
         // Without this, restore won't work after app reinstall or if local data is cleared
@@ -189,6 +200,18 @@ final class SubscriptionManager: ObservableObject {
             await refreshPremiumOverride()
             purchaseError = "Unable to restore purchases. Please check your internet connection and try again."
             throw error
+        }
+    }
+
+    /// Errors specific to subscription operations
+    enum SubscriptionError: LocalizedError {
+        case networkUnavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .networkUnavailable:
+                return "Network connection required to restore purchases."
+            }
         }
     }
 

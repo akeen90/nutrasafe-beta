@@ -429,13 +429,15 @@ struct BirthdayPickerSheet: View {
     // Date range for birthday picker (ages 13 to 120)
     private var dateRange: ClosedRange<Date> {
         let calendar = Calendar.current
-        let minAge = calendar.date(byAdding: .year, value: -120, to: Date())!
-        let maxAge = calendar.date(byAdding: .year, value: -13, to: Date())!
+        let now = Date()
+        let minAge = calendar.date(byAdding: .year, value: -120, to: now) ?? now
+        let maxAge = calendar.date(byAdding: .year, value: -13, to: now) ?? now
         return minAge...maxAge
     }
 
     init() {
-        let defaultDate = OnboardingManager.shared.userBirthday ?? Calendar.current.date(byAdding: .year, value: -30, to: Date())!
+        let fallbackDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
+        let defaultDate = OnboardingManager.shared.userBirthday ?? fallbackDate
         _selectedDate = State(initialValue: defaultDate)
     }
 
@@ -1902,6 +1904,7 @@ struct AppPreferencesSection: View {
     @State private var showingAppleHealth = false
     @State private var showingEmailPreferences = false
     @State private var showingFeatureTipsReset = false
+    @State private var showingSyncStatus = false
 
     var body: some View {
         SettingsSection(title: "App Preferences") {
@@ -1988,6 +1991,17 @@ struct AppPreferencesSection: View {
                         showingFeatureTipsReset = true
                     }
                 )
+
+                Divider()
+                    .padding(.leading, 56)
+
+                // Sync Status
+                SettingsRow(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "Sync Status",
+                    iconColor: .blue,
+                    action: { showingSyncStatus = true }
+                )
             }
         }
         .fullScreenCover(isPresented: $showingThemeSelector) {
@@ -2022,6 +2036,9 @@ struct AppPreferencesSection: View {
             }
         } message: {
             Text("All feature tips have been reset. You'll see them again as you use the app.")
+        }
+        .sheet(isPresented: $showingSyncStatus) {
+            SyncStatusView()
         }
     }
 }

@@ -155,6 +155,7 @@
 		OFFLINESYNCMGR01BLD /* OfflineSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = OFFLINESYNCMGR01REF /* OfflineSyncManager.swift */; };
 		ONBMGR0001BUILD /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBMGR0001FILE /* OnboardingManager.swift */; };
 		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
+		SYNCSTATUSVIEWBLD /* SyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SYNCSTATUSVIEWREF /* SyncStatusView.swift */; };
 		PREMWRAP001BUILD /* PremiumFeatureWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = PREMWRAP001FILE /* PremiumFeatureWrapper.swift */; };
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
@@ -336,6 +337,7 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
+		SYNCSTATUSVIEWREF /* SyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusView.swift; sourceTree = "<group>"; };
 		WELCOMESCREEN001FILE /* WelcomeScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeScreenView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -667,6 +669,7 @@
 			children = (
 				PAYWALL0001FILE /* PaywallView.swift */,
 				DIETREDESIGN001FILE /* DietManagementRedesign.swift */,
+				SYNCSTATUSVIEWREF /* SyncStatusView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -865,6 +868,7 @@
 				C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */,
 				DIETREDESIGN001BUILD /* DietManagementRedesign.swift in Sources */,
 				PAYWALL0001BUILD /* PaywallView.swift in Sources */,
+				SYNCSTATUSVIEWBLD /* SyncStatusView.swift in Sources */,
 				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
 				A1234567890123456789012302 /* ContentView.swift in Sources */,
 				A1234567890123456789012301 /* NutraSafeBetaApp.swift in Sources */,

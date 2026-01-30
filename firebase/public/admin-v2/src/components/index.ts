@@ -9,3 +9,7 @@ export { GoogleImageScraperPage } from './GoogleImageScraperPage';
 export { ReportsPage } from './ReportsPage';
 export { MasterDatabaseBuilderPage } from './MasterDatabaseBuilderPage';
 export { AnalyticsPage } from './AnalyticsPage';
+export { AuthProvider, useAuth, SignInForm, UserBadge } from './AuthProvider';
+export { ServingTypesEditor } from './ServingTypesEditor';
+export type { ServingType } from './ServingTypesEditor';
+export { FoodDetailModal } from './FoodDetailModal';

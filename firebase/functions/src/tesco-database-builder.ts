@@ -14,6 +14,7 @@
  */
 
 import * as functions from 'firebase-functions';
+import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import axios from 'axios';
 import { algoliasearch } from 'algoliasearch';
@@ -23,16 +24,19 @@ if (!admin.apps.length) {
     admin.initializeApp();
 }
 
-// Tesco8 API Configuration
-const TESCO8_API_KEY = functions.config().rapidapi?.key || '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
+// API Keys - Use Firebase Secrets (set via: firebase functions:secrets:set <SECRET_NAME>)
+// CRITICAL: Never hardcode API keys. Set secrets using:
+//   firebase functions:secrets:set TESCO8_API_KEY
+//   firebase functions:secrets:set UK_GROCERIES_API_KEY
+//   firebase functions:secrets:set SPOONACULAR_API_KEY
+const tesco8ApiKey = defineSecret('TESCO8_API_KEY');
+const ukGroceriesApiKey = defineSecret('UK_GROCERIES_API_KEY');
+const spoonacularApiKey = defineSecret('SPOONACULAR_API_KEY');
+const algoliaAdminKey = defineSecret('ALGOLIA_ADMIN_API_KEY');
+
+// API Hosts (not secrets - these are public)
 const TESCO8_HOST = 'tesco8.p.rapidapi.com';
-
-// UK Groceries API Configuration (General UK grocery stores)
-const UK_GROCERIES_API_KEY = '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
 const UK_GROCERIES_HOST = 'store-groceries.p.rapidapi.com';
-
-// Spoonacular Recipe API Configuration
-const SPOONACULAR_API_KEY = '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
 const SPOONACULAR_HOST = 'spoonacular-recipe-food-nutrition-v1.p.rapidapi.com';
 
 // API Source Types
@@ -54,8 +58,7 @@ function removeUndefined<T extends Record<string, any>>(obj: T): T {
 }
 
 // Algolia Configuration
-const ALGOLIA_APP_ID = functions.config().algolia?.app_id || 'WK0TIF84M2';
-const ALGOLIA_ADMIN_KEY = functions.config().algolia?.admin_key;
+const ALGOLIA_APP_ID = 'WK0TIF84M2';
 const TESCO_INDEX_NAME = 'tesco_products';
 
 // Collection and Index mapping by API source
@@ -656,8 +659,15 @@ async function retryWithBackoff<T>(
 
 /**
  * Search Tesco products by keyword
+ * @param apiKey - The API key (from secret) to use for the request
  */
-async function searchTescoProducts(query: string, page: number = 0): Promise<{ products: any[]; totalPages: number }> {
+async function searchTescoProducts(query: string, page: number = 0, apiKey?: string): Promise<{ products: any[]; totalPages: number }> {
+    const key = apiKey || tesco8ApiKey.value();
+    if (!key) {
+        console.error('TESCO8_API_KEY secret not configured');
+        return { products: [], totalPages: 0 };
+    }
+
     return retryWithBackoff(async () => {
         const response = await axios.get(
             `https://${TESCO8_HOST}/product-search-by-keyword`,
@@ -668,7 +678,7 @@ async function searchTescoProducts(query: string, page: number = 0): Promise<{ p
                 },
                 headers: {
                     'x-rapidapi-host': TESCO8_HOST,
-                    'x-rapidapi-key': TESCO8_API_KEY
+                    'x-rapidapi-key': key
                 },
                 timeout: 15000
             }
@@ -689,15 +699,22 @@ async function searchTescoProducts(query: string, page: number = 0): Promise<{ p
 /**
  * Search UK Groceries API - General UK grocery products
  * This API returns products with full details in one call (no separate details fetch needed)
+ * @param apiKey - The API key (from secret) to use for the request
  */
-async function searchUKGroceriesProducts(query: string, page: number = 0): Promise<{ products: TescoProduct[]; totalPages: number }> {
+async function searchUKGroceriesProducts(query: string, page: number = 0, apiKey?: string): Promise<{ products: TescoProduct[]; totalPages: number }> {
+    const key = apiKey || ukGroceriesApiKey.value();
+    if (!key) {
+        console.error('UK_GROCERIES_API_KEY secret not configured');
+        return { products: [], totalPages: 0 };
+    }
+
     return retryWithBackoff(async () => {
         const response = await axios.get(
             `https://${UK_GROCERIES_HOST}/groceries/search/${encodeURIComponent(query)}`,
             {
                 headers: {
                     'x-rapidapi-host': UK_GROCERIES_HOST,
-                    'x-rapidapi-key': UK_GROCERIES_API_KEY
+                    'x-rapidapi-key': key
                 },
                 timeout: 30000
             }
@@ -876,8 +893,15 @@ function parseUKGroceriesProduct(item: any): TescoProduct | null {
 /**
  * Search Spoonacular API - Grocery products with nutrition
  * Uses product search to find actual food items (not recipes)
+ * @param apiKey - The API key (from secret) to use for the request
  */
-async function searchSpoonacularProducts(query: string, page: number = 0): Promise<{ products: TescoProduct[]; totalPages: number }> {
+async function searchSpoonacularProducts(query: string, page: number = 0, apiKey?: string): Promise<{ products: TescoProduct[]; totalPages: number }> {
+    const key = apiKey || spoonacularApiKey.value();
+    if (!key) {
+        console.error('SPOONACULAR_API_KEY secret not configured');
+        return { products: [], totalPages: 0 };
+    }
+
     return retryWithBackoff(async () => {
         const offset = page * 10; // 10 results per page
 
@@ -892,7 +916,7 @@ async function searchSpoonacularProducts(query: string, page: number = 0): Promi
                 },
                 headers: {
                     'x-rapidapi-host': SPOONACULAR_HOST,
-                    'x-rapidapi-key': SPOONACULAR_API_KEY
+                    'x-rapidapi-key': key
                 },
                 timeout: 30000
             }
@@ -917,7 +941,7 @@ async function searchSpoonacularProducts(query: string, page: number = 0): Promi
                     {
                         headers: {
                             'x-rapidapi-host': SPOONACULAR_HOST,
-                            'x-rapidapi-key': SPOONACULAR_API_KEY
+                            'x-rapidapi-key': key
                         },
                         timeout: 15000
                     }
@@ -1035,13 +1059,20 @@ function parseSpoonacularProduct(product: any): TescoProduct | null {
 
 /**
  * Get full product details including nutrition
+ * @param apiKey - The API key (from secret) to use for the request
  */
 interface ProductDetailsResult {
     product: TescoProduct | null;
     error?: string;
 }
 
-async function getProductDetails(productId: string): Promise<ProductDetailsResult> {
+async function getProductDetails(productId: string, apiKey?: string): Promise<ProductDetailsResult> {
+    const key = apiKey || tesco8ApiKey.value();
+    if (!key) {
+        console.error('TESCO8_API_KEY secret not configured');
+        return { product: null, error: 'API key not configured' };
+    }
+
     try {
         console.log(`Fetching product details for: ${productId}`);
         const response = await retryWithBackoff(async () => {
@@ -1051,7 +1082,7 @@ async function getProductDetails(productId: string): Promise<ProductDetailsResul
                     params: { productId },
                     headers: {
                         'x-rapidapi-host': TESCO8_HOST,
-                        'x-rapidapi-key': TESCO8_API_KEY
+                        'x-rapidapi-key': key
                     },
                     timeout: 15000
                 }
@@ -1398,7 +1429,11 @@ export const getTescoBuildProgress = functions.https.onCall(async (_data, contex
  * Start or resume the Tesco database build
  */
 export const startTescoBuild = functions
-    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .runWith({
+        timeoutSeconds: 540,
+        memory: '1GB',
+        secrets: [tesco8ApiKey, ukGroceriesApiKey, spoonacularApiKey, algoliaAdminKey]
+    })
     .https.onCall(async (data, context) => {
         // Verify admin
         if (!context.auth) {
@@ -1554,8 +1589,9 @@ export const startTescoBuild = functions
 
         // Initialize Algolia
         let algoliaClient: ReturnType<typeof algoliasearch> | null = null;
-        if (ALGOLIA_ADMIN_KEY) {
-            algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+        const algoliaKey = algoliaAdminKey.value();
+        if (algoliaKey) {
+            algoliaClient = algoliasearch(ALGOLIA_APP_ID, algoliaKey);
         }
 
         const seenProductIds = new Set<string>();
@@ -2013,8 +2049,9 @@ export const scheduledTescoBuild = functions
 
         // Initialize Algolia
         let algoliaClient: ReturnType<typeof algoliasearch> | null = null;
-        if (ALGOLIA_ADMIN_KEY) {
-            algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+        const algoliaKey = algoliaAdminKey.value();
+        if (algoliaKey) {
+            algoliaClient = algoliasearch(ALGOLIA_APP_ID, algoliaKey);
         }
 
         const seenProductIds = new Set<string>();
@@ -2266,7 +2303,7 @@ export const scheduledTescoBuild = functions
  * Reset the Tesco database (delete all and start fresh)
  */
 export const resetTescoDatabase = functions
-    .runWith({ timeoutSeconds: 300, memory: '512MB' })
+    .runWith({ timeoutSeconds: 300, memory: '512MB', secrets: [algoliaAdminKey] })
     .https.onCall(async (_data, context) => {
         if (!context.auth) {
             throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
@@ -2311,9 +2348,10 @@ export const resetTescoDatabase = functions
         });
 
         // Clear Algolia index
-        if (ALGOLIA_ADMIN_KEY) {
+        const clearAlgoliaKey = algoliaAdminKey.value();
+        if (clearAlgoliaKey) {
             try {
-                const algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+                const algoliaClient = algoliasearch(ALGOLIA_APP_ID, clearAlgoliaKey);
                 await algoliaClient.clearObjects({ indexName: TESCO_INDEX_NAME });
                 console.log('Cleared Algolia index');
             } catch (error: any) {
@@ -2376,16 +2414,19 @@ export const getTescoDatabaseStats = functions.https.onCall(async (_data, contex
  * Configure Algolia index settings for Tesco products
  * Sets searchable attributes, ranking rules, etc.
  */
-export const configureTescoAlgoliaIndex = functions.https.onCall(async (_data, context) => {
+export const configureTescoAlgoliaIndex = functions
+    .runWith({ secrets: [algoliaAdminKey] })
+    .https.onCall(async (_data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
     }
 
-    if (!ALGOLIA_ADMIN_KEY) {
+    const configAlgoliaKey = algoliaAdminKey.value();
+    if (!configAlgoliaKey) {
         throw new functions.https.HttpsError('failed-precondition', 'Algolia admin key not configured');
     }
 
-    const algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+    const algoliaClient = algoliasearch(ALGOLIA_APP_ID, configAlgoliaKey);
 
     try {
         await algoliaClient.setSettings({
@@ -2471,18 +2512,19 @@ export const configureTescoAlgoliaIndex = functions.https.onCall(async (_data, c
  * Use this to re-sync if products weren't indexed during build
  */
 export const syncTescoToAlgolia = functions
-    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .runWith({ timeoutSeconds: 540, memory: '1GB', secrets: [algoliaAdminKey] })
     .https.onCall(async (_data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
     }
 
-    if (!ALGOLIA_ADMIN_KEY) {
+    const syncAlgoliaKey = algoliaAdminKey.value();
+    if (!syncAlgoliaKey) {
         throw new functions.https.HttpsError('failed-precondition', 'Algolia admin key not configured');
     }
 
     const db = admin.firestore();
-    const algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+    const algoliaClient = algoliasearch(ALGOLIA_APP_ID, syncAlgoliaKey);
 
     try {
         // First configure the index settings
@@ -2595,7 +2637,7 @@ export const syncTescoToAlgolia = functions
  * validates nutrition data, and removes invalid products
  */
 export const cleanupTescoDatabase = functions
-    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .runWith({ timeoutSeconds: 540, memory: '1GB', secrets: [algoliaAdminKey] })
     .https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
@@ -2616,8 +2658,9 @@ export const cleanupTescoDatabase = functions
 
     // Initialize Algolia for sync
     let algoliaClient: ReturnType<typeof algoliasearch> | null = null;
-    if (ALGOLIA_ADMIN_KEY && !dryRun) {
-        algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+    const cleanupAlgoliaKey = algoliaAdminKey.value();
+    if (cleanupAlgoliaKey && !dryRun) {
+        algoliaClient = algoliasearch(ALGOLIA_APP_ID, cleanupAlgoliaKey);
     }
 
     console.log(`Starting Tesco database cleanup... (dryRun: ${dryRun})`);

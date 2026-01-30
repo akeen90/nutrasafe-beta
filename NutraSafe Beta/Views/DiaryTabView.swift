@@ -1465,7 +1465,17 @@ struct DiaryTabView: View {
     }
 
     private func deleteSingleFood(_ food: DiaryFoodItem) {
-        diaryDataManager.deleteFoodItems([food], for: selectedDate)
+        // IMMEDIATE UI UPDATE: Remove item from local state arrays first for instant feedback
+        breakfastFoods.removeAll { $0.id == food.id }
+        lunchFoods.removeAll { $0.id == food.id }
+        dinnerFoods.removeAll { $0.id == food.id }
+        snackFoods.removeAll { $0.id == food.id }
+        rebuildFoodLookupCache()
+        recalculateNutrition()
+
+        // Then persist the delete to SQLite and sync to Firebase in background
+        // skipReload=true because we already updated the UI above
+        diaryDataManager.deleteFoodItems([food], for: selectedDate, skipReload: true)
     }
 
     private func addFoodToMeal(_ mealType: String) {
@@ -1482,14 +1492,40 @@ struct DiaryTabView: View {
     }
 
     private func deleteSelectedFoods() {
+        print("🗑️ [DELETE] deleteSelectedFoods called with \(selectedFoodItems.count) selected items")
+        print("🗑️ [DELETE] Selected IDs: \(selectedFoodItems)")
+        print("🗑️ [DELETE] Cache has \(foodLookupCache.count) entries")
+
         var itemsToDelete: [DiaryFoodItem] = []
         for id in selectedFoodItems {
             if let food = findFood(byId: id) {
+                print("🗑️ [DELETE] Found food: \(food.name) with id \(id)")
                 itemsToDelete.append(food)
+            } else {
+                print("🗑️ [DELETE] ⚠️ Could NOT find food with id \(id) in cache")
             }
         }
+
+        print("🗑️ [DELETE] Items to delete: \(itemsToDelete.count)")
+
         if !itemsToDelete.isEmpty {
-            diaryDataManager.deleteFoodItems(itemsToDelete, for: selectedDate)
+            // IMMEDIATE UI UPDATE: Remove items from local state arrays first for instant feedback
+            // This ensures the UI updates immediately without waiting for SQLite/Firebase
+            let idsToRemove = Set(itemsToDelete.map { $0.id })
+            breakfastFoods.removeAll { idsToRemove.contains($0.id) }
+            lunchFoods.removeAll { idsToRemove.contains($0.id) }
+            dinnerFoods.removeAll { idsToRemove.contains($0.id) }
+            snackFoods.removeAll { idsToRemove.contains($0.id) }
+            rebuildFoodLookupCache()
+            recalculateNutrition()
+            print("🗑️ [DELETE] UI updated immediately - removed \(itemsToDelete.count) items from view state")
+
+            // Then persist the delete to SQLite and sync to Firebase in background
+            // skipReload=true because we already updated the UI above
+            print("🗑️ [DELETE] Calling diaryDataManager.deleteFoodItems for date: \(selectedDate)")
+            diaryDataManager.deleteFoodItems(itemsToDelete, for: selectedDate, skipReload: true)
+        } else {
+            print("🗑️ [DELETE] ⚠️ No items to delete - itemsToDelete is empty!")
         }
         selectedFoodItems.removeAll()
     }

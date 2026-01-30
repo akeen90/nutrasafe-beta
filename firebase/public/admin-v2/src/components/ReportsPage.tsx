@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { getFoodById } from '../services/algoliaService';
+import { ServingTypesEditor, ServingType } from './ServingTypesEditor';
 
 // Types
 interface FoodReport {
@@ -69,6 +70,7 @@ interface EditableFood {
   servingDescription: string;
   servingSizeG: string;
   servingUnit: string;
+  servingTypes: ServingType[];
   category: string;
   ingredients: string;
   calories: string;
@@ -336,6 +338,40 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       ? food.ingredients.join(', ')
       : (food.ingredientsText || food.ingredients || '');
 
+    // Parse existing serving types from food data
+    let existingServingTypes: ServingType[] = [];
+
+    // Try to parse from servingTypes field first (new format)
+    if (food.servingTypes && Array.isArray(food.servingTypes)) {
+      existingServingTypes = food.servingTypes.map((st: any, idx: number) => ({
+        id: st.id || `serving_${idx}_${Date.now()}`,
+        name: st.name || '',
+        servingSize: st.servingSize || st.serving_g || 0,
+        unit: st.unit || initialUnit,
+        isDefault: st.isDefault || idx === 0,
+      }));
+    }
+    // Fall back to portions field (old format from iOS)
+    else if (food.portions && Array.isArray(food.portions)) {
+      existingServingTypes = food.portions.map((p: any, idx: number) => ({
+        id: `portion_${idx}_${Date.now()}`,
+        name: p.name || '',
+        servingSize: p.serving_g || 0,
+        unit: initialUnit,
+        isDefault: idx === 0,
+      }));
+    }
+    // Create default from servingDescription/servingSizeG if no serving types exist
+    else if (food.servingDescription || food.servingSizeG) {
+      existingServingTypes = [{
+        id: `default_${Date.now()}`,
+        name: food.servingDescription || `${food.servingSizeG || 100}${initialUnit}`,
+        servingSize: food.servingSizeG || 100,
+        unit: initialUnit,
+        isDefault: true,
+      }];
+    }
+
     setEditableFood({
       name: food.name || report.foodName || '',
       brandName,
@@ -343,6 +379,7 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       servingDescription: food.servingDescription || '',
       servingSizeG: food.servingSizeG?.toString() || '',
       servingUnit: initialUnit,
+      servingTypes: existingServingTypes,
       category: food.category || '',
       ingredients: ingredientsStr,
       calories: food.calories?.toString() || '',
@@ -423,6 +460,26 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       const foodId = selectedReport.food?.id || selectedReport.food?.objectID || selectedReport.foodId;
       const foodIndex = selectedReport.food?._sourceIndex || selectedReport.sourceIndex || 'uk_foods_cleaned';
 
+      // Find default serving type for primary fields
+      const defaultServing = editableFood.servingTypes.find(s => s.isDefault) || editableFood.servingTypes[0];
+
+      // Convert serving types to both formats (servingTypes for new format, portions for iOS compatibility)
+      const servingTypesPayload = editableFood.servingTypes.length > 0 ? editableFood.servingTypes.map(st => ({
+        id: st.id,
+        name: st.name,
+        servingSize: st.servingSize,
+        unit: st.unit,
+        isDefault: st.isDefault,
+      })) : null;
+
+      // Also create portions array for backwards compatibility with iOS app
+      const portionsPayload = editableFood.servingTypes.length > 0 ? editableFood.servingTypes.map(st => ({
+        name: st.name,
+        serving_g: st.servingSize,
+        // Note: iOS portions also have calories, but we can't calculate per-portion calories without knowing the nutrition is per 100g
+        calories: 0, // Will be calculated by iOS based on serving_g
+      })) : null;
+
       const payload = {
         foodId,
         indexName: foodIndex,
@@ -430,10 +487,16 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           foodName: editableFood.name,
           brandName: editableFood.brandName,
           barcode: editableFood.barcode,
-          servingSize: editableFood.servingDescription,
-          servingSizeG: parseFloat(editableFood.servingSizeG) || null,
-          servingUnit: editableFood.servingUnit,
-          suggestedServingUnit: editableFood.servingUnit, // ← iOS app checks THIS field
+          // Use default serving type values for primary fields
+          servingSize: defaultServing?.name || editableFood.servingDescription,
+          servingSizeG: defaultServing?.servingSize || parseFloat(editableFood.servingSizeG) || null,
+          servingUnit: defaultServing?.unit || editableFood.servingUnit,
+          suggestedServingUnit: defaultServing?.unit || editableFood.servingUnit, // ← iOS app checks THIS field
+          suggestedServingSize: defaultServing?.servingSize || null,
+          suggestedServingDescription: defaultServing?.name || null,
+          // Include full serving types array
+          servingTypes: servingTypesPayload,
+          portions: portionsPayload,
           category: editableFood.category,
           ingredients: editableFood.ingredients.split(',').map(i => i.trim()).filter(i => i),
           imageUrl: editableFood.imageUrl || null,
@@ -456,6 +519,8 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         servingUnit: payload.updates.servingUnit,
         suggestedServingUnit: payload.updates.suggestedServingUnit, // ← iOS checks this
         servingSize: payload.updates.servingSize,
+        servingTypes: payload.updates.servingTypes,
+        portions: payload.updates.portions,
       });
 
       const response = await fetch(`${API_BASE}/adminSaveFood`, {
@@ -1128,6 +1193,32 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   </div>
                 </div>
 
+                {/* Serving Types Manager */}
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <ServingTypesEditor
+                    servingTypes={editableFood.servingTypes}
+                    onChange={(servingTypes) => {
+                      // Sync the default serving to the main fields
+                      const defaultServing = servingTypes.find(s => s.isDefault) || servingTypes[0];
+                      if (defaultServing) {
+                        setEditableFood({
+                          ...editableFood,
+                          servingTypes,
+                          servingDescription: defaultServing.name,
+                          servingSizeG: defaultServing.servingSize.toString(),
+                          servingUnit: defaultServing.unit,
+                        });
+                        setUnitMode(defaultServing.unit);
+                      } else {
+                        setEditableFood({
+                          ...editableFood,
+                          servingTypes,
+                        });
+                      }
+                    }}
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Ingredients</label>
                   <textarea
@@ -1168,7 +1259,7 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                           <input
                             type="number"
                             step="0.1"
-                            value={editableFood[key as keyof EditableFood]}
+                            value={editableFood[key as keyof Omit<EditableFood, 'servingTypes'>] as string}
                             onChange={(e) => setEditableFood({ ...editableFood, [key]: e.target.value })}
                             className="w-full px-2 py-1.5 pr-6 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                           />

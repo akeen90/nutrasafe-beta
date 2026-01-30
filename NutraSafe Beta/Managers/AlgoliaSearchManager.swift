@@ -1104,7 +1104,12 @@ final class AlgoliaSearchManager {
         var seenIds = Set<String>()
         let indicesToSearch = usingIndices ?? indices
 
-        // Search all indices in parallel
+        // OFFLINE FIX: Aggregate timeout prevents 30s hang (3 indices × 10s each)
+        // Return whatever results we have after 15 seconds instead of waiting forever
+        let aggregateTimeout: UInt64 = 15_000_000_000 // 15 seconds in nanoseconds
+        let searchStartTime = Date()
+
+        // Search all indices in parallel with aggregate timeout
         await withTaskGroup(of: (Int, [FoodSearchResult]).self) { group in
             for (indexName, priority) in indicesToSearch {
                 group.addTask {
@@ -1122,7 +1127,16 @@ final class AlgoliaSearchManager {
             }
 
             // Collect all results with their source priority
+            // OFFLINE FIX: Check aggregate timeout during collection to avoid 30s hangs
             for await (priority, hits) in group {
+                // Check if we've exceeded aggregate timeout
+                let elapsed = Date().timeIntervalSince(searchStartTime)
+                if elapsed > 15.0 {
+                    print("⏱️ [AlgoliaSearch] Aggregate timeout (\(Int(elapsed))s) - returning partial results")
+                    group.cancelAll()
+                    break
+                }
+
                 for hit in hits where !seenIds.contains(hit.id) {
                     seenIds.insert(hit.id)
                     allResults.append((result: hit, sourcePriority: priority))

@@ -656,59 +656,33 @@ struct FoodReactionSummaryCard: View {
     }
 
     // UK's 14 Major Allergens detection for summary card
+    // Uses centralized AllergenDetector to handle free-from patterns correctly
     private func getBaseAllergenForSummary(for ingredient: String) -> String? {
-        let lower = ingredient.lowercased()
+        // Map of allergens to check (in priority order) with their display names
+        let allergenMappings: [(displayName: String, allergen: Allergen)] = [
+            ("Dairy", .dairy),
+            ("Eggs", .eggs),
+            ("Peanuts", .peanuts),
+            ("Tree Nuts", .treeNuts),
+            ("Gluten", .gluten),
+            ("Soya", .soy),
+            ("Fish", .fish),
+            ("Shellfish", .shellfish),
+            ("Molluscs", .molluscs),
+            ("Sesame", .sesame),
+            ("Mustard", .mustard),
+            ("Celery", .celery),
+            ("Lupin", .lupin),
+            ("Sulphites", .sulfites)
+        ]
 
-        // Milk and dairy
-        let dairyKeywords = ["milk", "dairy", "cream", "butter", "cheese", "yogurt", "yoghurt", "whey", "casein", "lactose", "ghee"]
-        if dairyKeywords.contains(where: { lower.contains($0) }) { return "Dairy" }
-
-        // Eggs
-        let eggKeywords = ["egg", "albumin", "mayonnaise", "meringue"]
-        if eggKeywords.contains(where: { lower.contains($0) }) { return "Eggs" }
-
-        // Peanuts
-        if lower.contains("peanut") || lower.contains("groundnut") { return "Peanuts" }
-
-        // Tree nuts
-        let nutKeywords = ["almond", "hazelnut", "walnut", "cashew", "pistachio", "pecan", "brazil nut", "macadamia", "pine nut", "chestnut"]
-        if nutKeywords.contains(where: { lower.contains($0) }) { return "Tree Nuts" }
-
-        // Gluten
-        let glutenKeywords = ["wheat", "gluten", "barley", "rye", "oats", "spelt", "semolina", "flour", "bread"]
-        if glutenKeywords.contains(where: { lower.contains($0) }) { return "Gluten" }
-
-        // Soya
-        let soyKeywords = ["soy", "soya", "tofu", "tempeh", "edamame"]
-        if soyKeywords.contains(where: { lower.contains($0) }) { return "Soya" }
-
-        // Fish
-        let fishKeywords = ["fish", "salmon", "tuna", "cod", "anchovy", "sardine", "mackerel", "haddock"]
-        if fishKeywords.contains(where: { lower.contains($0) }) { return "Fish" }
-
-        // Crustaceans
-        let crustaceanKeywords = ["shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish"]
-        if crustaceanKeywords.contains(where: { lower.contains($0) }) { return "Shellfish" }
-
-        // Molluscs
-        let molluscKeywords = ["mollusc", "clam", "mussel", "oyster", "scallop", "squid", "octopus"]
-        if molluscKeywords.contains(where: { lower.contains($0) }) { return "Molluscs" }
-
-        // Sesame
-        if lower.contains("sesame") || lower.contains("tahini") { return "Sesame" }
-
-        // Mustard
-        if lower.contains("mustard") { return "Mustard" }
-
-        // Celery
-        if lower.contains("celery") || lower.contains("celeriac") { return "Celery" }
-
-        // Lupin
-        if lower.contains("lupin") { return "Lupin" }
-
-        // Sulphites
-        let sulphiteKeywords = ["sulphite", "sulfite", "sulphur dioxide", "sulfur dioxide"]
-        if sulphiteKeywords.contains(where: { lower.contains($0) }) { return "Sulphites" }
+        // Use centralized detection that handles free-from patterns
+        // (e.g., "gluten free oat flour" won't return "Gluten")
+        for (displayName, allergen) in allergenMappings {
+            if AllergenDetector.shared.isAllergenPresent(allergen, in: ingredient) {
+                return displayName
+            }
+        }
 
         return nil
     }
@@ -1475,113 +1449,38 @@ struct FoodPatternAnalysisCard: View {
     }
 
     // UK's 14 Major Allergens - Base Categories (comprehensive detection)
+    // Uses centralized AllergenDetector to handle free-from patterns correctly
     private func getBaseAllergen(for ingredient: String) -> String? {
-        let lower = ingredient.lowercased()
-
         // First check if it's an additive derived from allergens
         if let allergenFromAdditive = getAllergenFromAdditive(ingredient) {
             return allergenFromAdditive
         }
 
-        // Milk and dairy products (uses comprehensive cheese/dairy list)
-        if AllergenDetector.shared.containsDairyMilk(in: lower) {
-            return "Milk"
-        }
+        // Map of allergens to check (in priority order) with their display names
+        // Note: "Milk" is the UK FSA term (not "Dairy")
+        let allergenMappings: [(displayName: String, allergen: Allergen)] = [
+            ("Milk", .dairy),
+            ("Eggs", .eggs),
+            ("Peanuts", .peanuts),
+            ("Tree Nuts", .treeNuts),
+            ("Gluten", .gluten),
+            ("Soya", .soy),
+            ("Fish", .fish),
+            ("Crustaceans", .shellfish),
+            ("Molluscs", .molluscs),
+            ("Sesame", .sesame),
+            ("Mustard", .mustard),
+            ("Celery", .celery),
+            ("Lupin", .lupin),
+            ("Sulphites", .sulfites)
+        ]
 
-        // Eggs (comprehensive)
-        let eggKeywords = ["egg", "albumin", "mayonnaise", "meringue", "ovalbumin", "lecithin", "lysozyme",
-                           "quiche", "frittata", "omelette", "omelet", "brioche", "challah", "hollandaise",
-                           "béarnaise", "bearnaise", "aioli", "carbonara", "pavlova", "soufflé", "souffle",
-                           "custard", "eggnog", "scotch egg"]
-        if eggKeywords.contains(where: { lower.contains($0) }) {
-            return "Eggs"
-        }
-
-        // Peanuts (separate from tree nuts)
-        let peanutKeywords = ["peanut", "groundnut", "arachis", "peanut butter", "peanut oil", "satay", "monkey nuts"]
-        if peanutKeywords.contains(where: { lower.contains($0) }) {
-            return "Peanuts"
-        }
-
-        // Tree nuts (comprehensive)
-        let treeNutKeywords = ["almond", "hazelnut", "walnut", "cashew", "pistachio", "pecan", "filbert",
-                               "brazil nut", "macadamia", "pine nut", "chestnut", "praline", "gianduja",
-                               "marzipan", "frangipane", "nougat", "nutella", "nut butter", "almond flour",
-                               "ground almonds", "flaked almonds", "walnut oil", "hazelnut oil"]
-        if treeNutKeywords.contains(where: { lower.contains($0) }) {
-            return "Tree Nuts"
-        }
-
-        // Cereals containing gluten (comprehensive)
-        let glutenKeywords = ["wheat", "gluten", "barley", "rye", "oats", "spelt", "kamut", "einkorn",
-                              "triticale", "durum", "farro", "freekeh", "seitan", "malt", "brewer's yeast",
-                              "semolina", "bulgur", "couscous", "flour", "bread", "pasta", "beer", "lager", "ale", "stout"]
-        if glutenKeywords.contains(where: { lower.contains($0) }) {
-            return "Gluten"
-        }
-
-        // Soya (comprehensive)
-        let soyKeywords = ["soy", "soya", "soybean", "tofu", "tempeh", "miso", "shoyu", "tamari",
-                           "edamame", "soy sauce", "soy milk", "soy protein", "soy lecithin", "natto", "tvp"]
-        if soyKeywords.contains(where: { lower.contains($0) }) {
-            return "Soya"
-        }
-
-        // Fish (comprehensive - all common species)
-        let fishKeywords = ["fish", "fish sauce", "worcestershire", "fish finger", "fish cake", "fish pie",
-                            "salmon", "tuna", "cod", "bass", "trout", "anchovy", "sardine", "mackerel",
-                            "haddock", "plaice", "pollock", "hake", "monkfish", "halibut", "tilapia",
-                            "bream", "sole", "herring", "kipper", "whitebait", "pilchard", "sprat",
-                            "swordfish", "snapper", "grouper", "perch", "catfish", "carp", "pike", "eel"]
-        if fishKeywords.contains(where: { lower.contains($0) }) {
-            return "Fish"
-        }
-
-        // Crustaceans (comprehensive)
-        let crustaceanKeywords = ["shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish", "langoustine",
-                                  "king prawn", "tiger prawn", "crab stick", "crab cake", "shellfish"]
-        if crustaceanKeywords.contains(where: { lower.contains($0) }) {
-            return "Crustaceans"
-        }
-
-        // Molluscs (comprehensive)
-        let molluscKeywords = ["mollusc", "clam", "mussel", "oyster", "scallop", "cockle", "winkle", "whelk",
-                               "squid", "calamari", "octopus", "cuttlefish", "abalone", "snail", "escargot"]
-        if molluscKeywords.contains(where: { lower.contains($0) }) {
-            return "Molluscs"
-        }
-
-        // Sesame (comprehensive)
-        let sesameKeywords = ["sesame", "tahini", "sesame oil", "sesame seed", "hummus", "houmous",
-                              "halvah", "halva", "za'atar", "zaatar", "gomashio", "benne seed"]
-        if sesameKeywords.contains(where: { lower.contains($0) }) {
-            return "Sesame"
-        }
-
-        // Mustard
-        let mustardKeywords = ["mustard", "mustard seed", "dijon", "wholegrain mustard"]
-        if mustardKeywords.contains(where: { lower.contains($0) }) {
-            return "Mustard"
-        }
-
-        // Celery
-        let celeryKeywords = ["celery", "celeriac", "celery salt", "celery extract"]
-        if celeryKeywords.contains(where: { lower.contains($0) }) {
-            return "Celery"
-        }
-
-        // Lupin
-        let lupinKeywords = ["lupin", "lupine", "lupin flour"]
-        if lupinKeywords.contains(where: { lower.contains($0) }) {
-            return "Lupin"
-        }
-
-        // Sulphites (comprehensive with E-numbers)
-        let sulphiteKeywords = ["sulphite", "sulfite", "sulphur dioxide", "sulfur dioxide",
-                                "e220", "e221", "e222", "e223", "e224", "e225", "e226", "e227", "e228",
-                                "metabisulphite", "metabisulfite"]
-        if sulphiteKeywords.contains(where: { lower.contains($0) }) {
-            return "Sulphites"
+        // Use centralized detection that handles free-from patterns
+        // (e.g., "gluten free oat flour" won't return "Gluten")
+        for (displayName, allergen) in allergenMappings {
+            if AllergenDetector.shared.isAllergenPresent(allergen, in: ingredient) {
+                return displayName
+            }
         }
 
         return nil
@@ -2625,6 +2524,13 @@ class ReactionManager: ObservableObject {
                     }
                 }
             }
+        }
+    }
+
+    deinit {
+        // Clean up auth observer (even though as a singleton this likely won't be called)
+        if let observer = authObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 

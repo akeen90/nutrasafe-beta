@@ -812,6 +812,7 @@ struct EmailVerificationView: View {
     @State private var showingSuccess = false
     @State private var canResend = true
     @State private var countdown = 0
+    @State private var countdownTimer: Timer?
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
@@ -970,6 +971,11 @@ struct EmailVerificationView: View {
         } message: {
             Text("Verification email has been sent. Please check your inbox.")
         }
+        .onDisappear {
+            // Clean up timer to prevent memory leak
+            countdownTimer?.invalidate()
+            countdownTimer = nil
+        }
     }
 
     private func checkVerification() async {
@@ -1005,11 +1011,13 @@ struct EmailVerificationView: View {
                 countdown = 60
                 showingSuccess = true
 
-                // Countdown timer
-                Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+                // Countdown timer - store reference for cleanup
+                countdownTimer?.invalidate() // Clean up any existing timer first
+                countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
                     countdown -= 1
                     if countdown <= 0 {
                         timer.invalidate()
+                        countdownTimer = nil
                         canResend = true
                     }
                 }

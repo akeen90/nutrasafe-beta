@@ -66,6 +66,33 @@ function transformToUnifiedFood(hit: Record<string, unknown>, sourceIndex: Algol
   const servingSizeG = hit.servingSizeG !== undefined ? Number(hit.servingSizeG || hit.serving_size_g || 0) : null;
   const isPerUnit = Boolean(hit.per_unit_nutrition || hit.isPerUnit || false);
 
+  // Extended serving info (for admin multi-serving support)
+  const suggestedServingUnit = (hit.suggestedServingUnit || null) as 'g' | 'ml' | null;
+  const suggestedServingSize = hit.suggestedServingSize !== undefined ? Number(hit.suggestedServingSize) : null;
+  const suggestedServingDescription = (hit.suggestedServingDescription || null) as string | null;
+
+  // Serving types array (new format for multiple serving options)
+  let servingTypes: { id: string; name: string; servingSize: number; unit: 'g' | 'ml'; isDefault: boolean }[] | null = null;
+  if (Array.isArray(hit.servingTypes)) {
+    servingTypes = (hit.servingTypes as any[]).map((st, idx) => ({
+      id: st.id || `serving_${idx}`,
+      name: String(st.name || ''),
+      servingSize: Number(st.servingSize || 0),
+      unit: (st.unit === 'ml' ? 'ml' : 'g') as 'g' | 'ml',
+      isDefault: Boolean(st.isDefault || idx === 0),
+    }));
+  }
+
+  // Portions array (iOS format for backwards compatibility)
+  let portions: { name: string; serving_g: number; calories: number }[] | null = null;
+  if (Array.isArray(hit.portions)) {
+    portions = (hit.portions as any[]).map((p) => ({
+      name: String(p.name || ''),
+      serving_g: Number(p.serving_g || 0),
+      calories: Number(p.calories || 0),
+    }));
+  }
+
   // Verification
   const isVerified = Boolean(hit.verified || hit.isVerified || false);
   const verifiedBy = (hit.verifiedBy || null) as string | null;
@@ -129,6 +156,11 @@ function transformToUnifiedFood(hit: Record<string, unknown>, sourceIndex: Algol
     servingDescription,
     servingSizeG,
     isPerUnit,
+    suggestedServingUnit,
+    suggestedServingSize,
+    suggestedServingDescription,
+    servingTypes,
+    portions,
 
     isVerified,
     verifiedBy,

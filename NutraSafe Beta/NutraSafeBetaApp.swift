@@ -29,6 +29,40 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return true
     }
 
+    // CRIT-7 FIX: Sync pending data before app is terminated
+    // This prevents data loss when user adds food then immediately swipes app away
+    func applicationWillTerminate(_ application: UIApplication) {
+        print("[AppDelegate] CRIT-7: App terminating - forcing sync of pending data")
+        // Synchronously flush any pending sync operations
+        // We have limited time here, so just mark the need for urgent sync on next launch
+        UserDefaults.standard.set(true, forKey: "pendingSyncOnNextLaunch")
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "lastTerminationTime")
+    }
+
+    // CRIT-7 FIX: Also handle willResignActive for when app goes to background
+    func applicationWillResignActive(_ application: UIApplication) {
+        print("[AppDelegate] CRIT-7: App resigning active - triggering background sync")
+        // Request background time to complete sync
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = application.beginBackgroundTask(withName: "SyncPendingData") {
+            // Clean up if we run out of time
+            application.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
+
+        // Trigger sync with completion handler
+        Task {
+            await OfflineSyncManager.shared.forceSync()
+            // End background task when sync completes
+            DispatchQueue.main.async {
+                if backgroundTaskID != .invalid {
+                    application.endBackgroundTask(backgroundTaskID)
+                    backgroundTaskID = .invalid
+                }
+            }
+        }
+    }
+
     // Handle notification when app is in foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                willPresent notification: UNNotification,

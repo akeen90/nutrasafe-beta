@@ -92,6 +92,21 @@ export interface UnifiedFood {
   servingDescription: string | null;
   servingSizeG: number | null;
   isPerUnit: boolean;
+  suggestedServingUnit: 'g' | 'ml' | null;
+  suggestedServingSize: number | null;
+  suggestedServingDescription: string | null;
+  servingTypes: {
+    id: string;
+    name: string;
+    servingSize: number;
+    unit: 'g' | 'ml';
+    isDefault: boolean;
+  }[] | null;
+  portions: {
+    name: string;
+    serving_g: number;
+    calories: number;
+  }[] | null;
 
   // Verification
   isVerified: boolean;

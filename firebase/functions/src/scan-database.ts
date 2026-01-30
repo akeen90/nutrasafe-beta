@@ -12,7 +12,8 @@ const ALGOLIA_APP_ID = 'WK0TIF84M2';
 const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
 
 // Algolia-only indices (no Firebase backing)
-const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+// NOTE: uk_foods_cleaned was removed - it HAS Firestore backing (see syncUKFoodsCleanedToAlgolia in algolia-sync.ts)
+const ALGOLIA_ONLY_INDICES = ['fast_foods_database', 'generic_database'];
 
 // Map Algolia index names to Firestore collection names
 const INDEX_TO_COLLECTION: Record<string, string> = {
@@ -24,6 +25,7 @@ const INDEX_TO_COLLECTION: Record<string, string> = {
   'ai_manually_added': 'aiManuallyAdded',
   'tescoProducts': 'tesco_products',
   'tesco_products': 'tesco_products',
+  'uk_foods_cleaned': 'uk_foods_cleaned',  // Has Firestore backing with sync trigger
 };
 
 /**
@@ -938,7 +940,8 @@ export const batchUpdateFoodsWithFirebase = functions
     console.log(`   Updates: ${updates?.length || 0}, Deletes: ${deletes?.length || 0}`);
 
     // Algolia-only indices (no Firebase backing)
-    const ALGOLIA_ONLY_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
+    // NOTE: uk_foods_cleaned was removed - it HAS Firestore backing (see syncUKFoodsCleanedToAlgolia in algolia-sync.ts)
+    const ALGOLIA_ONLY_INDICES = ['fast_foods_database', 'generic_database'];
 
     // Map Algolia index names to Firestore collection names
     const indexToCollection: Record<string, string> = {
@@ -950,6 +953,7 @@ export const batchUpdateFoodsWithFirebase = functions
       'ai_manually_added': 'aiManuallyAdded',
       'tescoProducts': 'tesco_products',
       'tesco_products': 'tesco_products',
+      'uk_foods_cleaned': 'uk_foods_cleaned',  // Has Firestore backing with sync trigger
     };
 
     let updatedCount = 0;

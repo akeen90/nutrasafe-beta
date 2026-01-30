@@ -3,7 +3,8 @@
  * Fetches analytics data from Firebase Cloud Functions
  */
 
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
+import { getFirebaseFunctions } from './firebaseService';
 
 const API_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
 
@@ -106,17 +107,113 @@ export async function getAnalyticsData(): Promise<AnalyticsData> {
  * Get user analytics (requires admin authentication)
  */
 export async function getUserAnalytics(): Promise<AppUserAnalytics> {
-  const functions = getFunctions();
+  console.log('getUserAnalytics: Starting...');
+  const functions = getFirebaseFunctions();
   const getUserAnalyticsFn = httpsCallable(functions, 'getUserAnalytics');
 
-  const result = await getUserAnalyticsFn({});
-  const data = result.data as { success: boolean; analytics: AppUserAnalytics; error?: string };
+  try {
+    console.log('getUserAnalytics: Calling function...');
+    const result = await getUserAnalyticsFn({});
+    console.log('getUserAnalytics: Got result:', result);
+    const data = result.data as { success: boolean; analytics: AppUserAnalytics; error?: string };
 
-  if (!data.success) {
-    throw new Error(data.error || 'Failed to get user analytics');
+    if (!data.success) {
+      console.error('getUserAnalytics: Failed:', data.error);
+      throw new Error(data.error || 'Failed to get user analytics');
+    }
+
+    console.log('getUserAnalytics: Success!', data.analytics);
+    return data.analytics;
+  } catch (error) {
+    console.error('getUserAnalytics: Error:', error);
+    throw error;
   }
+}
 
-  return data.analytics;
+// GA4 Analytics types
+export interface GA4Analytics {
+  summary: {
+    activeUsers: number;
+    newUsers: number;
+    totalUsers: number;
+    sessions: number;
+    engagedSessions: number;
+    avgSessionDuration: number;
+    avgSessionDurationFormatted: string;
+    screenViews: number;
+    totalEvents: number;
+    engagementRate: number;
+  };
+  dailyUsers: { date: string; activeUsers: number; newUsers: number }[];
+  topEvents: { event: string; count: number }[];
+  topScreens: { screen: string; views: number }[];
+  engagementByDay: { day: string; activeUsers: number; sessions: number }[];
+  dateRange: { start: string; end: string };
+  generatedAt: string;
+}
+
+export interface GA4ConfigStatus {
+  configured: boolean;
+  propertyId: string | null;
+  instructions?: {
+    step1: string;
+    step2: string;
+    step3: string;
+    step4: string;
+  };
+}
+
+/**
+ * Get real GA4 analytics data (requires admin authentication)
+ */
+export async function getGA4Analytics(): Promise<GA4Analytics> {
+  console.log('getGA4Analytics: Starting...');
+  const functions = getFirebaseFunctions();
+  const getGA4AnalyticsFn = httpsCallable(functions, 'getGA4Analytics');
+
+  try {
+    console.log('getGA4Analytics: Calling function...');
+    const result = await getGA4AnalyticsFn({});
+    console.log('getGA4Analytics: Got result:', result);
+    const data = result.data as {
+      success: boolean;
+      analytics?: GA4Analytics;
+      error?: string;
+      setupInstructions?: Record<string, string>;
+      help?: string;
+    };
+
+    if (!data.success) {
+      console.error('getGA4Analytics: Failed:', data.error);
+      const errorMsg = data.error || 'Failed to get GA4 analytics';
+      if (data.setupInstructions) {
+        throw new Error(`${errorMsg}\n\nSetup: ${JSON.stringify(data.setupInstructions, null, 2)}`);
+      }
+      throw new Error(errorMsg);
+    }
+
+    console.log('getGA4Analytics: Success!', data.analytics);
+    return data.analytics!;
+  } catch (error) {
+    console.error('getGA4Analytics: Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check GA4 configuration status
+ */
+export async function checkGA4Config(): Promise<GA4ConfigStatus> {
+  const functions = getFirebaseFunctions();
+  const checkGA4ConfigFn = httpsCallable(functions, 'checkGA4Config');
+
+  try {
+    const result = await checkGA4ConfigFn({});
+    return result.data as GA4ConfigStatus;
+  } catch (error) {
+    console.error('checkGA4Config: Error:', error);
+    throw error;
+  }
 }
 
 /**

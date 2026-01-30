@@ -18,6 +18,7 @@ export { addVerifiedFood, updateVerifiedFood, deleteVerifiedFoods, deleteFoodFro
 export { uploadMasterDatabase } from './upload-master-database';
 export { getOverviewStats, getAnalyticsData } from './analytics';
 export { getWebsiteAnalytics } from './website-analytics';
+export { getGA4Analytics, checkGA4Config } from './ga4-analytics';
 export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics, getAuthenticatedEmails, bulkAddToMailchimp, setPremiumOverride, getPremiumOverrideStatus } from './user-management';
 export { getContextualNutritionScore } from './contextual-nutrition';
 export { analyzeAdditivesEnhanced } from './additive-analyzer-enhanced';

@@ -6,6 +6,15 @@
 //  Manages offline-first storage for all user-generated data
 //  Pattern: Write locally first, then sync to Firebase in background
 //
+//  SECURITY NOTES (MEDIUM-1):
+//  - SQLite database is NOT encrypted. User health data (food diary, weight, fasting)
+//    is stored in plaintext on device. iOS Data Protection (when device is locked)
+//    provides some protection, but for HIPAA-level compliance, consider:
+//    1. SQLCipher for at-rest encryption
+//    2. Or iOS Keychain for sensitive fields
+//  - Current security relies on iOS sandbox + device passcode
+//  - Data is cleared on sign-out (CRIT-5 fix) to prevent cross-account leakage
+//
 
 import Foundation
 import SQLite3
@@ -146,9 +155,13 @@ final class OfflineDataManager {
                 document_id TEXT NOT NULL,
                 data BLOB,
                 timestamp REAL NOT NULL,
-                retry_count INTEGER DEFAULT 0
+                retry_count INTEGER DEFAULT 0,
+                next_retry_time REAL DEFAULT 0
             )
         """)
+
+        // HIGH-9 FIX: Add next_retry_time column if it doesn't exist (migration for existing installs)
+        executeSQL("ALTER TABLE sync_queue ADD COLUMN next_retry_time REAL DEFAULT 0")
 
         // Food entries table
         executeSQL("""
@@ -358,10 +371,20 @@ final class OfflineDataManager {
     // MARK: - Food Entry Operations
 
     /// Save a food entry locally (offline-first)
+    /// CRITICAL: Uses sync instead of async to ensure data is written before returning
+    /// This prevents race conditions where the UI reads before the write completes
     func saveFoodEntry(_ entry: FoodEntry) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else {
                 print("[OfflineDataManager] Not initialized")
+                return
+            }
+
+            // CRITICAL: Check if entry is marked as deleted or has delete pending
+            // This prevents Firebase imports from resurrecting deleted entries
+            if self.isDocumentDeletedInternal(collection: "foodEntries", documentId: entry.id) ||
+               self.hasDeletePendingInternal(collection: "foodEntries", documentId: entry.id) {
+                print("[OfflineDataManager] Skipping save - entry \(entry.id) is deleted or has delete pending")
                 return
             }
 
@@ -519,8 +542,10 @@ final class OfflineDataManager {
     }
 
     /// Delete a food entry locally
+    /// CRITICAL: Uses sync instead of async to ensure delete is written before returning
+    /// This prevents race conditions where the UI reads before the delete completes
     func deleteFoodEntry(entryId: String) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             // Mark as deleted (soft delete for sync purposes)
@@ -645,8 +670,9 @@ final class OfflineDataManager {
     // MARK: - Use By Item Operations
 
     /// Save a Use By item locally (offline-first)
+    /// CRITICAL: Uses sync to ensure data is written before returning
     func saveUseByItem(_ item: UseByInventoryItem) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = """
@@ -733,8 +759,9 @@ final class OfflineDataManager {
     }
 
     /// Delete a Use By item locally
+    /// CRITICAL: Uses sync to ensure delete is written before returning
     func deleteUseByItem(itemId: String) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = "UPDATE use_by_items SET sync_status = 'deleted', last_modified = ? WHERE id = ?"
@@ -786,8 +813,9 @@ final class OfflineDataManager {
     // MARK: - Weight Entry Operations
 
     /// Save a weight entry locally (offline-first)
+    /// CRITICAL: Uses sync to ensure data is written before returning
     func saveWeightEntry(_ entry: WeightEntry) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = """
@@ -875,8 +903,9 @@ final class OfflineDataManager {
     }
 
     /// Delete a weight entry locally
+    /// CRITICAL: Uses sync to ensure delete is written before returning
     func deleteWeightEntry(id: UUID) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = "UPDATE weight_entries SET sync_status = 'deleted', last_modified = ? WHERE id = ?"
@@ -926,6 +955,7 @@ final class OfflineDataManager {
     // MARK: - User Settings Operations
 
     /// Save user settings locally (offline-first)
+    /// CRITICAL: Uses sync to ensure data is written before returning
     func saveUserSettings(
         height: Double?,
         goalWeight: Double?,
@@ -937,7 +967,7 @@ final class OfflineDataManager {
         fatPercent: Int?,
         allergens: [Allergen]?
     ) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = """
@@ -1036,8 +1066,9 @@ final class OfflineDataManager {
     // MARK: - Fasting Session Operations
 
     /// Save a fasting session locally (offline-first)
+    /// CRITICAL: Uses sync to ensure data is written before returning
     func saveFastingSession(_ session: FastingSession) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             guard let sessionData = try? JSONEncoder().encode(session) else {
@@ -1096,8 +1127,9 @@ final class OfflineDataManager {
     }
 
     /// Delete a fasting session locally
+    /// CRITICAL: Uses sync to ensure delete is written before returning
     func deleteFastingSession(id: String) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = "UPDATE fasting_sessions SET sync_status = 'deleted', last_modified = ? WHERE id = ?"
@@ -1121,8 +1153,9 @@ final class OfflineDataManager {
     // MARK: - Fasting Plan Operations
 
     /// Save a fasting plan locally (offline-first)
+    /// CRITICAL: Uses sync to ensure data is written before returning
     func saveFastingPlan(_ plan: FastingPlan) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             guard let planData = try? JSONEncoder().encode(plan) else {
@@ -1181,8 +1214,9 @@ final class OfflineDataManager {
     }
 
     /// Delete a fasting plan locally
+    /// CRITICAL: Uses sync to ensure delete is written before returning
     func deleteFastingPlan(id: String) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = "UPDATE fasting_plans SET sync_status = 'deleted', last_modified = ? WHERE id = ?"
@@ -1206,8 +1240,9 @@ final class OfflineDataManager {
     // MARK: - Reaction Log Operations
 
     /// Save a reaction log entry locally (offline-first)
+    /// CRITICAL: Uses sync to ensure data is written before returning
     func saveReactionLog(_ entry: ReactionLogEntry) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             guard let logData = try? JSONEncoder().encode(entry) else {
@@ -1266,8 +1301,9 @@ final class OfflineDataManager {
     }
 
     /// Delete a reaction log entry locally
+    /// CRITICAL: Uses sync to ensure delete is written before returning
     func deleteReactionLog(id: String) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = "UPDATE reaction_logs SET sync_status = 'deleted', last_modified = ? WHERE id = ?"
@@ -1291,8 +1327,9 @@ final class OfflineDataManager {
     // MARK: - Favorite Foods Operations
 
     /// Save a favorite food locally (offline-first)
+    /// CRITICAL: Uses sync to ensure data is written before returning
     func saveFavoriteFood(_ food: FoodSearchResult) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             guard let foodData = try? JSONEncoder().encode(food) else {
@@ -1351,8 +1388,9 @@ final class OfflineDataManager {
     }
 
     /// Delete a favorite food locally
+    /// CRITICAL: Uses sync to ensure delete is written before returning
     func deleteFavoriteFood(id: String) {
-        dbQueue.async {
+        dbQueue.sync {
             guard self.isInitialized else { return }
 
             let sql = "UPDATE favorite_foods SET sync_status = 'deleted', last_modified = ? WHERE id = ?"
@@ -1438,6 +1476,86 @@ final class OfflineDataManager {
         return isDeleted
     }
 
+    /// CRIT-6 FIX: Check if a delete operation is pending in sync queue for this document
+    /// This catches the race where delete is queued but not yet processed
+    func hasDeletePending(collection: String, documentId: String) -> Bool {
+        var hasPending = false
+
+        dbQueue.sync {
+            guard self.isInitialized, self.db != nil else { return }
+
+            let sql = "SELECT 1 FROM sync_queue WHERE collection = ? AND document_id = ? AND type = 'delete' LIMIT 1"
+            var statement: OpaquePointer?
+
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 2, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                hasPending = (sqlite3_step(statement) == SQLITE_ROW)
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return hasPending
+    }
+
+    /// Internal version of isDocumentDeleted - MUST be called from within dbQueue context
+    /// Used by save methods to avoid deadlock when checking deletion status
+    private func isDocumentDeletedInternal(collection: String, documentId: String) -> Bool {
+        guard isInitialized, db != nil else { return false }
+
+        // Map collection name to table name
+        let tableName: String
+        switch collection {
+        case "foodEntries": tableName = "food_entries"
+        case "useByInventory": tableName = "use_by_items"
+        case "weightEntries": tableName = "weight_entries"
+        case "fastingSessions": tableName = "fasting_sessions"
+        case "fastingPlans": tableName = "fasting_plans"
+        case "reactionLogs": tableName = "reaction_logs"
+        case "favoriteFoods": tableName = "favorite_foods"
+        default: return false
+        }
+
+        let sql = "SELECT sync_status FROM \(tableName) WHERE id = ?"
+        var statement: OpaquePointer?
+        var isDeleted = false
+
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+            if sqlite3_step(statement) == SQLITE_ROW {
+                if let statusCString = sqlite3_column_text(statement, 0) {
+                    let status = String(cString: statusCString)
+                    isDeleted = (status == "deleted")
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+
+        return isDeleted
+    }
+
+    /// Internal version of hasDeletePending - MUST be called from within dbQueue context
+    /// Used by save methods to avoid deadlock when checking pending deletes
+    private func hasDeletePendingInternal(collection: String, documentId: String) -> Bool {
+        guard isInitialized, db != nil else { return false }
+
+        let sql = "SELECT 1 FROM sync_queue WHERE collection = ? AND document_id = ? AND type = 'delete' LIMIT 1"
+        var statement: OpaquePointer?
+        var hasPending = false
+
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_text(statement, 2, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+            hasPending = (sqlite3_step(statement) == SQLITE_ROW)
+            sqlite3_finalize(statement)
+        }
+
+        return hasPending
+    }
+
     // MARK: - Sync Queue Operations
 
     private func addToSyncQueue<T: Encodable>(type: SyncOperationType, collection: String, documentId: String, data: T) {
@@ -1447,11 +1565,11 @@ final class OfflineDataManager {
     }
 
     /// Add to sync queue - MUST be called from within dbQueue context
-    /// All callers (save/delete methods) already execute within dbQueue.async blocks,
+    /// All callers (save/delete methods) execute within dbQueue.sync blocks,
     /// so this method executes synchronously within that context for atomic transactions.
     /// DEDUPLICATION: If operation already pending for (collection, documentId, type), update instead of duplicate
     private func addToSyncQueueRaw(type: SyncOperationType, collection: String, documentId: String, data: Data? = nil) {
-        // Safety check - this should always be true since callers are in dbQueue.async
+        // Safety check - this should always be true since callers are in dbQueue.sync
         guard isInitialized, db != nil else { return }
 
         // DEDUPLICATION CHECK: See if operation already exists for this document/type
@@ -1530,17 +1648,25 @@ final class OfflineDataManager {
         }
     }
 
-    /// Get all pending sync operations
+    /// Get all pending sync operations that are ready to be processed
+    /// HIGH-9 FIX: Filters by next_retry_time to respect exponential backoff
     func getPendingSyncOperations() -> [PendingSyncOperation] {
         var operations: [PendingSyncOperation] = []
 
         dbQueue.sync {
             guard self.isInitialized else { return }
 
-            let sql = "SELECT * FROM sync_queue ORDER BY timestamp ASC LIMIT 100"
+            // HIGH-4 FIX: Removed LIMIT 100 to prevent operations from being dropped
+            // HIGH-9 FIX: Only return operations whose next_retry_time has passed
+            // Operations with backoff will not be returned until their retry time
+            let now = Date().timeIntervalSince1970
+            let sql = "SELECT * FROM sync_queue WHERE next_retry_time <= ? ORDER BY timestamp ASC"
 
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                // HIGH-9 FIX: Bind the current time for the next_retry_time filter
+                sqlite3_bind_double(statement, 1, now)
+
                 while sqlite3_step(statement) == SQLITE_ROW {
                     // Read columns (id, timestamp, retryCount stored but not needed for operation)
                     _ = String(cString: sqlite3_column_text(statement, 0)) // id
@@ -1592,16 +1718,21 @@ final class OfflineDataManager {
         }
     }
 
-    /// Increment retry count for failed sync operation
-    func incrementRetryCount(id: String) {
+    /// HIGH-9 FIX: Increment retry count and set next retry time with backoff
+    /// The backoffSeconds parameter schedules when this operation should be retried
+    func incrementRetryCount(id: String, backoffSeconds: Double = 0) {
         dbQueue.async {
             guard self.isInitialized else { return }
 
-            let sql = "UPDATE sync_queue SET retry_count = retry_count + 1 WHERE id = ?"
+            // Calculate next retry timestamp (now + backoff)
+            let nextRetryTime = Date().timeIntervalSince1970 + backoffSeconds
+
+            let sql = "UPDATE sync_queue SET retry_count = retry_count + 1, next_retry_time = ? WHERE id = ?"
 
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
-                sqlite3_bind_text(statement, 1, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_double(statement, 1, nextRetryTime)
+                sqlite3_bind_text(statement, 2, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
                 sqlite3_step(statement)
                 sqlite3_finalize(statement)
             }
@@ -1639,16 +1770,87 @@ final class OfflineDataManager {
         }
     }
 
-    /// Permanently delete synced records marked as deleted
+    /// CRIT-8 FIX: Only permanently delete records where the DELETE sync operation has been confirmed
+    /// Previously this deleted ALL records with sync_status = 'deleted', which could delete records
+    /// whose delete operation was still in the sync queue or had failed
     func cleanupDeletedRecords() {
         dbQueue.async {
             guard self.isInitialized else { return }
 
-            let tables = ["food_entries", "use_by_items", "weight_entries", "favorite_foods", "fasting_plans", "fasting_sessions", "reaction_logs"]
+            // Map of table name to collection name for sync queue check
+            let tableCollectionMap = [
+                "food_entries": "foodEntries",
+                "use_by_items": "useByInventory",
+                "weight_entries": "weightEntries",
+                "favorite_foods": "favoriteFoods",
+                "fasting_plans": "fastingPlans",
+                "fasting_sessions": "fastingSessions",
+                "reaction_logs": "reactionLogs"
+            ]
 
-            for table in tables {
-                let sql = "DELETE FROM \(table) WHERE sync_status = 'deleted'"
-                self.executeSQL(sql)
+            for (table, collection) in tableCollectionMap {
+                // CRIT-8 FIX: Only delete records that:
+                // 1. Are marked as 'deleted' in the table
+                // 2. Have NO pending delete operation in sync_queue (meaning delete was confirmed)
+                // 3. Have NO failed delete operation in failed_operations table
+                let sql = """
+                    DELETE FROM \(table)
+                    WHERE sync_status = 'deleted'
+                    AND id NOT IN (
+                        SELECT document_id FROM sync_queue
+                        WHERE collection = ? AND type = 'delete'
+                    )
+                    AND id NOT IN (
+                        SELECT document_id FROM failed_operations
+                        WHERE collection = ? AND type = 'delete'
+                    )
+                """
+
+                var statement: OpaquePointer?
+                if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                    sqlite3_bind_text(statement, 1, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                    sqlite3_bind_text(statement, 2, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                    if sqlite3_step(statement) != SQLITE_DONE {
+                        print("[OfflineDataManager] CRIT-8: Failed to cleanup deleted records in \(table): \(String(cString: sqlite3_errmsg(self.db)))")
+                    }
+                    sqlite3_finalize(statement)
+                }
+            }
+        }
+    }
+
+    /// CRITICAL FIX: Hard-delete a record immediately after Firebase confirms the delete
+    /// This prevents resurrection by removing the record entirely from SQLite
+    /// Called by OfflineSyncManager after successful delete sync
+    func hardDeleteRecord(collection: String, documentId: String) {
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let tableName: String
+            switch collection {
+            case "foodEntries": tableName = "food_entries"
+            case "useByInventory": tableName = "use_by_items"
+            case "weightHistory": tableName = "weight_entries"
+            case "favoriteFoods": tableName = "favorite_foods"
+            case "fastingPlans": tableName = "fasting_plans"
+            case "fastingSessions": tableName = "fasting_sessions"
+            case "reactionLogs": tableName = "reaction_logs"
+            default: return
+            }
+
+            let sql = "DELETE FROM \(tableName) WHERE id = ?"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                if sqlite3_step(statement) == SQLITE_DONE {
+                    print("[OfflineDataManager] Hard-deleted \(collection)/\(documentId) after successful sync")
+                } else {
+                    print("[OfflineDataManager] Failed to hard-delete \(collection)/\(documentId): \(String(cString: sqlite3_errmsg(self.db)))")
+                }
+                sqlite3_finalize(statement)
             }
         }
     }
@@ -1878,7 +2080,26 @@ final class OfflineDataManager {
 
     // MARK: - Data Import from Firebase
 
+    /// HIGH-8 FIX: Check if a document has pending local changes before overwriting with server data
+    private func hasPendingLocalChanges(collection: String, documentId: String) -> Bool {
+        // Check sync queue for pending operations
+        let sql = "SELECT 1 FROM sync_queue WHERE collection = ? AND document_id = ? LIMIT 1"
+        var statement: OpaquePointer?
+        var hasPending = false
+
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, collection, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_text(statement, 2, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            hasPending = (sqlite3_step(statement) == SQLITE_ROW)
+            sqlite3_finalize(statement)
+        }
+
+        return hasPending
+    }
+
     /// Import food entries from Firebase (for initial sync or full resync)
+    /// HIGH-8 FIX: Skips entries that have pending local changes to prevent data loss
+    /// RESURRECTION FIX: Also skips entries that are marked deleted or have delete pending
     func importFoodEntries(_ entries: [FoodEntry]) {
         dbQueue.async {
             guard self.isInitialized else { return }
@@ -1886,9 +2107,33 @@ final class OfflineDataManager {
             // Begin transaction for better performance
             self.executeSQL("BEGIN TRANSACTION")
 
+            var skippedCount = 0
             for entry in entries {
+                // RESURRECTION FIX: Don't resurrect entries that are marked as deleted locally
+                if self.isDocumentDeletedInternal(collection: "foodEntries", documentId: entry.id) {
+                    print("[OfflineDataManager] Import skipped - entry \(entry.id) is marked deleted")
+                    skippedCount += 1
+                    continue
+                }
+
+                // RESURRECTION FIX: Don't resurrect entries that have a pending delete
+                if self.hasDeletePendingInternal(collection: "foodEntries", documentId: entry.id) {
+                    print("[OfflineDataManager] Import skipped - entry \(entry.id) has delete pending")
+                    skippedCount += 1
+                    continue
+                }
+
+                // HIGH-8 FIX: Don't overwrite entries with pending local changes
+                if self.hasPendingLocalChanges(collection: "foodEntries", documentId: entry.id) {
+                    skippedCount += 1
+                    continue
+                }
+
+                // HIGH-11 FIX: Use INSERT OR IGNORE to handle unique constraint violations gracefully
+                // If a duplicate exists (based on the partial unique index), we skip it rather than error
+                // This can happen when syncing from multiple devices with identical food entries
                 let sql = """
-                    INSERT OR REPLACE INTO food_entries (
+                    INSERT OR IGNORE INTO food_entries (
                         id, user_id, food_name, brand_name, serving_size, serving_unit,
                         calories, protein, carbohydrates, fat, fiber, sugar, sodium, calcium,
                         ingredients, additives, barcode, micronutrient_profile, is_per_unit,
@@ -1964,18 +2209,45 @@ final class OfflineDataManager {
             }
 
             self.executeSQL("COMMIT")
-            print("[OfflineDataManager] Imported \(entries.count) food entries from Firebase")
+            if skippedCount > 0 {
+                print("[OfflineDataManager] HIGH-8: Imported \(entries.count - skippedCount) food entries, skipped \(skippedCount) with pending local changes")
+            } else {
+                print("[OfflineDataManager] Imported \(entries.count) food entries from Firebase")
+            }
         }
     }
 
     /// Import Use By items from Firebase
+    /// HIGH-8 FIX: Skips items that have pending local changes
+    /// RESURRECTION FIX: Also skips items that are marked deleted or have delete pending
     func importUseByItems(_ items: [UseByInventoryItem]) {
         dbQueue.async {
             guard self.isInitialized else { return }
 
             self.executeSQL("BEGIN TRANSACTION")
 
+            var skippedCount = 0
             for item in items {
+                // RESURRECTION FIX: Don't resurrect items that are marked as deleted locally
+                if self.isDocumentDeletedInternal(collection: "useByInventory", documentId: item.id) {
+                    print("[OfflineDataManager] Import skipped - UseBy item \(item.id) is marked deleted")
+                    skippedCount += 1
+                    continue
+                }
+
+                // RESURRECTION FIX: Don't resurrect items that have a pending delete
+                if self.hasDeletePendingInternal(collection: "useByInventory", documentId: item.id) {
+                    print("[OfflineDataManager] Import skipped - UseBy item \(item.id) has delete pending")
+                    skippedCount += 1
+                    continue
+                }
+
+                // HIGH-8 FIX: Don't overwrite items with pending local changes
+                if self.hasPendingLocalChanges(collection: "useByInventory", documentId: item.id) {
+                    skippedCount += 1
+                    continue
+                }
+
                 let sql = """
                     INSERT OR REPLACE INTO use_by_items (
                         id, name, brand, quantity, expiry_date, added_date,
@@ -2020,7 +2292,11 @@ final class OfflineDataManager {
             }
 
             self.executeSQL("COMMIT")
-            print("[OfflineDataManager] Imported \(items.count) Use By items from Firebase")
+            if skippedCount > 0 {
+                print("[OfflineDataManager] HIGH-8: Imported \(items.count - skippedCount) Use By items, skipped \(skippedCount) with pending local changes")
+            } else {
+                print("[OfflineDataManager] Imported \(items.count) Use By items from Firebase")
+            }
         }
     }
 
@@ -2106,13 +2382,34 @@ final class OfflineDataManager {
     }
 
     /// Import weight entries from Firebase
+    /// HIGH-8 FIX: Skips entries that have pending local changes
+    /// RESURRECTION FIX: Also skips entries that are marked deleted or have delete pending
     func importWeightEntries(_ entries: [WeightEntry]) {
         dbQueue.async {
             guard self.isInitialized else { return }
 
             self.executeSQL("BEGIN TRANSACTION")
 
+            var skippedCount = 0
             for entry in entries {
+                // RESURRECTION FIX: Don't resurrect entries that are marked as deleted locally
+                if self.isDocumentDeletedInternal(collection: "weightHistory", documentId: entry.id.uuidString) {
+                    skippedCount += 1
+                    continue
+                }
+
+                // RESURRECTION FIX: Don't resurrect entries that have a pending delete
+                if self.hasDeletePendingInternal(collection: "weightHistory", documentId: entry.id.uuidString) {
+                    skippedCount += 1
+                    continue
+                }
+
+                // HIGH-8 FIX: Don't overwrite entries with pending local changes
+                if self.hasPendingLocalChanges(collection: "weightHistory", documentId: entry.id.uuidString) {
+                    skippedCount += 1
+                    continue
+                }
+
                 let sql = """
                     INSERT OR REPLACE INTO weight_entries (
                         id, weight, date, bmi, note, photo_url, photo_urls, waist_size, dress_size, sync_status, last_modified
@@ -2151,7 +2448,53 @@ final class OfflineDataManager {
             }
 
             self.executeSQL("COMMIT")
-            print("[OfflineDataManager] Imported \(entries.count) weight entries from Firebase")
+            if skippedCount > 0 {
+                print("[OfflineDataManager] HIGH-8: Imported \(entries.count - skippedCount) weight entries, skipped \(skippedCount) with pending local changes")
+            } else {
+                print("[OfflineDataManager] Imported \(entries.count) weight entries from Firebase")
+            }
+        }
+    }
+
+    // MARK: - User Data Deletion (CRIT-5 FIX)
+
+    /// Delete all user data from local SQLite database
+    /// Called on sign-out to prevent data leakage between accounts
+    /// This is critical for privacy - user's food diary, weight history, fasting data
+    /// must not be accessible to the next user who signs in on this device
+    func deleteAllUserData() {
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            print("[OfflineDataManager] SECURITY: Deleting all user data on sign-out")
+
+            // Delete all data from all user tables
+            let tables = [
+                "food_entries",
+                "use_by_items",
+                "weight_entries",
+                "user_settings",
+                "favorite_foods",
+                "fasting_plans",
+                "fasting_sessions",
+                "reaction_logs",
+                "sync_queue",
+                "failed_operations",
+                "sync_state"
+            ]
+
+            for table in tables {
+                let sql = "DELETE FROM \(table)"
+                if self.executeSQL(sql) {
+                    print("[OfflineDataManager] Cleared table: \(table)")
+                }
+            }
+
+            // VACUUM to reclaim disk space and ensure deleted data is overwritten
+            // This provides stronger security than just DELETE
+            self.executeSQL("VACUUM")
+
+            print("[OfflineDataManager] SECURITY: All user data deleted and vacuumed")
         }
     }
 }

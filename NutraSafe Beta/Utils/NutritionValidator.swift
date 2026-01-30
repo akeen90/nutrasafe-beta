@@ -159,8 +159,12 @@ struct NutritionValidator {
     /// - Parameter date: Date to validate
     /// - Throws: ValidationError.invalidDate if out of reasonable range
     static func validateDate(_ date: Date) throws {
-        let year1900 = Calendar.current.date(from: DateComponents(year: 1900, month: 1, day: 1))!
-        let oneYearFromNow = Calendar.current.date(byAdding: .year, value: 1, to: Date())!
+        // Safely unwrap calendar date calculations with fallback behavior
+        guard let year1900 = Calendar.current.date(from: DateComponents(year: 1900, month: 1, day: 1)),
+              let oneYearFromNow = Calendar.current.date(byAdding: .year, value: 1, to: Date()) else {
+            // If calendar calculations fail, treat as invalid date
+            throw ValidationError.invalidDate(date: date)
+        }
 
         guard date >= year1900 && date <= oneYearFromNow else {
             throw ValidationError.invalidDate(date: date)

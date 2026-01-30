@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Numbers Database UK: Complete List of Food Additives 2026 | NutraSafe</title>
+    <meta name="description" content="Complete UK E-numbers database. Search and browse all food additives, check safety information, and learn what each E-number means. Free additive checker.">
+    <meta name="keywords" content="E-numbers, E-numbers list, food additives UK, E-numbers database, what are E-numbers, E-number checker, food additive list UK">
+    <link rel="canonical" href="https://nutrasafe.co.uk/e-numbers">
+    <meta name="robots" content="index, follow">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Complete E-Numbers Database UK">
+    <meta property="og:description" content="Browse all UK food additives. Safety information and uses for every E-number.">
+    <meta property="og:image" content="https://nutrasafe.co.uk/app-icon-2026.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Complete E-Numbers Database UK">
+    <meta name="twitter:description" content="Browse all UK food additives. Safety information and uses for every E-number.">
+
+    <meta name="theme-color" content="#3d7a7a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32-new.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --teal: #3d7a7a;
+            --teal-dark: #2d5a5a;
+            --text-dark: #1a1a1a;
+            --text-medium: #4a4a4a;
+            --text-light: #7a7a7a;
+            --bg-start: #dce4ec;
+            --bg-end: #f5f3ef;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --green: #10b981;
+            --yellow: #f59e0b;
+            --red: #ef4444;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.7;
+            color: var(--text-dark);
+            background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+        header {
+            background: rgba(220, 228, 236, 0.85);
+            backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 40px rgba(0, 0, 0, 0.05);
+        }
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(61, 122, 122, 0.2);
+        }
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-medium);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--teal); }
+        .nav-cta {
+            padding: 0.75rem 1.75rem;
+            background: var(--teal);
+            color: white !important;
+            border-radius: 100px;
+            font-weight: 600;
+        }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .hero {
+            padding: 80px 2rem 60px;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+
+        .content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 2rem 80px;
+        }
+        h2 {
+            font-size: 2rem;
+            margin: 3rem 0 1.5rem;
+        }
+        p {
+            color: var(--text-medium);
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+
+        .e-number-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin: 2rem 0;
+        }
+        .e-number-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: inherit;
+            backdrop-filter: blur(10px);
+        }
+        .e-number-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+        }
+        .e-number-code {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--teal);
+            margin-bottom: 0.5rem;
+        }
+        .e-number-name {
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+        .e-number-desc {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+        .safety-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+        .safety-safe {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--green);
+        }
+        .safety-caution {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--yellow);
+        }
+        .safety-avoid {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+        }
+
+        .category-section {
+            margin: 4rem 0;
+        }
+        .category-header {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .category-header h3 {
+            margin: 0 0 0.5rem;
+            font-size: 1.5rem;
+        }
+        .category-range {
+            color: var(--teal);
+            font-weight: 600;
+        }
+
+        footer {
+            background: linear-gradient(180deg, transparent 0%, rgba(61, 122, 122, 0.05) 100%);
+            padding: 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .footer-bottom {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+        @media (max-width: 768px) { .hero h1 { font-size: 2.25rem; } }
+    </style>
+    <script src="/cookie-consent.js" defer></script>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon-2026.png" alt="NutraSafe" width="44" height="44">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/e-numbers">E-Numbers Database</a></li>
+                <li><a href="/food-additives">Food Additives</a></li>
+                <li><a href="/resources">Resources</a></li>
+                <li><a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h1>E-Numbers Database UK</h1>
+        <p>Complete guide to all food additives approved in the UK. Search any E-number to learn what it is, where it's used, and whether it's safe.</p>
+    </section>
+
+    <div class="content">
+        <p>E-numbers are codes for food additives approved in the European Union and UK. This database provides detailed information about each additive, including safety information based on scientific research.</p>
+
+        <div class="category-section">
+            <div class="category-header">
+                <h3>Colours (E100-E199)</h3>
+                <p class="category-range">Natural and synthetic food colourings</p>
+            </div>
+            <div class="e-number-grid">
+                <a href="/e-numbers/e100" class="e-number-card">
+                    <div class="e-number-code">E100</div>
+                    <div class="e-number-name">Curcumin</div>
+                    <p class="e-number-desc">Natural yellow colour from turmeric. Used in butter, cheese, mustard.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+                <a href="/e-numbers/e102" class="e-number-card">
+                    <div class="e-number-code">E102</div>
+                    <div class="e-number-name">Tartrazine</div>
+                    <p class="e-number-desc">Synthetic yellow dye. Linked to hyperactivity in children.</p>
+                    <span class="safety-badge safety-avoid">Consider Avoiding</span>
+                </a>
+                <a href="/e-numbers/e110" class="e-number-card">
+                    <div class="e-number-code">E110</div>
+                    <div class="e-number-name">Sunset Yellow</div>
+                    <p class="e-number-desc">Orange-yellow synthetic dye. Similar concerns to tartrazine.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+                <a href="/e-numbers/e150a" class="e-number-card">
+                    <div class="e-number-code">E150a</div>
+                    <div class="e-number-name">Plain Caramel</div>
+                    <p class="e-number-desc">Brown colour from heated sugar. Found in cola and sauces.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+                <a href="/e-numbers/e150c" class="e-number-card">
+                    <div class="e-number-code">E150c</div>
+                    <div class="e-number-name">Ammonia Caramel</div>
+                    <p class="e-number-desc">Caramel colour containing 4-MEI. Used in beer and soy sauce.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+                <a href="/e-numbers/e150d" class="e-number-card">
+                    <div class="e-number-code">E150d</div>
+                    <div class="e-number-name">Sulphite Ammonia Caramel</div>
+                    <p class="e-number-desc">The "cola caramel" - highest 4-MEI levels but reformulated.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+                <a href="/e-numbers/e160a" class="e-number-card">
+                    <div class="e-number-code">E160a</div>
+                    <div class="e-number-name">Carotene</div>
+                    <p class="e-number-desc">Natural orange colour, precursor to vitamin A.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+                <a href="/e-numbers/e171" class="e-number-card">
+                    <div class="e-number-code">E171</div>
+                    <div class="e-number-name">Titanium Dioxide</div>
+                    <p class="e-number-desc">White colour BANNED in EU. UK still allows. DNA damage concerns.</p>
+                    <span class="safety-badge safety-avoid">Avoid If Possible</span>
+                </a>
+                <a href="/e-numbers/e172" class="e-number-card">
+                    <div class="e-number-code">E172</div>
+                    <div class="e-number-name">Iron Oxides</div>
+                    <p class="e-number-desc">Natural mineral-based red/yellow/black colours.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+                <a href="/e-numbers/e133" class="e-number-card">
+                    <div class="e-number-code">E133</div>
+                    <div class="e-number-name">Brilliant Blue</div>
+                    <p class="e-number-desc">Synthetic blue dye in sweets. Requires hyperactivity warning.</p>
+                    <span class="safety-badge safety-caution">Caution for Children</span>
+                </a>
+                <a href="/e-numbers/e131" class="e-number-card">
+                    <div class="e-number-code">E131</div>
+                    <div class="e-number-name">Patent Blue V</div>
+                    <p class="e-number-desc">Synthetic blue dye. Allergic reactions possible.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+                <a href="/e-numbers/e132" class="e-number-card">
+                    <div class="e-number-code">E132</div>
+                    <div class="e-number-name">Indigo Carmine</div>
+                    <p class="e-number-desc">Synthetic blue dye. Generally well-tolerated.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+                <a href="/e-numbers/e141" class="e-number-card">
+                    <div class="e-number-code">E141</div>
+                    <div class="e-number-name">Copper Chlorophyllin</div>
+                    <p class="e-number-desc">Natural-derived green colour from plants.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+                <a href="/e-numbers/e153" class="e-number-card">
+                    <div class="e-number-code">E153</div>
+                    <div class="e-number-name">Vegetable Carbon</div>
+                    <p class="e-number-desc">Black charcoal colour. Can interfere with medications.</p>
+                    <span class="safety-badge safety-caution">Caution with Meds</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <div class="category-header">
+                <h3>Preservatives (E200-E299)</h3>
+                <p class="category-range">Extend shelf life by preventing microbial growth</p>
+            </div>
+            <div class="e-number-grid">
+                <a href="/e-numbers/e211" class="e-number-card">
+                    <div class="e-number-code">E211</div>
+                    <div class="e-number-name">Sodium Benzoate</div>
+                    <p class="e-number-desc">Common preservative in soft drinks and pickles.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+                <a href="/e-numbers/e220" class="e-number-card">
+                    <div class="e-number-code">E220</div>
+                    <div class="e-number-name">Sulphur Dioxide</div>
+                    <p class="e-number-desc">Preservative in dried fruit and wine. May trigger asthma.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+                <a href="/e-numbers/e250" class="e-number-card">
+                    <div class="e-number-code">E250</div>
+                    <div class="e-number-name">Sodium Nitrite</div>
+                    <p class="e-number-desc">Preservative in processed meats. Linked to health concerns.</p>
+                    <span class="safety-badge safety-avoid">Consider Avoiding</span>
+                </a>
+                <a href="/e-numbers/e251" class="e-number-card">
+                    <div class="e-number-code">E251</div>
+                    <div class="e-number-name">Sodium Nitrate</div>
+                    <p class="e-number-desc">Curing salt in dry-cured meats. Converts to nitrite in body.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <div class="category-header">
+                <h3>Antioxidants (E300-E399)</h3>
+                <p class="category-range">Prevent oxidation and rancidity</p>
+            </div>
+            <div class="e-number-grid">
+                <a href="/e-numbers/e300" class="e-number-card">
+                    <div class="e-number-code">E300</div>
+                    <div class="e-number-name">Ascorbic Acid</div>
+                    <p class="e-number-desc">Vitamin C. Used as antioxidant in many foods.</p>
+                    <span class="safety-badge safety-safe">Safe (Vitamin)</span>
+                </a>
+                <a href="/e-numbers/e301" class="e-number-card">
+                    <div class="e-number-code">E301</div>
+                    <div class="e-number-name">Sodium Ascorbate</div>
+                    <p class="e-number-desc">Vitamin C sodium salt. Less acidic form in processed meats.</p>
+                    <span class="safety-badge safety-safe">Safe (Vitamin)</span>
+                </a>
+                <div class="e-number-card" style="opacity: 0.6; pointer-events: none;">
+                    <div class="e-number-code">E306</div>
+                    <div class="e-number-name">Tocopherols</div>
+                    <p class="e-number-desc">Vitamin E. Natural antioxidant in oils and fats.</p>
+                    <span class="safety-badge safety-safe">Safe (Vitamin)</span>
+                </div>
+                <a href="/e-numbers/e322" class="e-number-card">
+                    <div class="e-number-code">E322</div>
+                    <div class="e-number-name">Lecithin</div>
+                    <p class="e-number-desc">Emulsifier from soy or sunflower. Found in chocolate.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <div class="category-header">
+                <h3>Emulsifiers & Thickeners (E400-E499)</h3>
+                <p class="category-range">Stabilise texture and improve consistency</p>
+            </div>
+            <div class="e-number-grid">
+                <a href="/e-numbers/e420" class="e-number-card">
+                    <div class="e-number-code">E420</div>
+                    <div class="e-number-name">Sorbitol</div>
+                    <p class="e-number-desc">Sugar alcohol in sugar-free products. Laxative effect in large amounts.</p>
+                    <span class="safety-badge safety-caution">Digestive Caution</span>
+                </a>
+                <a href="/e-numbers/e476" class="e-number-card">
+                    <div class="e-number-code">E476</div>
+                    <div class="e-number-name">PGPR</div>
+                    <p class="e-number-desc">Emulsifier in chocolate. Safe but indicates lower quality.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <div class="category-header">
+                <h3>Raising Agents (E500-E599)</h3>
+                <p class="category-range">Help baked goods rise</p>
+            </div>
+            <div class="e-number-grid">
+                <a href="/e-numbers/e503" class="e-number-card">
+                    <div class="e-number-code">E503</div>
+                    <div class="e-number-name">Ammonium Bicarbonate</div>
+                    <p class="e-number-desc">Traditional raising agent in biscuits. Completely safe.</p>
+                    <span class="safety-badge safety-safe">Completely Safe</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <div class="category-header">
+                <h3>Flavour Enhancers (E600-E699)</h3>
+                <p class="category-range">Boost existing flavours in food</p>
+            </div>
+            <div class="e-number-grid">
+                <a href="/e-numbers/e621" class="e-number-card">
+                    <div class="e-number-code">E621</div>
+                    <div class="e-number-name">MSG (Monosodium Glutamate)</div>
+                    <p class="e-number-desc">Flavour enhancer in savoury foods. Safe but some sensitivity.</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <div class="category-header">
+                <h3>Sweeteners (E900-E999)</h3>
+                <p class="category-range">Low or zero-calorie sugar alternatives</p>
+            </div>
+            <div class="e-number-grid">
+                <a href="/e-numbers/e951" class="e-number-card">
+                    <div class="e-number-code">E951</div>
+                    <div class="e-number-name">Aspartame</div>
+                    <p class="e-number-desc">Artificial sweetener in diet drinks. WHO: "possibly carcinogenic".</p>
+                    <span class="safety-badge safety-caution">Use Caution</span>
+                </a>
+                <div class="e-number-card" style="opacity: 0.6; pointer-events: none;">
+                    <div class="e-number-code">E955</div>
+                    <div class="e-number-name">Sucralose</div>
+                    <p class="e-number-desc">Artificial sweetener. Considered safe by regulators.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </div>
+                <div class="e-number-card" style="opacity: 0.6; pointer-events: none;">
+                    <div class="e-number-code">E960</div>
+                    <div class="e-number-name">Stevia</div>
+                    <p class="e-number-desc">Natural plant-based sweetener. Generally well-tolerated.</p>
+                    <span class="safety-badge safety-safe">Generally Safe</span>
+                </div>
+            </div>
+        </div>
+
+        <h2>Check E-Numbers Instantly</h2>
+        <p>Want to know what E-numbers are in your food? Use NutraSafe's free barcode scanner to check any UK product instantly. The app identifies all additives and explains what each one does.</p>
+
+        <p style="margin-top: 2rem;"><strong>More E-numbers coming soon.</strong> We're building the most comprehensive UK E-numbers database with detailed safety information for every additive. Check back regularly for updates.</p>
+    </div>
+
+    <footer>
+        <div class="footer-bottom">
+            <p>&copy; 2026 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -115,14 +115,16 @@ struct FastingWidgetProvider: TimelineProvider {
 
         // Generate entries every 5 minutes for the next 2 hours for smooth countdown
         for minuteOffset in stride(from: 0, to: 120, by: 5) {
-            let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: currentDate)!
+            guard let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: currentDate) else {
+                continue
+            }
             let widgetData = computeWidgetData(for: entryDate)
             let entry = FastingWidgetEntry(date: entryDate, widgetData: widgetData)
             entries.append(entry)
         }
 
         // Refresh after 5 minutes for live updates
-        let refreshDate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate)!
+        let refreshDate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate) ?? currentDate.addingTimeInterval(300)
         let timeline = Timeline(entries: entries, policy: .after(refreshDate))
         completion(timeline)
     }

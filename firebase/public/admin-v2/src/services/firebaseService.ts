@@ -5,28 +5,83 @@
 
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import {
+  getAuth,
+  Auth,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User
+} from 'firebase/auth';
+import { getFunctions, Functions } from 'firebase/functions';
 import { UnifiedFood, UnifiedFoodUpdate } from '../types';
 
-// Firebase configuration
+// HIGH-12 FIX: Firebase configuration from environment variables
+// These should be set in .env file (not committed) or deployment environment
+// Vite exposes env vars prefixed with VITE_ to the client
 const firebaseConfig = {
-  apiKey: "AIzaSyD6P4U8D1lOJ-h8-QgQ6GYTp4h9Qy7YQHM",
-  authDomain: "nutrasafe-705c7.firebaseapp.com",
-  projectId: "nutrasafe-705c7",
-  storageBucket: "nutrasafe-705c7.appspot.com",
-  messagingSenderId: "1043273165814",
-  appId: "1:1043273165814:web:c3e98e4d8f5a6b7c8d9e0f",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAW1cyvgMe7jU38P6b1RgAOd7w6lCGK5lE",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "nutrasafe-705c7.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "nutrasafe-705c7",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "nutrasafe-705c7.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1043273165814",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1043273165814:web:c3e98e4d8f5a6b7c8d9e0f",
 };
+
+// Security note: These are public Firebase Web API keys which are safe to expose
+// (they identify the project but don't grant write access - that's controlled by Firestore rules)
+// However, using env vars allows different configs for dev/staging/prod
 
 // Initialize Firebase
 let app: FirebaseApp;
 let db: Firestore;
+let auth: Auth;
+let functions: Functions;
 
 export function initializeFirebase() {
   if (!app) {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
+    functions = getFunctions(app);
   }
-  return { app, db };
+  return { app, db, auth, functions };
+}
+
+// Auth helpers
+export function getFirebaseAuth(): Auth {
+  if (!auth) {
+    initializeFirebase();
+  }
+  return auth;
+}
+
+export function getFirebaseFunctions(): Functions {
+  if (!functions) {
+    initializeFirebase();
+  }
+  return functions;
+}
+
+export async function signIn(email: string, password: string): Promise<User> {
+  const auth = getFirebaseAuth();
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  return result.user;
+}
+
+export async function signOut(): Promise<void> {
+  const auth = getFirebaseAuth();
+  await firebaseSignOut(auth);
+}
+
+export function onAuthChange(callback: (user: User | null) => void): () => void {
+  const auth = getFirebaseAuth();
+  return onAuthStateChanged(auth, callback);
+}
+
+export function getCurrentUser(): User | null {
+  const auth = getFirebaseAuth();
+  return auth.currentUser;
 }
 
 // Cloud Function endpoints

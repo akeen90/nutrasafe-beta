@@ -749,7 +749,7 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
         }
 
         // Rule 3b: Vague preparation + generic ingredient = ambiguous
-        if queryWords.count == 2 {
+        if queryWords.count >= 2 {
             let firstWord = queryWords[0]
             let secondWord = queryWords[1]
             if Self.vaguePreparations.contains(firstWord) && Self.ambiguousSingleWords.contains(secondWord) {
@@ -2279,6 +2279,15 @@ struct FoodReaction: Identifiable, Codable {
 
 // MARK: - Food Entry Models
 
+/// DATA CONSISTENCY: Track source of serving size to prevent recalculation issues
+/// Different views were using different sources, causing calorie discrepancies
+enum ServingSizeSource: String, Codable {
+    case database       // From Algolia/local DB (servingSizeG)
+    case suggested      // From Firebase category (suggestedServingSize)
+    case userEntered    // Manual entry by user
+    case aiRecognized   // From AI scanner
+}
+
 struct FoodEntry: Identifiable, Codable {
     let id: String
     let userId: String
@@ -2301,6 +2310,11 @@ struct FoodEntry: Identifiable, Codable {
     let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
     let imageUrl: String?  // Product image URL
     let portions: [PortionOption]?  // Available portion sizes
+
+    // DATA CONSISTENCY: Track serving size source to prevent recalculation
+    // Once logged, nutrition should use this original source, not recalculate
+    let servingSizeSource: ServingSizeSource?
+
     let mealType: MealType
     let date: Date
     let dateLogged: Date
@@ -2344,7 +2358,7 @@ struct FoodEntry: Identifiable, Codable {
     init(id: String = UUID().uuidString, userId: String, foodName: String, brandName: String? = nil,
          servingSize: Double, servingUnit: String, calories: Double, protein: Double,
          carbohydrates: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
-         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, imageUrl: String? = nil, portions: [PortionOption]? = nil, mealType: MealType, date: Date, dateLogged: Date = Date(), inferredIngredients: [InferredIngredient]? = nil) {
+         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, imageUrl: String? = nil, portions: [PortionOption]? = nil, servingSizeSource: ServingSizeSource? = nil, mealType: MealType, date: Date, dateLogged: Date = Date(), inferredIngredients: [InferredIngredient]? = nil) {
         self.id = id
         self.userId = userId
         self.foodName = foodName
@@ -2366,6 +2380,7 @@ struct FoodEntry: Identifiable, Codable {
         self.isPerUnit = isPerUnit
         self.imageUrl = imageUrl
         self.portions = portions
+        self.servingSizeSource = servingSizeSource
         self.mealType = mealType
         self.date = date
         self.dateLogged = dateLogged
@@ -2393,6 +2408,11 @@ struct FoodEntry: Identifiable, Codable {
             "dateLogged": FirebaseFirestore.Timestamp(date: dateLogged),
             "isPerUnit": isPerUnit ?? false
         ]
+
+        // Add serving size source if available (data consistency tracking)
+        if let source = servingSizeSource {
+            dict["servingSizeSource"] = source.rawValue
+        }
 
         // Add ingredients if available
         if let ingredients = ingredients {

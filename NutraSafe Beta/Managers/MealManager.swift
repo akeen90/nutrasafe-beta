@@ -104,8 +104,17 @@ class MealManager: ObservableObject {
             .order(by: "updatedAt", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 Task { @MainActor in
+                    // HIGH-10 FIX: Check if listener was removed after callback fired
+                    // This prevents stale callbacks from updating state after stopListening()
+                    guard let self = self, self.listenerRegistration != nil else {
+                        #if DEBUG
+                        print("[MealManager] HIGH-10: Ignoring orphaned callback after listener removed")
+                        #endif
+                        return
+                    }
+
                     if let error = error {
-                        self?.errorMessage = "Failed to load meals: \(error.localizedDescription)"
+                        self.errorMessage = "Failed to load meals: \(error.localizedDescription)"
                         return
                     }
 
@@ -115,8 +124,8 @@ class MealManager: ObservableObject {
                         try? doc.data(as: Meal.self)
                     }
 
-                    self?.meals = meals
-                    self?.saveToLocalStorage()
+                    self.meals = meals
+                    self.saveToLocalStorage()
                 }
             }
     }
@@ -139,11 +148,12 @@ class MealManager: ObservableObject {
         }
     }
 
-    // MARK: - CRUD Operations
+    // MARK: - CRUD Operations (CRIT-9 FIX: Offline-first pattern)
 
-    /// Create a new meal
+    /// Create a new meal - CRIT-9 FIX: Save locally first, then sync to Firebase
+    /// This ensures meals are not lost when user is offline
     func createMeal(name: String, items: [MealItem], iconName: String = "fork.knife") async throws -> Meal {
-        guard let userId = Auth.auth().currentUser?.uid else {
+        guard Auth.auth().currentUser?.uid != nil else {
             throw MealError.notAuthenticated
         }
 
@@ -153,43 +163,112 @@ class MealManager: ObservableObject {
             iconName: iconName
         )
 
-        // Save to Firebase
-        try db.collection("users")
-            .document(userId)
-            .collection("meals")
-            .document(meal.id.uuidString)
-            .setData(from: meal)
+        // CRIT-9 FIX: Save locally FIRST (offline-first pattern)
+        await MainActor.run {
+            self.meals.append(meal)
+            self.saveToLocalStorage()
+        }
+
+        // Then try to sync to Firebase in background (don't block on this)
+        Task {
+            await syncMealToFirebase(meal, isNew: true)
+        }
 
         return meal
     }
 
-    /// Update an existing meal
+    /// Update an existing meal - CRIT-9 FIX: Update locally first, then sync
     func updateMeal(_ meal: Meal) async throws {
-        guard let userId = Auth.auth().currentUser?.uid else {
+        guard Auth.auth().currentUser?.uid != nil else {
             throw MealError.notAuthenticated
         }
 
         var updatedMeal = meal
         updatedMeal.updatedAt = Date()
 
-        try db.collection("users")
-            .document(userId)
-            .collection("meals")
-            .document(meal.id.uuidString)
-            .setData(from: updatedMeal)
+        // CRIT-9 FIX: Update locally FIRST
+        await MainActor.run {
+            if let index = self.meals.firstIndex(where: { $0.id == meal.id }) {
+                self.meals[index] = updatedMeal
+                self.saveToLocalStorage()
+            }
+        }
+
+        // Then sync to Firebase in background
+        Task {
+            await syncMealToFirebase(updatedMeal, isNew: false)
+        }
     }
 
-    /// Delete a meal
+    /// Delete a meal - CRIT-9 FIX: Delete locally first, then sync
     func deleteMeal(_ meal: Meal) async throws {
-        guard let userId = Auth.auth().currentUser?.uid else {
+        guard Auth.auth().currentUser?.uid != nil else {
             throw MealError.notAuthenticated
         }
 
-        try await db.collection("users")
-            .document(userId)
-            .collection("meals")
-            .document(meal.id.uuidString)
-            .delete()
+        // CRIT-9 FIX: Delete locally FIRST
+        await MainActor.run {
+            self.meals.removeAll { $0.id == meal.id }
+            self.saveToLocalStorage()
+        }
+
+        // Then sync deletion to Firebase in background
+        Task {
+            await syncMealDeletionToFirebase(meal)
+        }
+    }
+
+    // MARK: - Firebase Sync Helpers (CRIT-9 FIX)
+
+    /// Sync a meal to Firebase - called after local save succeeds
+    private func syncMealToFirebase(_ meal: Meal, isNew: Bool) async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+
+        do {
+            try db.collection("users")
+                .document(userId)
+                .collection("meals")
+                .document(meal.id.uuidString)
+                .setData(from: meal)
+            #if DEBUG
+            print("[MealManager] Synced meal to Firebase: \(meal.name)")
+            #endif
+        } catch {
+            // Firebase sync failed - meal is still saved locally
+            // Will sync on next listener update or manual refresh
+            print("[MealManager] Warning: Failed to sync meal to Firebase (saved locally): \(error.localizedDescription)")
+            // Mark as needing sync on next launch
+            markMealAsPendingSync(meal.id)
+        }
+    }
+
+    /// Sync meal deletion to Firebase
+    private func syncMealDeletionToFirebase(_ meal: Meal) async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+
+        do {
+            try await db.collection("users")
+                .document(userId)
+                .collection("meals")
+                .document(meal.id.uuidString)
+                .delete()
+            #if DEBUG
+            print("[MealManager] Synced meal deletion to Firebase: \(meal.name)")
+            #endif
+        } catch {
+            print("[MealManager] Warning: Failed to sync meal deletion to Firebase: \(error.localizedDescription)")
+            // Deletion already happened locally - if Firebase fails, it will be orphaned
+            // but user data is correct locally
+        }
+    }
+
+    /// Mark a meal as needing sync on next opportunity
+    private func markMealAsPendingSync(_ mealId: UUID) {
+        var pendingIds = UserDefaults.standard.stringArray(forKey: "pendingMealSyncIds") ?? []
+        if !pendingIds.contains(mealId.uuidString) {
+            pendingIds.append(mealId.uuidString)
+            UserDefaults.standard.set(pendingIds, forKey: "pendingMealSyncIds")
+        }
     }
 
     /// Add item to existing meal

@@ -3,7 +3,6 @@ import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import { algoliasearch } from 'algoliasearch';
 import axios from 'axios';
-const cors = require('cors')({ origin: true });
 
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
@@ -14,9 +13,69 @@ if (!admin.apps.length) {
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
 const algoliaAdminKey = defineSecret('ALGOLIA_ADMIN_API_KEY');
 
-// Tesco8 API Configuration
-const TESCO8_API_KEY = '7e61162448msh2832ba8d19f26cep1e55c3jsn5242e6c6d761';
+// Tesco8 API Configuration - Use Firebase Secrets (set via: firebase functions:secrets:set TESCO8_API_KEY)
+const tesco8ApiKey = defineSecret('TESCO8_API_KEY');
 const TESCO8_HOST = 'tesco8.p.rapidapi.com';
+
+// Allowed CORS origins for admin endpoints
+const ALLOWED_ORIGINS = [
+  'https://nutrasafe-705c7.web.app',
+  'https://nutrasafe.co.uk',
+  'https://www.nutrasafe.co.uk',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+/**
+ * Verify that the request is from an authenticated admin user.
+ * Checks Firebase Auth token and verifies user exists in /admins collection.
+ */
+async function verifyAdmin(req: functions.https.Request): Promise<{ isAdmin: boolean; userId?: string; error?: string }> {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { isAdmin: false, error: 'Missing or invalid Authorization header' };
+  }
+
+  const token = authHeader.split('Bearer ')[1];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    const adminDoc = await admin.firestore().doc(`admins/${decoded.uid}`).get();
+
+    if (!adminDoc.exists) {
+      return { isAdmin: false, userId: decoded.uid, error: 'User is not an admin' };
+    }
+
+    return { isAdmin: true, userId: decoded.uid };
+  } catch (error: any) {
+    return { isAdmin: false, error: `Token verification failed: ${error.message}` };
+  }
+}
+
+/**
+ * Set CORS headers with origin validation.
+ * Only allows requests from approved origins.
+ */
+function setCorsHeaders(req: functions.https.Request, res: functions.Response): boolean {
+  const origin = req.headers.origin || '';
+
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+  } else if (process.env.FUNCTIONS_EMULATOR) {
+    // Allow any origin in emulator for local development
+    res.set('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    // For production, deny unknown origins
+    res.set('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
+  }
+
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Allow-Credentials', 'true');
+
+  return req.method === 'OPTIONS';
+}
 
 // Map Algolia index names to Firestore collection names (where applicable)
 const INDEX_TO_COLLECTION: Record<string, string | null> = {
@@ -36,14 +95,17 @@ const INDEX_TO_COLLECTION: Record<string, string | null> = {
 const ALGOLIA_ONLY_INDICES = ['fast_foods_database', 'generic_database'];
 
 // Update verified food
-export const updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey] }).https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+export const updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey, tesco8ApiKey] }).https.onRequest(async (req, res) => {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -284,13 +346,16 @@ export const updateVerifiedFood = functions.runWith({ secrets: [algoliaAdminKey]
 
 // Add new food directly to human verified collection
 export const addVerifiedFood = functions.https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -357,13 +422,16 @@ export const addVerifiedFood = functions.https.onRequest(async (req, res) => {
 
 // Update foods with realistic serving sizes
 export const updateServingSizes = functions.https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -444,13 +512,16 @@ export const updateServingSizes = functions.https.onRequest(async (req, res) => 
 
 // Delete verified foods
 export const deleteVerifiedFoods = functions.https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -491,13 +562,16 @@ export const deleteFoodFromAlgolia = functions.runWith({
   secrets: [algoliaAdminKey],
   timeoutSeconds: 60,
 }).https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -559,20 +633,18 @@ export const deleteFoodFromAlgolia = functions.runWith({
 
 // Move food between collections (for future use when collections are separated)
 export const moveFoodBetweenCollections = functions.https.onRequest(async (req, res) => {
-  // Enhanced CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.set('Access-Control-Max-Age', '3600');
-
-  // Handle preflight OPTIONS request
-  if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request');
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
     return;
   }
 
-  console.log(`Request method: ${req.method}, headers:`, req.headers);
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+    return;
+  }
 
   try {
     const { foodId, fromCollection, toCollection } = req.body;
@@ -634,13 +706,16 @@ export const moveFoodsBetweenIndices = functions.runWith({
   timeoutSeconds: 540,
   memory: '1GB'
 }).https.onRequest(async (req, res) => {
-  // CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
+    res.status(200).send();
+    return;
+  }
 
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -782,13 +857,16 @@ export const moveFoodsBetweenIndices = functions.runWith({
 
 // Reset admin_manual foods to unverified (clean slate)
 export const resetAdminManualFoods = functions.https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -867,13 +945,16 @@ export const resetAdminManualFoods = functions.https.onRequest(async (req, res) 
 
 // Reset all foods to initial/unverified status
 export const resetAllFoodsToInitial = functions.https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -917,13 +998,16 @@ export const resetAllFoodsToInitial = functions.https.onRequest(async (req, res)
 
 // Fix existing foods to have proper verification status (one-time utility function)
 export const fixExistingFoodsVerification = functions.https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -1000,14 +1084,17 @@ export const fixExistingFoodsVerification = functions.https.onRequest(async (req
 });
 
 // Search Tesco by GTIN/barcode first, then fallback to name/brand, and update food
-export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey], timeoutSeconds: 60 }).https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKey, tesco8ApiKey], timeoutSeconds: 60 }).https.onRequest(async (req, res) => {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -1032,7 +1119,7 @@ export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKe
           params: { query: barcode, page: '0' },
           headers: {
             'x-rapidapi-host': TESCO8_HOST,
-            'x-rapidapi-key': TESCO8_API_KEY
+            'x-rapidapi-key': tesco8ApiKey.value()
           },
           timeout: 15000
         });
@@ -1046,7 +1133,7 @@ export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKe
               params: { productId: matchingProduct.id },
               headers: {
                 'x-rapidapi-host': TESCO8_HOST,
-                'x-rapidapi-key': TESCO8_API_KEY
+                'x-rapidapi-key': tesco8ApiKey.value()
               },
               timeout: 15000
             });
@@ -1072,7 +1159,7 @@ export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKe
           params: { query: searchQuery, page: '0' },
           headers: {
             'x-rapidapi-host': TESCO8_HOST,
-            'x-rapidapi-key': TESCO8_API_KEY
+            'x-rapidapi-key': tesco8ApiKey.value()
           },
           timeout: 15000
         });
@@ -1086,7 +1173,7 @@ export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKe
             params: { productId: firstProduct.id },
             headers: {
               'x-rapidapi-host': TESCO8_HOST,
-              'x-rapidapi-key': TESCO8_API_KEY
+              'x-rapidapi-key': tesco8ApiKey.value()
             },
             timeout: 15000
           });
@@ -1249,13 +1336,16 @@ export const searchTescoAndUpdate = functions.runWith({ secrets: [algoliaAdminKe
 export const adminSaveFood = functions
   .runWith({ secrets: [algoliaAdminKey], timeoutSeconds: 60 })
   .https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
+    // Set CORS headers with origin validation
+    if (setCorsHeaders(req, res)) {
       res.status(200).send();
+      return;
+    }
+
+    // Verify admin authentication
+    const authResult = await verifyAdmin(req);
+    if (!authResult.isAdmin) {
+      res.status(403).json({ error: 'Unauthorized', details: authResult.error });
       return;
     }
 
@@ -1314,6 +1404,21 @@ export const adminSaveFood = functions
         if (updates.suggestedServingUnit !== undefined) {
           updateObj.suggestedServingUnit = updates.suggestedServingUnit;
           updateObj.unitOverrideLocked = true; // Lock unit to prevent auto-categorization override
+        }
+        // Suggested serving size and description (from default serving type)
+        if (updates.suggestedServingSize !== undefined) {
+          updateObj.suggestedServingSize = updates.suggestedServingSize;
+        }
+        if (updates.suggestedServingDescription !== undefined) {
+          updateObj.suggestedServingDescription = updates.suggestedServingDescription;
+        }
+        // Serving types array (new format for multiple serving options)
+        if (updates.servingTypes !== undefined) {
+          updateObj.servingTypes = updates.servingTypes;
+        }
+        // Portions array (iOS compatibility format)
+        if (updates.portions !== undefined) {
+          updateObj.portions = updates.portions;
         }
         if (updates.ingredients !== undefined) {
           updateObj.ingredients = updates.ingredients;
@@ -1453,13 +1558,16 @@ export const deleteFoodComprehensive = functions.runWith({
   timeoutSeconds: 60,
   memory: '256MB',
 }).https.onRequest(async (req, res) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
     res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
     return;
   }
 
@@ -1618,15 +1726,27 @@ export const deleteFoodComprehensive = functions.runWith({
 const getAlgoliaAdminKey = () => functions.config().algolia?.admin_key || process.env.ALGOLIA_ADMIN_API_KEY || '';
 
 // Retrieve browse job status and data
-export const getBrowseJobData = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    try {
-      const { jobId, batchNumber } = req.query;
+export const getBrowseJobData = functions.https.onRequest(async (req, res) => {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
+    res.status(200).send();
+    return;
+  }
 
-      if (!jobId || typeof jobId !== 'string') {
-        res.status(400).json({ success: false, error: 'Job ID is required' });
-        return;
-      }
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+    return;
+  }
+
+  try {
+    const { jobId, batchNumber } = req.query;
+
+    if (!jobId || typeof jobId !== 'string') {
+      res.status(400).json({ success: false, error: 'Job ID is required' });
+      return;
+    }
 
       const db = admin.firestore();
       const jobDoc = await db.collection('browseJobs').doc(jobId).get();
@@ -1661,25 +1781,36 @@ export const getBrowseJobData = functions.https.onRequest((req, res) => {
         ...jobData,
       });
 
-    } catch (error: any) {
-      console.error('❌ Get browse job error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to retrieve browse job',
-        details: error.message,
-      });
-    }
-  });
+  } catch (error: any) {
+    console.error('❌ Get browse job error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve browse job',
+      details: error.message,
+    });
+  }
 });
 
 // Browse all records from specified indices
 export const browseAllIndices = functions.runWith({
   timeoutSeconds: 540,
   memory: '2GB'
-}).https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    try {
-      const { indices, limit, offset = 0, pageSize = 5000 } = req.body;
+}).https.onRequest(async (req, res) => {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
+    res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+    return;
+  }
+
+  try {
+    const { indices, limit, offset = 0, pageSize = 5000 } = req.body;
 
       if (!indices || !Array.isArray(indices) || indices.length === 0) {
         res.status(400).json({ success: false, error: 'Indices array is required' });
@@ -1773,15 +1904,14 @@ export const browseAllIndices = functions.runWith({
         },
       });
 
-    } catch (error: any) {
-      console.error('❌ Browse all indices error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to browse indices',
-        details: error.message,
-      });
-    }
-  });
+  } catch (error: any) {
+    console.error('❌ Browse all indices error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to browse indices',
+      details: error.message,
+    });
+  }
 });
 
 // Bulk delete from Algolia index (for duplicate merging)
@@ -1789,10 +1919,22 @@ export const deleteFromIndex = functions.runWith({
   secrets: [algoliaAdminKey],
   timeoutSeconds: 60,
   memory: '512MB'
-}).https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    try {
-      const { indexName, objectIDs } = req.body;
+}).https.onRequest(async (req, res) => {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
+    res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+    return;
+  }
+
+  try {
+    const { indexName, objectIDs } = req.body;
 
       if (!indexName) {
         res.status(400).json({ success: false, error: 'Index name is required' });
@@ -1848,15 +1990,14 @@ export const deleteFromIndex = functions.runWith({
         firestoreDeleted: firestoreDeleted
       });
 
-    } catch (error: any) {
-      console.error('❌ Bulk delete error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to delete objects',
-        details: error.message
-      });
-    }
-  });
+  } catch (error: any) {
+    console.error('❌ Bulk delete error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete objects',
+      details: error.message
+    });
+  }
 });
 
 // Bulk save/update to Algolia index (for duplicate merging and database updates)
@@ -1864,10 +2005,22 @@ export const updateAlgoliaIndex = functions.runWith({
   secrets: [algoliaAdminKey],
   timeoutSeconds: 120,
   memory: '1GB'
-}).https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    try {
-      const { indexName, products } = req.body;
+}).https.onRequest(async (req, res) => {
+  // Set CORS headers with origin validation
+  if (setCorsHeaders(req, res)) {
+    res.status(200).send();
+    return;
+  }
+
+  // Verify admin authentication
+  const authResult = await verifyAdmin(req);
+  if (!authResult.isAdmin) {
+    res.status(403).json({ error: 'Unauthorized', details: authResult.error });
+    return;
+  }
+
+  try {
+    const { indexName, products } = req.body;
 
       if (!indexName) {
         res.status(400).json({ success: false, error: 'Index name is required' });
@@ -1937,13 +2090,12 @@ export const updateAlgoliaIndex = functions.runWith({
         firestoreSaved: firestoreSaved
       });
 
-    } catch (error: any) {
-      console.error('❌ Bulk update error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to update objects',
-        details: error.message
-      });
-    }
-  });
+  } catch (error: any) {
+    console.error('❌ Bulk update error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update objects',
+      details: error.message
+    });
+  }
 });

@@ -76,7 +76,7 @@ class ProcessingScorer {
     private static let gramPattern2 = try? NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*g\)"#, options: [])
     private static let mlPattern1 = try? NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*ml"#, options: [])
     private static let mlPattern2 = try? NSRegularExpression(pattern: #"\((\d+(?:\.\d+)?)\s*ml\)"#, options: [])
-    private static let eNumberPattern = try! NSRegularExpression(pattern: "e\\d{3,4}", options: [])
+    private static let eNumberPattern = try? NSRegularExpression(pattern: "e\\d{3,4}", options: [])
     // swiftlint:enable force_try
 
     // PERFORMANCE: Cache for dynamically generated word boundary patterns
@@ -2006,10 +2006,10 @@ class ProcessingScorer {
         }
 
         // PERFORMANCE: Use precompiled E-number regex pattern
-        let eNumberMatches = Self.eNumberPattern.numberOfMatches(
+        let eNumberMatches = Self.eNumberPattern?.numberOfMatches(
             in: ingredientList,
             range: NSRange(ingredientList.startIndex..., in: ingredientList)
-        )
+        ) ?? 0
 
         // Add E-number penalties (but cap it - lots of E numbers in one product shouldn't stack infinitely)
         ultraProcessedScore += min(eNumberMatches, 4)

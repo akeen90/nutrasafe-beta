@@ -613,7 +613,7 @@ struct FastingEndConfirmationSheet: View {
             planId: "test",
             planName: "16:8 Intermittent Fasting",
             durationHours: 16,
-            scheduledTime: Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: Date())!
+            scheduledTime: Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: Date()) ?? Date()
         ),
         onConfirmScheduledTime: {},
         onConfirmCustomTime: { _ in },
