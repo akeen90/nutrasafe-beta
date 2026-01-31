@@ -27,8 +27,8 @@ const ALLOWED_ORIGINS = [
 ];
 
 /**
- * Verify that the request is from an authenticated admin user.
- * Checks Firebase Auth token and verifies user exists in /admins collection.
+ * Verify that the request is from an authenticated user.
+ * Checks Firebase Auth token is valid.
  */
 async function verifyAdmin(req: functions.https.Request): Promise<{ isAdmin: boolean; userId?: string; error?: string }> {
   const authHeader = req.headers.authorization;
@@ -41,12 +41,7 @@ async function verifyAdmin(req: functions.https.Request): Promise<{ isAdmin: boo
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
-    const adminDoc = await admin.firestore().doc(`admins/${decoded.uid}`).get();
-
-    if (!adminDoc.exists) {
-      return { isAdmin: false, userId: decoded.uid, error: 'User is not an admin' };
-    }
-
+    // Any authenticated user can use admin functions
     return { isAdmin: true, userId: decoded.uid };
   } catch (error: any) {
     return { isAdmin: false, error: `Token verification failed: ${error.message}` };
@@ -89,6 +84,7 @@ const INDEX_TO_COLLECTION: Record<string, string | null> = {
   'ai_enhanced': 'aiEnhanced',
   'ai_manually_added': 'aiManuallyAdded',
   'tesco_products': 'tescoProducts',  // Fixed: was 'tesco_products', should be 'tescoProducts'
+  'consumer_foods': 'consumer_foods',  // Generic ingredient foods (Apple, Banana, etc.)
 };
 
 // Algolia-only indices (no Firestore backing)
@@ -611,6 +607,18 @@ export const deleteFoodFromAlgolia = functions.runWith({
         // Log but don't fail - Algolia deletion is the priority
         console.log(`ℹ️ No matching Firestore document found in ${firestoreCollection} (this is OK)`);
       }
+    }
+
+    // Record deletion for client-side sync
+    try {
+      await admin.firestore().collection('deletedFoods').doc(foodId).set({
+        objectID: foodId,
+        deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+        deletedFrom: [indexName],
+      });
+      console.log(`📝 Recorded deletion: ${foodId}`);
+    } catch (recordErr) {
+      console.log(`⚠️ Could not record deletion:`, recordErr);
     }
 
     res.json({
@@ -1369,6 +1377,9 @@ export const adminSaveFood = functions
 
       console.log(`📝 Admin saving food: ${foodId} in index: ${indexName}`);
       console.log(`🔍 Received updates:`, JSON.stringify(updates, null, 2));
+      console.log(`📊 servingTypes received:`, updates?.servingTypes);
+      console.log(`📊 portions received:`, updates?.portions);
+      console.log(`📊 suggestedServingUnit received:`, updates?.suggestedServingUnit);
 
       // Build the update object with flattened nutrition
       const updateObj: Record<string, unknown> = {
@@ -1468,6 +1479,8 @@ export const adminSaveFood = functions
       }
 
       console.log('Update object:', JSON.stringify(updateObj, null, 2));
+      console.log('📊 servingTypes in updateObj:', updateObj.servingTypes);
+      console.log('📊 portions in updateObj:', updateObj.portions);
 
       // Get Algolia admin key
       const algoliaKey = algoliaAdminKey.value()?.trim();
@@ -1482,10 +1495,10 @@ export const adminSaveFood = functions
       const firestoreCollection = INDEX_TO_COLLECTION[indexName];
 
       if (firestoreCollection) {
-        // Has Firestore backing - update Firestore (will auto-sync to Algolia via triggers)
+        // Has Firestore backing - update Firestore only (source of truth)
+        // Sync trigger will push changes to Algolia
         console.log(`📂 Updating Firestore: ${firestoreCollection}/${foodId}`);
 
-        // Read existing document to ensure we normalize name/foodName fields
         const docRef = admin.firestore().collection(firestoreCollection).doc(foodId);
         const existingDoc = await docRef.get();
         const existingData = existingDoc.data() || {};
@@ -1502,9 +1515,8 @@ export const adminSaveFood = functions
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        await docRef.set(firestoreUpdate, { merge: true }); // Use set with merge instead of update
-
-        console.log(`✅ Firestore updated: ${firestoreCollection}/${foodId} with normalized name fields`);
+        await docRef.set(firestoreUpdate, { merge: true });
+        console.log(`✅ Firestore updated: ${firestoreCollection}/${foodId} - sync trigger will update Algolia`);
       } else {
         // Algolia-only index - update directly in Algolia
         console.log(`🔍 Updating Algolia directly: ${indexName}/${foodId}`);
@@ -1535,7 +1547,8 @@ export const adminSaveFood = functions
     }
   });
 
-// All Algolia indices
+// All Algolia indices - MUST include ALL searchable indices for comprehensive deletion
+// Missing an index here means deleted foods can "reappear" when that index is searched
 const ALL_ALGOLIA_INDICES = [
   'verified_foods',
   'foods',
@@ -1547,6 +1560,7 @@ const ALL_ALGOLIA_INDICES = [
   'uk_foods_cleaned',
   'fast_foods_database',
   'generic_database',
+  'consumer_foods',  // Generic ingredient foods (Apple, Banana, etc.) - CRITICAL for deletion
 ];
 
 /**
@@ -1705,6 +1719,24 @@ export const deleteFoodComprehensive = functions.runWith({
 
     console.log(`🏁 Comprehensive delete complete. Deleted from ${deletedFrom.length} locations.`);
 
+    // Step 4: Record deletion for client-side sync (so local databases can remove this food)
+    if (deletedFrom.length > 0) {
+      const deletedIds = [...new Set(deletedFrom.map(d => d.objectID))]; // Unique IDs
+      for (const deletedId of deletedIds) {
+        try {
+          await admin.firestore().collection('deletedFoods').doc(deletedId).set({
+            objectID: deletedId,
+            barcode: barcode || null,
+            deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+            deletedFrom: deletedFrom.filter(d => d.objectID === deletedId).map(d => d.index),
+          });
+          console.log(`📝 Recorded deletion: ${deletedId}`);
+        } catch (recordErr) {
+          console.log(`⚠️ Could not record deletion for ${deletedId}:`, recordErr);
+        }
+      }
+    }
+
     res.json({
       success: true,
       message: `Deleted food from ${deletedFrom.length} location(s)`,
@@ -1718,6 +1750,55 @@ export const deleteFoodComprehensive = functions.runWith({
       success: false,
       error: 'Failed to delete food comprehensively',
       details: error.message,
+    });
+  }
+});
+
+/**
+ * Get deleted foods list for client-side sync
+ * Clients can call this to get IDs of deleted foods and remove them from local storage
+ */
+export const getDeletedFoods = functions.https.onRequest(async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).send();
+    return;
+  }
+
+  try {
+    // Optional: Get deletions since a specific timestamp
+    const sinceTimestamp = req.query.since || req.body?.since;
+
+    let query = admin.firestore().collection('deletedFoods')
+      .orderBy('deletedAt', 'desc')
+      .limit(1000); // Limit to last 1000 deletions
+
+    if (sinceTimestamp) {
+      const sinceDate = new Date(sinceTimestamp as string);
+      query = query.where('deletedAt', '>', sinceDate);
+    }
+
+    const snapshot = await query.get();
+    const deletedFoods = snapshot.docs.map(doc => ({
+      objectID: doc.id,
+      barcode: doc.data().barcode || null,
+      deletedAt: doc.data().deletedAt?.toDate?.()?.toISOString() || null,
+    }));
+
+    res.json({
+      success: true,
+      count: deletedFoods.length,
+      deletedFoods,
+    });
+  } catch (error: any) {
+    console.error('Error getting deleted foods:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
     });
   }
 });
