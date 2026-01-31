@@ -24,7 +24,7 @@ class NutrientTrackingManager: ObservableObject {
     @Published var hasCachedData = false
 
     private let db = Firestore.firestore()
-    private var listeners: [ListenerRegistration] = []
+    // P4-1 FIX: Removed unused listeners array - only diaryListener is used
     private var diaryListener: ListenerRegistration? // Deduplicated diary listener
     private var isSettingUpListeners = false // RACE CONDITION FIX: Guard against concurrent listener setup
     private var currentUserId: String = "" // User-specific cache isolation
@@ -94,8 +94,6 @@ class NutrientTrackingManager: ObservableObject {
     func cleanupListeners() {
         diaryListener?.remove()
         diaryListener = nil
-        listeners.forEach { $0.remove() }
-        listeners.removeAll()
     }
 
     // MARK: - P3-2: Background Pause/Resume
@@ -112,8 +110,6 @@ class NutrientTrackingManager: ObservableObject {
         // Remove listeners but keep cached data
         diaryListener?.remove()
         diaryListener = nil
-        listeners.forEach { $0.remove() }
-        listeners.removeAll()
     }
 
     /// Resume tracking when app returns to foreground
@@ -132,9 +128,7 @@ class NutrientTrackingManager: ObservableObject {
         // Capture listener references for safe cleanup from non-isolated context
         // This avoids Swift 6 strict concurrency warnings
         let diary = diaryListener
-        let allListeners = listeners
         diary?.remove()
-        allListeners.forEach { $0.remove() }
     }
 
     // MARK: - Cache Management
@@ -273,9 +267,6 @@ class NutrientTrackingManager: ObservableObject {
         // Remove deduplicated diary listener
         diaryListener?.remove()
         diaryListener = nil
-
-        listeners.forEach { $0.remove() }
-        listeners.removeAll()
 
         // Clear memory and reset state
         nutrientFrequencies.removeAll()
