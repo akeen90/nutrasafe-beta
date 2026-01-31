@@ -1135,6 +1135,7 @@ struct NutraSafeHeader: View {
 
 /// Adds a "Done" button to the keyboard toolbar for dismissing the keyboard.
 /// Uses the native ToolbarItemGroup(placement: .keyboard) approach.
+/// NOTE: Only works inside NavigationView/NavigationStack
 extension View {
     /// Adds a keyboard toolbar with a Done button to dismiss the keyboard
     func keyboardDismissToolbar() -> some View {
@@ -1146,6 +1147,105 @@ extension View {
                 }
                 .fontWeight(.medium)
             }
+        }
+    }
+}
+
+// MARK: - TextField with Done Button (UIKit-based)
+
+/// A TextField that always shows a "Done" button above the keyboard.
+/// Uses UIKit's inputAccessoryView for universal keyboard support (including number pads).
+/// Works regardless of NavigationView context.
+struct TextFieldWithDoneButton: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String = ""
+    var keyboardType: UIKeyboardType = .default
+    var textContentType: UITextContentType? = nil
+    var autocapitalization: UITextAutocapitalizationType = .sentences
+    var autocorrection: UITextAutocorrectionType = .default
+    var font: UIFont = .systemFont(ofSize: 16)
+    var textColor: UIColor = .label
+    var placeholderColor: UIColor = .placeholderText
+    var textAlignment: NSTextAlignment = .left
+    var onSubmit: (() -> Void)? = nil
+    var onEditingChanged: ((Bool) -> Void)? = nil
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.delegate = context.coordinator
+        textField.placeholder = placeholder
+        textField.keyboardType = keyboardType
+        textField.textContentType = textContentType
+        textField.autocapitalizationType = autocapitalization
+        textField.autocorrectionType = autocorrection
+        textField.font = font
+        textField.textColor = textColor
+        textField.textAlignment = textAlignment
+        textField.borderStyle = .none
+
+        // Set placeholder color
+        textField.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [.foregroundColor: placeholderColor]
+        )
+
+        // Create toolbar with Done button
+        let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
+        toolbar.barStyle = .default
+        toolbar.isTranslucent = true
+
+        let flexSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let doneButton = UIBarButtonItem(title: "Done", style: .done, target: context.coordinator, action: #selector(Coordinator.doneTapped))
+        doneButton.tintColor = UIColor(AppPalette.standard.accent)
+
+        toolbar.items = [flexSpace, doneButton]
+        toolbar.sizeToFit()
+
+        textField.inputAccessoryView = toolbar
+
+        // Add target for text changes
+        textField.addTarget(context.coordinator, action: #selector(Coordinator.textFieldDidChange(_:)), for: .editingChanged)
+
+        return textField
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: TextFieldWithDoneButton
+
+        init(_ parent: TextFieldWithDoneButton) {
+            self.parent = parent
+        }
+
+        @objc func doneTapped() {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+
+        @objc func textFieldDidChange(_ textField: UITextField) {
+            parent.text = textField.text ?? ""
+        }
+
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            parent.onEditingChanged?(true)
+        }
+
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            parent.onEditingChanged?(false)
+        }
+
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            parent.onSubmit?()
+            textField.resignFirstResponder()
+            return true
         }
     }
 }

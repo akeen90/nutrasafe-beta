@@ -97,20 +97,23 @@ struct UseByTabView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isSearchFieldFocused ? palette.accent : palette.textTertiary)
 
-                TextField("Search food to add...", text: $searchQuery)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .autocorrectionDisabled(true)
-                    .textInputAutocapitalization(.never)
-                    .font(.system(size: 16, weight: .regular))
-                    .focused($isSearchFieldFocused)
-                    .onChange(of: searchQuery) { _, newValue in
-                        performUseBySearch(query: newValue)
-                    }
-                    .onChange(of: isSearchFieldFocused) { _, focused in
+                TextFieldWithDoneButton(
+                    text: $searchQuery,
+                    placeholder: "Search food to add...",
+                    keyboardType: .default,
+                    autocapitalization: .none,
+                    autocorrection: .no,
+                    font: .systemFont(ofSize: 16),
+                    onEditingChanged: { isEditing in
+                        isSearchFieldFocused = isEditing
                         withAnimation(DesignTokens.Animation.standard) {
-                            isSearchExpanded = focused
+                            isSearchExpanded = isEditing
                         }
                     }
+                )
+                .onChange(of: searchQuery) { _, newValue in
+                    performUseBySearch(query: newValue)
+                }
 
                 if !searchQuery.isEmpty {
                     Button(action: {

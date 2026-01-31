@@ -288,16 +288,19 @@ struct FoodDetailServingView: View {
 
                     if isSelected {
                         HStack(spacing: 6) {
-                            TextField("100", text: $gramsAmount)
-                                .keyboardType(.numberPad)
-                                .font(.system(size: 14, weight: .medium))
-                                .frame(width: 50)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(palette.tertiary.opacity(0.1))
-                                )
+                            TextFieldWithDoneButton(
+                                text: $gramsAmount,
+                                placeholder: "100",
+                                keyboardType: .numberPad,
+                                font: .systemFont(ofSize: 14, weight: .medium)
+                            )
+                            .frame(width: 50)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(palette.tertiary.opacity(0.1))
+                            )
                             Text(portionUnitLabel)
                                 .font(.system(size: 12))
                                 .foregroundColor(palette.textSecondary)

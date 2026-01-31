@@ -1448,21 +1448,24 @@ struct AddFoodSearchView: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(AppPalette.standard.accent)
 
-                        TextField("Search foods...", text: $searchText)
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.system(size: 16))
-                            .autocorrectionDisabled(true)
-                            .textInputAutocapitalization(.never)
-                            .focused($isSearchFieldFocused)
-                            .onChange(of: searchText) { _, newValue in
-                                // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
-                                searchDebouncer.debounce {
-                                    performLiveSearch(query: newValue)
-                                }
+                        TextFieldWithDoneButton(
+                            text: $searchText,
+                            placeholder: "Search foods...",
+                            keyboardType: .default,
+                            autocapitalization: .none,
+                            autocorrection: .no,
+                            font: .systemFont(ofSize: 16),
+                            onSubmit: { performSearch() },
+                            onEditingChanged: { isEditing in
+                                isSearchFieldFocused = isEditing
                             }
-                            .onSubmit {
-                                performSearch()
+                        )
+                        .onChange(of: searchText) { _, newValue in
+                            // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
+                            searchDebouncer.debounce {
+                                performLiveSearch(query: newValue)
                             }
+                        }
 
                         if !searchText.isEmpty {
                             // Clear button with proper tap target
@@ -2055,9 +2058,16 @@ struct FoodDetailView: View {
                         // Custom grams input
                         if isCustomGrams {
                             HStack {
-                                TextField("Enter grams", text: $customGrams)
-                                    .keyboardType(.decimalPad)
-                                    .textFieldStyle(.roundedBorder)
+                                TextFieldWithDoneButton(
+                                    text: $customGrams,
+                                    placeholder: "Enter grams",
+                                    keyboardType: .decimalPad,
+                                    font: .systemFont(ofSize: 16)
+                                )
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
                                 Text("g")
                                     .foregroundColor(.secondary)
                             }
