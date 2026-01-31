@@ -103,6 +103,75 @@ enum AppAnimation {
     static let quick = Animation.easeInOut(duration: 0.2)
 }
 
+// MARK: - Unit Conversion Constants
+/// Centralized conversion constants for weight, height, and other measurements
+/// Use these instead of hardcoding values throughout the codebase
+enum UnitConversion {
+    // Weight conversions
+    static let lbsPerKg: Double = 2.20462          // 1 kg = 2.20462 lbs
+    static let kgPerLb: Double = 0.453592          // 1 lb = 0.453592 kg
+    static let lbsPerStone: Double = 14.0          // 1 stone = 14 lbs
+    static let kgPerStone: Double = 6.35029        // 1 stone = 6.35029 kg
+
+    // Length conversions
+    static let cmPerInch: Double = 2.54            // 1 inch = 2.54 cm
+    static let inchesPerCm: Double = 0.393701      // 1 cm = 0.393701 inches
+    static let inchesPerFoot: Double = 12.0        // 1 foot = 12 inches
+    static let cmPerFoot: Double = 30.48           // 1 foot = 30.48 cm
+
+    // MARK: - Weight Conversion Methods
+
+    /// Convert kilograms to pounds
+    static func kgToLbs(_ kg: Double) -> Double {
+        kg * lbsPerKg
+    }
+
+    /// Convert pounds to kilograms
+    static func lbsToKg(_ lbs: Double) -> Double {
+        lbs * kgPerLb
+    }
+
+    /// Convert kilograms to stones and pounds
+    static func kgToStones(_ kg: Double) -> (stones: Int, pounds: Int) {
+        let totalPounds = kg * lbsPerKg
+        let stones = Int(totalPounds / lbsPerStone)
+        let pounds = Int(totalPounds.truncatingRemainder(dividingBy: lbsPerStone))
+        return (stones, pounds)
+    }
+
+    /// Convert stones and pounds to kilograms
+    static func stonesToKg(stones: Double, pounds: Double = 0) -> Double {
+        let totalPounds = (stones * lbsPerStone) + pounds
+        return totalPounds / lbsPerKg
+    }
+
+    // MARK: - Length Conversion Methods
+
+    /// Convert centimeters to inches
+    static func cmToInches(_ cm: Double) -> Double {
+        cm / cmPerInch
+    }
+
+    /// Convert inches to centimeters
+    static func inchesToCm(_ inches: Double) -> Double {
+        inches * cmPerInch
+    }
+
+    /// Convert centimeters to feet and inches
+    static func cmToFeetInches(_ cm: Double) -> (feet: Int, inches: Int) {
+        let totalInches = cm / cmPerInch
+        let feet = Int(totalInches / inchesPerFoot)
+        let inches = Int(totalInches.truncatingRemainder(dividingBy: inchesPerFoot))
+        return (feet, inches)
+    }
+
+    /// Convert feet and inches to centimeters
+    static func feetInchesToCm(feet: Double, inches: Double = 0) -> Double {
+        let totalInches = (feet * inchesPerFoot) + inches
+        return totalInches * cmPerInch
+    }
+}
+
 // MARK: - Color Hex Extension
 extension Color {
     init(hex: String) {

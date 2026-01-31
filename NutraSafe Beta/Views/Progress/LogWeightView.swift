@@ -49,6 +49,8 @@ struct LogWeightView: View {
 
     // Goal state
     @State private var goalWeightText: String = ""
+    @State private var goalStoneText: String = ""
+    @State private var goalPoundsText: String = ""
     @State private var showGoalSection = false
 
     // Date state
@@ -125,12 +127,17 @@ struct LogWeightView: View {
     }
 
     private var goalWeightInKg: Double? {
-        let sanitized = goalWeightText.replacingOccurrences(of: ",", with: ".")
-        guard let value = Double(sanitized), value > 0 else { return nil }
         switch selectedUnit {
-        case .kg: return value
-        case .lbs: return value / 2.20462
-        case .stones: return value * 6.35029
+        case .kg, .lbs:
+            let sanitized = goalWeightText.replacingOccurrences(of: ",", with: ".")
+            guard let value = Double(sanitized), value > 0 else { return nil }
+            return selectedUnit == .kg ? value : value / UnitConversion.lbsPerKg
+        case .stones:
+            // Use separate stones/pounds fields
+            let stones = Double(goalStoneText) ?? 0
+            let pounds = Double(goalPoundsText) ?? 0
+            guard stones > 0 || pounds > 0 else { return nil }
+            return UnitConversion.stonesToKg(stones: stones, pounds: pounds)
         }
     }
 
@@ -1249,22 +1256,66 @@ struct LogWeightView: View {
 
     private var goalWeightInputContent: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: 8) {
-                TextField("Goal weight", text: $goalWeightText)
-                    .keyboardType(.decimalPad)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(palette.textPrimary)
+            if selectedUnit == .stones {
+                // Stones & pounds input for goal weight
+                HStack(spacing: 12) {
+                    // Stone input
+                    VStack(spacing: 4) {
+                        TextField("0", text: $goalStoneText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(palette.textPrimary)
+                            .frame(width: 60)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                    .fill(Color.nutraSafeCard)
+                            )
+                        Text("stone")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(palette.textSecondary)
+                    }
 
-                Text(selectedUnit.shortName)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(palette.textSecondary)
+                    // Pounds input
+                    VStack(spacing: 4) {
+                        TextField("0", text: $goalPoundsText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(palette.textPrimary)
+                            .frame(width: 60)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                                    .fill(Color.nutraSafeCard)
+                            )
+                        Text("lbs")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(palette.textSecondary)
+                    }
+
+                    Spacer()
+                }
+            } else {
+                // Single field input for kg/lbs
+                HStack(spacing: 8) {
+                    TextField("Goal weight", text: $goalWeightText)
+                        .keyboardType(.decimalPad)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(palette.textPrimary)
+
+                    Text(selectedUnit.shortName)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(palette.textSecondary)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                        .fill(Color.nutraSafeCard)
+                )
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
-                    .fill(Color.nutraSafeCard)
-            )
 
             if let diff = weightDifferenceToGoal {
                 HStack {
@@ -1272,7 +1323,7 @@ struct LogWeightView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(palette.textSecondary)
 
-                    Text("\(String(format: "%.1f", abs(diff))) \(selectedUnit.shortName)")
+                    Text(formattedWeightDifference(abs(diff)))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(diff > 0 ? Color.green : palette.accent)
                 }
@@ -1283,6 +1334,23 @@ struct LogWeightView: View {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
                 .fill(palette.accent.opacity(0.04))
         )
+    }
+
+    /// Formats weight difference in the appropriate unit format
+    private func formattedWeightDifference(_ kgDiff: Double) -> String {
+        switch selectedUnit {
+        case .kg:
+            return String(format: "%.1f kg", kgDiff)
+        case .lbs:
+            return String(format: "%.1f lbs", kgDiff * UnitConversion.lbsPerKg)
+        case .stones:
+            let (stones, pounds) = UnitConversion.kgToStones(kgDiff)
+            if stones > 0 {
+                return "\(stones) st \(pounds) lb"
+            } else {
+                return "\(pounds) lb"
+            }
+        }
     }
 
     private var noteInputContent: some View {
@@ -1315,7 +1383,7 @@ struct LogWeightView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(palette.textPrimary)
 
-            Text("cm")
+            Text(selectedHeightUnit == .cm ? "cm" : "in")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(palette.textSecondary)
         }
@@ -1396,9 +1464,10 @@ struct LogWeightView: View {
                 showNoteField = true
             }
 
-            // Load measurements
+            // Load measurements (waistSize stored in cm, convert to inches if imperial)
             if let waist = entry.waistSize {
-                waistSize = String(format: "%.1f", waist)
+                let displayWaist = selectedHeightUnit == .cm ? waist : waist / 2.54
+                waistSize = String(format: "%.1f", displayWaist)
                 showWaistSection = true
             }
             if let dress = entry.dressSize {
@@ -1452,7 +1521,11 @@ struct LogWeightView: View {
 
         // Set initial goal (always from user profile)
         if goalWeight > 0 {
-            goalWeightText = goalWeightDisplayValue(goalWeight)
+            if selectedUnit == .stones {
+                initializeGoalStonesFields(from: goalWeight)
+            } else {
+                goalWeightText = goalWeightDisplayValue(goalWeight)
+            }
         }
     }
 
@@ -1493,9 +1566,19 @@ struct LogWeightView: View {
     private func goalWeightDisplayValue(_ kg: Double) -> String {
         switch selectedUnit {
         case .kg: return String(format: "%.1f", kg)
-        case .lbs: return String(format: "%.1f", kg * 2.20462)
-        case .stones: return String(format: "%.1f", kg / 6.35029)
+        case .lbs: return String(format: "%.1f", kg * UnitConversion.lbsPerKg)
+        case .stones:
+            // For stones mode, we use separate fields, so return empty
+            // The caller should also call initializeGoalStonesFields()
+            return ""
         }
+    }
+
+    /// Initialize stone/pounds goal weight fields from kg value
+    private func initializeGoalStonesFields(from kg: Double) {
+        let (stones, pounds) = UnitConversion.kgToStones(kg)
+        goalStoneText = String(stones)
+        goalPoundsText = String(pounds)
     }
 
     private func convertAndSetUnit(to newUnit: WeightUnit) {
@@ -1531,7 +1614,11 @@ struct LogWeightView: View {
 
         // Update goal weight display
         if goalWeight > 0 {
-            goalWeightText = goalWeightDisplayValue(goalWeight)
+            if newUnit == .stones {
+                initializeGoalStonesFields(from: goalWeight)
+            } else {
+                goalWeightText = goalWeightDisplayValue(goalWeight)
+            }
         }
     }
 
@@ -1578,8 +1665,9 @@ struct LogWeightView: View {
                     }
                 }
 
-                // Parse measurements
-                let waist = waistSize.isEmpty ? nil : Double(waistSize)
+                // Parse measurements (waist entered in display units, convert to cm for storage)
+                let waistDisplayValue = waistSize.isEmpty ? nil : Double(waistSize)
+                let waist = waistDisplayValue.map { selectedHeightUnit == .cm ? $0 : $0 * 2.54 }
                 let dress = dressSize.isEmpty ? nil : dressSize
 
                 // Create/update weight entry with all fields

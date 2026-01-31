@@ -20,14 +20,20 @@ struct PersonalDetailsScreen: View {
 
     @State private var hasBirthdayBeenSet = false
     @State private var heightText: String = ""
+    @State private var heightFeetText: String = ""
+    @State private var heightInchesText: String = ""
     @State private var weightText: String = ""
     @State private var weightStoneText: String = ""
     @State private var weightPoundsText: String = ""
     @State private var isEditingHeight = false
     @State private var isEditingWeight = false
+    @State private var selectedHeightUnit: HeightUnit = .cm
     @State private var selectedWeightUnit: WeightUnit = .kg
     @State private var isInitializingStoneFields = false  // Prevents race condition during initialization
+    @State private var isInitializingHeightFields = false  // Prevents race condition during height unit change
     @FocusState private var heightFieldFocused: Bool
+    @FocusState private var heightFeetFocused: Bool
+    @FocusState private var heightInchesFocused: Bool
     @FocusState private var weightFieldFocused: Bool
     @FocusState private var stoneFieldFocused: Bool
     @FocusState private var poundsFieldFocused: Bool
@@ -118,69 +124,165 @@ struct PersonalDetailsScreen: View {
                     }
                 }
 
-                // Height - with text input option
+                // Height - with unit selector and text input
                 PersonalDetailCard(
                     icon: "ruler",
                     title: "Height",
                     palette: state.palette
                 ) {
-                    VStack(spacing: 8) {
-                        HStack(spacing: 12) {
-                            Slider(value: $state.heightCm, in: heightRange, step: 1)
-                                .accentColor(state.palette.primary)
-
-                            // Tappable text field - larger on iPad
-                            Button {
-                                heightText = "\(Int(state.heightCm))"
-                                isEditingHeight = true
-                                heightFieldFocused = true
-                            } label: {
-                                if isEditingHeight {
-                                    TextField("", text: $heightText)
-                                        .keyboardType(.numberPad)
-                                        .multilineTextAlignment(.center)
-                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                        .foregroundColor(Color(white: 0.3))
-                                        .frame(width: horizontalSizeClass == .regular ? 80 : 50)
-                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.white.opacity(0.7))
-                                        )
-                                        .focused($heightFieldFocused)
-                                        .onChange(of: heightFieldFocused) { _, focused in
-                                            if !focused {
-                                                isEditingHeight = false
-                                                if let value = Double(heightText), heightRange.contains(value) {
-                                                    state.heightCm = value
+                    VStack(spacing: 12) {
+                        // Unit selector
+                        HStack(spacing: 8) {
+                            ForEach([HeightUnit.cm, .ftIn], id: \.self) { unit in
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        if unit != selectedHeightUnit {
+                                            if unit == .ftIn {
+                                                // Converting from cm to feet/inches
+                                                isInitializingHeightFields = true
+                                                let converted = UnitConversion.cmToFeetInches(state.heightCm)
+                                                heightFeetText = String(converted.feet)
+                                                heightInchesText = String(converted.inches)
+                                                DispatchQueue.main.async {
+                                                    isInitializingHeightFields = false
                                                 }
+                                            } else {
+                                                // Converting from feet/inches to cm
+                                                heightText = "\(Int(state.heightCm))"
                                             }
+                                            selectedHeightUnit = unit
                                         }
-                                } else {
-                                    Text("\(Int(state.heightCm))")
-                                        .font(.system(size: horizontalSizeClass == .regular ? 22 : 15, weight: .medium))
-                                        .foregroundColor(Color(white: 0.3))
-                                        .frame(width: horizontalSizeClass == .regular ? 80 : 50)
-                                        .padding(.vertical, horizontalSizeClass == .regular ? 12 : 0)
+                                    }
+                                } label: {
+                                    Text(unit == .cm ? "cm" : "ft / in")
+                                        .font(.system(size: isIPad ? 15 : 13, weight: selectedHeightUnit == unit ? .semibold : .regular))
+                                        .foregroundColor(selectedHeightUnit == unit ? .white : Color(white: 0.4))
+                                        .padding(.horizontal, isIPad ? 16 : 12)
+                                        .padding(.vertical, isIPad ? 10 : 8)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.white.opacity(0.5))
+                                            Capsule()
+                                                .fill(selectedHeightUnit == unit ? state.palette.primary : Color.white.opacity(0.6))
                                         )
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
-
-                            Text("cm")
-                                .font(.system(size: horizontalSizeClass == .regular ? 18 : 14))
-                                .foregroundColor(Color(white: 0.5))
+                            Spacer()
                         }
 
-                        // Show feet/inches conversion
-                        let feet = Int(state.heightCm / 30.48)
-                        let inches = Int((state.heightCm / 2.54).truncatingRemainder(dividingBy: 12))
-                        Text("\(feet)'\(inches)\"")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(white: 0.5))
+                        // Height input based on selected unit
+                        if selectedHeightUnit == .cm {
+                            // Centimeters input
+                            HStack(spacing: 12) {
+                                Slider(value: $state.heightCm, in: heightRange, step: 1)
+                                    .accentColor(state.palette.primary)
+
+                                Button {
+                                    heightText = "\(Int(state.heightCm))"
+                                    isEditingHeight = true
+                                    heightFieldFocused = true
+                                } label: {
+                                    if isEditingHeight {
+                                        TextField("", text: $heightText)
+                                            .keyboardType(.numberPad)
+                                            .multilineTextAlignment(.center)
+                                            .font(.system(size: isIPad ? 22 : 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: isIPad ? 80 : 50)
+                                            .padding(.vertical, isIPad ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.7))
+                                            )
+                                            .focused($heightFieldFocused)
+                                            .onChange(of: heightFieldFocused) { _, focused in
+                                                if !focused {
+                                                    isEditingHeight = false
+                                                    if let value = Double(heightText), heightRange.contains(value) {
+                                                        state.heightCm = value
+                                                    }
+                                                }
+                                            }
+                                    } else {
+                                        Text("\(Int(state.heightCm))")
+                                            .font(.system(size: isIPad ? 22 : 15, weight: .medium))
+                                            .foregroundColor(Color(white: 0.3))
+                                            .frame(width: isIPad ? 80 : 50)
+                                            .padding(.vertical, isIPad ? 12 : 0)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(Color.white.opacity(0.5))
+                                            )
+                                    }
+                                }
+                                .buttonStyle(.plain)
+
+                                Text("cm")
+                                    .font(.system(size: isIPad ? 18 : 14))
+                                    .foregroundColor(Color(white: 0.5))
+                            }
+
+                            // Show feet/inches conversion
+                            let converted = UnitConversion.cmToFeetInches(state.heightCm)
+                            Text("\(converted.feet)'\(converted.inches)\"")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.5))
+                        } else {
+                            // Feet & inches input
+                            HStack(spacing: 8) {
+                                // Feet field
+                                VStack(spacing: 4) {
+                                    TextField("0", text: $heightFeetText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(.system(size: isIPad ? 24 : 18, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: isIPad ? 70 : 50)
+                                        .padding(.vertical, isIPad ? 12 : 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.white.opacity(0.7))
+                                        )
+                                        .focused($heightFeetFocused)
+                                        .onChange(of: heightFeetText) { _, _ in
+                                            guard !isInitializingHeightFields else { return }
+                                            updateHeightFromFeetInches()
+                                        }
+                                    Text("feet")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(Color(white: 0.5))
+                                }
+
+                                // Inches field
+                                VStack(spacing: 4) {
+                                    TextField("0", text: $heightInchesText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(.system(size: isIPad ? 24 : 18, weight: .medium))
+                                        .foregroundColor(Color(white: 0.3))
+                                        .frame(width: isIPad ? 70 : 50)
+                                        .padding(.vertical, isIPad ? 12 : 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color.white.opacity(0.7))
+                                        )
+                                        .focused($heightInchesFocused)
+                                        .onChange(of: heightInchesText) { _, _ in
+                                            guard !isInitializingHeightFields else { return }
+                                            updateHeightFromFeetInches()
+                                        }
+                                    Text("inches")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(Color(white: 0.5))
+                                }
+
+                                Spacer()
+                            }
+
+                            // Show cm conversion
+                            Text(String(format: "%.0f cm", state.heightCm))
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.5))
+                        }
                     }
                 }
 
@@ -425,13 +527,29 @@ struct PersonalDetailsScreen: View {
         // Validate pounds (0-13 in a stone)
         let validPounds = min(max(poundsValue, 0), 13.9)
 
-        // Convert to kg: (stone * 14 + pounds) / 2.20462
-        let totalPounds = (stoneValue * 14) + validPounds
-        let kg = totalPounds / 2.20462
+        // Convert to kg using centralized constants
+        let kg = UnitConversion.stonesToKg(stones: stoneValue, pounds: validPounds)
 
         // Only update if within valid range
         if weightRange.contains(kg) {
             state.weightKg = kg
+        }
+    }
+
+    /// Updates state.heightCm from feet/inches text fields
+    private func updateHeightFromFeetInches() {
+        let feetValue = Double(heightFeetText) ?? 0
+        let inchesValue = Double(heightInchesText) ?? 0
+
+        // Validate inches (0-11 in a foot)
+        let validInches = min(max(inchesValue, 0), 11.9)
+
+        // Convert to cm using centralized constants
+        let cm = UnitConversion.feetInchesToCm(feet: feetValue, inches: validInches)
+
+        // Only update if within valid range
+        if heightRange.contains(cm) {
+            state.heightCm = cm
         }
     }
 
@@ -445,8 +563,14 @@ struct PersonalDetailsScreen: View {
             manager.saveGender(state.gender)
         }
 
-        // Save weight unit preference for use elsewhere in the app
+        // Save unit preferences for use elsewhere in the app
         UserDefaults.standard.set(selectedWeightUnit.rawValue, forKey: "weightUnit")
+        UserDefaults.standard.set(selectedHeightUnit.rawValue, forKey: "heightUnit")
+
+        // Determine unit system based on user's selections
+        // Imperial if either weight is stones OR height is feet/inches
+        let isImperial = selectedWeightUnit == .stones || selectedHeightUnit == .ftIn
+        UserDefaults.standard.set(isImperial ? "imperial" : "metric", forKey: "unitSystem")
     }
 }
 
