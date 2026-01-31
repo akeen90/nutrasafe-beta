@@ -615,34 +615,76 @@ struct FoodReactionSummaryCard: View {
     @Binding var selectedTab: TabItem
     @State private var showingLogReaction = false
     @EnvironmentObject var reactionManager: ReactionManager
-    @ObservedObject private var logManager = ReactionLogManager.shared
 
-    // MARK: - Computed Insights
+    // PERFORMANCE: Cached computed values to avoid expensive recalculation on every body evaluation
+    // These are updated via .onChange when reactions array changes
+    @State private var cachedMostCommonSymptom: (symptom: String, percentage: Int)?
+    @State private var cachedPeakTiming: String?
+    @State private var cachedReactionsInLast30Days: Int = 0
+    @State private var cachedTopAllergenTriggers: [(name: String, count: Int)]?
+    @State private var cachedTopIngredientTrigger: (name: String, percentage: Int, foods: [String])?
+    @State private var cachedReactionsCount: Int = 0
 
-    /// Most common symptom with percentage
+    // MARK: - Cached Insight Accessors (no computation in body)
+
+    /// Most common symptom with percentage (cached)
     private var mostCommonSymptom: (symptom: String, percentage: Int)? {
-        guard !reactionManager.reactions.isEmpty else { return nil }
+        cachedMostCommonSymptom
+    }
+
+    /// Peak timing for reactions (cached)
+    private var peakTiming: String? {
+        cachedPeakTiming
+    }
+
+    /// Reactions logged in the last 30 days (cached)
+    private var reactionsInLast30Days: Int {
+        cachedReactionsInLast30Days
+    }
+
+    /// Top allergen triggers (cached)
+    private var topAllergenTriggers: [(name: String, count: Int)]? {
+        cachedTopAllergenTriggers
+    }
+
+    /// Top ingredient trigger (cached)
+    private var topIngredientTrigger: (name: String, percentage: Int, foods: [String])? {
+        cachedTopIngredientTrigger
+    }
+
+    // MARK: - Cache Update Functions (called only when reactions change)
+
+    private func updateAllCachedValues() {
+        let reactions = reactionManager.reactions
+        cachedMostCommonSymptom = computeMostCommonSymptom(reactions)
+        cachedPeakTiming = computePeakTiming(reactions)
+        cachedReactionsInLast30Days = computeReactionsInLast30Days(reactions)
+        cachedTopAllergenTriggers = computeTopAllergenTriggers(reactions)
+        cachedTopIngredientTrigger = computeTopIngredientTrigger()
+    }
+
+    private func computeMostCommonSymptom(_ reactions: [FoodReaction]) -> (symptom: String, percentage: Int)? {
+        guard !reactions.isEmpty else { return nil }
 
         var symptomCounts: [String: Int] = [:]
-        for reaction in reactionManager.reactions {
+        for reaction in reactions {
             for symptom in reaction.symptoms {
                 symptomCounts[symptom, default: 0] += 1
             }
         }
 
         guard let (symptom, count) = symptomCounts.max(by: { $0.value < $1.value }) else { return nil }
-        let percentage = Int((Double(count) / Double(reactionManager.reactions.count)) * 100)
+        let percentage = Int((Double(count) / Double(reactions.count)) * 100)
         return (symptom, percentage)
     }
 
-    /// Peak timing for reactions (Morning/Afternoon/Evening/Night)
-    private var peakTiming: String? {
-        guard !reactionManager.reactions.isEmpty else { return nil }
+    private func computePeakTiming(_ reactions: [FoodReaction]) -> String? {
+        guard !reactions.isEmpty else { return nil }
 
         let calendar = Calendar.current
         var timingCounts: [String: Int] = ["Morning": 0, "Afternoon": 0, "Evening": 0, "Night": 0]
 
-        for reaction in reactionManager.reactions {
+        for reaction in reactions {
             let hour = calendar.component(.hour, from: reaction.timestamp.dateValue())
             switch hour {
             case 5..<12: timingCounts["Morning", default: 0] += 1
@@ -655,20 +697,17 @@ struct FoodReactionSummaryCard: View {
         return timingCounts.max(by: { $0.value < $1.value })?.key
     }
 
-    /// Reactions logged in the last 30 days
-    private var reactionsInLast30Days: Int {
+    private func computeReactionsInLast30Days(_ reactions: [FoodReaction]) -> Int {
         let calendar = Calendar.current
         let now = Date()
         guard let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) else { return 0 }
-        return reactionManager.reactions.filter { $0.timestamp.dateValue() >= thirtyDaysAgo }.count
+        return reactions.filter { $0.timestamp.dateValue() >= thirtyDaysAgo }.count
     }
 
-    /// Top allergen trigger(s) from reactions - UK 14 major allergens only
-    /// Returns multiple allergens if there's a tie
-    private var topAllergenTriggers: [(name: String, count: Int)]? {
+    private func computeTopAllergenTriggers(_ reactions: [FoodReaction]) -> [(name: String, count: Int)]? {
         var allergenCounts: [String: Int] = [:]
 
-        for reaction in reactionManager.reactions {
+        for reaction in reactions {
             for ingredient in reaction.suspectedIngredients {
                 // Only count UK 14 major allergens
                 if let baseAllergen = getBaseAllergenForSummary(for: ingredient) {
@@ -692,15 +731,14 @@ struct FoodReactionSummaryCard: View {
         return topAllergens.isEmpty ? nil : topAllergens
     }
 
-    /// Top ingredient trigger from detailed trigger analysis with percentage and foods
-    /// Uses crossReactionFrequency data for accurate pattern detection
-    private var topIngredientTrigger: (name: String, percentage: Int, foods: [String])? {
-        guard !logManager.reactionLogs.isEmpty else { return nil }
+    private func computeTopIngredientTrigger() -> (name: String, percentage: Int, foods: [String])? {
+        let reactionLogs = ReactionLogManager.shared.reactionLogs
+        guard !reactionLogs.isEmpty else { return nil }
 
         // Find the ingredient with the highest cross-reaction frequency
         var ingredientData: [String: (percentage: Double, foods: Set<String>)] = [:]
 
-        for log in logManager.reactionLogs {
+        for log in reactionLogs {
             guard let analysis = log.triggerAnalysis else { continue }
 
             for ingredient in analysis.topIngredients.prefix(5) {
@@ -1036,6 +1074,20 @@ struct FoodReactionSummaryCard: View {
         .fullScreenCover(isPresented: $showingLogReaction) {
             LogReactionSheet(selectedDayRange: .threeDays)
         }
+        // PERFORMANCE: Update cached values only when reactions actually change
+        // This avoids expensive O(n) computations on every body evaluation
+        .onAppear {
+            if cachedReactionsCount != reactionManager.reactions.count {
+                cachedReactionsCount = reactionManager.reactions.count
+                updateAllCachedValues()
+            }
+        }
+        .onChange(of: reactionManager.reactions.count) { _, newCount in
+            if newCount != cachedReactionsCount {
+                cachedReactionsCount = newCount
+                updateAllCachedValues()
+            }
+        }
     }
 
     // MARK: - Insight Context Chip
@@ -1362,6 +1414,10 @@ struct FoodPatternAnalysisCard: View {
     @State private var selectedPatternTab: PatternTab = .allergens
     @State private var watchedAdditives: Set<String> = []
 
+    // PERFORMANCE: Cached computed values - updated only when reactions change
+    @State private var cachedAllTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?)] = []
+    @State private var cachedReactionsCount: Int = 0
+
     // Confidence level based on data points
     private var confidenceLevel: (label: String, color: Color, description: String) {
         let count = reactionManager.reactions.count
@@ -1624,13 +1680,34 @@ struct FoodPatternAnalysisCard: View {
         return additiveKeywords.contains(where: { lower.contains($0) })
     }
 
+    // PERFORMANCE: Use cached value instead of computing on every body evaluation
     private var allTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?)] {
-        // Require at least 3 reactions before showing patterns
-        guard reactionManager.reactions.count >= 3 else { return [] }
+        cachedAllTriggers
+    }
 
-        // Count ingredient frequencies (filtering out garbage)
+    // PERFORMANCE: Compute all triggers with pre-computed trends (single pass)
+    private func computeAllTriggers() -> [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?)] {
+        let reactions = reactionManager.reactions
+
+        // Require at least 3 reactions before showing patterns
+        guard reactions.count >= 3 else { return [] }
+
+        // Pre-compute date boundaries once
+        let calendar = Calendar.current
+        let now = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) ?? now
+        let sixtyDaysAgo = calendar.date(byAdding: .day, value: -60, to: now) ?? now
+
+        // PERFORMANCE: Build ingredient counts AND trend buckets in a single pass through reactions
         var ingredientCounts: [String: Int] = [:]
-        for reaction in reactionManager.reactions {
+        var recentIngredients: [String: Int] = [:]
+        var previousIngredients: [String: Int] = [:]
+
+        for reaction in reactions {
+            let reactionDate = reaction.timestamp.dateValue()
+            let isRecent = reactionDate >= thirtyDaysAgo && reactionDate <= now
+            let isPrevious = reactionDate >= sixtyDaysAgo && reactionDate < thirtyDaysAgo
+
             for ingredient in reaction.suspectedIngredients {
                 let normalized = ingredient.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -1638,14 +1715,27 @@ struct FoodPatternAnalysisCard: View {
                 guard isValidIngredient(normalized) else { continue }
 
                 ingredientCounts[normalized, default: 0] += 1
+
+                // Track for trend calculation
+                if isRecent {
+                    recentIngredients[normalized, default: 0] += 1
+                } else if isPrevious {
+                    previousIngredients[normalized, default: 0] += 1
+                }
             }
         }
 
         // Calculate percentages and determine category
-        let totalReactions = reactionManager.reactions.count
+        let totalReactions = reactions.count
         let mapped = ingredientCounts.map { (ingredient, count) -> (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, isAdditive: Bool, baseAllergen: String?) in
             let percentage = Int((Double(count) / Double(totalReactions)) * 100)
-            let trend = calculateTrend(for: ingredient)
+
+            // PERFORMANCE: Use pre-computed buckets instead of filtering twice per ingredient
+            let recentCount = recentIngredients[ingredient] ?? 0
+            let previousCount = previousIngredients[ingredient] ?? 0
+            let trend: PatternRow.Trend = recentCount > previousCount ? .increasing :
+                                          recentCount < previousCount ? .decreasing : .stable
+
             let baseAllergen = getBaseAllergen(for: ingredient)
             let allergen = baseAllergen != nil
             let additive = isAdditive(ingredient)
@@ -2067,9 +2157,21 @@ struct FoodPatternAnalysisCard: View {
         }
         .onAppear {
             loadWatchedAdditives()
+            // PERFORMANCE: Initialize cached triggers on first appear
+            if cachedReactionsCount != reactionManager.reactions.count {
+                cachedReactionsCount = reactionManager.reactions.count
+                cachedAllTriggers = computeAllTriggers()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WatchedAdditivesChanged"))) { _ in
             loadWatchedAdditives()
+        }
+        // PERFORMANCE: Update cached triggers only when reactions change
+        .onChange(of: reactionManager.reactions.count) { _, newCount in
+            if newCount != cachedReactionsCount {
+                cachedReactionsCount = newCount
+                cachedAllTriggers = computeAllTriggers()
+            }
         }
     }
 }

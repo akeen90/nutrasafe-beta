@@ -363,12 +363,27 @@ struct AllergenDetectionResult {
 class AllergenDetector {
     static let shared = AllergenDetector()
 
+    // PERFORMANCE: Cache compiled regexes to avoid recompiling on every call
+    // This is critical because matchesWord() is called thousands of times during reaction analysis
+    private var compiledPatterns: [String: NSRegularExpression] = [:]
+
     private init() {}
 
     private func matchesWord(_ text: String, _ pattern: String) -> Bool {
-        let escaped = NSRegularExpression.escapedPattern(for: pattern.lowercased())
-        let regexPattern = "(?<![A-Za-z0-9])\(escaped)(?![A-Za-z0-9])"
-        guard let regex = try? NSRegularExpression(pattern: regexPattern, options: []) else { return false }
+        let lowercasedPattern = pattern.lowercased()
+
+        // Use cached regex if available
+        let regex: NSRegularExpression
+        if let cached = compiledPatterns[lowercasedPattern] {
+            regex = cached
+        } else {
+            let escaped = NSRegularExpression.escapedPattern(for: lowercasedPattern)
+            let regexPattern = "(?<![A-Za-z0-9])\(escaped)(?![A-Za-z0-9])"
+            guard let newRegex = try? NSRegularExpression(pattern: regexPattern, options: []) else { return false }
+            compiledPatterns[lowercasedPattern] = newRegex
+            regex = newRegex
+        }
+
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         return regex.firstMatch(in: text, options: [], range: range) != nil
     }
