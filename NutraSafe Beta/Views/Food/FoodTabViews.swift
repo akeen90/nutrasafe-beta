@@ -167,16 +167,16 @@ struct FoodReactionsView: View {
                     .padding(.bottom, 4)
 
                 // Content based on selected sub-tab
-                // Using id() to force complete view recreation and prevent stale references
-                Group {
-                    switch selectedSubTab {
-                    case .overview:
-                        foodBasedReactionsView
-                    case .timeline:
-                        reactionTimelineView
-                    }
+                // PERFORMANCE: Use opacity-based switching to keep views loaded (same as main tabs)
+                ZStack {
+                    foodBasedReactionsView
+                        .opacity(selectedSubTab == .overview ? 1 : 0)
+                        .allowsHitTesting(selectedSubTab == .overview)
+
+                    reactionTimelineView
+                        .opacity(selectedSubTab == .timeline ? 1 : 0)
+                        .allowsHitTesting(selectedSubTab == .timeline)
                 }
-                .id(selectedSubTab)
                 .frame(width: geometry.size.width)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)

@@ -205,23 +205,11 @@ struct FoodImageHeaderView: View {
         guard !didCheckLocal else { return }
         didCheckLocal = true
 
-        // Debug: check what ID we're looking for
-        let imageCount = LocalFoodImageManager.shared.localImageCount
-
         if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
-            print("🖼️ FoodImageHeaderView: Found local URL for \(foodId)")
             if let data = try? Data(contentsOf: localURL),
                let image = UIImage(data: data) {
                 localImage = image
                 hasImage = true
-                print("🖼️ FoodImageHeaderView: Loaded local image for \(foodId)")
-            } else {
-                print("🖼️ FoodImageHeaderView: Failed to load image data from \(localURL.path)")
-            }
-        } else {
-            // Log what we're searching for (limit logging to avoid spam - just first few)
-            if imageCount > 0 {
-                print("🖼️ FoodImageHeaderView: No local image for '\(foodId)' (have \(imageCount) mappings)")
             }
         }
         isLoadingLocal = false
@@ -301,22 +289,13 @@ struct FoodDetailImageView: View {
         guard !didCheckLocal else { return }
         didCheckLocal = true
 
-        let imageCount = LocalFoodImageManager.shared.localImageCount
-        print("🖼️ FoodDetailImageView: Checking local image for '\(foodId)' (have \(imageCount) mappings)")
-
         if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
-            print("🖼️ FoodDetailImageView: Found local URL for \(foodId)")
             if let data = try? Data(contentsOf: localURL),
                let image = UIImage(data: data) {
                 localImage = image
-                print("🖼️ FoodDetailImageView: Loaded local image for \(foodId)")
                 // Trigger background detection for local images too
                 onBackgroundDetected?(localURL)
-            } else {
-                print("🖼️ FoodDetailImageView: Failed to load data from \(localURL.path)")
             }
-        } else {
-            print("🖼️ FoodDetailImageView: No local image for '\(foodId)'")
         }
         isLoadingLocal = false
     }
@@ -834,7 +813,6 @@ struct FoodSearchResultRowEnhanced: View {
             // CRITICAL: Capture the food when tapping, not when presenting
             // This prevents showing wrong food if row is recycled in LazyVStack
             selectedFoodForDetail = food
-            print("🔍 DEBUG Row tapped: \(food.name) (id: \(food.id))")
         }) {
             VStack(spacing: 0) {
                 // Product image header - prefers local bundled images

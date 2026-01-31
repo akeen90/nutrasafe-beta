@@ -192,6 +192,24 @@ struct FastingPlan: Identifiable, Codable {
         case regimeStartedAt = "regime_started_at"
         case createdAt = "created_at"
     }
+
+    // Custom encode to handle @DocumentID (which doesn't work with standard JSONEncoder)
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(id, forKey: .id)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(name, forKey: .name)
+        try container.encode(durationHours, forKey: .durationHours)
+        try container.encode(daysOfWeek, forKey: .daysOfWeek)
+        try container.encode(preferredStartTime, forKey: .preferredStartTime)
+        try container.encode(allowedDrinks, forKey: .allowedDrinks)
+        try container.encode(reminderEnabled, forKey: .reminderEnabled)
+        try container.encode(reminderMinutesBeforeEnd, forKey: .reminderMinutesBeforeEnd)
+        try container.encode(active, forKey: .active)
+        try container.encode(regimeActive, forKey: .regimeActive)
+        try container.encodeIfPresent(regimeStartedAt, forKey: .regimeStartedAt)
+        try container.encode(createdAt, forKey: .createdAt)
+    }
     
     var durationDisplay: String {
         if durationHours < 24 {
@@ -396,7 +414,32 @@ struct FastingSession: Identifiable, Codable, Equatable {
         case originalScheduledStart = "original_scheduled_start"
         case adjustedStartTime = "adjusted_start_time"
     }
-    
+
+    // Custom encode to handle @DocumentID (which doesn't work with standard JSONEncoder)
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(id, forKey: .id)
+        try container.encode(userId, forKey: .userId)
+        try container.encodeIfPresent(planId, forKey: .planId)
+        try container.encode(startTime, forKey: .startTime)
+        try container.encodeIfPresent(endTime, forKey: .endTime)
+        try container.encode(manuallyEdited, forKey: .manuallyEdited)
+        try container.encode(skipped, forKey: .skipped)
+        try container.encode(completionStatus, forKey: .completionStatus)
+        try container.encode(targetDurationHours, forKey: .targetDurationHours)
+        try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(archived, forKey: .archived)
+        try container.encode(attemptType, forKey: .attemptType)
+        try container.encode(mergedFromEarlyEnd, forKey: .mergedFromEarlyEnd)
+        try container.encodeIfPresent(earlyEndReason, forKey: .earlyEndReason)
+        try container.encodeIfPresent(lastEarlyEndTime, forKey: .lastEarlyEndTime)
+        try container.encodeIfPresent(snoozedUntil, forKey: .snoozedUntil)
+        try container.encode(snoozeCount, forKey: .snoozeCount)
+        try container.encodeIfPresent(originalScheduledStart, forKey: .originalScheduledStart)
+        try container.encodeIfPresent(adjustedStartTime, forKey: .adjustedStartTime)
+    }
+
     var actualDurationHours: Double {
         let end = endTime ?? Date()
         let duration = end.timeIntervalSince(startTime) / 3600 // Convert to hours

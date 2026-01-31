@@ -129,15 +129,6 @@ struct FoodDetailViewFromSearch: View {
     let diaryDate: Date?
 
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, diaryDate: Date? = nil, fastingViewModel: FastingViewModel? = nil, onComplete: ((TabItem) -> Void)? = nil) {
-        // DEBUG: Check what food data we received
-        print("🔍 DEBUG FoodDetailViewFromSearch init:")
-        print("  - name: \(food.name)")
-        print("  - imageUrl: \(food.imageUrl ?? "nil")")
-        print("  - portions: \(food.portions?.count ?? 0) options")
-        print("  - servingDescription: \(food.servingDescription ?? "nil")")
-        print("  - isPerUnit: \(food.isPerUnit ?? false)")
-        print("  - diaryEntryId: \(diaryEntryId?.uuidString ?? "nil") (editing: \(diaryEntryId != nil))")
-
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
@@ -357,7 +348,7 @@ struct FoodDetailViewFromSearch: View {
     // Allergen warning
     @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var userAllergens: [Allergen] = []
-    @State private var detectedUserAllergens: [Allergen] = []
+    @State private var detectedUserAllergens: [Allergen: [String]] = [:]  // Maps allergen to triggering ingredients
 
     // High calorie warning states
     @State private var showingHighCalorieWarning = false
@@ -1141,11 +1132,16 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private func getPotentialAllergens() -> [String] {
-        // First check if we have AI-detected allergens from Gemini
+        return getPotentialAllergensWithSources().map { $0.0 }
+    }
+
+    // Returns allergen names with the specific ingredients that triggered each detection
+    private func getPotentialAllergensWithSources() -> [(String, [String])] {
+        // First check if we have AI-detected allergens from Gemini (no source tracking for AI)
         let foodKey = "\(food.id)_\(food.name)"
         if let aiDetectedAllergens = UserDefaults.standard.array(forKey: "userDetectedAllergens_\(foodKey)") as? [String],
            !aiDetectedAllergens.isEmpty {
-            return aiDetectedAllergens.map { $0.capitalized }
+            return aiDetectedAllergens.map { ($0.capitalized, []) }
         }
 
         // Fallback to manual detection from user ingredients (PERFORMANCE: use cached ingredients)
@@ -1169,16 +1165,16 @@ struct FoodDetailViewFromSearch: View {
             ("Molluscs", .molluscs)
         ]
 
-        var detectedAllergens: [String] = []
+        var detectedAllergens: [(String, [String])] = []
         let ingredientsText = ingredients.joined(separator: " ")
 
-        // Use centralized allergen detection that handles:
-        // - Free-from patterns (e.g., "gluten-free" won't trigger gluten warning)
-        // - Plant milk exclusions (e.g., "oat milk" won't trigger dairy warning)
-        // - Word boundary matching for accuracy
+        // Use centralized allergen detection with source tracking
+        let allAllergens = allergenMappings.map { $0.1 }
+        let detectionResults = AllergenDetector.shared.detectAllergensWithSources(in: ingredientsText, userAllergens: allAllergens)
+
         for (displayName, allergen) in allergenMappings {
-            if AllergenDetector.shared.isAllergenPresent(allergen, in: ingredientsText) {
-                detectedAllergens.append(displayName)
+            if let sources = detectionResults[allergen] {
+                detectedAllergens.append((displayName, sources))
             }
         }
 
@@ -1226,8 +1222,8 @@ struct FoodDetailViewFromSearch: View {
         }
     }
 
-    // Check if food contains any of the user's allergens
-    private func detectUserAllergensInFood(userAllergens: [Allergen]) -> [Allergen] {
+    // Check if food contains any of the user's allergens and track which ingredients triggered each
+    private func detectUserAllergensInFood(userAllergens: [Allergen]) -> [Allergen: [String]] {
         // Get food name and ingredients (PERFORMANCE: use cached ingredients)
         let foodName = displayFood.name
         let brand = displayFood.brand ?? ""
@@ -1235,38 +1231,25 @@ struct FoodDetailViewFromSearch: View {
 
         let searchText = ([foodName, brand] + ingredients).joined(separator: " ")
 
-        var detected: [Allergen] = []
-
         // Use centralized allergen detection that handles:
         // - Free-from patterns (e.g., "gluten-free" won't trigger gluten warning)
         // - Plant milk exclusions (e.g., "oat milk" won't trigger dairy warning)
         // - Word boundary matching for accuracy
-        for allergen in userAllergens {
-            if AllergenDetector.shared.isAllergenPresent(allergen, in: searchText) {
-                detected.append(allergen)
-            }
-        }
-
-        return detected
+        // - Returns which specific ingredients triggered each allergen
+        return AllergenDetector.shared.detectAllergensWithSources(in: searchText, userAllergens: userAllergens)
     }
 
     // MARK: - Allergen Warning Banner View (subtle Apple-style)
     private var allergenWarningBanner: some View {
         VStack(spacing: 6) {
-            // Small red allergen pills
-            HStack(spacing: 6) {
-                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                    HStack(spacing: 4) {
-                        Text(allergen.icon)
-                            .font(.system(size: 12))
-                        Text(allergen.displayName)
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(SemanticColors.caution)
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
+            // Small tappable allergen pills
+            FlexibleAllergenLayout(spacing: 6) {
+                ForEach(Array(detectedUserAllergens.keys).sorted(by: { $0.displayName < $1.displayName }), id: \.rawValue) { allergen in
+                    TappableAllergenPill(
+                        allergen: allergen,
+                        triggeringIngredients: detectedUserAllergens[allergen] ?? [],
+                        style: .solid
+                    )
                 }
             }
 
@@ -5112,12 +5095,12 @@ struct FoodDetailViewFromSearch: View {
                     .filter { !$0.isEmpty }
                 if !clean.isEmpty {
                 // PERFORMANCE: Pre-sort allergens once, not on every ForEach iteration
-                let potentialAllergens = getPotentialAllergens().sorted()
+                let potentialAllergensWithSources = getPotentialAllergensWithSources().sorted { $0.0 < $1.0 }
 
-                if !potentialAllergens.isEmpty {
+                if !potentialAllergensWithSources.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        ForEach(potentialAllergens, id: \.self) { allergen in
-                            AllergenWarningCard(allergenName: allergen)
+                        ForEach(potentialAllergensWithSources, id: \.0) { allergen, sources in
+                            AllergenWarningCard(allergenName: allergen, triggeringIngredients: sources)
                         }
                     }
                 } else {
@@ -5154,7 +5137,7 @@ struct FoodDetailViewFromSearch: View {
                 }
 
                 // Citations for allergen detection
-                if !potentialAllergens.isEmpty {
+                if !getPotentialAllergensWithSources().isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 11))
@@ -5554,37 +5537,70 @@ struct FoodDetailViewFromSearch: View {
 
 struct AllergenWarningCard: View {
     let allergenName: String
+    var triggeringIngredients: [String] = []
     @Environment(\.colorScheme) var colorScheme
+    @State private var isExpanded = false
 
     private var palette: AppPalette {
         AppPalette.forCurrentUser(colorScheme: colorScheme)
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            // Soft amber indicator line (consistent with additive cards)
-            RoundedRectangle(cornerRadius: 2)
-                .fill(SemanticColors.neutral)
-                .frame(width: 3, height: 32)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(allergenName)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(palette.textPrimary)
-
-                Text("Found in this product")
-                    .font(.system(size: 11))
-                    .foregroundColor(palette.textTertiary)
+        Button(action: {
+            if !triggeringIngredients.isEmpty {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    isExpanded.toggle()
+                }
             }
+        }) {
+            HStack(alignment: .center, spacing: 10) {
+                // Soft amber indicator line (consistent with additive cards)
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(SemanticColors.neutral)
+                    .frame(width: 3, height: isExpanded ? 48 : 32)
 
-            Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(allergenName)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(palette.textPrimary)
+
+                    if isExpanded && !triggeringIngredients.isEmpty {
+                        Text("Detected in: \(formatIngredients(triggeringIngredients))")
+                            .font(.system(size: 11))
+                            .foregroundColor(palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(triggeringIngredients.isEmpty ? "Found in this product" : "Tap to see sources")
+                            .font(.system(size: 11))
+                            .foregroundColor(palette.textTertiary)
+                    }
+                }
+
+                Spacer()
+
+                if !triggeringIngredients.isEmpty {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(palette.textTertiary)
+                }
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
+            )
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.5) : palette.tertiary.opacity(0.06))
-        )
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // Capitalize first letter of each ingredient for nicer display
+    private func formatIngredients(_ ingredients: [String]) -> String {
+        ingredients.map { ingredient in
+            ingredient.prefix(1).uppercased() + ingredient.dropFirst()
+        }.joined(separator: ", ")
     }
 }
 
@@ -6679,26 +6695,14 @@ extension FoodDetailViewFromSearch {
     // MARK: - Redesigned Allergen Banner (Calm, Not Alarming)
     private var redesignedAllergenBanner: some View {
         VStack(spacing: 8) {
-            // Allergen pills - softer styling
-            HStack(spacing: 8) {
-                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                    HStack(spacing: 4) {
-                        Text(allergen.icon)
-                            .font(.system(size: 11))
-                        Text(allergen.displayName)
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(SemanticColors.caution.opacity(0.12))
+            // Allergen pills - softer styling, tappable to show sources
+            FlexibleAllergenLayout(spacing: 8) {
+                ForEach(Array(detectedUserAllergens.keys).sorted(by: { $0.displayName < $1.displayName }), id: \.rawValue) { allergen in
+                    TappableAllergenPill(
+                        allergen: allergen,
+                        triggeringIngredients: detectedUserAllergens[allergen] ?? [],
+                        style: .soft
                     )
-                    .overlay(
-                        Capsule()
-                            .stroke(SemanticColors.caution.opacity(0.3), lineWidth: 1)
-                    )
-                    .foregroundColor(SemanticColors.caution)
                 }
             }
 
@@ -7477,5 +7481,112 @@ struct BarcodeScannerViewControllerRepresentable: UIViewControllerRepresentable 
 
     func updateUIViewController(_ uiViewController: BarcodeScannerViewController, context: Context) {
         // No updates needed
+    }
+}
+
+// MARK: - Tappable Allergen Pill (Shows ingredient sources when tapped)
+struct TappableAllergenPill: View {
+    let allergen: Allergen
+    let triggeringIngredients: [String]
+    let style: AllergenPillStyle
+
+    @State private var isExpanded = false
+
+    enum AllergenPillStyle {
+        case solid      // Red background, white text (original style)
+        case soft       // Transparent background with caution color stroke
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button(action: {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Text(allergen.icon)
+                        .font(.system(size: style == .solid ? 12 : 11))
+                    Text(allergen.displayName)
+                        .font(.system(size: style == .solid ? 12 : 11, weight: style == .solid ? .medium : .semibold))
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 8, weight: .medium))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, style == .solid ? 5 : 6)
+                .background(pillBackground)
+                .foregroundColor(pillForeground)
+                .clipShape(Capsule())
+                .overlay(pillOverlay)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isExpanded && !triggeringIngredients.isEmpty {
+                Text("Detected in: \(formatIngredients(triggeringIngredients))")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 2)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var pillBackground: some View {
+        switch style {
+        case .solid:
+            SemanticColors.caution
+        case .soft:
+            Capsule().fill(SemanticColors.caution.opacity(0.12))
+        }
+    }
+
+    private var pillForeground: Color {
+        switch style {
+        case .solid:
+            return .white
+        case .soft:
+            return SemanticColors.caution
+        }
+    }
+
+    @ViewBuilder
+    private var pillOverlay: some View {
+        switch style {
+        case .solid:
+            EmptyView()
+        case .soft:
+            Capsule().stroke(SemanticColors.caution.opacity(0.3), lineWidth: 1)
+        }
+    }
+
+    // Capitalize first letter of each ingredient for nicer display
+    private func formatIngredients(_ ingredients: [String]) -> String {
+        ingredients.map { ingredient in
+            ingredient.prefix(1).uppercased() + ingredient.dropFirst()
+        }.joined(separator: ", ")
+    }
+}
+
+// MARK: - Flexible Layout for Allergen Pills (wraps to multiple lines if needed)
+struct FlexibleAllergenLayout<Content: View>: View {
+    let spacing: CGFloat
+    let content: () -> Content
+
+    init(spacing: CGFloat = 8, @ViewBuilder content: @escaping () -> Content) {
+        self.spacing = spacing
+        self.content = content
+    }
+
+    var body: some View {
+        // Use a flexible HStack that wraps - for simplicity using LazyVGrid
+        // or just an HStack with wrapping behavior
+        VStack(alignment: .leading, spacing: spacing) {
+            HStack(spacing: spacing) {
+                content()
+            }
+        }
     }
 }

@@ -182,8 +182,11 @@ class OnboardingManager: ObservableObject {
         userIntent = intent
         if let intent = intent {
             UserDefaults.standard.set(intent, forKey: userIntentKey)
+            // Refresh the cached palette intent for immediate UI updates
+            AppPalette.refreshCachedIntent()
         } else {
             UserDefaults.standard.removeObject(forKey: userIntentKey)
+            AppPalette.refreshCachedIntent()
         }
     }
 

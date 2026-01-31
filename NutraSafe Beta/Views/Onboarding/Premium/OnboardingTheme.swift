@@ -454,6 +454,8 @@ class PremiumOnboardingState: ObservableObject {
     func saveToManager() {
         if let intent = selectedIntent {
             UserDefaults.standard.set(intent.rawValue, forKey: "userIntent")
+            // Refresh the cached palette intent for immediate UI updates
+            AppPalette.refreshCachedIntent()
         }
         let sensitivitiesArray = selectedSensitivities.map { $0.rawValue }
         UserDefaults.standard.set(sensitivitiesArray, forKey: "userSensitivities")

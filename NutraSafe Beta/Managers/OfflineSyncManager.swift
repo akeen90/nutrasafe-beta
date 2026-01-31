@@ -264,15 +264,11 @@ final class OfflineSyncManager {
     /// Trigger a sync if conditions are met
     func triggerSync() {
         // Check if we're connected
-        guard isConnected else {
-            print("[OfflineSyncManager] No network connection - skipping sync")
-            return
-        }
+        guard isConnected else { return }
 
-        // Check minimum interval
+        // Check minimum interval (30 seconds between syncs)
         if let lastAttempt = lastSyncAttempt,
            Date().timeIntervalSince(lastAttempt) < minSyncInterval {
-            print("[OfflineSyncManager] Too soon since last sync - skipping")
             return
         }
 
@@ -282,21 +278,15 @@ final class OfflineSyncManager {
 
     /// Force a sync regardless of timing constraints
     /// Also resets backoff timers so all stuck operations become eligible
+    /// This is the "manual override" - bypasses ALL automatic protection mechanisms
     func forceSync() async {
-        guard isConnected else {
-            print("[OfflineSyncManager] No network connection - cannot force sync")
-            return
-        }
+        guard isConnected else { return }
 
-        print("[OfflineSyncManager] 🔄 FORCE SYNC: Resetting all backoff timers...")
-
-        // Reset all backoff timers so all pending operations become eligible immediately
+        // Reset all backoff timers, circuit breaker, and interval check
         OfflineDataManager.shared.resetAllBackoffTimers()
-
-        // Also reset the minimum sync interval check for force sync
         lastSyncAttempt = nil
-
-        print("[OfflineSyncManager] 🔄 FORCE SYNC: Starting sync...")
+        circuitBreakerTripped = false
+        circuitBreakerResetTime = nil
 
         await withCheckedContinuation { continuation in
             performSync {
@@ -316,42 +306,28 @@ final class OfflineSyncManager {
 
             // RACE CONDITION FIX: Use atomic tryStartSync() instead of check-then-set
             guard self.tryStartSync() else {
-                print("[OfflineSyncManager] Sync already in progress")
                 completion?()
                 return
             }
 
             self.lastSyncAttempt = Date()
 
-            print("[OfflineSyncManager] Starting sync...")
-
             // Get pending operations
             let operations = OfflineDataManager.shared.getPendingSyncOperations()
-            let totalPending = OfflineDataManager.shared.getPendingSyncCount()
 
             if operations.isEmpty {
-                if totalPending > 0 {
-                    print("[OfflineSyncManager] ⚠️ No ELIGIBLE operations (0 ready), but \(totalPending) total in queue (likely in backoff)")
-                } else {
-                    print("[OfflineSyncManager] No pending operations")
-                }
                 self.isSyncing = false
                 completion?()
                 return
             }
 
-            print("[OfflineSyncManager] Found \(operations.count) eligible operations (of \(totalPending) total)")
-
             // CIRCUIT BREAKER: Check if we should skip sync due to recent high failure rate
             if self.circuitBreakerTripped {
                 if let resetTime = self.circuitBreakerResetTime,
                    Date() > resetTime {
-                    // Reset the circuit breaker after cooldown period
                     self.circuitBreakerTripped = false
                     self.circuitBreakerResetTime = nil
-                    print("[OfflineSyncManager] Circuit breaker reset after cooldown")
                 } else {
-                    print("[OfflineSyncManager] Circuit breaker tripped - skipping sync to prevent retry storm")
                     self.isSyncing = false
                     completion?()
                     return
@@ -361,8 +337,9 @@ final class OfflineSyncManager {
             // RACE CONDITION FIX: Use structured concurrency with TaskGroup instead of DispatchGroup
             // This ensures all tasks complete before we mark sync as done
             // MEMORY FIX: Process in batches to prevent memory explosion with large queues
-            // THREAD FIX: Run on MainActor to prevent "Publishing from background thread" warnings
-            Task { @MainActor in
+            // PERFORMANCE FIX: Run on background thread - MainActor was causing 500ms UI blocking
+            // Only use MainActor.run for notifications that need main thread
+            Task {
                 // Track batch success/failure for circuit breaker
                 var batchSuccessCount = 0
                 var batchFailureCount = 0
@@ -387,41 +364,29 @@ final class OfflineSyncManager {
                         for await (operation, result) in group {
                             switch result {
                             case .success:
-                                // SUCCESS: Now safe to remove from sync queue
+                                // SUCCESS: Remove from sync queue
                                 OfflineDataManager.shared.removeSyncOperation(id: operation.id)
 
-                                // CRITICAL FIX: Handle DELETE operations differently!
-                                // If we mark a deleted entry as 'synced', the deletion check
-                                // (isDocumentDeletedInternal) returns false and imports resurrect it.
-                                // For deletes: Hard-delete the SQLite row immediately to prevent resurrection.
+                                // Handle DELETE vs ADD/UPDATE differently
                                 if operation.type == .delete {
-                                    // IMMEDIATE hard-delete prevents any race condition where
-                                    // an import could resurrect the entry before cleanup runs
                                     OfflineDataManager.shared.hardDeleteRecord(collection: operation.collection, documentId: operation.documentId)
                                 } else {
                                     OfflineDataManager.shared.markAsSynced(collection: operation.collection, documentId: operation.documentId)
                                 }
-                                print("[OfflineSyncManager] Synced: \(operation.collection)/\(operation.documentId) (\(operation.type.rawValue))")
                                 batchSuccessCount += 1
 
                             case .failure(let error):
-                                print("[OfflineSyncManager] Failed to sync \(operation.collection)/\(operation.documentId): \(error)")
                                 batchFailureCount += 1
 
                                 if operation.retryCount < self.maxRetryCount {
-                                    // HIGH-9 FIX: Increment retry count and set next_retry_time
-                                    // Backoff is now tracked in the database and checked before processing
-                                    // This prevents blocking the task group with inline sleeps
                                     let backoffDelay = min(pow(2.0, Double(operation.retryCount + 1)), 300.0)
                                     OfflineDataManager.shared.incrementRetryCount(id: operation.id, backoffSeconds: backoffDelay)
-                                    print("[OfflineSyncManager] HIGH-9: Scheduled retry for \(operation.id) in \(Int(backoffDelay))s (attempt \(operation.retryCount + 1)/\(self.maxRetryCount))")
                                 } else {
-                                    // Max retries exceeded - move to failed operations table and notify user
-                                    print("[OfflineSyncManager] Max retries exceeded for \(operation.id) - marking as permanently failed")
+                                    // Max retries exceeded
+                                    print("[OfflineSyncManager] Failed permanently: \(operation.collection)/\(operation.documentId) - \(error.localizedDescription)")
                                     OfflineDataManager.shared.markOperationAsFailed(operation: operation, error: error.localizedDescription)
                                     OfflineDataManager.shared.removeSyncOperation(id: operation.id)
 
-                                    // Track failed operations for user notification (thread-safe)
                                     self.failedOpsQueue.sync {
                                         self._failedOperationsCount += 1
                                     }
@@ -434,29 +399,21 @@ final class OfflineSyncManager {
                 // Clean up deleted records that have been synced
                 OfflineDataManager.shared.cleanupDeletedRecords()
 
-                // HIGH-6 FIX: Improved circuit breaker with better thresholds
-                // - Require at least 5 operations (was 3) to avoid false positives from small batches
-                // - Use 80% threshold (was 90%) to trip earlier when Firebase is struggling
-                // - Require at least 2 successes (was 1) to reset, preventing flapping
+                // Circuit breaker logic
                 let totalOperations = batchSuccessCount + batchFailureCount
                 if totalOperations > 0 {
                     let failureRate = Double(batchFailureCount) / Double(totalOperations)
                     if failureRate >= 0.8 && totalOperations >= 5 {
-                        // Trip the circuit breaker
                         self.circuitBreakerTripped = true
                         self.circuitBreakerResetTime = Date().addingTimeInterval(self.circuitBreakerResetInterval)
-                        print("[OfflineSyncManager] ⚠️ Circuit breaker TRIPPED - \(Int(failureRate * 100))% failure rate (\(batchFailureCount)/\(totalOperations)). Cooling down for \(Int(self.circuitBreakerResetInterval))s")
                     } else if batchSuccessCount >= 2 && self.circuitBreakerTripped {
-                        // Reset circuit breaker only after 2+ successes to prevent flapping
                         self.circuitBreakerTripped = false
                         self.circuitBreakerResetTime = nil
-                        print("[OfflineSyncManager] Circuit breaker reset due to \(batchSuccessCount) successful operations")
                     }
                 }
 
                 self.isSyncing = false
 
-                // Check for failed operations and notify user (thread-safe)
                 let failedCount = self.failedOpsQueue.sync {
                     let count = self._failedOperationsCount
                     self._failedOperationsCount = 0
@@ -464,8 +421,6 @@ final class OfflineSyncManager {
                 }
 
                 let totalFailedCount = OfflineDataManager.shared.getFailedOperationsCount()
-
-                print("[OfflineSyncManager] Sync completed. \(failedCount) new failures, \(totalFailedCount) total failed operations.")
 
                 // Notify observers
                 await MainActor.run {
@@ -504,16 +459,10 @@ final class OfflineSyncManager {
 
         switch operation.type {
         case .add, .update:
-            // CRIT-6 FIX: Skip add/update if document was deleted OR has a delete pending
-            // This prevents stale edits from resurrecting deleted records via INSERT OR REPLACE
-            // Check both: (1) sync_status = 'deleted' in table, and (2) pending delete in sync queue
-            if OfflineDataManager.shared.isDocumentDeleted(collection: operation.collection, documentId: operation.documentId) {
-                print("[OfflineSyncManager] CRIT-6: Skipping stale \(operation.type) - document marked deleted: \(operation.documentId)")
-                return // Skip this operation - document was deleted
-            }
-            if OfflineDataManager.shared.hasDeletePending(collection: operation.collection, documentId: operation.documentId) {
-                print("[OfflineSyncManager] CRIT-6: Skipping stale \(operation.type) - delete pending in queue: \(operation.documentId)")
-                return // Skip this operation - delete is pending
+            // Skip add/update if document was deleted or has a delete pending
+            if OfflineDataManager.shared.isDocumentDeleted(collection: operation.collection, documentId: operation.documentId) ||
+               OfflineDataManager.shared.hasDeletePending(collection: operation.collection, documentId: operation.documentId) {
+                return
             }
             try await processAddOrUpdate(operation: operation, userId: userId, db: db)
         case .delete:
@@ -553,12 +502,8 @@ final class OfflineSyncManager {
                         let serverVersion = serverData["_version"] as? Int ?? 0
                         let localVersion = dict["_version"] as? Int ?? 0
 
-                        // If server has higher version, this is a conflict
-                        // In offline-first, we prefer local changes (user's intent) but track the conflict
+                        // If server has higher version, track conflict but still apply local (last-write-wins)
                         if serverVersion > localVersion {
-                            print("[OfflineSyncManager] CRIT-1: Conflict detected for food entry \(operation.documentId) - server v\(serverVersion), local v\(localVersion). Applying local changes (last-write-wins).")
-                            // HIGH-4 FIX: Track conflict for user notification
-                            // Convert Firestore data to JSON-safe format (Timestamps -> ISO strings)
                             let jsonSafeData = self.convertToJSONSafe(serverData)
                             let serverDataJSON = try? JSONSerialization.data(withJSONObject: jsonSafeData)
                             OfflineDataManager.shared.saveConflict(
@@ -610,7 +555,7 @@ final class OfflineSyncManager {
                     if let serverData = serverDoc?.data() {
                         let serverVersion = serverData["_version"] as? Int ?? 0
                         if serverVersion > (dict["_version"] as? Int ?? 0) {
-                            print("[OfflineSyncManager] CRIT-1: Conflict on use-by item \(operation.documentId) - applying local (last-write-wins)")
+                            // Conflict detected - applying local (last-write-wins)
                         }
                         dict["_version"] = serverVersion + 1
                     } else {
@@ -648,7 +593,7 @@ final class OfflineSyncManager {
                     if let serverData = serverDoc?.data() {
                         let serverVersion = serverData["_version"] as? Int ?? 0
                         if serverVersion > (dict["_version"] as? Int ?? 0) {
-                            print("[OfflineSyncManager] CRIT-1: Conflict on weight entry \(operation.documentId) - applying local (last-write-wins)")
+                            // Conflict detected - applying local (last-write-wins)
                         }
                         dict["_version"] = serverVersion + 1
                     } else {
@@ -673,7 +618,7 @@ final class OfflineSyncManager {
                     if let serverData = serverDoc?.data() {
                         let serverVersion = serverData["_version"] as? Int ?? 0
                         if serverVersion > (settingsDict["_version"] as? Int ?? 0) {
-                            print("[OfflineSyncManager] CRIT-1: Conflict on settings - applying local (last-write-wins)")
+                            // Conflict detected - applying local (last-write-wins)
                         }
                         settingsDict["_version"] = serverVersion + 1
                     } else {
@@ -840,7 +785,7 @@ final class OfflineSyncManager {
 
             // Add the main transaction task
             group.addTask {
-                try await db.runTransaction { transaction, _ in
+                _ = try await db.runTransaction { transaction, _ in
                     updateBlock(transaction)
                     return nil
                 }
@@ -903,20 +848,15 @@ final class OfflineSyncManager {
             throw SyncError.unknownCollection
         }
 
-        // HIGH-5 FIX: Verify document exists before deleting to provide better logging
-        // Note: Firestore delete() is idempotent (doesn't fail if doc doesn't exist),
-        // but this helps debug sync issues where delete was already processed
+        // Verify document exists before deleting
+        // Firestore delete() is idempotent (doesn't fail if doc doesn't exist)
         do {
             let snapshot = try await docRef.getDocument()
             if !snapshot.exists {
-                print("[OfflineSyncManager] HIGH-5: Document \(operation.documentId) already deleted on server - marking sync complete")
-                // Document doesn't exist - this is success (already deleted)
-                return
+                return // Already deleted - this is success
             }
             try await docRef.delete()
         } catch {
-            // Log and re-throw - permission errors will surface here
-            print("[OfflineSyncManager] HIGH-5: Delete failed for \(operation.documentId): \(error.localizedDescription)")
             throw error
         }
     }
@@ -983,6 +923,18 @@ final class OfflineSyncManager {
         )
         // Mark as synced since we just pulled from server
         OfflineDataManager.shared.markAsSynced(collection: "settings", documentId: "preferences")
+
+        // Sync deleted foods from server to local database
+        // This removes foods that were deleted on the admin dashboard from the local SQLite database
+        do {
+            let deletedCount = try await FirebaseManager.shared.syncDeletedFoodsToLocal()
+            if deletedCount > 0 {
+                print("[OfflineSyncManager] Synced \(deletedCount) food deletions to local database")
+            }
+        } catch {
+            // Don't fail the entire sync if deletion sync fails - just log it
+            print("[OfflineSyncManager] Warning: Failed to sync deleted foods: \(error.localizedDescription)")
+        }
 
         print("[OfflineSyncManager] Initial data pull complete")
     }

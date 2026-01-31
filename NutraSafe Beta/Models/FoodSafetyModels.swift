@@ -418,7 +418,49 @@ class AllergenDetector {
             matchesWord(lowercased, keyword)
         }
     }
-    
+
+    /// Detects allergens and returns which specific ingredients triggered each one
+    /// Returns a dictionary mapping each detected allergen to the keywords that matched
+    func detectAllergensWithSources(in text: String, userAllergens: [Allergen]) -> [Allergen: [String]] {
+        var result: [Allergen: [String]] = [:]
+        let lowercased = text.lowercased()
+
+        for allergen in userAllergens {
+            // Skip if allergen is explicitly marked as absent (e.g., "gluten-free")
+            if isAllergenExplicitlyAbsent(allergen, in: lowercased) {
+                continue
+            }
+
+            // Special handling for dairy to avoid false positives with plant milks
+            if allergen == .dairy {
+                if containsDairyMilk(in: lowercased) {
+                    // Find which dairy keywords actually matched
+                    let dairyKeywords = allergen.keywords.filter { keyword in
+                        matchesWord(lowercased, keyword)
+                    }
+                    if !dairyKeywords.isEmpty {
+                        result[allergen] = dairyKeywords
+                    } else {
+                        // Dairy detected via special logic, use generic source
+                        result[allergen] = ["milk products"]
+                    }
+                }
+                continue
+            }
+
+            // Standard allergen detection with source tracking
+            let matchingKeywords = allergen.keywords.filter { keyword in
+                matchesWord(lowercased, keyword)
+            }
+
+            if !matchingKeywords.isEmpty {
+                result[allergen] = matchingKeywords
+            }
+        }
+
+        return result
+    }
+
     func detectAllergens(in foodName: String, ingredients: [String] = [], userAllergens: [Allergen]) -> AllergenDetectionResult {
         let searchText = (foodName + " " + ingredients.joined(separator: " ")).lowercased()
         var detectedAllergens: [Allergen] = []

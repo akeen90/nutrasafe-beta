@@ -108,13 +108,31 @@ struct AppPalette {
         textTertiary: Color(white: 0.5)
     )
 
+    // MARK: - Cached User Intent (Performance Optimization)
+    // Reading UserDefaults on every render caused 500ms tab switch delays
+    // Cache the intent and only refresh when explicitly requested
+    private static var cachedIntent: String? = nil
+    private static var intentCacheInitialized = false
+
+    /// Refresh the cached user intent from UserDefaults
+    /// Call this after onboarding completes or when user changes their intent
+    static func refreshCachedIntent() {
+        cachedIntent = UserDefaults.standard.string(forKey: "userIntent")
+        intentCacheInitialized = true
+    }
+
     // MARK: - Palette Selection
     static func forCurrentUser(colorScheme: ColorScheme) -> AppPalette {
         if colorScheme == .dark {
             return .dark
         }
 
-        if let intentRaw = UserDefaults.standard.string(forKey: "userIntent") {
+        // Initialize cache on first access
+        if !intentCacheInitialized {
+            refreshCachedIntent()
+        }
+
+        if let intentRaw = cachedIntent {
             switch intentRaw {
             case "safer": return .safer
             case "lighter": return .lighter

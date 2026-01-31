@@ -57,10 +57,12 @@ class MealManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            #if DEBUG
-            print("[MealManager] App backgrounded - suspending listener to save battery")
-            #endif
-            self?.stopListening()
+            Task { @MainActor in
+                #if DEBUG
+                print("[MealManager] App backgrounded - suspending listener to save battery")
+                #endif
+                self?.stopListening()
+            }
         }
 
         NotificationCenter.default.addObserver(
@@ -68,11 +70,13 @@ class MealManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            if Auth.auth().currentUser != nil {
-                #if DEBUG
-                print("[MealManager] App foregrounded - resuming listener")
-                #endif
-                self?.startListening()
+            Task { @MainActor in
+                if Auth.auth().currentUser != nil {
+                    #if DEBUG
+                    print("[MealManager] App foregrounded - resuming listener")
+                    #endif
+                    self?.startListening()
+                }
             }
         }
     }
