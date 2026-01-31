@@ -153,49 +153,62 @@ struct LogWeightView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack {
-            // Background
-            backgroundGradient
+        NavigationView {
+            ZStack {
+                // Background
+                backgroundGradient
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    // Hero Header
-                    heroHeader
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        // Hero Header
+                        heroHeader
 
-                    // Main Content
-                    VStack(spacing: DesignTokens.Spacing.lg) {
-                        // Weight Input - Primary Focus
-                        weightInputSection
+                        // Main Content
+                        VStack(spacing: DesignTokens.Spacing.lg) {
+                            // Weight Input - Primary Focus
+                            weightInputSection
 
-                        // BMI Feedback (if available)
-                        if let bmi = calculatedBMI {
-                            bmiFeedbackCard(bmi: bmi)
+                            // BMI Feedback (if available)
+                            if let bmi = calculatedBMI {
+                                bmiFeedbackCard(bmi: bmi)
+                            }
+
+                            // Date/Time Section
+                            dateTimeSection
+
+                            // Progress Photos
+                            progressPhotosSection
+
+                            // Optional Sections
+                            optionalSectionsArea
+
+                            // Save Button
+                            saveButtonSection
+
+                            Spacer(minLength: 40)
                         }
-
-                        // Date/Time Section
-                        dateTimeSection
-
-                        // Progress Photos
-                        progressPhotosSection
-
-                        // Optional Sections
-                        optionalSectionsArea
-
-                        // Save Button
-                        saveButtonSection
-
-                        Spacer(minLength: 40)
+                        .padding(.horizontal, DesignTokens.Spacing.screenEdge)
                     }
-                    .padding(.horizontal, DesignTokens.Spacing.screenEdge)
+                }
+                .scrollDismissesKeyboard(.interactively)
+
+                // Upload overlay
+                if isUploading {
+                    uploadingOverlay
                 }
             }
-            .scrollDismissesKeyboard(.interactively)
-
-            // Upload overlay
-            if isUploading {
-                uploadingOverlay
+            .navigationBarHidden(true)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
+                }
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
         .onAppear(perform: setupInitialValues)
         .onChange(of: currentWeight) { _, newWeight in
             // If weight binding updates after view appeared (data loaded late)

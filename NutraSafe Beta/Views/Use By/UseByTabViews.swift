@@ -232,6 +232,7 @@ struct UseByTabView: View {
             }
             .background(AppAnimatedBackground())
             .navigationBarHidden(true)
+            .keyboardDismissToolbar()
         }
         .fullScreenCover(item: $showingFoodDetailForSearch) { food in
             UseByFoodDetailSheetRedesigned(

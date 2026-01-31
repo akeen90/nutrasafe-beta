@@ -1129,3 +1129,23 @@ struct NutraSafeHeader: View {
 // - NutraSafeSecondaryButton for secondary actions
 // - .glassCard() for cards
 // - AppAnimatedBackground for screen backgrounds
+// - .keyboardDismissToolbar() for keyboard dismiss button
+
+// MARK: - Keyboard Dismiss Toolbar
+
+/// Adds a "Done" button to the keyboard toolbar for dismissing the keyboard.
+/// Uses the native ToolbarItemGroup(placement: .keyboard) approach.
+extension View {
+    /// Adds a keyboard toolbar with a Done button to dismiss the keyboard
+    func keyboardDismissToolbar() -> some View {
+        self.toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .fontWeight(.medium)
+            }
+        }
+    }
+}

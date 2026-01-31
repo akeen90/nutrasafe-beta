@@ -721,6 +721,13 @@ struct ManualFoodDetailEntryView: View {
                         dismiss()
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
+                }
             }
             .alert("Error", isPresented: $showingError) {
                 Button("OK", role: .cancel) { }
@@ -2519,6 +2526,13 @@ struct IngredientOCRCameraView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { onDismiss() }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
+                }
             }
             .sheet(isPresented: $showingCamera) {
                 ImagePickerView(image: $currentImage, sourceType: .camera)
@@ -2748,6 +2762,13 @@ struct NutritionOCRCameraView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { onDismiss() }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
                 }
             }
             .sheet(isPresented: $showingCamera) {
@@ -3218,6 +3239,13 @@ struct UnifiedProductScannerView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { onDismiss() }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
                 }
             }
             .sheet(isPresented: $showingCamera) {

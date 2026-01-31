@@ -170,6 +170,13 @@ struct DietManagementRedesigned: View {
                     .foregroundColor(isValid ? palette.accent : palette.textTertiary)
                     .disabled(!isValid)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
+                }
             }
             .onAppear {
                 calorieGoal = cachedCaloricGoal

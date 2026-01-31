@@ -754,6 +754,13 @@ struct PasswordResetView: View {
                         .font(.system(size: 16, weight: .medium))
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
+                }
             }
         }
         .alert("Success", isPresented: $showingSuccess) {

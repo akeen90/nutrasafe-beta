@@ -30,6 +30,15 @@ struct ManualReactionFoodEntryView: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Add Manually")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .fontWeight(.medium)
+            }
+        }
         .navigationBarItems(
             leading: Button("Cancel") { dismiss() },
             trailing: Button("Save") {

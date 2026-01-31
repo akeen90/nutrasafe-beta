@@ -262,6 +262,14 @@ struct CreateMealView: View {
                     }
                     .disabled(!canSave || isSaving)
                 }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
+                }
             }
             .sheet(isPresented: $showingIconPicker) {
                 IconPickerSheet(selectedIcon: $selectedIcon)
@@ -579,6 +587,13 @@ struct AddFoodToMealView: View {
                         dismiss()
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
+                }
             }
             .sheet(item: $selectedFood) { food in
                 AddFoodToMealDetailSheet(
@@ -810,6 +825,13 @@ struct AddFoodToMealDetailSheet: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.medium)
                 }
             }
         }
