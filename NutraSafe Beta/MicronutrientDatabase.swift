@@ -161,9 +161,15 @@ class MicronutrientDatabase {
         }
 
         while sqlite3_step(statement) == SQLITE_ROW {
+            // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+            guard let nutrientPtr = sqlite3_column_text(statement, 0),
+                  let namePtr = sqlite3_column_text(statement, 1) else {
+                continue // Skip rows with NULL required fields
+            }
+
             let info = NutrientInfo(
-                nutrient: String(cString: sqlite3_column_text(statement, 0)),
-                name: String(cString: sqlite3_column_text(statement, 1)),
+                nutrient: String(cString: nutrientPtr),
+                name: String(cString: namePtr),
                 category: sqlite3_column_text(statement, 2).map { String(cString: $0) },
                 benefits: sqlite3_column_text(statement, 3).map { String(cString: $0) },
                 deficiencySigns: sqlite3_column_text(statement, 4).map { String(cString: $0) },
@@ -252,8 +258,13 @@ class MicronutrientDatabase {
             return nil
         }
 
+        // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+        guard let namePtr = sqlite3_column_text(ingredientStmt, 1) else {
+            return nil // Name is required, skip if NULL
+        }
+
         let id = Int(sqlite3_column_int(ingredientStmt, 0))
-        let ingredientName = String(cString: sqlite3_column_text(ingredientStmt, 1))
+        let ingredientName = String(cString: namePtr)
         let category = sqlite3_column_text(ingredientStmt, 2).map { String(cString: $0) }
 
         // Now get all nutrients for this ingredient
@@ -290,8 +301,14 @@ class MicronutrientDatabase {
         sqlite3_bind_int(statement, 1, Int32(id))
 
         while sqlite3_step(statement) == SQLITE_ROW {
-            let nutrient = String(cString: sqlite3_column_text(statement, 0))
-            let strengthStr = String(cString: sqlite3_column_text(statement, 1))
+            // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+            guard let nutrientPtr = sqlite3_column_text(statement, 0),
+                  let strengthPtr = sqlite3_column_text(statement, 1) else {
+                continue // Skip rows with NULL required fields
+            }
+
+            let nutrient = String(cString: nutrientPtr)
+            let strengthStr = String(cString: strengthPtr)
 
             if let strength = NutrientStrength.Strength(rawValue: strengthStr) {
                 results.append(NutrientStrength(nutrient: nutrient, strength: strength))
@@ -324,7 +341,11 @@ class MicronutrientDatabase {
         sqlite3_bind_text(statement, 1, (lowercased as NSString).utf8String, -1, SQLITE_TRANSIENT)
 
         while sqlite3_step(statement) == SQLITE_ROW {
-            let nutrient = String(cString: sqlite3_column_text(statement, 0))
+            // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+            guard let nutrientPtr = sqlite3_column_text(statement, 0) else {
+                continue // Skip rows with NULL nutrient
+            }
+            let nutrient = String(cString: nutrientPtr)
             matchedNutrients.append(nutrient)
         }
 
@@ -430,9 +451,15 @@ class MicronutrientDatabase {
                         return nil
         }
 
+        // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+        guard let nutrientPtr = sqlite3_column_text(statement, 0),
+              let namePtr = sqlite3_column_text(statement, 1) else {
+            return nil // Required fields are NULL
+        }
+
         let info = NutrientInfo(
-            nutrient: String(cString: sqlite3_column_text(statement, 0)),
-            name: String(cString: sqlite3_column_text(statement, 1)),
+            nutrient: String(cString: nutrientPtr),
+            name: String(cString: namePtr),
             category: sqlite3_column_text(statement, 2).map { String(cString: $0) },
             benefits: sqlite3_column_text(statement, 3).map { String(cString: $0) },
             deficiencySigns: sqlite3_column_text(statement, 4).map { String(cString: $0) },
@@ -467,9 +494,15 @@ class MicronutrientDatabase {
         }
 
         while sqlite3_step(statement) == SQLITE_ROW {
+            // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+            guard let nutrientPtr = sqlite3_column_text(statement, 0),
+                  let namePtr = sqlite3_column_text(statement, 1) else {
+                continue // Skip rows with NULL required fields
+            }
+
             let info = NutrientInfo(
-                nutrient: String(cString: sqlite3_column_text(statement, 0)),
-                name: String(cString: sqlite3_column_text(statement, 1)),
+                nutrient: String(cString: nutrientPtr),
+                name: String(cString: namePtr),
                 category: sqlite3_column_text(statement, 2).map { String(cString: $0) },
                 benefits: sqlite3_column_text(statement, 3).map { String(cString: $0) },
                 deficiencySigns: sqlite3_column_text(statement, 4).map { String(cString: $0) },

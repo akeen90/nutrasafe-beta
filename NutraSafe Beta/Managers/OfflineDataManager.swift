@@ -1397,8 +1397,10 @@ final class OfflineDataManager: @unchecked Sendable {
                     result.carbsPercent = sqlite3_column_type(statement, 7) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 7)) : nil
                     result.fatPercent = sqlite3_column_type(statement, 8) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 8)) : nil
 
-                    if sqlite3_column_type(statement, 9) != SQLITE_NULL {
-                        let json = String(cString: sqlite3_column_text(statement, 9))
+                    if sqlite3_column_type(statement, 9) != SQLITE_NULL,
+                       let jsonPtr = sqlite3_column_text(statement, 9) {
+                        // CRASH FIX: Guard against NULL pointer from sqlite3_column_text
+                        let json = String(cString: jsonPtr)
                         if let data = json.data(using: .utf8),
                            let allergenStrings = try? JSONDecoder().decode([String].self, from: data) {
                             result.allergens = allergenStrings.compactMap { Allergen(rawValue: $0) }
@@ -1462,7 +1464,9 @@ final class OfflineDataManager: @unchecked Sendable {
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
                 while sqlite3_step(statement) == SQLITE_ROW {
-                    let json = String(cString: sqlite3_column_text(statement, 0))
+                    // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+                    guard let jsonPtr = sqlite3_column_text(statement, 0) else { continue }
+                    let json = String(cString: jsonPtr)
                     if let data = json.data(using: .utf8),
                        let session = try? JSONDecoder().decode(FastingSession.self, from: data) {
                         sessions.append(session)
@@ -1549,7 +1553,9 @@ final class OfflineDataManager: @unchecked Sendable {
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
                 while sqlite3_step(statement) == SQLITE_ROW {
-                    let json = String(cString: sqlite3_column_text(statement, 0))
+                    // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+                    guard let jsonPtr = sqlite3_column_text(statement, 0) else { continue }
+                    let json = String(cString: jsonPtr)
                     if let data = json.data(using: .utf8),
                        let plan = try? JSONDecoder().decode(FastingPlan.self, from: data) {
                         plans.append(plan)
@@ -1636,7 +1642,9 @@ final class OfflineDataManager: @unchecked Sendable {
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
                 while sqlite3_step(statement) == SQLITE_ROW {
-                    let json = String(cString: sqlite3_column_text(statement, 0))
+                    // PRODUCTION FIX P1-1: Safe NULL handling for sqlite3_column_text
+                    guard let jsonPtr = sqlite3_column_text(statement, 0) else { continue }
+                    let json = String(cString: jsonPtr)
                     if let data = json.data(using: .utf8),
                        let log = try? JSONDecoder().decode(ReactionLogEntry.self, from: data) {
                         logs.append(log)
@@ -1723,7 +1731,9 @@ final class OfflineDataManager: @unchecked Sendable {
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
                 while sqlite3_step(statement) == SQLITE_ROW {
-                    let json = String(cString: sqlite3_column_text(statement, 0))
+                    // CRASH FIX: Guard against NULL pointer from sqlite3_column_text
+                    guard let jsonPtr = sqlite3_column_text(statement, 0) else { continue }
+                    let json = String(cString: jsonPtr)
                     if let data = json.data(using: .utf8),
                        let food = try? JSONDecoder().decode(FoodSearchResult.self, from: data) {
                         foods.append(food)
@@ -1932,7 +1942,10 @@ final class OfflineDataManager: @unchecked Sendable {
             sqlite3_bind_text(checkStatement, 3, type.rawValue, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
 
             if sqlite3_step(checkStatement) == SQLITE_ROW {
-                existingId = String(cString: sqlite3_column_text(checkStatement, 0))
+                // CRASH FIX: Guard against NULL pointer from sqlite3_column_text
+                if let idPtr = sqlite3_column_text(checkStatement, 0) {
+                    existingId = String(cString: idPtr)
+                }
             }
             sqlite3_finalize(checkStatement)
         }
@@ -2020,10 +2033,15 @@ final class OfflineDataManager: @unchecked Sendable {
                     // CRITICAL FIX: Read ALL columns including the database ID
                     // Previously the ID was discarded and a new UUID was generated,
                     // which meant removeSyncOperation couldn't find the record to delete!
-                    let dbId = String(cString: sqlite3_column_text(statement, 0))
-                    let typeRaw = String(cString: sqlite3_column_text(statement, 1))
-                    let collection = String(cString: sqlite3_column_text(statement, 2))
-                    let documentId = String(cString: sqlite3_column_text(statement, 3))
+                    // CRASH FIX: Guard against NULL pointers from sqlite3_column_text
+                    guard let dbIdPtr = sqlite3_column_text(statement, 0),
+                          let typeRawPtr = sqlite3_column_text(statement, 1),
+                          let collectionPtr = sqlite3_column_text(statement, 2),
+                          let documentIdPtr = sqlite3_column_text(statement, 3) else { continue }
+                    let dbId = String(cString: dbIdPtr)
+                    let typeRaw = String(cString: typeRawPtr)
+                    let collection = String(cString: collectionPtr)
+                    let documentId = String(cString: documentIdPtr)
 
                     var data: Data?
                     if sqlite3_column_type(statement, 4) != SQLITE_NULL {
@@ -2419,14 +2437,23 @@ final class OfflineDataManager: @unchecked Sendable {
             var statement: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
                 while sqlite3_step(statement) == SQLITE_ROW {
-                    let id = String(cString: sqlite3_column_text(statement, 0))
-                    let typeRaw = String(cString: sqlite3_column_text(statement, 1))
-                    let collection = String(cString: sqlite3_column_text(statement, 2))
-                    let documentId = String(cString: sqlite3_column_text(statement, 3))
+                    // CRASH FIX: Guard against NULL pointers from sqlite3_column_text
+                    guard let idPtr = sqlite3_column_text(statement, 0),
+                          let typeRawPtr = sqlite3_column_text(statement, 1),
+                          let collectionPtr = sqlite3_column_text(statement, 2),
+                          let documentIdPtr = sqlite3_column_text(statement, 3) else { continue }
+                    let id = String(cString: idPtr)
+                    let typeRaw = String(cString: typeRawPtr)
+                    let collection = String(cString: collectionPtr)
+                    let documentId = String(cString: documentIdPtr)
                     let timestamp = Date(timeIntervalSince1970: sqlite3_column_double(statement, 5))
                     let failedAt = Date(timeIntervalSince1970: sqlite3_column_double(statement, 6))
-                    let errorMessage: String? = sqlite3_column_type(statement, 7) != SQLITE_NULL
-                        ? String(cString: sqlite3_column_text(statement, 7)) : nil
+                    // CRASH FIX: Safe error message extraction
+                    var errorMessage: String? = nil
+                    if sqlite3_column_type(statement, 7) != SQLITE_NULL,
+                       let errorPtr = sqlite3_column_text(statement, 7) {
+                        errorMessage = String(cString: errorPtr)
+                    }
                     let retryCount = Int(sqlite3_column_int(statement, 8))
 
                     if let type = SyncOperationType(rawValue: typeRaw) {
@@ -2463,9 +2490,16 @@ final class OfflineDataManager: @unchecked Sendable {
                 sqlite3_bind_text(selectStatement, 1, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
 
                 if sqlite3_step(selectStatement) == SQLITE_ROW {
-                    let typeRaw = String(cString: sqlite3_column_text(selectStatement, 0))
-                    let collection = String(cString: sqlite3_column_text(selectStatement, 1))
-                    let documentId = String(cString: sqlite3_column_text(selectStatement, 2))
+                    // CRASH FIX: Guard against NULL pointers from sqlite3_column_text
+                    guard let typeRawPtr = sqlite3_column_text(selectStatement, 0),
+                          let collectionPtr = sqlite3_column_text(selectStatement, 1),
+                          let documentIdPtr = sqlite3_column_text(selectStatement, 2) else {
+                        sqlite3_finalize(selectStatement)
+                        return
+                    }
+                    let typeRaw = String(cString: typeRawPtr)
+                    let collection = String(cString: collectionPtr)
+                    let documentId = String(cString: documentIdPtr)
 
                     var data: Data?
                     if sqlite3_column_type(selectStatement, 3) != SQLITE_NULL {

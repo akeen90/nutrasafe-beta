@@ -636,7 +636,10 @@ class NutrientTrackingManager: ObservableObject {
         let currentYear = calendar.component(.year, from: Date())
 
         // Calculate current month's data
-        let monthStart = calendar.date(from: DateComponents(year: currentYear, month: currentMonth, day: 1))!
+        // CRASH FIX: Guard against calendar.date returning nil
+        guard let monthStart = calendar.date(from: DateComponents(year: currentYear, month: currentMonth, day: 1)) else {
+            return
+        }
         let monthActivities = dayActivities.values.filter { activity in
             activity.date >= monthStart
         }

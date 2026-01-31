@@ -49,10 +49,12 @@ struct PersonalDetailsScreen: View {
     private let weightRange: ClosedRange<Double> = 30...300
 
     // Date range for birthday picker (ages 13 to 120)
+    // CRASH FIX: Provide safe defaults if calendar.date returns nil
     private var dateRange: ClosedRange<Date> {
         let calendar = Calendar.current
-        let minAge = calendar.date(byAdding: .year, value: -120, to: Date())!
-        let maxAge = calendar.date(byAdding: .year, value: -13, to: Date())!
+        let now = Date()
+        let minAge = calendar.date(byAdding: .year, value: -120, to: now) ?? now.addingTimeInterval(-120 * 365.25 * 24 * 3600)
+        let maxAge = calendar.date(byAdding: .year, value: -13, to: now) ?? now.addingTimeInterval(-13 * 365.25 * 24 * 3600)
         return minAge...maxAge
     }
 

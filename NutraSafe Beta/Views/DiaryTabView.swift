@@ -462,7 +462,8 @@ struct DiaryTabView: View {
     // MARK: - Calendar Grid
     private var calendarGrid: some View {
         let calendar = Calendar.current
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))!
+        // CRASH FIX: Guard against calendar.date returning nil
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) ?? displayedMonth
 
         // Get first day of week offset
         // .weekday returns 1 for Sunday, 2 for Monday, etc.
@@ -562,10 +563,13 @@ struct DiaryTabView: View {
         Task {
             let calendar = Calendar.current
             // Get start of month
-            let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))!
-            // Get end of month
-            let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart)!
-            let monthEndWithTime = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: monthEnd)!
+            // CRASH FIX: Guard against calendar.date returning nil
+            guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)),
+                  let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart),
+                  let monthEndWithTime = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: monthEnd) else {
+                await MainActor.run { isLoadingCalendarEntries = false }
+                return
+            }
 
             do {
                 let entries = try await FirebaseManager.shared.getFoodEntriesInRange(from: monthStart, to: monthEndWithTime)
