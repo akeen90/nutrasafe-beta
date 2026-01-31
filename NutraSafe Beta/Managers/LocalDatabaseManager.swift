@@ -590,10 +590,25 @@ final class LocalDatabaseManager {
                 score += 300
             }
 
+            // === TIER 7: CONSUMER FOODS BOOST (for generic searches) ===
+            // When searching for generic foods like "apple", "banana", etc., heavily boost
+            // items from consumer_foods index since users want raw ingredients, not branded products
+            if let source = result.source, source == "consumer_foods" {
+                // Always give consumer foods a moderate boost
+                score += 3000
+            }
+
             // === INTENT-SPECIFIC SCORING ===
             switch normalized.intent {
             case .genericFood(let food):
                 // For generic queries like "banana", prefer raw/base foods
+
+                // MAJOR BOOST: Consumer foods get significant priority for generic searches
+                // This ensures "Apple" from consumer_foods ranks above "Apple Juice" from Tesco
+                if let source = result.source, source == "consumer_foods" {
+                    score += 8000
+                }
+
                 // Demote prepared foods
                 if PreparedFoodDetector.isPreparedFood(result.name) {
                     score -= 2000
@@ -742,6 +757,94 @@ final class LocalDatabaseManager {
         }
 
         return result
+    }
+
+    // MARK: - Delete Operations
+
+    /// Delete a food by its ID
+    /// Used to sync deletions from Firebase to local database
+    /// - Parameter foodId: The food's objectID
+    /// - Returns: true if deleted, false if not found or error
+    func deleteFood(byId foodId: String) -> Bool {
+        guard isAvailable else { return false }
+
+        var success = false
+        dbQueue.sync {
+            success = applyDelete(foodId: foodId)
+            if success {
+                print("🗑️ LocalDB: Deleted food \(foodId)")
+            }
+        }
+        return success
+    }
+
+    /// Delete multiple foods by their IDs
+    /// Used for bulk deletion sync from Firebase
+    /// - Parameter foodIds: Array of food objectIDs to delete
+    /// - Returns: Number of successfully deleted foods
+    func deleteFoods(byIds foodIds: [String]) -> Int {
+        guard isAvailable, !foodIds.isEmpty else { return 0 }
+
+        var deletedCount = 0
+        dbQueue.sync {
+            for foodId in foodIds {
+                if applyDelete(foodId: foodId) {
+                    deletedCount += 1
+                }
+            }
+            if deletedCount > 0 {
+                print("🗑️ LocalDB: Deleted \(deletedCount) foods")
+            }
+        }
+        return deletedCount
+    }
+
+    /// Delete a food by its barcode (handles both EAN-13 and GTIN-14 formats)
+    /// - Parameter barcode: The barcode to delete
+    /// - Returns: true if deleted, false if not found or error
+    func deleteFood(byBarcode barcode: String) -> Bool {
+        guard isAvailable else { return false }
+
+        var success = false
+        dbQueue.sync {
+            // Delete both original and converted barcode formats
+            var sql = "DELETE FROM foods WHERE barcode = ?"
+            var stmt: OpaquePointer?
+
+            if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(stmt, 1, barcode, -1, SQLITE_TRANSIENT)
+                sqlite3_step(stmt)
+                let changes1 = sqlite3_changes(db)
+                sqlite3_finalize(stmt)
+
+                // Also try converted barcode (EAN-13 ↔ GTIN-14)
+                let convertedBarcode: String
+                if barcode.count == 13 && !barcode.hasPrefix("0") {
+                    convertedBarcode = "0" + barcode
+                } else if barcode.count == 14 && barcode.hasPrefix("0") {
+                    convertedBarcode = String(barcode.dropFirst())
+                } else {
+                    convertedBarcode = barcode
+                }
+
+                if convertedBarcode != barcode {
+                    if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                        sqlite3_bind_text(stmt, 1, convertedBarcode, -1, SQLITE_TRANSIENT)
+                        sqlite3_step(stmt)
+                        let changes2 = sqlite3_changes(db)
+                        sqlite3_finalize(stmt)
+                        success = (changes1 + changes2) > 0
+                    }
+                } else {
+                    success = changes1 > 0
+                }
+
+                if success {
+                    print("🗑️ LocalDB: Deleted food with barcode \(barcode)")
+                }
+            }
+        }
+        return success
     }
 
     // MARK: - Private Helpers

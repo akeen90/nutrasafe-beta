@@ -1298,16 +1298,32 @@ final class AlgoliaSearchManager {
                 score += 200
             }
 
-            // TIER 1 PRIORITY: Tesco products get significant boost (official UK supermarket data)
-            // Priority 0 = Tesco = +300 boost
-            // Priority 1 = UK Foods = +250 boost
-            // Other sources get smaller bonuses
+            // === CONSUMER FOODS BOOST FOR GENERIC SEARCHES ===
+            // When searching for simple/generic foods like "apple", "banana", etc.,
+            // heavily boost consumer_foods to ensure raw ingredients rank above branded products
+            if let source = item.result.source, source == "consumer_foods" {
+                // Always give consumer foods a base boost
+                score += 3000
+
+                // Additional boost for generic single-word searches (raw ingredients)
+                // "apple" should show Apple first, not Apple Pie or Apple Juice
+                if queryWords.count == 1 && queryLower.count <= 15 {
+                    score += 6000  // Major boost for generic food searches
+                }
+            }
+
+            // TIER PRIORITY: Source-based ranking
+            // Priority 0 = consumer_foods = highest for raw ingredients
+            // Priority 1 = tesco_products = official supermarket data
+            // Priority 2+ = other sources
             if item.sourcePriority == 0 {
-                score += 300  // Tesco tier 1 boost
+                score += 400  // Top tier boost
             } else if item.sourcePriority == 1 {
-                score += 250  // UK Foods tier 2 boost
+                score += 300  // Tier 2 boost
+            } else if item.sourcePriority == 2 {
+                score += 200  // Tier 3 boost
             } else {
-                score += (5 - item.sourcePriority) * 30  // Other sources get smaller bonus
+                score += max(0, (6 - item.sourcePriority) * 30)  // Other sources get smaller bonus
             }
 
             // Brand bonus logic - only give high bonus when query is primarily a brand search
