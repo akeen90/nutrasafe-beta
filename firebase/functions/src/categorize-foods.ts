@@ -165,6 +165,14 @@ INSTRUCTIONS:
 - For branded products, recognize UK brands (Heinz, Walkers, Cadbury, Greggs, etc.)
 - Consider the physical form: cans, bottles, packets, fresh items, etc.
 
+CRITICAL - SOLID VS LIQUID DETERMINATION:
+- Canned fruits/vegetables/meats are ALWAYS grams (g), even if packed in liquid
+- "Peach Slices in Juice" = SOLID (grams) - the peach is the primary item
+- "Tuna Chunks in Brine" = SOLID (grams) - the tuna is the primary item
+- "Apple Juice" = LIQUID (ml) - juice IS the primary item
+- Look for solid form words: slices, pieces, chunks, halves, segments, fillets
+- If the name says "[Food] in [Liquid]", the [Food] determines the unit
+
 IMPORTANT - CREATING NEW CATEGORIES:
 - If a food does NOT fit any existing category well, you MAY create a NEW category
 - Only create a new category if really necessary (existing categories don't fit)

@@ -1102,13 +1102,48 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
             return false
         }
 
+        // NEW: Solid form indicators in name = ALWAYS solid
+        // "Peach Slices", "Tuna Chunks", "Pineapple Rings" etc are solid foods
+        let solidFormIndicators = ["slices", "sliced", "pieces", "chunks", "chunky",
+                                   "cubes", "cubed", "diced", "whole", "halves",
+                                   "segments", "fillets", "strips", "shredded",
+                                   "chopped", "minced", "rings", "nuggets", "wedges"]
+        if solidFormIndicators.contains(where: { nameLower.contains($0) }) {
+            return false  // Solid form = grams
+        }
+
+        // NEW: "X in [liquid]" pattern = solid food in packing liquid
+        // "Peach Slices in Juice", "Tuna in Brine" - the primary item is solid
+        let packingPatterns = ["in juice", "in syrup", "in water", "in brine",
+                               "in oil", "in sauce", "in light syrup",
+                               "in natural juice", "in tomato sauce"]
+        if packingPatterns.contains(where: { nameLower.contains($0) }) {
+            return false  // Primary item is solid
+        }
+
         // Ingredient-first token signals
         if let firstIngredient = ingredients?.first?.lowercased() {
             let liquidFirst = ["water", "spring water", "carbonated water", "filtered water", "fruit juice", "orange juice", "apple juice", "skimmed milk", "semi-skimmed milk", "whole milk"]
             if liquidFirst.contains(where: { firstIngredient.hasPrefix($0) }) {
                 return true
             }
-            let solidFirst = ["oats", "wheat", "flour", "sugar", "cocoa", "cocoa butter", "vegetable oil", "rapeseed", "palm", "sunflower", "butter", "corn", "rice"]
+            let solidFirst = [
+                // Existing
+                "oats", "wheat", "flour", "sugar", "cocoa", "cocoa butter",
+                "vegetable oil", "rapeseed", "palm", "sunflower", "butter", "corn", "rice",
+                // Fruits/Vegetables
+                "peach", "pear", "apple", "apricot", "mandarin", "pineapple", "mango",
+                "cherry", "strawberry", "tomato", "sweetcorn", "peas", "beans", "carrot",
+                // Proteins
+                "chicken", "beef", "pork", "lamb", "turkey", "salmon", "tuna", "cod",
+                "mackerel", "sardine", "prawn", "shrimp", "crab",
+                // Grains
+                "pasta", "noodle", "bread", "barley", "quinoa",
+                // Nuts
+                "almond", "peanut", "hazelnut", "cashew", "walnut",
+                // Dairy solids
+                "cheese", "curd", "paneer"
+            ]
             if solidFirst.contains(where: { firstIngredient.hasPrefix($0) }) {
                 return false
             }
@@ -2831,14 +2866,6 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
-        // DEBUG: Check what we have in the diary entry
-        print("🔍 DEBUG toFoodSearchResult:")
-        print("  - name: \(self.name)")
-        print("  - imageUrl: \(self.imageUrl ?? "nil")")
-        print("  - portions: \(self.portions?.count ?? 0) options")
-        print("  - servingDescription: \(self.servingDescription)")
-        print("  - isPerUnit: \(self.isPerUnit ?? false)")
-
         // PERFORMANCE: Set database version to current to prevent re-analysis
         // DiaryFoodItem doesn't store database version, so we set it here to mark as "current"
         let currentVersion = ProcessingScorer.shared.databaseVersion

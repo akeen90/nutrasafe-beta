@@ -51,12 +51,78 @@ function getCategoryById(categoryId: string, customCategories: FoodCategory[]): 
   return customCategories.find(c => c.id === categoryId) || null;
 }
 
+/**
+ * Validates whether a food should use grams or ml based on name and ingredients
+ * Prioritizes solid form indicators over naive serving description parsing
+ */
+function validateFoodUnit(
+  servingDescription: string,
+  foodName: string,
+  ingredients: string[] | string | null
+): 'g' | 'ml' {
+  const nameLower = (foodName || '').toLowerCase();
+
+  // Solid form indicators = ALWAYS solid (grams)
+  // "Peach Slices", "Tuna Chunks", "Pineapple Rings" etc
+  const solidFormIndicators = ['slices', 'sliced', 'pieces', 'chunks', 'chunky',
+    'cubes', 'cubed', 'diced', 'whole', 'halves', 'segments', 'fillets',
+    'strips', 'shredded', 'chopped', 'minced', 'rings', 'nuggets', 'wedges'];
+  if (solidFormIndicators.some(ind => nameLower.includes(ind))) {
+    return 'g';
+  }
+
+  // Canned goods packing patterns = solid (the primary item is solid)
+  // "Peaches in Syrup", "Tuna in Brine", "Pineapple in Juice"
+  const packingPatterns = ['in juice', 'in syrup', 'in water', 'in brine',
+    'in oil', 'in sauce', 'in light syrup', 'in natural juice'];
+  if (packingPatterns.some(pat => nameLower.includes(pat))) {
+    return 'g';
+  }
+
+  // Check ingredients for solid indicators
+  const solidIngredients = [
+    // Fruits
+    'peach', 'pear', 'apple', 'apricot', 'mandarin', 'pineapple', 'mango',
+    'cherry', 'strawberry', 'tomato', 'sweetcorn', 'peas', 'beans', 'carrot',
+    // Proteins
+    'chicken', 'beef', 'pork', 'lamb', 'salmon', 'tuna', 'cod', 'sardine', 'prawn',
+    // Grains/base ingredients
+    'oats', 'wheat', 'flour', 'rice', 'corn', 'pasta',
+    // Confectionery
+    'chocolate', 'cocoa', 'sugar', 'almond', 'peanut', 'cashew', 'walnut'
+  ];
+
+  if (ingredients) {
+    const ingredientStr = Array.isArray(ingredients)
+      ? ingredients.join(' ').toLowerCase()
+      : String(ingredients).toLowerCase();
+
+    if (solidIngredients.some(solid => ingredientStr.includes(solid))) {
+      // Check if first ingredient is a liquid (water, juice, milk)
+      const firstIngredient = Array.isArray(ingredients)
+        ? ingredients[0]?.toLowerCase() || ''
+        : ingredients.split(',')[0]?.toLowerCase().trim() || '';
+
+      const liquidFirst = ['water', 'juice', 'milk'];
+      // Only treat as liquid if first ingredient IS the liquid (not just contains it)
+      if (!liquidFirst.some(liq => firstIngredient.startsWith(liq))) {
+        return 'g';
+      }
+    }
+  }
+
+  // Fallback to original logic - check serving description
+  return (servingDescription || '').toLowerCase().includes('ml') ? 'ml' : 'g';
+}
+
 // Generate smart serving options based on category and actual data (exported for future use)
 export function generateServingOptions(
   categoryId: string | null,
   actualServingSizeG: number,
   actualServingDescription: string,
-  customCategories: FoodCategory[]
+  customCategories: FoodCategory[],
+  foodName: string = '',
+  foodIngredients: string[] | string | null = null
 ): Array<{ size: number; unit: string; description: string; isDefault: boolean }> {
   const options: Array<{ size: number; unit: string; description: string; isDefault: boolean }> = [];
 
@@ -154,7 +220,9 @@ export function generateServingOptions(
 
     // Actual serving at the bottom
     if (actualServingSizeG > 0 && actualServingSizeG !== 100) {
-      const unit = actualServingDescription.includes('ml') ? 'ml' : 'g';
+      // Use smart unit validation that checks food name and ingredients
+      // This prevents solid foods like "Peach Slices" from being labeled as ml
+      const unit = validateFoodUnit(actualServingDescription, foodName || '', foodIngredients);
       options.push({
         size: actualServingSizeG,
         unit: unit,
@@ -404,11 +472,14 @@ function formatFoodResult(id: string, data: any, customCategories: FoodCategory[
   const foodCategory = data.foodCategory || null;
 
   // Generate smart serving options based on category
+  // Pass food name and ingredients for proper unit validation (g vs ml)
   const servingOptions = generateServingOptions(
     foodCategory,
     servingSizeG,
     servingDescription,
-    customCategories
+    customCategories,
+    data.foodName || data.title || data.name || '',
+    data.extractedIngredients || data.ingredients || null
   );
 
   // Get the default serving from options

@@ -640,6 +640,18 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     keywords: ['tinned peas', 'tinned sweetcorn', 'tinned carrots', 'canned vegetables', 'mushy peas']
   },
   {
+    id: 'canned_fruit',
+    name: 'Tinned Fruit',
+    description: 'Canned fruit in juice/syrup',
+    defaultServingSize: 140,
+    servingUnit: 'g',
+    servingDescription: 'per half tin',
+    keywords: ['tinned peaches', 'canned pears', 'fruit cocktail', 'mandarin segments',
+               'pineapple rings', 'pineapple chunks', 'peach slices', 'pear halves',
+               'apricot halves', 'grapefruit segments', 'cherries in syrup', 'canned fruit',
+               'peaches in juice', 'peaches in syrup', 'pineapple in juice']
+  },
+  {
     id: 'frozen_vegetables',
     name: 'Frozen Vegetables',
     description: 'Frozen veg bags',
