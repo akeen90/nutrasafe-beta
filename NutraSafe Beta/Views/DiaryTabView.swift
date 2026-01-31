@@ -27,7 +27,13 @@ struct DiaryTabView: View {
     @State private var diarySubTab: DiarySubTab = .overview
     @Binding var selectedFoodItems: Set<String>
     @Binding var showingSettings: Bool
-    @Binding var selectedTab: TabItem
+    // PERF FIX: Changed from @Binding var selectedTab to simple Bool
+    // Binding caused SwiftUI to re-evaluate this view's body on EVERY tab switch
+    // Now only re-evaluates when THIS tab's active state changes
+    let isActive: Bool
+    // Navigation binding - only used by child views that need to switch tabs
+    // This is passed through but NOT observed by DiaryTabView's body
+    @Binding var selectedTabForNavigation: TabItem
     @Binding var editTrigger: Bool
     @Binding var moveTrigger: Bool
     @Binding var copyTrigger: Bool
@@ -88,9 +94,9 @@ struct DiaryTabView: View {
     @State private var showingSyncError: Bool = false
 
     // MARK: - Scroll Reset Trigger
-    // Combines main tab and subtab to reset scroll when returning to this tab
+    // Combines active state and subtab to reset scroll when returning to this tab
     private var scrollResetTrigger: String {
-        "\(selectedTab)-\(diarySubTab)"
+        "\(isActive)-\(diarySubTab)"
     }
 
     private struct NutritionTotals {
@@ -185,6 +191,8 @@ struct DiaryTabView: View {
     // MARK: - Debounced Reload (Performance Optimization)
     // Consolidates multiple rapid reload triggers into single load operation
     // Prevents N sequential Firebase calls when changing date/tab/refreshing simultaneously
+    // NOTE: Only called for REAL events (date change, food add/edit/delete, explicit refresh)
+    // Tab switching does NOT trigger this - tabs display already-loaded state
     private func triggerDebouncedReload() {
         // Cancel any pending reload
         pendingReloadTask?.cancel()
@@ -201,8 +209,8 @@ struct DiaryTabView: View {
                 // Perform the actual load
                 await MainActor.run {
                     loadFoodData()
-                    // Also refresh additive insights when diary data changes
-                    additiveTrackerVM.loadData()
+                    // REMOVED: additiveTrackerVM.loadData()
+                    // Additive data loads lazily when Insights sub-tab is selected
                 }
             } catch {
                 // Task was cancelled - another reload is pending
@@ -732,7 +740,7 @@ struct DiaryTabView: View {
                 FoodDetailViewFromSearch(
                     food: food.toFoodSearchResult(),
                     sourceType: .diary,
-                    selectedTab: $selectedTab,
+                    selectedTab: $selectedTabForNavigation,
                     diaryEntryId: food.id,
                     diaryMealType: editingMealType.isEmpty ? food.time : editingMealType,
                     diaryQuantity: food.quantity,
@@ -759,27 +767,32 @@ struct DiaryTabView: View {
     }
 
     // MARK: - Content with Lifecycle Modifiers
-    // PERFORMANCE: Consolidated onChange handlers use debounced reload
-    // Multiple triggers (date change, refresh, data reload) are batched into single load
+    // PERFORMANCE: Tab switching does NOT trigger network/disk work
+    // Data loads only from REAL events: date change, food add/edit/delete, explicit refresh
+    // Tabs display already-available state; background sync updates it
     private var contentWithLifecycleModifiers: some View {
         mainContent
-            // PERFORMANCE: Use debounced reload to prevent cascading updates
+            // REAL EVENT: Date changed - reload data for new date
             .onChange(of: selectedDate) {
+                #if DEBUG
+                print("   📅 [DiaryTab] Date changed → triggering reload")
+                #endif
                 triggerDebouncedReload()
             }
             .onAppear {
-                // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
+                // PERFORMANCE: Only load once on FIRST appearance (app launch)
+                // Tab switches do NOT trigger this because hasLoadedOnce is already true
                 guard !hasLoadedOnce else { return }
                 hasLoadedOnce = true
-                loadFoodData() // Initial load doesn't need debounce
+                loadFoodData()
 
                 // Reset onboarding flag if needed
                 if OnboardingManager.shared.justCompletedOnboarding {
                     OnboardingManager.shared.justCompletedOnboarding = false
                 }
             }
-            .onChange(of: selectedTab) { _, newTab in
-                handleSelectedTabChange(newTab)
+            .onChange(of: isActive) { wasActive, isNowActive in
+                handleActiveStateChange(isNowActive)
             }
             .onChange(of: diarySubTab) { _, newTab in
                 handleDiarySubTabChange(newTab)
@@ -787,11 +800,28 @@ struct DiaryTabView: View {
             .onChange(of: insightsSubTab) { _, newSubTab in
                 handleInsightsSubTabChange(newSubTab)
             }
-            // PERFORMANCE: Consolidated - these 3 triggers now use debounced reload
+            // REAL EVENT: Explicit refresh requested (pull-to-refresh, etc.)
             .onChange(of: refreshTrigger) {
+                #if DEBUG
+                print("   🔃 [DiaryTab] refreshTrigger fired → triggering reload")
+                #endif
                 triggerDebouncedReload()
             }
+            // REAL EVENT: Data changed externally (food added/deleted from another view)
+            // Only reload if this tab is VISIBLE - prevents background work when switching away
             .onChange(of: diaryDataManager.dataReloadTrigger) {
+                #if DEBUG
+                print("   📨 [DiaryTab] dataReloadTrigger fired, isActive=\(isActive)")
+                #endif
+                guard isActive else {
+                    #if DEBUG
+                    print("   ⏭️ [DiaryTab] SKIPPED reload - tab not visible")
+                    #endif
+                    return
+                }
+                #if DEBUG
+                print("   🔄 [DiaryTab] Proceeding with reload (tab is visible)")
+                #endif
                 triggerDebouncedReload()
             }
             .onChange(of: editTrigger) { _, newValue in
@@ -800,17 +830,15 @@ struct DiaryTabView: View {
             .onReceive(NotificationCenter.default.publisher(for: .diaryFoodDetailOpened)) { _ in
                 selectedFoodItems.removeAll()
             }
+            // REAL EVENT: Food added from AI scanner - always reload (user expects to see it)
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshDiaryData"))) { _ in
-                // Refresh diary when foods are added from AI scanner
                 loadFoodData()
-                // Also refresh additive insights
-                additiveTrackerVM.loadData()
+                // Additive insights refresh lazily when Insights tab is selected
             }
+            // REAL EVENT: Food entry added - switch to overview to show it
             .onReceive(NotificationCenter.default.publisher(for: .foodEntryAdded)) { _ in
-                // Switch to overview tab when food is added (even from Insights tab)
                 diarySubTab = .overview
-                // Refresh additive insights immediately
-                additiveTrackerVM.loadData()
+                // Additive cache is invalidated by AdditiveTrackerViewModel's own observer
             }
             // MARK: - Network & Sync Status Monitoring (UX Truth)
             .onReceive(NotificationCenter.default.publisher(for: .networkStatusChanged)) { notification in
@@ -902,11 +930,9 @@ struct DiaryTabView: View {
     }
 
     // MARK: - Helper Methods for onChange Handlers
-    private func handleSelectedTabChange(_ newTab: TabItem) {
-        // NOTE: HealthKit refresh now handled automatically by HealthKitManager
-
+    private func handleActiveStateChange(_ isNowActive: Bool) {
         // Unselect when leaving diary; reset overview when returning
-        if newTab == .diary {
+        if isNowActive {
             diarySubTab = .overview
         } else {
             selectedFoodItems.removeAll()
@@ -917,6 +943,10 @@ struct DiaryTabView: View {
         // SOFT PAYWALL: Allow navigation to nutrients tab (premium features are blurred within)
         // Show feature tips on first visit to insights tab
         if newTab == .insights {
+            // LAZY LOAD: Additive data loads only when Insights tab is selected
+            // This removes additive loading from the critical diary data path
+            additiveTrackerVM.loadData()
+
             // First show the Insights overview tip, then additives or nutrients tips based on sub-tab
             if !FeatureTipsManager.shared.hasSeenTip(.insightsOverview) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -1045,7 +1075,7 @@ struct DiaryTabView: View {
                 currentCalories: breakfastCalories,
                 foods: $breakfastFoods,
                 color: palette.accent,
-                selectedTab: $selectedTab,
+                selectedTab: $selectedTabForNavigation,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
@@ -1060,7 +1090,7 @@ struct DiaryTabView: View {
                 currentCalories: lunchCalories,
                 foods: $lunchFoods,
                 color: SemanticColors.nutrient,
-                selectedTab: $selectedTab,
+                selectedTab: $selectedTabForNavigation,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
@@ -1075,7 +1105,7 @@ struct DiaryTabView: View {
                 currentCalories: dinnerCalories,
                 foods: $dinnerFoods,
                 color: palette.primary,
-                selectedTab: $selectedTab,
+                selectedTab: $selectedTabForNavigation,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
@@ -1090,7 +1120,7 @@ struct DiaryTabView: View {
                 currentCalories: snackCalories,
                 foods: $snackFoods,
                 color: palette.secondary,
-                selectedTab: $selectedTab,
+                selectedTab: $selectedTabForNavigation,
                 selectedFoodItems: $selectedFoodItems,
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
@@ -1326,25 +1356,28 @@ struct DiaryTabView: View {
     }
 
     private func loadFoodData() {
+        #if DEBUG
+        let loadStart = CFAbsoluteTimeGetCurrent()
+        print("   ⏱️ [DiaryTab.loadFoodData] START")
+        #endif
+
         Task {
             await MainActor.run {
                 isLoadingData = true
             }
 
             do {
+                // STEP 1: Get food data and update UI IMMEDIATELY
+                // This is the critical path - user sees their diary data without waiting for HealthKit
+                #if DEBUG
+                let firebaseStart = CFAbsoluteTimeGetCurrent()
+                #endif
                 let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: selectedDate)
-
-                // Set current display date before fetching (prevents race condition when rapidly navigating)
-                healthKitManager.setCurrentDisplayDate(selectedDate)
-
-                // Update ALL HealthKit data for the selected date IN PARALLEL
-                // NOTE: This is the ONLY place that should fetch HealthKit data for the diary
-                // DiaryDailySummaryCard observes these values but does NOT fetch
-                // PERFORMANCE: Parallelized - saves ~400-600ms vs sequential calls
-                async let exerciseTask: () = healthKitManager.updateExerciseCalories(for: selectedDate)
-                async let stepsTask: () = healthKitManager.updateStepCount(for: selectedDate)
-                async let activeTask: () = healthKitManager.updateActiveEnergy(for: selectedDate)
-                _ = await (exerciseTask, stepsTask, activeTask)
+                #if DEBUG
+                let firebaseEnd = CFAbsoluteTimeGetCurrent()
+                print("   ⏱️ [DiaryTab.loadFoodData] Firebase fetch: \(String(format: "%.0f", (firebaseEnd - firebaseStart) * 1000))ms")
+                print("   📊 [DiaryTab.loadFoodData] Items: B=\(breakfast.count) L=\(lunch.count) D=\(dinner.count) S=\(snacks.count)")
+                #endif
 
                 await MainActor.run {
                     breakfastFoods = breakfast
@@ -1353,10 +1386,40 @@ struct DiaryTabView: View {
                     snackFoods = snacks
                     rebuildFoodLookupCache() // PERFORMANCE: O(1) lookups
                     recalculateNutrition()
-                    isLoadingData = false
+                    isLoadingData = false // UI is ready NOW - don't wait for HealthKit
+                    #if DEBUG
+                    let uiReady = CFAbsoluteTimeGetCurrent()
+                    print("   ✅ [DiaryTab.loadFoodData] UI READY: \(String(format: "%.0f", (uiReady - loadStart) * 1000))ms total")
+                    #endif
+                }
+
+                // STEP 2: HealthKit refresh happens AFTER UI is visible (fire-and-forget)
+                // This decouples HealthKit latency (~300-600ms) from perceived tab switch speed
+                // HealthKitManager already shows cached values, so user sees data immediately
+                // Fresh values update in background and UI observes the @Published properties
+                let dateForHealthKit = selectedDate
+                healthKitManager.setCurrentDisplayDate(dateForHealthKit)
+                #if DEBUG
+                print("   🏃 [DiaryTab.loadFoodData] HealthKit refresh queued (background)")
+                #endif
+                Task.detached(priority: .utility) { [healthKitManager] in
+                    #if DEBUG
+                    let hkStart = CFAbsoluteTimeGetCurrent()
+                    #endif
+                    async let exerciseTask: () = healthKitManager.updateExerciseCalories(for: dateForHealthKit)
+                    async let stepsTask: () = healthKitManager.updateStepCount(for: dateForHealthKit)
+                    async let activeTask: () = healthKitManager.updateActiveEnergy(for: dateForHealthKit)
+                    _ = await (exerciseTask, stepsTask, activeTask)
+                    #if DEBUG
+                    let hkEnd = CFAbsoluteTimeGetCurrent()
+                    print("   🏃 [DiaryTab.loadFoodData] HealthKit DONE: \(String(format: "%.0f", (hkEnd - hkStart) * 1000))ms (background)")
+                    #endif
                 }
             } catch {
-                                await MainActor.run {
+                #if DEBUG
+                print("   ❌ [DiaryTab.loadFoodData] ERROR: \(error.localizedDescription)")
+                #endif
+                await MainActor.run {
                     isLoadingData = false
                 }
             }
@@ -1490,7 +1553,7 @@ struct DiaryTabView: View {
         UserDefaults.standard.set("diary", forKey: "preselectedDestination")
 
         // Switch to the Add tab
-        selectedTab = .add
+        selectedTabForNavigation = .add
     }
 
     private func deleteSelectedFoods() {

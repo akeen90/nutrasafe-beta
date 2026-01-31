@@ -20,7 +20,11 @@ func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> 
 struct FoodTabView: View {
     @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
-    @Binding var selectedTab: TabItem
+    // PERF FIX: Changed from @Binding var selectedTab to simple Bool
+    // Binding caused SwiftUI to re-evaluate this view's body on EVERY tab switch
+    let isActive: Bool
+    // Navigation binding - only passed to child views that need to switch tabs
+    @Binding var selectedTabForNavigation: TabItem
     @State private var selectedFoodSubTab: FoodSubTab = .reactions
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -42,9 +46,10 @@ struct FoodTabView: View {
         }
     }
 
-    init(showingSettings: Binding<Bool>, selectedTab: Binding<TabItem>) {
+    init(showingSettings: Binding<Bool>, isActive: Bool, selectedTabForNavigation: Binding<TabItem>) {
         self._showingSettings = showingSettings
-        self._selectedTab = selectedTab
+        self.isActive = isActive
+        self._selectedTabForNavigation = selectedTabForNavigation
     }
 
     var body: some View {
@@ -58,7 +63,7 @@ struct FoodTabView: View {
                 )
                 // PERFORMANCE: Use opacity-based switching to keep views loaded and avoid re-initialization delays
                 ZStack {
-                    FoodReactionsView(selectedTab: $selectedTab)
+                    FoodReactionsView(isActive: isActive, selectedTabForNavigation: $selectedTabForNavigation)
                         .opacity(selectedFoodSubTab == .reactions ? 1 : 0)
                         .allowsHitTesting(selectedFoodSubTab == .reactions)
 
@@ -85,12 +90,30 @@ struct FoodTabView: View {
                 }
             }
         }
-        .onChange(of: selectedFoodSubTab) { _, newTab in
+        .onChange(of: selectedFoodSubTab) { oldTab, newTab in
+            // PERFORMANCE FIX: Notify FastingViewModel when fasting subtab visibility changes
+            // This is needed because opacity-based switching doesn't trigger onAppear/onDisappear
+            // Without this, the timer sends objectWillChange every second even when not visible
+            if oldTab == .fasting && newTab != .fasting {
+                fastingViewModelWrapper.viewModel?.timerViewDidDisappear()
+            } else if oldTab != .fasting && newTab == .fasting {
+                fastingViewModelWrapper.viewModel?.timerViewDidAppear()
+            }
+
             // Show fasting tip on first visit to fasting sub-tab
             if newTab == .fasting && !FeatureTipsManager.shared.hasSeenTip(.healthFasting) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     showingFastingTip = true
                 }
+            }
+        }
+        .onChange(of: isActive) { wasActive, isNowActive in
+            // PERFORMANCE FIX: When switching away from Food tab, pause fasting timer updates
+            // When returning to Food tab while on fasting subtab, resume updates
+            if wasActive && !isNowActive && selectedFoodSubTab == .fasting {
+                fastingViewModelWrapper.viewModel?.timerViewDidDisappear()
+            } else if !wasActive && isNowActive && selectedFoodSubTab == .fasting {
+                fastingViewModelWrapper.viewModel?.timerViewDidAppear()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
@@ -137,7 +160,10 @@ private var foodGlassBackground: some View {
 
 // MARK: - Food Sub Views
 struct FoodReactionsView: View {
-    @Binding var selectedTab: TabItem
+    // PERF FIX: Changed from @Binding var selectedTab to simple Bool
+    let isActive: Bool
+    // Navigation binding - only passed to child views that need to switch tabs
+    @Binding var selectedTabForNavigation: TabItem
     @ObservedObject private var reactionManager = ReactionManager.shared
     @ObservedObject private var logManager = ReactionLogManager.shared
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -147,9 +173,9 @@ struct FoodReactionsView: View {
     @State private var selectedSymptomFilter: String? = nil
 
     // MARK: - Scroll Reset Trigger
-    // Combines main tab and subtab to reset scroll when returning to this tab
+    // Combines active state and subtab to reset scroll when returning to this tab
     private var scrollResetTrigger: String {
-        "\(selectedTab)-\(selectedSubTab)"
+        "\(isActive)-\(selectedSubTab)"
     }
 
     enum ReactionSubTab: String, CaseIterable {
@@ -275,7 +301,9 @@ struct FoodReactionsView: View {
                     }
 
                     // Reaction cards with spacing
-                    VStack(spacing: 14) {
+                    // PERFORMANCE FIX: Use LazyVStack to avoid rendering all 20+ rows at once
+                    // Each TimelineReactionRow has expensive blur effects
+                    LazyVStack(spacing: 14) {
                         ForEach(filteredReactions) { reaction in
                             TimelineReactionRow(reaction: reaction)
                                 .environmentObject(reactionManager)
@@ -376,7 +404,7 @@ struct FoodReactionsView: View {
         ScrollViewWithTopReset(.vertical, showsIndicators: true, resetOn: scrollResetTrigger) {
             VStack(spacing: 12) {
                 // Reaction Summary
-                FoodReactionSummaryCard(selectedTab: $selectedTab)
+                FoodReactionSummaryCard(selectedTab: $selectedTabForNavigation)
                     .environmentObject(reactionManager)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -513,8 +541,28 @@ struct FoodReactionsView: View {
             including: .all
         )
         .onAppear {
-            guard !hasLoadedOnce else { return }
+            #if DEBUG
+            print("   👁️ [FoodReactionsView.onAppear] isActive=\(isActive), hasLoadedOnce=\(hasLoadedOnce)")
+            #endif
+            // PERFORMANCE: Only load if this tab is ACTUALLY visible to the user
+            // Prevents Firebase calls when tab is preloaded but not selected
+            // Tab switching does NOT trigger data loads - only FIRST visit when tab is visible
+            guard isActive else {
+                #if DEBUG
+                print("   ⏭️ [FoodReactionsView.onAppear] SKIPPED - tab not visible")
+                #endif
+                return
+            }
+            guard !hasLoadedOnce else {
+                #if DEBUG
+                print("   ⏭️ [FoodReactionsView.onAppear] SKIPPED - already loaded")
+                #endif
+                return
+            }
             hasLoadedOnce = true
+            #if DEBUG
+            print("   🔄 [FoodReactionsView.onAppear] FIRST LOAD - calling reactionManager.reloadIfAuthenticated()")
+            #endif
             reactionManager.reloadIfAuthenticated()
 
             // Load trigger analysis data for pattern insights
@@ -1213,8 +1261,11 @@ struct TimelineReactionRow: View {
             }
             .padding(16)
             .background(
+                // PERFORMANCE FIX: Replaced .ultraThinMaterial with solid color
+                // .ultraThinMaterial is extremely expensive (GPU blur effect)
+                // With 20+ rows, this was causing 266ms+ delays on tab switches
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(.ultraThinMaterial)
+                    .fill(Color(.systemBackground).opacity(0.95))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
                             .stroke(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.15), lineWidth: 1)
@@ -3988,6 +4039,9 @@ class FastingViewModelWrapper: ObservableObject {
     private func setupForwarding() {
         cancellable?.cancel()
         cancellable = viewModel?.objectWillChange.sink { [weak self] _ in
+            #if DEBUG
+            print("🔄 [FastingViewModelWrapper] FORWARDING objectWillChange")
+            #endif
             self?.objectWillChange.send()
         }
     }

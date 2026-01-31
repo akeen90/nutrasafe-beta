@@ -45,7 +45,10 @@ struct UseByTabView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Binding var showingSettings: Bool
-    @Binding var selectedTab: TabItem
+    // PERF FIX: Changed from @Binding var selectedTab to simple Bool
+    let isActive: Bool
+    // Navigation binding - only passed to child views that need to switch tabs
+    @Binding var selectedTabForNavigation: TabItem
     @State private var showingScanner = false
     @State private var showingCamera = false
     @State private var showingAddSheet = false
@@ -81,8 +84,8 @@ struct UseByTabView: View {
 
     // MARK: - Scroll Reset Trigger
     // Resets scroll when returning to this tab
-    private var scrollResetTrigger: TabItem {
-        selectedTab
+    private var scrollResetTrigger: Bool {
+        isActive
     }
 
     // MARK: - Hero Header (Glassmorphic Search Bar)
@@ -203,7 +206,8 @@ struct UseByTabView: View {
                             UseByExpiryView(
                                 showingScanner: $showingScanner,
                                 showingCamera: $showingCamera,
-                                selectedTab: $selectedTab
+                                isActive: isActive,
+                                selectedTabForNavigation: $selectedTabForNavigation
                             )
                             .frame(maxWidth: .infinity)
                         }
@@ -943,7 +947,10 @@ struct UseByExpiryView: View {
     @Environment(\.scenePhase) var scenePhase
     @Binding var showingScanner: Bool
     @Binding var showingCamera: Bool
-    @Binding var selectedTab: TabItem
+    // PERF FIX: Changed from @Binding var selectedTab to simple Bool
+    let isActive: Bool
+    // Navigation binding - only passed to child views that need to switch tabs
+    @Binding var selectedTabForNavigation: TabItem
 
     // PERFORMANCE: Use shared manager to persist data between tab switches
     @ObservedObject private var dataManager = UseByDataManager.shared
@@ -1275,9 +1282,28 @@ struct UseByExpiryView: View {
         .animation(nil, value: cachedSortedItems)
         .animation(nil, value: searchText)
         .onAppear {
+            #if DEBUG
+            print("   👁️ [UseByExpiryView.onAppear] isActive=\(isActive), isLoaded=\(dataManager.isLoaded)")
+            #endif
+            // PERFORMANCE: Only load if this tab is ACTUALLY visible to the user
+            // Prevents Firebase calls when tab is preloaded but not selected
+            // Tab switching does NOT trigger data loads - tabs display already-loaded state
+            guard isActive else {
+                #if DEBUG
+                print("   ⏭️ [UseByExpiryView.onAppear] SKIPPED - tab not visible")
+                #endif
+                return
+            }
             Task {
                 if !dataManager.isLoaded {
+                    #if DEBUG
+                    print("   🔄 [UseByExpiryView.onAppear] FIRST LOAD - calling dataManager.loadItems()")
+                    #endif
                     await dataManager.loadItems()
+                } else {
+                    #if DEBUG
+                    print("   ⏭️ [UseByExpiryView.onAppear] Data already loaded, just recalculating cache")
+                    #endif
                 }
                 recalculateCache()
             }
@@ -1328,7 +1354,8 @@ struct UseByExpiryAlertsCard: View {
     @State private var selectedFilter: ExpiryFilter = .all
     @State private var showingAddSheet = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
-    @Binding var selectedTab: TabItem
+    // Navigation binding - only used for switching tabs
+    @Binding var selectedTabForNavigation: TabItem
     var onClearAll: () -> Void
 
     enum ExpiryFilter: String, CaseIterable {
@@ -1398,7 +1425,7 @@ struct UseByExpiryAlertsCard: View {
 
                     Button(action: {
                         UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
-                        selectedTab = .add
+                        selectedTabForNavigation = .add
                         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                         impactFeedback.impactOccurred()
                     }) {
@@ -3186,7 +3213,8 @@ struct UseByTabView_Previews: PreviewProvider {
     static var previews: some View {
         UseByTabView(
             showingSettings: .constant(false),
-            selectedTab: .constant(.useBy)
+            isActive: true,
+            selectedTabForNavigation: .constant(.useBy)
         )
     }
 }

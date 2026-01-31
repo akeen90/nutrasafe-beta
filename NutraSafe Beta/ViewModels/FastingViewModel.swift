@@ -599,13 +599,12 @@ class FastingViewModel: ObservableObject {
                 // PERFORMANCE: Always check for state transitions (lightweight)
                 self.checkRegimeStateTransition()
 
-                // PERFORMANCE: Only trigger view updates if timer-dependent views are visible
-                // or if we have an active session/regime that needs real-time display
-                let needsUpdate = self.isTimerViewVisible ||
-                                  self.activeSession != nil ||
-                                  self.isRegimeActive
-
-                if needsUpdate {
+                // PERF FIX: ONLY send objectWillChange when timer UI is actually visible
+                // Previously, sending updates when activeSession != nil or isRegimeActive caused
+                // ALL views observing this ViewModel to re-evaluate every second, including
+                // DiaryTabView and FoodTabView which don't need real-time updates.
+                // This was causing 266ms tab switch delays because views were constantly re-evaluating.
+                if self.isTimerViewVisible {
                     self.objectWillChange.send()
                 }
             }
@@ -615,7 +614,7 @@ class FastingViewModel: ObservableObject {
     /// Call when timer view appears to enable frequent updates
     func timerViewDidAppear() {
         isTimerViewVisible = true
-        refreshSnoozeCache() // Refresh cache when view appears
+        refreshSnoozeCache()
     }
 
     /// Call when timer view disappears to reduce update frequency

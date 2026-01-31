@@ -215,12 +215,11 @@ struct FastingMainViewRedesigned: View {
                 )
             }
         }
-        .onAppear {
-            viewModel.timerViewDidAppear()
-        }
-        .onDisappear {
-            viewModel.timerViewDidDisappear()
-        }
+        // PERFORMANCE FIX: Removed onAppear/onDisappear for timer visibility
+        // With opacity-based tab switching, views are always mounted in the hierarchy
+        // so onAppear fires immediately even when the user is on a different subtab.
+        // Timer visibility is now managed by onChange handlers in FoodTabViews.swift
+        // which correctly track when selectedFoodSubTab == .fasting
     }
 
     // MARK: - Current State Card (Primary Focus)

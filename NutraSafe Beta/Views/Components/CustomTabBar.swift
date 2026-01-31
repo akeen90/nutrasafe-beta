@@ -20,6 +20,9 @@ struct CustomTabBar: View {
     // FIX: Fixed height prevents layout recalculation when content changes
     private let tabBarHeight: CGFloat = 80
 
+    // PERFORMANCE: Pre-created haptic generator to avoid allocation on tap
+    private let hapticGenerator = UIImpactFeedbackGenerator(style: .light)
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(TabItem.allCases, id: \.self) { tab in
@@ -57,9 +60,14 @@ struct CustomTabBar: View {
                 } else {
                     // Regular tab buttons with palette-aware colors
                     Button(action: {
-                        selectedTab = tab
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                        impactFeedback.impactOccurred()
+                        // PERFORMANCE: Wrap state change in transaction to disable animation
+                        var transaction = Transaction()
+                        transaction.animation = nil
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            selectedTab = tab
+                        }
+                        hapticGenerator.impactOccurred()
                     }) {
                         VStack(alignment: .center, spacing: 4) {
                             ZStack {
@@ -89,6 +97,8 @@ struct CustomTabBar: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
+                    // PERFORMANCE: Disable implicit animations on tab selection indicator
+                    .animation(nil, value: selectedTab)
                 }
             }
         }

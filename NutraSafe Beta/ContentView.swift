@@ -6,6 +6,42 @@ import UserNotifications
 import ActivityKit
 import UIKit
 
+// MARK: - Tab Content Wrapper (PERFORMANCE FIX)
+// This wrapper isolates the selectedTab dependency from the tab content.
+// By conforming to Equatable and using EquatableView, SwiftUI skips body re-evaluation
+// when the wrapper's inputs haven't changed (same tab, same isActive state).
+// CRITICAL: Uses @escaping closure to DEFER content creation until body is actually evaluated.
+// This prevents expensive view struct creation during ForEach iteration when Equatable will skip anyway.
+struct TabContentWrapper<Content: View>: View, Equatable {
+    let tab: TabItem
+    let isActive: Bool
+    // PERF FIX: Store closure instead of evaluated content
+    // This defers view creation to body evaluation, which only happens when == returns false
+    private let contentBuilder: () -> Content
+
+    init(tab: TabItem, isActive: Bool, @ViewBuilder content: @escaping () -> Content) {
+        self.tab = tab
+        self.isActive = isActive
+        self.contentBuilder = content
+    }
+
+    var body: some View {
+        // Content is created HERE, only when body is actually evaluated
+        // When Equatable returns true, SwiftUI skips body entirely, so contentBuilder() never runs
+        contentBuilder()
+            .id(tab)
+            .opacity(isActive ? 1 : 0)
+            .transaction { $0.animation = nil }
+            .allowsHitTesting(isActive)
+            .accessibilityHidden(!isActive)
+    }
+
+    static func == (lhs: TabContentWrapper<Content>, rhs: TabContentWrapper<Content>) -> Bool {
+        // Only consider changed if tab or isActive changed
+        lhs.tab == rhs.tab && lhs.isActive == rhs.isActive
+    }
+}
+
 // MARK: - Ingredient Submission Service
 class IngredientSubmissionService: ObservableObject {
     static let shared = IngredientSubmissionService()
@@ -413,6 +449,313 @@ struct NutritionValue {
 
 
 
+// MARK: - TAB SWITCH DIAGNOSTIC MODE
+// Set to true to run performance diagnostic tests
+// Set to false for normal app operation
+private let TAB_DIAGNOSTIC_MODE = false
+
+// Diagnostic test modes (only used when TAB_DIAGNOSTIC_MODE = true)
+enum DiagTestMode: String, CaseIterable {
+    case empty = "Empty"           // STEP 1: Empty views
+    case noAccessibility = "NoA11y" // STEP 2: Remove accessibility modifiers
+    case native = "Native"         // STEP 3: Native TabView
+    case full = "Full"             // STEP 4: Full content (production-like)
+}
+
+// MARK: - Diagnostic Timer (Nanosecond precision)
+#if DEBUG
+final class PreciseDiagnosticTimer {
+    static let shared = PreciseDiagnosticTimer()
+
+    private var tapTime: UInt64 = 0
+    private var stateSetTime: UInt64 = 0
+    private var onChangeTime: UInt64 = 0
+    private var targetTab: String = ""
+    private var isActive = false
+    private var currentMode: String = ""
+
+    private var results: [(mode: String, tab: String, tapToState: Double, stateToOnChange: Double, total: Double)] = []
+
+    func startTiming(to tab: String, mode: String) {
+        tapTime = DispatchTime.now().uptimeNanoseconds
+        targetTab = tab
+        currentMode = mode
+        isActive = true
+        stateSetTime = 0
+        onChangeTime = 0
+        print("🔬 [\(mode)] TAP → \(tab)")
+    }
+
+    func markStateSet() {
+        guard isActive else { return }
+        stateSetTime = DispatchTime.now().uptimeNanoseconds
+    }
+
+    func endTiming(tab: String) {
+        guard isActive, tab == targetTab else { return }
+        onChangeTime = DispatchTime.now().uptimeNanoseconds
+        isActive = false
+
+        let tapToState = Double(stateSetTime - tapTime) / 1_000_000
+        let stateToOnChange = Double(onChangeTime - stateSetTime) / 1_000_000
+        let total = Double(onChangeTime - tapTime) / 1_000_000
+
+        results.append((mode: currentMode, tab: tab, tapToState: tapToState, stateToOnChange: stateToOnChange, total: total))
+
+        print("   TOTAL: \(String(format: "%.1f", total))ms | tap→state: \(String(format: "%.2f", tapToState))ms | state→onChange: \(String(format: "%.1f", stateToOnChange))ms")
+    }
+
+    func printSummary() {
+        print("\n\n" + String(repeating: "=", count: 60))
+        print("TAB SWITCHING DIAGNOSTIC RESULTS")
+        print(String(repeating: "=", count: 60))
+
+        // Group by mode
+        let grouped = Dictionary(grouping: results, by: { $0.mode })
+        for mode in DiagTestMode.allCases {
+            guard let modeResults = grouped[mode.rawValue], !modeResults.isEmpty else { continue }
+            let avgTotal = modeResults.map { $0.total }.reduce(0, +) / Double(modeResults.count)
+            let avgStateToOnChange = modeResults.map { $0.stateToOnChange }.reduce(0, +) / Double(modeResults.count)
+            print("\n[\(mode.rawValue)] (\(modeResults.count) samples)")
+            print("  AVG Total: \(String(format: "%.1f", avgTotal))ms")
+            print("  AVG State→OnChange: \(String(format: "%.1f", avgStateToOnChange))ms")
+        }
+        print(String(repeating: "=", count: 60) + "\n")
+    }
+
+    func clear() {
+        results.removeAll()
+    }
+}
+#endif
+
+// MARK: - Simple Diagnostic Tab Enum
+enum DiagTab: String, CaseIterable, Identifiable {
+    case one = "One"
+    case two = "Two"
+    case three = "Three"
+    case four = "Four"
+
+    var id: String { rawValue }
+    var icon: String {
+        switch self {
+        case .one: return "1.circle"
+        case .two: return "2.circle"
+        case .three: return "3.circle"
+        case .four: return "4.circle"
+        }
+    }
+}
+
+// MARK: - Heavy Test View (simulates real tab complexity)
+struct DiagHeavyTestView: View {
+    let tabName: String
+    @State private var items: [String] = (0..<100).map { "Item \($0)" }
+
+    var body: some View {
+        let _ = print("🔴 BODY RECOMPUTE: \(tabName)")
+
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(items, id: \.self) { item in
+                    HStack {
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.orange)
+                        Text("\(tabName) - \(item)")
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+// MARK: - Tab Performance Diagnostic View
+struct TabDiagnosticView: View {
+    @State private var testMode: DiagTestMode = .empty
+    @State private var selectedTab: DiagTab = .one
+    @State private var visitedTabs: Set<DiagTab> = [.one]
+    @State private var switchCount = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with mode selector
+            VStack(spacing: 8) {
+                Text("Tab Performance Diagnostic")
+                    .font(.headline)
+
+                Picker("Mode", selection: $testMode) {
+                    ForEach(DiagTestMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+
+                HStack {
+                    Text("Switches: \(switchCount)")
+                    Spacer()
+                    #if DEBUG
+                    Button("Summary") { PreciseDiagnosticTimer.shared.printSummary() }
+                    Button("Clear") {
+                        PreciseDiagnosticTimer.shared.clear()
+                        switchCount = 0
+                    }
+                    #endif
+                }
+                .padding(.horizontal)
+                .font(.caption)
+            }
+            .padding(.vertical, 8)
+            .background(Color.gray.opacity(0.1))
+
+            // Tab content based on mode
+            Group {
+                switch testMode {
+                case .empty:
+                    emptyTabsView
+                case .noAccessibility:
+                    noAccessibilityView
+                case .native:
+                    nativeTabViewTest
+                case .full:
+                    fullContentView
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Tab bar (except for native mode)
+            if testMode != .native {
+                diagnosticTabBar
+            }
+        }
+        .onChange(of: selectedTab) { _, newTab in
+            #if DEBUG
+            PreciseDiagnosticTimer.shared.endTiming(tab: newTab.rawValue)
+            #endif
+            visitedTabs.insert(newTab)
+            switchCount += 1
+        }
+        .onChange(of: testMode) { _, _ in
+            selectedTab = .one
+            visitedTabs = [.one]
+        }
+    }
+
+    // STEP 1: Empty views - isolates SwiftUI overhead
+    private var emptyTabsView: some View {
+        ZStack {
+            ForEach(DiagTab.allCases) { tab in
+                if visitedTabs.contains(tab) {
+                    Color.clear
+                        .overlay(Text("Tab \(tab.rawValue)").font(.largeTitle))
+                        .id(tab)
+                        .opacity(selectedTab == tab ? 1 : 0)
+                        .transaction { $0.animation = nil }
+                        .allowsHitTesting(selectedTab == tab)
+                        .accessibilityHidden(selectedTab != tab)
+                }
+            }
+        }
+        .animation(nil, value: selectedTab)
+    }
+
+    // STEP 2: No accessibility modifiers
+    private var noAccessibilityView: some View {
+        ZStack {
+            ForEach(DiagTab.allCases) { tab in
+                if visitedTabs.contains(tab) {
+                    DiagHeavyTestView(tabName: tab.rawValue)
+                        .id(tab)
+                        .opacity(selectedTab == tab ? 1 : 0)
+                        .transaction { $0.animation = nil }
+                    // NO .allowsHitTesting
+                    // NO .accessibilityHidden
+                }
+            }
+        }
+        .animation(nil, value: selectedTab)
+    }
+
+    // STEP 3: Native TabView
+    private var nativeTabViewTest: some View {
+        TabView(selection: Binding(
+            get: { selectedTab },
+            set: { newTab in
+                #if DEBUG
+                PreciseDiagnosticTimer.shared.startTiming(to: newTab.rawValue, mode: testMode.rawValue)
+                PreciseDiagnosticTimer.shared.markStateSet()
+                #endif
+                selectedTab = newTab
+            }
+        )) {
+            ForEach(DiagTab.allCases) { tab in
+                DiagHeavyTestView(tabName: tab.rawValue)
+                    .tabItem {
+                        Image(systemName: tab.icon)
+                        Text(tab.rawValue)
+                    }
+                    .tag(tab)
+            }
+        }
+    }
+
+    // STEP 4: Full content (matches production architecture)
+    private var fullContentView: some View {
+        ZStack {
+            ForEach(DiagTab.allCases) { tab in
+                if visitedTabs.contains(tab) {
+                    DiagHeavyTestView(tabName: tab.rawValue)
+                        .id(tab)
+                        .opacity(selectedTab == tab ? 1 : 0)
+                        .transaction { $0.animation = nil }
+                        .allowsHitTesting(selectedTab == tab)
+                        .accessibilityHidden(selectedTab != tab)
+                }
+            }
+        }
+        .animation(nil, value: selectedTab)
+    }
+
+    // Diagnostic tab bar
+    private var diagnosticTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(DiagTab.allCases) { tab in
+                Button(action: {
+                    #if DEBUG
+                    PreciseDiagnosticTimer.shared.startTiming(to: tab.rawValue, mode: testMode.rawValue)
+                    #endif
+                    var transaction = Transaction()
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        selectedTab = tab
+                    }
+                    #if DEBUG
+                    PreciseDiagnosticTimer.shared.markStateSet()
+                    #endif
+                }) {
+                    VStack(spacing: 4) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 24))
+                        Text(tab.rawValue)
+                            .font(.caption)
+                    }
+                    .foregroundColor(selectedTab == tab ? .blue : .gray)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .background(Color.gray.opacity(0.1))
+    }
+}
+
 // MARK: - Professional Nutrition App UI Following Research Standards
 // Based on analysis of MyFitnessPal, Lose It!, Cronometer, and Lifesum
 
@@ -486,22 +829,23 @@ struct ContentView: View {
     }
 
     private var persistentTabViews: some View {
+        // PERF FIX: Use TabContentWrapper with Equatable to isolate selectedTab dependency
+        // SwiftUI uses the == function to skip body re-evaluation for tabs that didn't change
         ZStack {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 if visitedTabs.contains(tab) {
-                    // PERFORMANCE: Use .id() to stabilize view identity and prevent re-creation
-                    // This ensures that once a tab is created, it stays alive and isn't recreated
-                    // on every state change, reducing excessive re-rendering
-                    tabContent(for: tab)
-                        .id(tab) // Stable identity prevents view re-creation
-                        .opacity(selectedTab == tab ? 1 : 0)
-                        // PERFORMANCE: Remove animation delay for instant tab switching
-                        // Users perceive <100ms as instant; animation was adding 150ms latency
-                        .allowsHitTesting(selectedTab == tab)
-                        .accessibilityHidden(selectedTab != tab)
+                    EquatableView(content:
+                        TabContentWrapper(
+                            tab: tab,
+                            isActive: selectedTab == tab,
+                            content: { tabContent(for: tab) }
+                        )
+                    )
                 }
             }
         }
+        // PERFORMANCE: Disable animations on the entire ZStack to prevent implicit transitions
+        .animation(nil, value: selectedTab)
     }
 
     // Keep each tab alive once visited so data/models are not re-created on every switch
@@ -509,10 +853,13 @@ struct ContentView: View {
     private func tabContent(for tab: TabItem) -> some View {
         switch tab {
         case .diary:
+            // PERF FIX: Pass isActive (bool) instead of selectedTab binding
+            // This prevents DiaryTabView from re-evaluating when OTHER tabs are selected
             DiaryTabView(
                 selectedFoodItems: $selectedFoodItems,
                 showingSettings: $showingSettings,
-                selectedTab: $selectedTab,
+                isActive: selectedTab == .diary,
+                selectedTabForNavigation: $selectedTab,
                 editTrigger: $editTrigger,
                 moveTrigger: $moveTrigger,
                 copyTrigger: $copyTrigger,
@@ -527,17 +874,20 @@ struct ContentView: View {
             .environmentObject(sharedFastingViewModelWrapper)
 
         case .weight:
-            WeightTrackingView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+            // PERF FIX: Pass isActive instead of selectedTab binding
+            WeightTrackingView(showingSettings: $showingSettings, isActive: selectedTab == .weight)
                 .environmentObject(healthKitManager)
                 .environmentObject(subscriptionManager)
 
         case .food:
-            FoodTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+            // PERF FIX: Pass isActive + selectedTabForNavigation instead of selectedTab binding
+            FoodTabView(showingSettings: $showingSettings, isActive: selectedTab == .food, selectedTabForNavigation: $selectedTab)
                 .environmentObject(subscriptionManager)
                 .environmentObject(sharedFastingViewModelWrapper)
 
         case .useBy:
-            UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+            // PERF FIX: Pass isActive + selectedTabForNavigation instead of selectedTab binding
+            UseByTabView(showingSettings: $showingSettings, isActive: selectedTab == .useBy, selectedTabForNavigation: $selectedTab)
                 .environmentObject(subscriptionManager)
 
         case .add:
@@ -565,6 +915,10 @@ struct ContentView: View {
     }
 
     var body: some View {
+        // DIAGNOSTIC MODE: Show diagnostic view instead of normal app
+        if TAB_DIAGNOSTIC_MODE {
+            TabDiagnosticView()
+        } else {
         navigationContainer {
             ZStack {
                 // Midnight blue background for entire app
@@ -835,7 +1189,7 @@ struct ContentView: View {
             }
         }
 
-        .onChange(of: selectedTab) { _, newTab in
+        .onChange(of: selectedTab) { oldTab, newTab in
             // Track visited tabs for pre-loading optimization
             visitedTabs.insert(newTab)
 
@@ -927,7 +1281,8 @@ struct ContentView: View {
             }
         }
 
-        }
+        } // end navigationContainer
+        } // end else (not diagnostic mode)
     }
     
     private func editSelectedFood() {
@@ -1069,7 +1424,8 @@ enum JourneyTimeRange: String, CaseIterable {
 struct WeightTrackingView: View {
     @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
-    @Binding var selectedTab: TabItem
+    // PERF FIX: Changed from @Binding var selectedTab to simple Bool
+    let isActive: Bool
     var isPresentedAsModal: Bool = false
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
@@ -1090,9 +1446,9 @@ struct WeightTrackingView: View {
     @State private var progressSubTab: ProgressSubTab = .weight
 
     // MARK: - Scroll Reset Trigger
-    // Combines main tab and subtab to reset scroll when returning to this tab
+    // Combines active state and subtab to reset scroll when returning to this tab
     private var scrollResetTrigger: String {
-        "\(selectedTab)-\(progressSubTab)"
+        "\(isActive)-\(progressSubTab)"
     }
     @State private var editingEntry: WeightEntry?
     @State private var entryToDelete: WeightEntry?

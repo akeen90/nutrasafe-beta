@@ -298,6 +298,11 @@ final class OfflineSyncManager {
     // MARK: - Sync Execution
 
     private func performSync(completion: (() -> Void)? = nil) {
+        #if DEBUG
+        let startTime = CFAbsoluteTimeGetCurrent()
+        print("🔄 [OfflineSyncManager.performSync] STARTING on syncQueue")
+        #endif
+
         syncQueue.async { [weak self] in
             guard let self = self else {
                 completion?()
@@ -306,14 +311,30 @@ final class OfflineSyncManager {
 
             // RACE CONDITION FIX: Use atomic tryStartSync() instead of check-then-set
             guard self.tryStartSync() else {
+                #if DEBUG
+                print("   ⏭️ [performSync] SKIPPED - already syncing")
+                #endif
                 completion?()
                 return
             }
 
             self.lastSyncAttempt = Date()
 
+            #if DEBUG
+            let getOpsStart = CFAbsoluteTimeGetCurrent()
+            #endif
             // Get pending operations
             let operations = OfflineDataManager.shared.getPendingSyncOperations()
+            #if DEBUG
+            let getOpsEnd = CFAbsoluteTimeGetCurrent()
+            print("   📋 [performSync] Got \(operations.count) pending ops in \(String(format: "%.0f", (getOpsEnd - getOpsStart) * 1000))ms")
+            for op in operations.prefix(5) {
+                print("      - \(op.type.rawValue) \(op.collection)/\(op.documentId)")
+            }
+            if operations.count > 5 {
+                print("      ... and \(operations.count - 5) more")
+            }
+            #endif
 
             if operations.isEmpty {
                 self.isSyncing = false
