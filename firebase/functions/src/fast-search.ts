@@ -506,7 +506,10 @@ function formatFoodResult(id: string, data: any, customCategories: FoodCategory[
     verifiedBy: data.verifiedBy || null,
     verificationMethod: data.verificationMethod || null,
     verifiedAt: data.verifiedAt || null,
-    imageUrl: filterImageUrl(data.imageUrl)
+    imageUrl: filterImageUrl(data.imageUrl),
+    // Package volume/weight for proper ml→g conversion (ice cream, etc.)
+    packageVolumeMl: data.packageVolumeMl || null,
+    packageWeightG: data.packageWeightG || null
   };
 }
 

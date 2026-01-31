@@ -63,7 +63,12 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
     let suggestedServingDescription: String? // e.g., "per bar", "per portion", "per 25ml measure"
     let unitOverrideLocked: Bool? // If true, ALWAYS use suggestedServingUnit (manually set by admin, ignore auto-detection)
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, gtin: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, imageUrl: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil, unitOverrideLocked: Bool? = nil) {
+    // Package volume/weight for proper ml→g conversion (ice cream, whipped cream, etc.)
+    // When both are present, we can calculate actual grams from ml for accurate nutrition
+    let packageVolumeMl: Double? // Package volume in ml (e.g., 460ml ice cream tub)
+    let packageWeightG: Double? // Actual package weight in grams (e.g., 520g for that 460ml tub)
+
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, gtin: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil, source: String? = nil, imageUrl: String? = nil, foodCategory: String? = nil, suggestedServingSize: Double? = nil, suggestedServingUnit: String? = nil, suggestedServingDescription: String? = nil, unitOverrideLocked: Bool? = nil, packageVolumeMl: Double? = nil, packageWeightG: Double? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -97,6 +102,8 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
         self.suggestedServingUnit = suggestedServingUnit
         self.suggestedServingDescription = suggestedServingDescription
         self.unitOverrideLocked = unitOverrideLocked
+        self.packageVolumeMl = packageVolumeMl
+        self.packageWeightG = packageWeightG
     }
 
     // Custom decoder to handle flexible payloads from Cloud Functions
@@ -138,6 +145,9 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
         case suggestedServingUnit
         case suggestedServingDescription
         case unitOverrideLocked
+        // Package volume/weight for ml→g conversion
+        case packageVolumeMl
+        case packageWeightG
     }
     
     // Helper structs for nested nutrition format from Firebase
@@ -264,6 +274,9 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
         self.suggestedServingUnit = try? c.decode(String.self, forKey: .suggestedServingUnit)
         self.suggestedServingDescription = try? c.decode(String.self, forKey: .suggestedServingDescription)
         self.unitOverrideLocked = try? c.decode(Bool.self, forKey: .unitOverrideLocked)
+        // Package volume/weight for ml→g conversion
+        self.packageVolumeMl = try? c.decode(Double.self, forKey: .packageVolumeMl)
+        self.packageWeightG = try? c.decode(Double.self, forKey: .packageWeightG)
     }
 
     // Custom encoder - only encode actual properties (skip verifiedBy, verificationMethod, verifiedAt which are decode-only)
@@ -302,6 +315,8 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
         try c.encodeIfPresent(suggestedServingUnit, forKey: .suggestedServingUnit)
         try c.encodeIfPresent(suggestedServingDescription, forKey: .suggestedServingDescription)
         try c.encodeIfPresent(unitOverrideLocked, forKey: .unitOverrideLocked)
+        try c.encodeIfPresent(packageVolumeMl, forKey: .packageVolumeMl)
+        try c.encodeIfPresent(packageWeightG, forKey: .packageWeightG)
     }
 
     /// Returns true if this food has multiple portion options (e.g., McNuggets with 6pc, 9pc, 20pc)
@@ -336,6 +351,50 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
         }
         // Otherwise, show "per unit" or "per 100g" based on flag
         return (isPerUnit == true) ? "per unit" : "per 100g"
+    }
+
+    // MARK: - Volume/Weight Density Conversion
+
+    /// Calculated density (g/ml) when both package volume and weight are known
+    /// - Returns: density ratio, or nil if not enough data
+    /// Example: 520g / 460ml = 1.13 g/ml (premium ice cream is denser than water)
+    var calculatedDensity: Double? {
+        guard let volumeMl = packageVolumeMl, volumeMl > 0,
+              let weightG = packageWeightG, weightG > 0 else {
+            return nil
+        }
+        return weightG / volumeMl
+    }
+
+    /// Returns true if this food has density data for proper ml→g conversion
+    var hasDensityData: Bool {
+        return calculatedDensity != nil
+    }
+
+    /// Converts a volume in ml to actual grams using known density
+    /// Falls back to 1:1 (water density) if no density data available
+    /// - Parameter ml: Volume in millilitres
+    /// - Returns: Weight in grams
+    func gramsForVolume(_ ml: Double) -> Double {
+        if let density = calculatedDensity {
+            return ml * density
+        }
+        // Fallback: assume water density (1 g/ml)
+        return ml
+    }
+
+    /// Formats a serving display string that shows both ml and actual grams when density differs
+    /// Example: "460ml (520g)" for ice cream, or just "200ml" for water-like liquids
+    func formattedVolumeServing(_ ml: Double) -> String {
+        let grams = gramsForVolume(ml)
+        let mlInt = Int(ml)
+        let gramsInt = Int(grams)
+
+        // If density is significantly different from 1.0 (>5% difference), show both
+        if let density = calculatedDensity, abs(density - 1.0) > 0.05 {
+            return "\(mlInt)ml (\(gramsInt)g)"
+        }
+        return "\(mlInt)ml"
     }
 
     // MARK: - Firebase Category-Based Portions
@@ -387,12 +446,22 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
             return (value / 5).rounded() * 5
         }
 
-        func caloriesFor(_ grams: Double) -> Double {
-            return caloriesPer100 * (grams / 100)
+        // Calculate calories based on actual grams
+        // For ml-based foods with density data, convert ml→g first
+        func caloriesFor(_ size: Double, isMl: Bool = false) -> Double {
+            let actualGrams: Double
+            if isMl && hasDensityData {
+                // Use density to convert ml to actual grams
+                actualGrams = gramsForVolume(size)
+            } else {
+                actualGrams = size
+            }
+            return caloriesPer100 * (actualGrams / 100)
         }
 
         // Build a portion option while deduplicating similar sizes
-        func buildOptions(_ sizes: [(Double, String)]) -> [PortionOption] {
+        // isMl: true for ml-based portions (uses density conversion for calories)
+        func buildOptions(_ sizes: [(Double, String)], isMl: Bool = false) -> [PortionOption] {
             var seenSizes = Set<Int>()
             var options: [PortionOption] = []
 
@@ -400,11 +469,23 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
                 let rounded = max(5.0, roundToNearest5(size))
                 let roundedInt = Int(rounded)
                 if seenSizes.insert(roundedInt).inserted {
+                    // For ml-based portions with density data, show both ml and actual grams
+                    let displayName: String
+                    if isMl && hasDensityData {
+                        let actualGrams = Int(gramsForVolume(rounded))
+                        displayName = "\(label) (\(roundedInt)ml / \(actualGrams)g)"
+                    } else {
+                        displayName = "\(label) (\(roundedInt)\(displayUnit))"
+                    }
+
+                    // serving_g stores actual grams for nutrition calculation
+                    let servingGrams = isMl && hasDensityData ? gramsForVolume(rounded) : rounded
+
                     options.append(
                         PortionOption(
-                            name: "\(label) (\(roundedInt)\(displayUnit))",
-                            calories: caloriesFor(rounded),
-                            serving_g: rounded
+                            name: displayName,
+                            calories: caloriesFor(rounded, isMl: isMl),
+                            serving_g: servingGrams
                         )
                     )
                 }
@@ -425,7 +506,7 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
                 sizes.append((baseSize * 1.5, "Large"))
             }
 
-            return buildOptions(sizes)
+            return buildOptions(sizes, isMl: true)
         }
 
         // Solids: generic small/standard/large/double around the category default
