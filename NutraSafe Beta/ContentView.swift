@@ -852,15 +852,41 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // PERFORMANCE OPTIMIZATION: Parallel preloading for instant app responsiveness
+            // PERFORMANCE FIX: Show AppStorage cached values IMMEDIATELY (already in memory)
+            // This provides instant UI with cached data, then updates async from SQLite
+            // No main thread blocking - smooth 60fps during app launch
 
-            // PRIORITY 1: Load critical Diary tab data IMMEDIATELY (user-facing)
+            // PRIORITY 1: Load SQLite data ASYNC (off main thread) for instant display
             Task(priority: .userInitiated) {
+                // Single batched async call - loads all startup data off main thread
+                let startupData = await OfflineDataManager.shared.getAppStartupDataAsync()
+
+                await MainActor.run {
+                    // Populate FirebaseManager cache from SQLite
+                    if !startupData.weightHistory.isEmpty {
+                        FirebaseManager.shared.preloadWeightData(
+                            history: startupData.weightHistory,
+                            height: startupData.settings.height,
+                            goalWeight: startupData.settings.goalWeight
+                        )
+                        weightHistory = startupData.weightHistory
+                        if let latest = startupData.weightHistory.first {
+                            currentWeight = latest.weight
+                        }
+                    }
+                    if let h = startupData.settings.height {
+                        userHeight = h
+                    }
+                }
+
+                // Load Diary tab data (also async)
                 let today = Date()
                 _ = diaryDataManager.getFoodData(for: today)
-                            }
+            }
 
-            // PRIORITY 2: Background preload other tabs IN PARALLEL (non-blocking)
+            // PRIORITY 2: Background sync with Firebase IN PARALLEL (non-blocking)
+            // These calls are now local-first - they return SQLite data immediately
+            // and sync with Firebase in the background
             Task(priority: .utility) {
                 // All requests run in parallel using async let (single settings fetch)
                 async let weightsTask = FirebaseManager.shared.getWeightHistory()
@@ -877,7 +903,7 @@ struct ContentView: View {
                     let settings = try await settingsTask
                     _ = await nutrientsTask
                     await MainActor.run {
-                        // Set user height from settings
+                        // Update with potentially fresher data from Firebase sync
                         if let height = settings.height {
                             userHeight = height
                         }
@@ -890,7 +916,7 @@ struct ContentView: View {
                         FirebaseManager.shared.preloadWeightData(history: weights, height: settings.height, goalWeight: settings.goalWeight)
                     }
                 } catch {
-                    // Silent failure for background preload
+                    // Silent failure for background preload - local data already displayed
                 }
             }
 
@@ -1743,30 +1769,54 @@ struct WeightTrackingView: View {
             guard !hasLoadedOnce else { return }
             hasLoadedOnce = true
 
-            // PERFORMANCE: Use cached data IMMEDIATELY for instant display (no loading spinner)
-            // Background refresh happens silently without blocking the UI
+            // PERFORMANCE FIX: Check in-memory caches FIRST (instant, no blocking)
+            // These caches may have been populated by ContentView's initial load
             let hasCachedData = !firebaseManager.cachedWeightHistory.isEmpty ||
                                 firebaseManager.cachedUserHeight != nil ||
                                 firebaseManager.cachedGoalWeight != nil
 
-            // CRITICAL FIX: Use locally cached weight for instant display on app restart
-            // This prevents the 70kg default issue when Firebase hasn't loaded yet
-            if cachedCurrentWeight > 0 && currentWeight == 0 {
-                currentWeight = cachedCurrentWeight
-            }
-
             if hasCachedData {
-                // Instant display from cache - no loading state shown
-                currentWeight = firebaseManager.cachedWeightHistory.first?.weight ?? currentWeight
+                // Use FirebaseManager in-memory cache instantly
+                currentWeight = firebaseManager.cachedWeightHistory.first?.weight ?? cachedCurrentWeight
                 weightHistory = firebaseManager.cachedWeightHistory
                 if let h = firebaseManager.cachedUserHeight { userHeight = h }
                 if let g = firebaseManager.cachedGoalWeight { goalWeight = g }
-                hasCheckedHeight = true
-                // Silent background refresh to check for newer data
-                loadWeightHistory(silent: true)
-            } else {
-                // No cache - must show loading state
-                loadWeightHistory()
+                hasCheckedHeight = firebaseManager.cachedUserHeight != nil
+            } else if cachedCurrentWeight > 0 && currentWeight == 0 {
+                // Fallback to AppStorage cache
+                currentWeight = cachedCurrentWeight
+            }
+
+            // PERFORMANCE FIX: Load SQLite ASYNC (off main thread) - no UI blocking
+            Task(priority: .userInitiated) {
+                let startupData = await OfflineDataManager.shared.getAppStartupDataAsync()
+
+                await MainActor.run {
+                    // Update with SQLite data if it's fresher/more complete
+                    if !startupData.weightHistory.isEmpty && weightHistory.isEmpty {
+                        weightHistory = startupData.weightHistory
+                        currentWeight = startupData.weightHistory.first?.weight ?? cachedCurrentWeight
+                    }
+
+                    // Load settings from SQLite (height, goal weight)
+                    if let h = startupData.settings.height, userHeight == 0 { userHeight = h }
+                    if let g = startupData.settings.goalWeight, goalWeight == 0 { goalWeight = g }
+
+                    // Mark height as checked if we have data
+                    if !hasCheckedHeight {
+                        hasCheckedHeight = startupData.settings.height != nil
+                    }
+                }
+
+                // Background refresh: sync with Firebase silently (won't block UI)
+                await MainActor.run {
+                    if !weightHistory.isEmpty {
+                        loadWeightHistory(silent: true)
+                    } else {
+                        // No local data at all - must wait for Firebase (first launch or post-recovery)
+                        loadWeightHistory()
+                    }
+                }
             }
 
             // PERFORMANCE: Defer non-critical UI (modals/tips) to avoid blocking render

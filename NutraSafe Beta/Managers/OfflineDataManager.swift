@@ -39,6 +39,7 @@ struct PendingSyncOperation: Codable {
     let timestamp: Date
     var retryCount: Int
 
+    /// Create a NEW sync operation (generates new UUID)
     init(type: SyncOperationType, collection: String, documentId: String, data: Data? = nil) {
         self.id = UUID().uuidString
         self.type = type
@@ -47,6 +48,17 @@ struct PendingSyncOperation: Codable {
         self.data = data
         self.timestamp = Date()
         self.retryCount = 0
+    }
+
+    /// Reconstruct an EXISTING sync operation from database (preserves existing ID)
+    init(id: String, type: SyncOperationType, collection: String, documentId: String, data: Data?, timestamp: Date, retryCount: Int) {
+        self.id = id
+        self.type = type
+        self.collection = collection
+        self.documentId = documentId
+        self.data = data
+        self.timestamp = timestamp
+        self.retryCount = retryCount
     }
 }
 
@@ -2004,8 +2016,10 @@ final class OfflineDataManager {
                 sqlite3_bind_double(statement, 1, now)
 
                 while sqlite3_step(statement) == SQLITE_ROW {
-                    // Read columns (id, timestamp, retryCount stored but not needed for operation)
-                    _ = String(cString: sqlite3_column_text(statement, 0)) // id
+                    // CRITICAL FIX: Read ALL columns including the database ID
+                    // Previously the ID was discarded and a new UUID was generated,
+                    // which meant removeSyncOperation couldn't find the record to delete!
+                    let dbId = String(cString: sqlite3_column_text(statement, 0))
                     let typeRaw = String(cString: sqlite3_column_text(statement, 1))
                     let collection = String(cString: sqlite3_column_text(statement, 2))
                     let documentId = String(cString: sqlite3_column_text(statement, 3))
@@ -2019,11 +2033,20 @@ final class OfflineDataManager {
                         }
                     }
 
-                    _ = sqlite3_column_double(statement, 5) // timestamp
-                    _ = sqlite3_column_int(statement, 6) // retryCount
+                    let timestamp = Date(timeIntervalSince1970: sqlite3_column_double(statement, 5))
+                    let retryCount = Int(sqlite3_column_int(statement, 6))
 
                     if let type = SyncOperationType(rawValue: typeRaw) {
-                        let operation = PendingSyncOperation(type: type, collection: collection, documentId: documentId, data: data)
+                        // Use the database ID, not a new UUID!
+                        let operation = PendingSyncOperation(
+                            id: dbId,
+                            type: type,
+                            collection: collection,
+                            documentId: documentId,
+                            data: data,
+                            timestamp: timestamp,
+                            retryCount: retryCount
+                        )
                         operations.append(operation)
                     }
                 }
@@ -2553,25 +2576,11 @@ final class OfflineDataManager {
             // Begin transaction for better performance
             self.executeSQL("BEGIN TRANSACTION")
 
-            var skippedCount = 0
             for entry in entries {
-                // RESURRECTION FIX: Don't resurrect entries that are marked as deleted locally
-                if self.isDocumentDeletedInternal(collection: "foodEntries", documentId: entry.id) {
-                    print("[OfflineDataManager] Import skipped - entry \(entry.id) is marked deleted")
-                    skippedCount += 1
-                    continue
-                }
-
-                // RESURRECTION FIX: Don't resurrect entries that have a pending delete
-                if self.hasDeletePendingInternal(collection: "foodEntries", documentId: entry.id) {
-                    print("[OfflineDataManager] Import skipped - entry \(entry.id) has delete pending")
-                    skippedCount += 1
-                    continue
-                }
-
-                // HIGH-8 FIX: Don't overwrite entries with pending local changes
-                if self.hasPendingLocalChanges(collection: "foodEntries", documentId: entry.id) {
-                    skippedCount += 1
+                // Skip entries that are deleted or have pending local changes
+                if self.isDocumentDeletedInternal(collection: "foodEntries", documentId: entry.id) ||
+                   self.hasDeletePendingInternal(collection: "foodEntries", documentId: entry.id) ||
+                   self.hasPendingLocalChanges(collection: "foodEntries", documentId: entry.id) {
                     continue
                 }
 
@@ -2655,11 +2664,6 @@ final class OfflineDataManager {
             }
 
             self.executeSQL("COMMIT")
-            if skippedCount > 0 {
-                print("[OfflineDataManager] HIGH-8: Imported \(entries.count - skippedCount) food entries, skipped \(skippedCount) with pending local changes")
-            } else {
-                print("[OfflineDataManager] Imported \(entries.count) food entries from Firebase")
-            }
         }
     }
 
@@ -2673,25 +2677,11 @@ final class OfflineDataManager {
 
             self.executeSQL("BEGIN TRANSACTION")
 
-            var skippedCount = 0
             for item in items {
-                // RESURRECTION FIX: Don't resurrect items that are marked as deleted locally
-                if self.isDocumentDeletedInternal(collection: "useByInventory", documentId: item.id) {
-                    print("[OfflineDataManager] Import skipped - UseBy item \(item.id) is marked deleted")
-                    skippedCount += 1
-                    continue
-                }
-
-                // RESURRECTION FIX: Don't resurrect items that have a pending delete
-                if self.hasDeletePendingInternal(collection: "useByInventory", documentId: item.id) {
-                    print("[OfflineDataManager] Import skipped - UseBy item \(item.id) has delete pending")
-                    skippedCount += 1
-                    continue
-                }
-
-                // HIGH-8 FIX: Don't overwrite items with pending local changes
-                if self.hasPendingLocalChanges(collection: "useByInventory", documentId: item.id) {
-                    skippedCount += 1
+                // Skip items that are deleted or have pending local changes
+                if self.isDocumentDeletedInternal(collection: "useByInventory", documentId: item.id) ||
+                   self.hasDeletePendingInternal(collection: "useByInventory", documentId: item.id) ||
+                   self.hasPendingLocalChanges(collection: "useByInventory", documentId: item.id) {
                     continue
                 }
 
@@ -2739,11 +2729,6 @@ final class OfflineDataManager {
             }
 
             self.executeSQL("COMMIT")
-            if skippedCount > 0 {
-                print("[OfflineDataManager] HIGH-8: Imported \(items.count - skippedCount) Use By items, skipped \(skippedCount) with pending local changes")
-            } else {
-                print("[OfflineDataManager] Imported \(items.count) Use By items from Firebase")
-            }
         }
     }
 
@@ -2844,23 +2829,12 @@ final class OfflineDataManager {
 
             self.executeSQL("BEGIN TRANSACTION")
 
-            var skippedCount = 0
             for entry in entries {
-                // RESURRECTION FIX: Don't resurrect entries that are marked as deleted locally
-                if self.isDocumentDeletedInternal(collection: "weightHistory", documentId: entry.id.uuidString) {
-                    skippedCount += 1
-                    continue
-                }
-
-                // RESURRECTION FIX: Don't resurrect entries that have a pending delete
-                if self.hasDeletePendingInternal(collection: "weightHistory", documentId: entry.id.uuidString) {
-                    skippedCount += 1
-                    continue
-                }
-
-                // HIGH-8 FIX: Don't overwrite entries with pending local changes
-                if self.hasPendingLocalChanges(collection: "weightHistory", documentId: entry.id.uuidString) {
-                    skippedCount += 1
+                // Skip entries that are deleted or have pending local changes
+                let entryId = entry.id.uuidString
+                if self.isDocumentDeletedInternal(collection: "weightHistory", documentId: entryId) ||
+                   self.hasDeletePendingInternal(collection: "weightHistory", documentId: entryId) ||
+                   self.hasPendingLocalChanges(collection: "weightHistory", documentId: entryId) {
                     continue
                 }
 
@@ -2902,11 +2876,6 @@ final class OfflineDataManager {
             }
 
             self.executeSQL("COMMIT")
-            if skippedCount > 0 {
-                print("[OfflineDataManager] HIGH-8: Imported \(entries.count - skippedCount) weight entries, skipped \(skippedCount) with pending local changes")
-            } else {
-                print("[OfflineDataManager] Imported \(entries.count) weight entries from Firebase")
-            }
         }
     }
 
@@ -2950,6 +2919,340 @@ final class OfflineDataManager {
 
             print("[OfflineDataManager] SECURITY: All user data deleted and vacuumed")
         }
+    }
+}
+
+// MARK: - Async Wrappers (PERFORMANCE FIX)
+//
+// These async methods move SQLite operations OFF the main thread.
+// The original sync methods blocked the main thread causing UI jank during tab switches.
+// Use these async versions in onAppear and other UI-triggering code paths.
+
+extension OfflineDataManager {
+
+    /// Async version of getFoodEntries - runs SQLite query off main thread
+    /// Use this in DiaryTabView.onAppear and other UI code paths
+    func getFoodEntriesAsync(for date: Date, userId: String) async -> [FoodEntry] {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                // Call the internal implementation directly (already inside dbQueue)
+                let entries = self.getFoodEntriesInternal(for: date, userId: userId)
+                continuation.resume(returning: entries)
+            }
+        }
+    }
+
+    /// Internal implementation that runs inside dbQueue - no additional synchronization needed
+    private func getFoodEntriesInternal(for date: Date, userId: String) -> [FoodEntry] {
+        var entries: [FoodEntry] = []
+        guard self.isInitialized else { return entries }
+
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+            return entries
+        }
+
+        let sql = """
+            SELECT * FROM food_entries
+            WHERE user_id = ? AND date >= ? AND date < ? AND sync_status != 'deleted'
+            ORDER BY date_logged ASC
+        """
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, userId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_double(statement, 2, startOfDay.timeIntervalSince1970)
+            sqlite3_bind_double(statement, 3, endOfDay.timeIntervalSince1970)
+
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let entry = self.parseFoodEntryRow(statement) {
+                    entries.append(entry)
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return entries
+    }
+
+    /// Async version of getFoodEntriesForPeriod - runs SQLite query off main thread
+    func getFoodEntriesForPeriodAsync(days: Int, userId: String) async -> [FoodEntry] {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                let entries = self.getFoodEntriesForPeriodInternal(days: days, userId: userId)
+                continuation.resume(returning: entries)
+            }
+        }
+    }
+
+    /// Internal implementation for period query
+    private func getFoodEntriesForPeriodInternal(days: Int, userId: String) -> [FoodEntry] {
+        var entries: [FoodEntry] = []
+        guard self.isInitialized else { return entries }
+
+        let calendar = Calendar.current
+        let today = Date()
+        let startOfToday = calendar.startOfDay(for: today)
+
+        guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)?.addingTimeInterval(-0.001),
+              let startDate = calendar.date(byAdding: .day, value: -days, to: today) else {
+            return entries
+        }
+        let queryStart = calendar.startOfDay(for: startDate)
+
+        let sql = """
+            SELECT * FROM food_entries
+            WHERE user_id = ?
+              AND date >= ?
+              AND date <= ?
+              AND sync_status != 'deleted'
+            ORDER BY date DESC
+        """
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, userId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_double(statement, 2, queryStart.timeIntervalSince1970)
+            sqlite3_bind_double(statement, 3, endOfToday.timeIntervalSince1970)
+
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let entry = self.parseFoodEntryRow(statement) {
+                    entries.append(entry)
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return entries
+    }
+
+    /// Async version of getWeightHistory - runs SQLite query off main thread
+    /// Use this in Progress tab onAppear and ContentView initialization
+    func getWeightHistoryAsync() async -> [WeightEntry] {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                let entries = self.getWeightHistoryInternal()
+                continuation.resume(returning: entries)
+            }
+        }
+    }
+
+    /// Internal implementation for weight history
+    private func getWeightHistoryInternal() -> [WeightEntry] {
+        var entries: [WeightEntry] = []
+        guard self.isInitialized else { return entries }
+
+        let sql = "SELECT * FROM weight_entries WHERE sync_status != 'deleted' ORDER BY date DESC"
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let entry = self.parseWeightEntryRow(statement) {
+                    entries.append(entry)
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return entries
+    }
+
+    /// Async version of getUserSettings - runs SQLite query off main thread
+    /// Use this in ContentView and Progress tab initialization
+    func getUserSettingsAsync() async -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?) {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: (nil, nil, nil, nil, nil, nil, nil, nil, nil))
+                    return
+                }
+                let settings = self.getUserSettingsInternal()
+                continuation.resume(returning: settings)
+            }
+        }
+    }
+
+    /// Internal implementation for user settings
+    private func getUserSettingsInternal() -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?) {
+        var result: (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?) = (nil, nil, nil, nil, nil, nil, nil, nil, nil)
+        guard self.isInitialized else { return result }
+
+        let sql = "SELECT * FROM user_settings WHERE id = 'current'"
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                result.height = sqlite3_column_type(statement, 1) != SQLITE_NULL ? sqlite3_column_double(statement, 1) : nil
+                result.goalWeight = sqlite3_column_type(statement, 2) != SQLITE_NULL ? sqlite3_column_double(statement, 2) : nil
+                result.caloricGoal = sqlite3_column_type(statement, 3) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 3)) : nil
+                result.exerciseGoal = sqlite3_column_type(statement, 4) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 4)) : nil
+                result.stepGoal = sqlite3_column_type(statement, 5) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 5)) : nil
+                result.proteinPercent = sqlite3_column_type(statement, 6) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 6)) : nil
+                result.carbsPercent = sqlite3_column_type(statement, 7) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 7)) : nil
+                result.fatPercent = sqlite3_column_type(statement, 8) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 8)) : nil
+
+                if sqlite3_column_type(statement, 9) != SQLITE_NULL,
+                   let ptr = sqlite3_column_text(statement, 9) {
+                    let json = String(cString: ptr)
+                    if let data = json.data(using: .utf8),
+                       let allergenStrings = try? JSONDecoder().decode([String].self, from: data) {
+                        result.allergens = allergenStrings.compactMap { Allergen(rawValue: $0) }
+                    }
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return result
+    }
+
+    /// Async version of getUseByItems - runs SQLite query off main thread
+    /// Use this in Use By tab onAppear
+    func getUseByItemsAsync() async -> [UseByInventoryItem] {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                let items = self.getUseByItemsInternal()
+                continuation.resume(returning: items)
+            }
+        }
+    }
+
+    /// Internal implementation for Use By items
+    private func getUseByItemsInternal() -> [UseByInventoryItem] {
+        var items: [UseByInventoryItem] = []
+        guard self.isInitialized else { return items }
+
+        let sql = "SELECT * FROM use_by_items WHERE sync_status != 'deleted' ORDER BY expiry_date ASC"
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let item = self.parseUseByItemRow(statement) {
+                    items.append(item)
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return items
+    }
+
+    /// Batched async load for app startup - loads all common data in one background operation
+    /// This is more efficient than multiple async calls for initial app load
+    struct AppStartupData {
+        let weightHistory: [WeightEntry]
+        let settings: (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?)
+    }
+
+    func getAppStartupDataAsync() async -> AppStartupData {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: AppStartupData(
+                        weightHistory: [],
+                        settings: (nil, nil, nil, nil, nil, nil, nil, nil, nil)
+                    ))
+                    return
+                }
+
+                // Load all startup data in a single background operation
+                let weightHistory = self.getWeightHistoryInternal()
+                let settings = self.getUserSettingsInternal()
+
+                continuation.resume(returning: AppStartupData(
+                    weightHistory: weightHistory,
+                    settings: settings
+                ))
+            }
+        }
+    }
+
+    /// Async version of getFastingSessions
+    func getFastingSessionsAsync() async -> [FastingSession] {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                let sessions = self.getFastingSessionsInternal()
+                continuation.resume(returning: sessions)
+            }
+        }
+    }
+
+    /// Internal implementation for fasting sessions
+    private func getFastingSessionsInternal() -> [FastingSession] {
+        var sessions: [FastingSession] = []
+        guard self.isInitialized else { return sessions }
+
+        let sql = "SELECT * FROM fasting_sessions WHERE sync_status != 'deleted' ORDER BY last_modified DESC"
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if sqlite3_column_type(statement, 1) != SQLITE_NULL,
+                   let ptr = sqlite3_column_text(statement, 1) {
+                    let json = String(cString: ptr)
+                    if let data = json.data(using: .utf8),
+                       let session = try? JSONDecoder().decode(FastingSession.self, from: data) {
+                        sessions.append(session)
+                    }
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return sessions
+    }
+
+    /// Async version of getReactionLogs
+    func getReactionLogsAsync() async -> [ReactionLogEntry] {
+        await withCheckedContinuation { continuation in
+            dbQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                let logs = self.getReactionLogsInternal()
+                continuation.resume(returning: logs)
+            }
+        }
+    }
+
+    /// Internal implementation for reaction logs
+    private func getReactionLogsInternal() -> [ReactionLogEntry] {
+        var logs: [ReactionLogEntry] = []
+        guard self.isInitialized else { return logs }
+
+        let sql = "SELECT log_data FROM reaction_logs WHERE sync_status != 'deleted' ORDER BY last_modified DESC"
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if sqlite3_column_type(statement, 0) != SQLITE_NULL,
+                   let ptr = sqlite3_column_text(statement, 0) {
+                    let json = String(cString: ptr)
+                    if let data = json.data(using: .utf8),
+                       let log = try? JSONDecoder().decode(ReactionLogEntry.self, from: data) {
+                        logs.append(log)
+                    }
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return logs
     }
 }
 

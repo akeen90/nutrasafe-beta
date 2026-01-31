@@ -799,8 +799,9 @@ class FirebaseManager: ObservableObject {
         formatter.timeZone = calendar.timeZone
         let dateKey = "\(userId)_\(formatter.string(from: startOfDay))"
 
+        // PERFORMANCE FIX: Use async SQLite access to avoid blocking main thread
         // OFFLINE-FIRST: Always try local SQLite database first for instant response
-        let localEntries = OfflineDataManager.shared.getFoodEntries(for: date, userId: userId)
+        let localEntries = await OfflineDataManager.shared.getFoodEntriesAsync(for: date, userId: userId)
         if !localEntries.isEmpty {
             // Trigger background sync to pull latest from server
             OfflineSyncManager.shared.triggerSync()
@@ -963,8 +964,9 @@ class FirebaseManager: ObservableObject {
             throw AuthStateError.notAuthenticated
         }
 
+        // PERFORMANCE FIX: Use async SQLite access to avoid blocking main thread
         // LOCAL-FIRST FIX: Check SQLite first for instant response
-        let localEntries = OfflineDataManager.shared.getFoodEntriesForPeriod(days: days, userId: userId)
+        let localEntries = await OfflineDataManager.shared.getFoodEntriesForPeriodAsync(days: days, userId: userId)
 
         if !localEntries.isEmpty {
             // Return local data immediately, trigger background sync
@@ -1485,8 +1487,9 @@ class FirebaseManager: ObservableObject {
 
     /// Get all reaction logs for a user
     func getReactionLogs(userId: String) async throws -> [ReactionLogEntry] {
+        // PERFORMANCE FIX: Use async SQLite access to avoid blocking main thread
         // OFFLINE-FIRST: Try local SQLite database first for instant response
-        let localLogs = OfflineDataManager.shared.getReactionLogs()
+        let localLogs = await OfflineDataManager.shared.getReactionLogsAsync()
         if !localLogs.isEmpty {
             // Trigger background sync to get latest from server
             OfflineSyncManager.shared.triggerSync()
@@ -1622,8 +1625,9 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view use by items"])
         }
 
+        // PERFORMANCE FIX: Use async SQLite access to avoid blocking main thread
         // OFFLINE-FIRST: Try local SQLite database first for instant response
-        let localItems = OfflineDataManager.shared.getUseByItems()
+        let localItems = await OfflineDataManager.shared.getUseByItemsAsync()
         if !localItems.isEmpty {
             // Trigger background sync to get latest from server
             OfflineSyncManager.shared.triggerSync()
@@ -2169,9 +2173,10 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view weight history"])
         }
 
+        // PERFORMANCE FIX: Use async SQLite access to avoid blocking main thread
         // OFFLINE-FIRST: Always return local data immediately
         // This ensures UI renders instantly even when offline
-        let localEntries = OfflineDataManager.shared.getWeightHistory()
+        let localEntries = await OfflineDataManager.shared.getWeightHistoryAsync()
 
         // If we have local data, return it immediately and sync in background
         if !localEntries.isEmpty {
@@ -2468,8 +2473,9 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view settings"])
         }
 
+        // PERFORMANCE FIX: Use async SQLite access to avoid blocking main thread
         // OFFLINE-FIRST: Always check local SQLite first
-        let localSettings = OfflineDataManager.shared.getUserSettings()
+        let localSettings = await OfflineDataManager.shared.getUserSettingsAsync()
         let hasLocalData = localSettings.height != nil || localSettings.goalWeight != nil ||
                           localSettings.caloricGoal != nil || localSettings.allergens != nil
 
@@ -4196,4 +4202,115 @@ struct IngredientResult: Codable {
     let ingredients_found: Bool
     let ingredients_text: String?
     let source_url: String?
+}
+
+// MARK: - Deleted Foods Sync
+
+/// Response from getDeletedFoods endpoint
+struct DeletedFoodInfo: Codable {
+    let objectID: String
+    let barcode: String?
+    let deletedAt: String?
+}
+
+extension FirebaseManager {
+    /// UserDefaults key for tracking last deletion sync timestamp
+    private static let lastDeletionSyncKey = "com.nutrasafe.lastDeletionSyncTimestamp"
+
+    /// Get timestamp of last deletion sync
+    var lastDeletionSyncTimestamp: Date? {
+        get { UserDefaults.standard.object(forKey: Self.lastDeletionSyncKey) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Self.lastDeletionSyncKey) }
+    }
+
+    /// Fetch deleted food IDs from Firebase since the last sync
+    /// - Parameter since: Optional timestamp to fetch deletions since (defaults to last sync time)
+    /// - Returns: Array of deleted food info including objectID and barcode
+    func getDeletedFoods(since: Date? = nil) async throws -> [DeletedFoodInfo] {
+        let sinceDate = since ?? lastDeletionSyncTimestamp
+
+        var urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/getDeletedFoods"
+
+        if let sinceDate = sinceDate {
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let sinceString = isoFormatter.string(from: sinceDate)
+            urlString += "?since=\(sinceString)"
+        }
+
+        guard let url = URL(string: urlString) else {
+            throw NSError(domain: "Invalid URL", code: -1)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "Invalid Response", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from server"])
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw NSError(domain: "Server Error", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server returned error code \(httpResponse.statusCode)"])
+        }
+
+        // Parse response
+        struct DeletedFoodsResponse: Codable {
+            let success: Bool
+            let count: Int
+            let deletedFoods: [DeletedFoodInfo]
+        }
+
+        let decoder = JSONDecoder()
+        let result = try decoder.decode(DeletedFoodsResponse.self, from: data)
+
+        // Update last sync timestamp
+        lastDeletionSyncTimestamp = Date()
+
+        return result.deletedFoods
+    }
+
+    /// Sync deleted foods from server to local database
+    /// - Returns: Number of foods deleted from local database
+    @discardableResult
+    func syncDeletedFoodsToLocal() async throws -> Int {
+        let deletedFoods = try await getDeletedFoods()
+
+        guard !deletedFoods.isEmpty else {
+            print("[FirebaseManager] No deleted foods to sync")
+            return 0
+        }
+
+        print("[FirebaseManager] Syncing \(deletedFoods.count) deleted foods to local database")
+
+        var deletedCount = 0
+
+        for deletedFood in deletedFoods {
+            // Try to delete by barcode first (more comprehensive)
+            if let barcode = deletedFood.barcode, !barcode.isEmpty {
+                if LocalDatabaseManager.shared.deleteFood(byBarcode: barcode) {
+                    deletedCount += 1
+                    continue
+                }
+            }
+
+            // Fallback to deleting by objectID
+            if LocalDatabaseManager.shared.deleteFood(byId: deletedFood.objectID) {
+                deletedCount += 1
+            }
+        }
+
+        print("[FirebaseManager] Deleted \(deletedCount) foods from local database")
+
+        // Post notification so UI can refresh if needed
+        if deletedCount > 0 {
+            await MainActor.run {
+                NotificationCenter.default.post(name: .localDatabaseUpdated, object: nil)
+            }
+        }
+
+        return deletedCount
+    }
 }
