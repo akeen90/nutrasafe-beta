@@ -129,6 +129,87 @@ struct SyncStatusView: View {
                     }
                 }
 
+                // P2-3: Sync Conflicts Section (when local and server data diverge)
+                if viewModel.conflictCount > 0 {
+                    Section {
+                        HStack {
+                            Label("Data Conflicts", systemImage: "arrow.triangle.branch")
+                                .foregroundColor(.orange)
+                            Spacer()
+                            Text("\(viewModel.conflictCount)")
+                                .foregroundColor(.orange)
+                                .fontWeight(.semibold)
+                        }
+
+                        ForEach(viewModel.conflicts) { conflict in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text(conflict.description)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                    Text("v\(conflict.localVersion) vs v\(conflict.serverVersion)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Text("Detected \(conflict.detectedAt.formatted(.relative(presentation: .named)))")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+
+                                // Resolution buttons
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        viewModel.resolveConflict(conflict, keepLocal: true)
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "iphone")
+                                            Text("Keep Local")
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.1))
+                                        .foregroundColor(.blue)
+                                        .cornerRadius(8)
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button(action: {
+                                        viewModel.resolveConflict(conflict, keepLocal: false)
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "cloud")
+                                            Text("Keep Server")
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.green.opacity(0.1))
+                                        .foregroundColor(.green)
+                                        .cornerRadius(8)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.top, 4)
+                            }
+                            .padding(.vertical, 4)
+                        }
+
+                        if viewModel.conflictCount > 1 {
+                            Button("Keep All Local", action: viewModel.resolveAllKeepLocal)
+                                .foregroundColor(.blue)
+
+                            Button("Keep All Server", action: viewModel.resolveAllKeepServer)
+                                .foregroundColor(.green)
+                        }
+                    } header: {
+                        Text("Data Conflicts")
+                    } footer: {
+                        Text("Your data was changed on another device. Choose which version to keep.")
+                    }
+                }
+
                 // Actions Section
                 Section {
                     Button(action: {
@@ -201,9 +282,13 @@ class SyncStatusViewModel: ObservableObject {
     @Published var failedCount: Int = 0
     @Published var failedOperations: [FailedSyncOperation] = []
     @Published var lastSyncTime: String?
+    // P2-3: Conflict tracking
+    @Published var conflictCount: Int = 0
+    @Published var conflicts: [SyncConflict] = []
 
     private var syncObserver: NSObjectProtocol?
     private var failedObserver: NSObjectProtocol?
+    private var conflictObserver: NSObjectProtocol?
 
     func startObserving() {
         refresh()
@@ -231,6 +316,17 @@ class SyncStatusViewModel: ObservableObject {
                 }
             }
         }
+
+        // P2-3: Observe conflict detection
+        conflictObserver = NotificationCenter.default.addObserver(
+            forName: .offlineSyncConflictDetected,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refresh()
+            }
+        }
     }
 
     func stopObserving() {
@@ -238,6 +334,9 @@ class SyncStatusViewModel: ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = failedObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = conflictObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -254,6 +353,10 @@ class SyncStatusViewModel: ObservableObject {
 
         failedOperations = OfflineDataManager.shared.getFailedOperations()
         failedCount = failedOperations.count
+
+        // P2-3: Load conflicts
+        conflicts = OfflineDataManager.shared.getUnresolvedConflicts()
+        conflictCount = conflicts.count
     }
 
     var syncStatusDescription: String {
@@ -338,6 +441,52 @@ class SyncStatusViewModel: ObservableObject {
     func discardAllFailed() {
         OfflineDataManager.shared.clearAllFailedOperations()
         refresh()
+    }
+
+    // P2-3: Conflict resolution methods
+
+    func resolveConflict(_ conflict: SyncConflict, keepLocal: Bool) {
+        OfflineDataManager.shared.resolveConflictWithChoice(
+            collection: conflict.collection,
+            documentId: conflict.documentId,
+            keepLocal: keepLocal
+        )
+        // Brief delay then refresh and trigger sync if keeping local
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.refresh()
+            if keepLocal && self.isConnected {
+                OfflineSyncManager.shared.triggerSync()
+            }
+        }
+    }
+
+    func resolveAllKeepLocal() {
+        for conflict in conflicts {
+            OfflineDataManager.shared.resolveConflictWithChoice(
+                collection: conflict.collection,
+                documentId: conflict.documentId,
+                keepLocal: true
+            )
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.refresh()
+            if self.isConnected {
+                OfflineSyncManager.shared.triggerSync()
+            }
+        }
+    }
+
+    func resolveAllKeepServer() {
+        for conflict in conflicts {
+            OfflineDataManager.shared.resolveConflictWithChoice(
+                collection: conflict.collection,
+                documentId: conflict.documentId,
+                keepLocal: false
+            )
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.refresh()
+        }
     }
 }
 

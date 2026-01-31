@@ -200,6 +200,21 @@ class BackgroundTaskManager {
 
             guard !Task.isCancelled else { return }
 
+            // P2-2: Auto-retry failed operations that have been stuck for > 1 hour
+            // This ensures data doesn't get permanently stuck if user never opens Settings
+            let failedOps = OfflineDataManager.shared.getFailedOperations()
+            let oneHourAgo = Date().addingTimeInterval(-3600)
+            let staleOps = failedOps.filter { $0.failedAt < oneHourAgo }
+
+            if !staleOps.isEmpty {
+                print("[BackgroundTask] Requeuing \(staleOps.count) stale failed operations")
+                for op in staleOps {
+                    OfflineDataManager.shared.retryFailedOperation(id: op.id)
+                }
+            }
+
+            guard !Task.isCancelled else { return }
+
             // Force a food database sync (server -> client)
             await DatabaseSyncManager.shared.forceSync()
 
@@ -208,6 +223,11 @@ class BackgroundTaskManager {
             // Force an offline data sync (client -> server)
             // This pushes any pending user-generated data to Firebase
             await OfflineSyncManager.shared.forceSync()
+
+            guard !Task.isCancelled else { return }
+
+            // P2-1: Process any pending AI scans
+            AIScanQueueManager.shared.processQueueIfNeeded()
 
             print("[BackgroundTask] Database sync completed successfully")
             markComplete(success: true)

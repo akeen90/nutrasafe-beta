@@ -105,6 +105,66 @@ struct FailedSyncOperation: Identifiable {
     }
 }
 
+// P2-1: Pending AI Scan - queued when user takes photo while offline
+struct PendingAIScan: Identifiable {
+    let id: String
+    let imageData: Data
+    let mealType: String?
+    let targetDate: Date?
+    let createdAt: Date
+    var retryCount: Int
+    var lastError: String?
+
+    init(imageData: Data, mealType: String? = nil, targetDate: Date? = nil) {
+        self.id = UUID().uuidString
+        self.imageData = imageData
+        self.mealType = mealType
+        self.targetDate = targetDate
+        self.createdAt = Date()
+        self.retryCount = 0
+        self.lastError = nil
+    }
+
+    init(id: String, imageData: Data, mealType: String?, targetDate: Date?, createdAt: Date, retryCount: Int, lastError: String?) {
+        self.id = id
+        self.imageData = imageData
+        self.mealType = mealType
+        self.targetDate = targetDate
+        self.createdAt = createdAt
+        self.retryCount = retryCount
+        self.lastError = lastError
+    }
+}
+
+// P2-3: Sync Conflict - when local and server data diverge
+struct SyncConflict: Identifiable {
+    let id: String
+    let collection: String
+    let documentId: String
+    let localData: Data?
+    let serverData: Data?
+    let localVersion: Int
+    let serverVersion: Int
+    let detectedAt: Date
+    var isResolved: Bool
+
+    /// Human-readable description of the conflict
+    var description: String {
+        let target: String
+        switch collection {
+        case "foodEntries": target = "food diary entry"
+        case "useByInventory": target = "use-by item"
+        case "weightHistory": target = "weight entry"
+        case "fastingSessions": target = "fasting session"
+        case "fastingPlans": target = "fasting plan"
+        case "reactionLogs": target = "reaction log"
+        case "favoriteFoods": target = "favorite food"
+        default: target = collection
+        }
+        return "Conflict in \(target)"
+    }
+}
+
 // MARK: - Offline Data Manager
 
 /// Manages offline-first storage for all user-generated data
@@ -497,6 +557,19 @@ final class OfflineDataManager: @unchecked Sendable {
         """)
 
         executeSQL("CREATE INDEX IF NOT EXISTS idx_failed_ops_collection ON failed_operations(collection)")
+
+        // P2-1: Pending AI scans table - queues photos for AI analysis when offline
+        executeSQL("""
+            CREATE TABLE IF NOT EXISTS pending_ai_scans (
+                id TEXT PRIMARY KEY,
+                image_data BLOB NOT NULL,
+                meal_type TEXT,
+                target_date REAL,
+                created_at REAL NOT NULL,
+                retry_count INTEGER DEFAULT 0,
+                last_error TEXT
+            )
+        """)
 
         print("[OfflineDataManager] Tables created successfully")
     }
@@ -2364,6 +2437,172 @@ final class OfflineDataManager: @unchecked Sendable {
         }
     }
 
+    /// Get list of unresolved conflicts for UI display
+    func getUnresolvedConflicts() -> [SyncConflict] {
+        var conflicts: [SyncConflict] = []
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = """
+                SELECT id, collection, document_id, local_data, server_data, local_version, server_version, detected_at, resolved
+                FROM sync_conflicts WHERE resolved = 0 ORDER BY detected_at DESC
+            """
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    // P1-FIX: Safe extraction of text columns with NULL protection
+                    guard let idPtr = sqlite3_column_text(statement, 0),
+                          let collectionPtr = sqlite3_column_text(statement, 1),
+                          let docIdPtr = sqlite3_column_text(statement, 2) else {
+                        continue
+                    }
+
+                    let id = String(cString: idPtr)
+                    let collection = String(cString: collectionPtr)
+                    let documentId = String(cString: docIdPtr)
+
+                    // Extract optional blob data
+                    var localData: Data? = nil
+                    if sqlite3_column_type(statement, 3) != SQLITE_NULL {
+                        let localBytes = sqlite3_column_blob(statement, 3)
+                        let localLen = sqlite3_column_bytes(statement, 3)
+                        if let bytes = localBytes, localLen > 0 {
+                            localData = Data(bytes: bytes, count: Int(localLen))
+                        }
+                    }
+
+                    var serverData: Data? = nil
+                    if sqlite3_column_type(statement, 4) != SQLITE_NULL {
+                        let serverBytes = sqlite3_column_blob(statement, 4)
+                        let serverLen = sqlite3_column_bytes(statement, 4)
+                        if let bytes = serverBytes, serverLen > 0 {
+                            serverData = Data(bytes: bytes, count: Int(serverLen))
+                        }
+                    }
+
+                    let localVersion = Int(sqlite3_column_int(statement, 5))
+                    let serverVersion = Int(sqlite3_column_int(statement, 6))
+                    let detectedAt = Date(timeIntervalSince1970: sqlite3_column_double(statement, 7))
+                    let isResolved = sqlite3_column_int(statement, 8) == 1
+
+                    let conflict = SyncConflict(
+                        id: id,
+                        collection: collection,
+                        documentId: documentId,
+                        localData: localData,
+                        serverData: serverData,
+                        localVersion: localVersion,
+                        serverVersion: serverVersion,
+                        detectedAt: detectedAt,
+                        isResolved: isResolved
+                    )
+                    conflicts.append(conflict)
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return conflicts
+    }
+
+    /// Resolve a conflict by choosing which version to keep
+    /// If keepLocal is true, the local version is pushed to server
+    /// If keepLocal is false, the server version overwrites local
+    func resolveConflictWithChoice(collection: String, documentId: String, keepLocal: Bool) {
+        let conflictId = "\(collection)_\(documentId)"
+
+        // First get the conflict data
+        var localData: Data? = nil
+        var serverData: Data? = nil
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "SELECT local_data, server_data FROM sync_conflicts WHERE id = ?"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, conflictId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    if sqlite3_column_type(statement, 0) != SQLITE_NULL {
+                        let localBytes = sqlite3_column_blob(statement, 0)
+                        let localLen = sqlite3_column_bytes(statement, 0)
+                        if let bytes = localBytes, localLen > 0 {
+                            localData = Data(bytes: bytes, count: Int(localLen))
+                        }
+                    }
+                    if sqlite3_column_type(statement, 1) != SQLITE_NULL {
+                        let serverBytes = sqlite3_column_blob(statement, 1)
+                        let serverLen = sqlite3_column_bytes(statement, 1)
+                        if let bytes = serverBytes, serverLen > 0 {
+                            serverData = Data(bytes: bytes, count: Int(serverLen))
+                        }
+                    }
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        if keepLocal {
+            // Queue the local data to be pushed to server
+            if let data = localData {
+                addToSyncQueueRaw(type: .update, collection: collection, documentId: documentId, data: data)
+                print("[OfflineDataManager] P2-3: Resolved conflict for \(collection)/\(documentId) - keeping local, queued for sync")
+            }
+        } else {
+            // Apply server data to local storage
+            if let data = serverData {
+                // Update local record with server data
+                applyServerDataToLocal(collection: collection, documentId: documentId, data: data)
+                print("[OfflineDataManager] P2-3: Resolved conflict for \(collection)/\(documentId) - keeping server, applied locally")
+            }
+        }
+
+        // Mark conflict as resolved
+        resolveConflict(collection: collection, documentId: documentId)
+    }
+
+    /// Apply server data to local storage (used when resolving conflict by keeping server version)
+    private func applyServerDataToLocal(collection: String, documentId: String, data: Data) {
+        // The implementation depends on the collection type
+        // For now, we update the generic data column in the appropriate table
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            // Map collection to table name
+            let tableName: String
+            switch collection {
+            case "foodEntries": tableName = "food_entries"
+            case "useByInventory": tableName = "use_by_items"
+            case "weightHistory": tableName = "weight_entries"
+            case "fastingSessions": tableName = "fasting_sessions"
+            case "fastingPlans": tableName = "fasting_plans"
+            case "reactionLogs": tableName = "reaction_logs"
+            case "favoriteFoods": tableName = "favorite_foods"
+            default:
+                print("[OfflineDataManager] P2-3: Unknown collection \(collection) - cannot apply server data")
+                return
+            }
+
+            // Update the record with server data and mark as synced
+            let sql = "UPDATE \(tableName) SET data = ?, sync_status = 'synced', version = version + 1 WHERE document_id = ?"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_blob(statement, 1, (data as NSData).bytes, Int32(data.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_text(statement, 2, documentId, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                if sqlite3_step(statement) == SQLITE_DONE {
+                    print("[OfflineDataManager] P2-3: Applied server data to \(tableName)/\(documentId)")
+                } else {
+                    print("[OfflineDataManager] P2-3: Failed to apply server data: \(String(cString: sqlite3_errmsg(self.db)))")
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+
     // MARK: - Failed Operations Management
 
     /// Move a failed operation to the failed_operations table for later retry
@@ -2579,6 +2818,181 @@ final class OfflineDataManager: @unchecked Sendable {
         dbQueue.async {
             guard self.isInitialized else { return }
             self.executeSQL("DELETE FROM failed_operations")
+        }
+    }
+
+    // MARK: - Pending AI Scans (P2-1)
+
+    /// Save a photo for AI analysis when offline
+    func savePendingAIScan(_ scan: PendingAIScan) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            let sql = """
+                INSERT OR REPLACE INTO pending_ai_scans (id, image_data, meal_type, target_date, created_at, retry_count, last_error)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, scan.id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_bind_blob(statement, 2, (scan.imageData as NSData).bytes, Int32(scan.imageData.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+
+                if let mealType = scan.mealType {
+                    sqlite3_bind_text(statement, 3, mealType, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(statement, 3)
+                }
+
+                if let targetDate = scan.targetDate {
+                    sqlite3_bind_double(statement, 4, targetDate.timeIntervalSince1970)
+                } else {
+                    sqlite3_bind_null(statement, 4)
+                }
+
+                sqlite3_bind_double(statement, 5, scan.createdAt.timeIntervalSince1970)
+                sqlite3_bind_int(statement, 6, Int32(scan.retryCount))
+
+                if let lastError = scan.lastError {
+                    sqlite3_bind_text(statement, 7, lastError, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(statement, 7)
+                }
+
+                if sqlite3_step(statement) != SQLITE_DONE {
+                    print("[OfflineDataManager] Failed to save pending AI scan: \(String(cString: sqlite3_errmsg(self.db)))")
+                }
+                sqlite3_finalize(statement)
+            }
+
+            // Notify that there's a pending scan
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .pendingAIScanAdded, object: nil)
+            }
+        }
+    }
+
+    /// Get all pending AI scans
+    func getPendingAIScans() -> [PendingAIScan] {
+        var scans: [PendingAIScan] = []
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "SELECT id, image_data, meal_type, target_date, created_at, retry_count, last_error FROM pending_ai_scans ORDER BY created_at ASC"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    guard let idPtr = sqlite3_column_text(statement, 0) else { continue }
+                    let id = String(cString: idPtr)
+
+                    guard let imageBytes = sqlite3_column_blob(statement, 1) else { continue }
+                    let imageLength = sqlite3_column_bytes(statement, 1)
+                    let imageData = Data(bytes: imageBytes, count: Int(imageLength))
+
+                    var mealType: String? = nil
+                    if sqlite3_column_type(statement, 2) != SQLITE_NULL,
+                       let mealTypePtr = sqlite3_column_text(statement, 2) {
+                        mealType = String(cString: mealTypePtr)
+                    }
+
+                    var targetDate: Date? = nil
+                    if sqlite3_column_type(statement, 3) != SQLITE_NULL {
+                        targetDate = Date(timeIntervalSince1970: sqlite3_column_double(statement, 3))
+                    }
+
+                    let createdAt = Date(timeIntervalSince1970: sqlite3_column_double(statement, 4))
+                    let retryCount = Int(sqlite3_column_int(statement, 5))
+
+                    var lastError: String? = nil
+                    if sqlite3_column_type(statement, 6) != SQLITE_NULL,
+                       let errorPtr = sqlite3_column_text(statement, 6) {
+                        lastError = String(cString: errorPtr)
+                    }
+
+                    let scan = PendingAIScan(
+                        id: id,
+                        imageData: imageData,
+                        mealType: mealType,
+                        targetDate: targetDate,
+                        createdAt: createdAt,
+                        retryCount: retryCount,
+                        lastError: lastError
+                    )
+                    scans.append(scan)
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return scans
+    }
+
+    /// Get count of pending AI scans
+    func getPendingAIScansCount() -> Int {
+        var count = 0
+
+        dbQueue.sync {
+            guard self.isInitialized else { return }
+
+            let sql = "SELECT COUNT(*) FROM pending_ai_scans"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    count = Int(sqlite3_column_int(statement, 0))
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+
+        return count
+    }
+
+    /// Remove a pending AI scan after successful processing
+    func removePendingAIScan(id: String) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            let sql = "DELETE FROM pending_ai_scans WHERE id = ?"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+
+    /// Update retry count and error for a pending scan
+    func updatePendingAIScan(id: String, retryCount: Int, lastError: String?) {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+
+            let sql = "UPDATE pending_ai_scans SET retry_count = ?, last_error = ? WHERE id = ?"
+
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_int(statement, 1, Int32(retryCount))
+                if let error = lastError {
+                    sqlite3_bind_text(statement, 2, error, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                } else {
+                    sqlite3_bind_null(statement, 2)
+                }
+                sqlite3_bind_text(statement, 3, id, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+
+    /// Clear all pending AI scans
+    func clearAllPendingAIScans() {
+        dbQueue.async {
+            guard self.isInitialized else { return }
+            self.executeSQL("DELETE FROM pending_ai_scans")
         }
     }
 
@@ -3295,4 +3709,6 @@ extension OfflineDataManager {
 
 extension Notification.Name {
     static let offlineDataPendingSync = Notification.Name("offlineDataPendingSync")
+    static let pendingAIScanAdded = Notification.Name("pendingAIScanAdded")
+    static let pendingAIScansProcessed = Notification.Name("pendingAIScansProcessed")
 }

@@ -189,6 +189,11 @@ struct NutraSafeBetaApp: App {
         OfflineDataManager.shared.initialize()
         print("🚀 App Init: Offline data manager initialized")
 
+        // P2-1: Initialize AI scan queue manager for offline photo processing
+        // This starts network monitoring and will process pending scans when online
+        _ = AIScanQueueManager.shared
+        print("🚀 App Init: AI scan queue manager initialized")
+
         // CRIT-1 FIX: Check if app was terminated with pending sync operations
         // The flag is set in applicationWillTerminate but was never consumed
         if UserDefaults.standard.bool(forKey: "pendingSyncOnNextLaunch") {

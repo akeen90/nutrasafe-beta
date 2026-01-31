@@ -30,6 +30,7 @@ struct AddFoodAIView: View {
     @State private var hasLaunchedCamera = false  // Prevents re-launching camera on state changes
     @State private var errorMessage: String?  // Shows errors to user
     @State private var showingGalleryPicker = false  // For photo library selection
+    @State private var showPendingScanQueued = false  // P2-1: Shows when photo queued for offline processing
     // Pro feature gate for non-subscribers
     @State private var showingProFeatureGate = false
     @State private var capturedImageForGate: UIImage?
@@ -412,56 +413,77 @@ struct AddFoodAIView: View {
                                             }
                 }
             } catch let error as NSError {
-                await MainActor.run {
-                    self.isScanning = false
-                    self.hasLaunchedCamera = false
+                // P2-1: Check if this is a network error that should queue the scan
+                let isNetworkError = error.domain == NSURLErrorDomain && [
+                    NSURLErrorNotConnectedToInternet,
+                    NSURLErrorCannotConnectToHost,
+                    NSURLErrorNetworkConnectionLost,
+                    NSURLErrorTimedOut,
+                    NSURLErrorDNSLookupFailed
+                ].contains(error.code)
 
-                    // Build diagnostic info for error message
-                    let diagInfo = "[\(error.domain):\(error.code)]"
+                if isNetworkError, let imageData = image.jpegData(compressionQuality: 0.8) {
+                    // Queue the scan for later processing
+                    let pendingScan = PendingAIScan(imageData: imageData)
+                    OfflineDataManager.shared.savePendingAIScan(pendingScan)
 
-                    // Provide user-friendly error messages based on domain and code
-                    if error.domain == NSURLErrorDomain {
-                        switch error.code {
-                        case NSURLErrorTimedOut:
-                            self.errorMessage = "Request timed out \(diagInfo). Check connection."
-                        case NSURLErrorNotConnectedToInternet:
-                            self.errorMessage = "No internet connection \(diagInfo)."
-                        case NSURLErrorCannotConnectToHost:
-                            self.errorMessage = "Cannot reach server \(diagInfo)."
-                        case NSURLErrorNetworkConnectionLost:
-                            self.errorMessage = "Connection lost during upload \(diagInfo)."
-                        case NSURLErrorSecureConnectionFailed:
-                            self.errorMessage = "Secure connection failed \(diagInfo)."
-                        default:
-                            self.errorMessage = "Network error \(diagInfo). Check connection."
-                        }
-                    } else if error.domain == "AddFoodAIView" {
-                        // Custom errors from our code - show detailed message
-                        let detail = error.userInfo[NSLocalizedDescriptionKey] as? String ?? ""
-                        switch error.code {
-                        case -2:
-                            // Show the detailed parse error
-                            self.errorMessage = detail.isEmpty ? "Failed to parse response \(diagInfo)." : detail
-                        case -1:
-                            self.errorMessage = "Invalid response \(diagInfo)."
-                        case 400...499:
-                            self.errorMessage = "Request error \(diagInfo). Try different photo."
-                        case 500...599:
+                    await MainActor.run {
+                        self.isScanning = false
+                        self.hasLaunchedCamera = false
+                        self.errorMessage = "Photo saved for analysis when online. You'll be notified when complete."
+                        self.showPendingScanQueued = true
+                    }
+                } else {
+                    await MainActor.run {
+                        self.isScanning = false
+                        self.hasLaunchedCamera = false
+
+                        // Build diagnostic info for error message
+                        let diagInfo = "[\(error.domain):\(error.code)]"
+
+                        // Provide user-friendly error messages based on domain and code
+                        if error.domain == NSURLErrorDomain {
+                            switch error.code {
+                            case NSURLErrorTimedOut:
+                                self.errorMessage = "Request timed out \(diagInfo). Check connection."
+                            case NSURLErrorNotConnectedToInternet:
+                                self.errorMessage = "No internet connection \(diagInfo)."
+                            case NSURLErrorCannotConnectToHost:
+                                self.errorMessage = "Cannot reach server \(diagInfo)."
+                            case NSURLErrorNetworkConnectionLost:
+                                self.errorMessage = "Connection lost during upload \(diagInfo)."
+                            case NSURLErrorSecureConnectionFailed:
+                                self.errorMessage = "Secure connection failed \(diagInfo)."
+                            default:
+                                self.errorMessage = "Network error \(diagInfo). Check connection."
+                            }
+                        } else if error.domain == "AddFoodAIView" {
+                            // Custom errors from our code - show detailed message
+                            let detail = error.userInfo[NSLocalizedDescriptionKey] as? String ?? ""
+                            switch error.code {
+                            case -2:
+                                // Show the detailed parse error
+                                self.errorMessage = detail.isEmpty ? "Failed to parse response \(diagInfo)." : detail
+                            case -1:
+                                self.errorMessage = "Invalid response \(diagInfo)."
+                            case 400...499:
+                                self.errorMessage = "Request error \(diagInfo). Try different photo."
+                            case 500...599:
+                                self.errorMessage = "Server error \(diagInfo). Try again."
+                            default:
+                                self.errorMessage = "Analysis failed \(diagInfo)."
+                            }
+                        } else if error.domain == "ImageError" {
+                            self.errorMessage = "Image processing failed \(diagInfo)."
+                        } else if error.code >= 500 {
                             self.errorMessage = "Server error \(diagInfo). Try again."
-                        default:
+                        } else if error.code >= 400 {
+                            self.errorMessage = "Request error \(diagInfo). Try different photo."
+                        } else {
                             self.errorMessage = "Analysis failed \(diagInfo)."
                         }
-                    } else if error.domain == "ImageError" {
-                        self.errorMessage = "Image processing failed \(diagInfo)."
-                    } else if error.code >= 500 {
-                        self.errorMessage = "Server error \(diagInfo). Try again."
-                    } else if error.code >= 400 {
-                        self.errorMessage = "Request error \(diagInfo). Try different photo."
-                    } else {
-                        self.errorMessage = "Analysis failed \(diagInfo)."
                     }
-
-                    }
+                }
             }
         }
     }

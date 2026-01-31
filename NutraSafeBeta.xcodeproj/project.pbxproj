@@ -153,6 +153,7 @@
 		NUTRASAFEDB001BUILD /* nutrasafe_foods.sqlite in Resources */ = {isa = PBXBuildFile; fileRef = NUTRASAFEDB001FILE /* nutrasafe_foods.sqlite */; };
 		OFFLINEDATAMGR01BLD /* OfflineDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = OFFLINEDATAMGR01REF /* OfflineDataManager.swift */; };
 		OFFLINESYNCMGR01BLD /* OfflineSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = OFFLINESYNCMGR01REF /* OfflineSyncManager.swift */; };
+		AISCANQUEUEMGR01BLD /* AIScanQueueManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AISCANQUEUEMGR01REF /* AIScanQueueManager.swift */; };
 		ONBMGR0001BUILD /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBMGR0001FILE /* OnboardingManager.swift */; };
 		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
 		SYNCSTATUSVIEWBLD /* SyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SYNCSTATUSVIEWREF /* SyncStatusView.swift */; };
@@ -331,6 +332,7 @@
 		NUTRASAFEDB001FILE /* nutrasafe_foods.sqlite */ = {isa = PBXFileReference; lastKnownFileType = file; path = nutrasafe_foods.sqlite; sourceTree = "<group>"; };
 		OFFLINEDATAMGR01REF /* OfflineDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDataManager.swift; sourceTree = "<group>"; };
 		OFFLINESYNCMGR01REF /* OfflineSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSyncManager.swift; sourceTree = "<group>"; };
+		AISCANQUEUEMGR01REF /* AIScanQueueManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIScanQueueManager.swift; sourceTree = "<group>"; };
 		ONBMGR0001FILE /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		PAYWALL0001FILE /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		PREMWRAP001FILE /* PremiumFeatureWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumFeatureWrapper.swift; sourceTree = "<group>"; };
@@ -581,6 +583,7 @@
 				MIGRMGR001FILE /* MigrationManager.swift */,
 				OFFLINEDATAMGR01REF /* OfflineDataManager.swift */,
 				OFFLINESYNCMGR01REF /* OfflineSyncManager.swift */,
+				AISCANQUEUEMGR01REF /* AIScanQueueManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -860,6 +863,7 @@
 				BGTASKMGR001BLD /* BackgroundTaskManager.swift in Sources */,
 				OFFLINEDATAMGR01BLD /* OfflineDataManager.swift in Sources */,
 				OFFLINESYNCMGR01BLD /* OfflineSyncManager.swift in Sources */,
+				AISCANQUEUEMGR01BLD /* AIScanQueueManager.swift in Sources */,
 				DEBOUNCER001BLD /* Utilities/Debouncer.swift in Sources */,
 				B9E69A3D4385429DA8CB3239 /* FastingEarlyEndViews.swift in Sources */,
 				42B4CA708B0E403EAFFD2EED /* NutrientCacheActor.swift in Sources */,
