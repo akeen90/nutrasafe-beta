@@ -17,40 +17,88 @@ class ReactionLogManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var showError = false
 
-    private init() {}
+    private init() {
+        // OFFLINE-FIRST: Load from local SQLite immediately on init
+        // This ensures reaction logs are visible on app launch even when offline
+        loadFromLocalStorage()
+    }
+
+    // MARK: - Local Storage (Offline-First)
+
+    /// Load reaction logs from local SQLite database (instant, no network)
+    private func loadFromLocalStorage() {
+        let localLogs = OfflineDataManager.shared.getReactionLogs()
+        if !localLogs.isEmpty {
+            self.reactionLogs = localLogs.sorted { $0.reactionDate > $1.reactionDate }
+            #if DEBUG
+            print("[ReactionLogManager] OFFLINE-FIRST: Loaded \(localLogs.count) reactions from local storage")
+            #endif
+        }
+    }
 
     // MARK: - Load Reaction Logs
 
     func loadReactionLogs() async {
+        #if DEBUG
         print("🔄 [ReactionLogManager] loadReactionLogs called")
+        #endif
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
+            #if DEBUG
             print("🔴 [ReactionLogManager] loadReactionLogs: User not authenticated")
+            #endif
             errorMessage = "You must be signed in to view reaction logs"
             showError = true
             return
         }
 
-        isLoading = true
+        // OFFLINE-FIRST: Check if we have local data
+        let localLogs = OfflineDataManager.shared.getReactionLogs()
+        let hasLocalData = !localLogs.isEmpty
+
+        // If we have local data, display it immediately (no spinner)
+        if hasLocalData {
+            self.reactionLogs = localLogs.sorted { $0.reactionDate > $1.reactionDate }
+            #if DEBUG
+            print("[ReactionLogManager] OFFLINE-FIRST: Displaying \(localLogs.count) cached reactions")
+            #endif
+        }
+
+        // Only show loading spinner if we have NO local data (first launch scenario)
+        if !hasLocalData {
+            isLoading = true
+        }
         errorMessage = nil
         showError = false
-        defer { isLoading = false }
 
         do {
-            reactionLogs = try await FirebaseManager.shared.getReactionLogs(userId: userId)
+            let serverLogs = try await FirebaseManager.shared.getReactionLogs(userId: userId)
+            reactionLogs = serverLogs.sorted { $0.reactionDate > $1.reactionDate }
+            #if DEBUG
             print("✅ [ReactionLogManager] loadReactionLogs complete. Loaded \(reactionLogs.count) reactions")
+            #endif
         } catch {
-            
-            // Provide user-friendly error message
-            if let urlError = error as? URLError {
-                if urlError.code == .notConnectedToInternet {
-                    errorMessage = "Unable to load reaction logs. Please check your internet connection."
+            // Network error - but if we have local data, don't show error
+            // Only show error if we have NO data at all
+            if !hasLocalData {
+                if let urlError = error as? URLError {
+                    if urlError.code == .notConnectedToInternet {
+                        errorMessage = "Unable to load reaction logs. Please check your internet connection."
+                    } else {
+                        errorMessage = "Failed to load reaction logs. Please try again."
+                    }
                 } else {
                     errorMessage = "Failed to load reaction logs. Please try again."
                 }
-            } else {
-                errorMessage = "Failed to load reaction logs. Please try again."
+                showError = true
             }
-            showError = true
+            #if DEBUG
+            print("[ReactionLogManager] Network error (hasLocalData: \(hasLocalData)): \(error.localizedDescription)")
+            #endif
+        }
+
+        // Always clear loading state
+        if !hasLocalData {
+            isLoading = false
         }
     }
 
