@@ -109,7 +109,8 @@ struct FailedSyncOperation: Identifiable {
 
 /// Manages offline-first storage for all user-generated data
 /// Data is stored locally first, then synced to Firebase in background
-final class OfflineDataManager {
+/// @unchecked Sendable: Thread safety is handled internally via dbQueue serialization
+final class OfflineDataManager: @unchecked Sendable {
 
     // MARK: - Singleton
 

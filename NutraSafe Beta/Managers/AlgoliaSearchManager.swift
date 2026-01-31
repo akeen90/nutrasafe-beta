@@ -1106,7 +1106,6 @@ final class AlgoliaSearchManager {
 
         // OFFLINE FIX: Aggregate timeout prevents 30s hang (3 indices × 10s each)
         // Return whatever results we have after 15 seconds instead of waiting forever
-        let aggregateTimeout: UInt64 = 15_000_000_000 // 15 seconds in nanoseconds
         let searchStartTime = Date()
 
         // Search all indices in parallel with aggregate timeout

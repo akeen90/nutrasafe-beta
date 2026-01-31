@@ -580,9 +580,10 @@ final class LocalDatabaseManager {
             }
 
             // === TIER 5: IMAGE BOOST ===
-            // Products with images are slightly preferred (tiebreaker)
+            // Products with images are preferred as tiebreaker
+            // Won't override word matching but pushes image results above identical-scoring ones
             if let imageUrl = result.imageUrl, !imageUrl.isEmpty {
-                score += 200
+                score += 500
             }
 
             // === TIER 6: VERIFIED BOOST ===
@@ -808,7 +809,7 @@ final class LocalDatabaseManager {
         var success = false
         dbQueue.sync {
             // Delete both original and converted barcode formats
-            var sql = "DELETE FROM foods WHERE barcode = ?"
+            let sql = "DELETE FROM foods WHERE barcode = ?"
             var stmt: OpaquePointer?
 
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
