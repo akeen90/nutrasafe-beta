@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getFoodById } from '../services/algoliaService';
 import { ServingTypesEditor, ServingType } from './ServingTypesEditor';
+import { ScraperPanel } from './ScraperPanel';
 
 // Types
 interface FoodReport {
@@ -98,6 +99,7 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [isApplyingAI, setIsApplyingAI] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [unitMode, setUnitMode] = useState<'g' | 'ml'>('g');
+  const [showScraperPanel, setShowScraperPanel] = useState(false);
   const previousPendingCountRef = React.useRef<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -1282,6 +1284,16 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </div>
                   ) : null;
                 })()}
+                {/* Scrape UK Data Button */}
+                <button
+                  onClick={() => setShowScraperPanel(true)}
+                  className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors border border-indigo-200"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Scrape UK Supermarket Data
+                </button>
                 <div className="flex gap-3">
                   <button
                     onClick={() => saveFood(true)}
@@ -1325,6 +1337,38 @@ export const ReportsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Scraper Panel */}
+        {showScraperPanel && editableFood && selectedReport && (
+          <ScraperPanel
+            isOpen={showScraperPanel}
+            onClose={() => setShowScraperPanel(false)}
+            foodName={editableFood.name}
+            barcode={editableFood.barcode}
+            currentIndex={selectedReport.food?._sourceIndex || selectedReport.sourceIndex}
+            onApplyData={(data) => {
+              // Apply scraped data to editable food
+              setEditableFood(prev => prev ? {
+                ...prev,
+                ...(data.name && { name: data.name }),
+                ...(data.brandName && { brandName: data.brandName }),
+                ...(data.barcode && { barcode: data.barcode }),
+                ...(data.ingredients && { ingredients: data.ingredients }),
+                ...(data.imageUrl && { imageUrl: data.imageUrl }),
+                ...(data.calories && { calories: data.calories }),
+                ...(data.protein && { protein: data.protein }),
+                ...(data.carbs && { carbs: data.carbs }),
+                ...(data.fat && { fat: data.fat }),
+                ...(data.saturatedFat && { saturatedFat: data.saturatedFat }),
+                ...(data.fiber && { fiber: data.fiber }),
+                ...(data.sugar && { sugar: data.sugar }),
+                ...(data.salt && { salt: data.salt }),
+              } : null);
+              setShowScraperPanel(false);
+              showToast('Scraped data applied!', 'success');
+            }}
+          />
         )}
       </div>
     </div>

@@ -5,6 +5,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { ServingTypesEditor, ServingType } from './ServingTypesEditor';
+import { ScraperPanel } from './ScraperPanel';
 import { UnifiedFood } from '../types';
 
 // Cloud Function for saving
@@ -45,6 +46,7 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showScraperPanel, setShowScraperPanel] = useState(false);
 
   // Parse existing serving types
   const parseServingTypes = useCallback((): ServingType[] => {
@@ -112,6 +114,45 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Handle scraped data from ScraperPanel
+  const handleScrapedData = useCallback((data: {
+    name?: string;
+    brandName?: string;
+    barcode?: string;
+    ingredients?: string;
+    imageUrl?: string;
+    calories?: string;
+    protein?: string;
+    carbs?: string;
+    fat?: string;
+    saturatedFat?: string;
+    fiber?: string;
+    sugar?: string;
+    salt?: string;
+    servingSize?: string;
+    targetIndex?: string;
+  }) => {
+    // Apply scraped data to form fields (only non-empty values)
+    setFields(prev => ({
+      ...prev,
+      ...(data.name && { name: data.name }),
+      ...(data.brandName && { brandName: data.brandName }),
+      ...(data.barcode && { barcode: data.barcode }),
+      ...(data.ingredients && { ingredients: data.ingredients }),
+      ...(data.imageUrl && { imageUrl: data.imageUrl }),
+      ...(data.calories && { calories: data.calories }),
+      ...(data.protein && { protein: data.protein }),
+      ...(data.carbs && { carbs: data.carbs }),
+      ...(data.fat && { fat: data.fat }),
+      ...(data.saturatedFat && { saturatedFat: data.saturatedFat }),
+      ...(data.fiber && { fiber: data.fiber }),
+      ...(data.sugar && { sugar: data.sugar }),
+      ...(data.salt && { salt: data.salt }),
+    }));
+    setShowScraperPanel(false);
+    showToast('Scraped data applied to form', 'success');
+  }, []);
 
   // Handle serving types change
   const handleServingTypesChange = useCallback((servingTypes: ServingType[]) => {
@@ -420,13 +461,23 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50">
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            onClick={() => setShowScraperPanel(true)}
+            className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2 border border-indigo-200"
           >
-            Cancel
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Scrape UK Data
           </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -451,8 +502,21 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
               </>
             )}
           </button>
+          </div>
         </div>
       </div>
+
+      {/* Scraper Panel */}
+      {showScraperPanel && (
+        <ScraperPanel
+          isOpen={showScraperPanel}
+          onClose={() => setShowScraperPanel(false)}
+          foodName={fields.name}
+          barcode={fields.barcode}
+          currentIndex={food._sourceIndex}
+          onApplyData={handleScrapedData}
+        />
+      )}
     </div>
   );
 };

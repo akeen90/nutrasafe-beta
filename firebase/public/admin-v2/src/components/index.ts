@@ -13,3 +13,4 @@ export { AuthProvider, useAuth, SignInForm, UserBadge } from './AuthProvider';
 export { ServingTypesEditor } from './ServingTypesEditor';
 export type { ServingType } from './ServingTypesEditor';
 export { FoodDetailModal } from './FoodDetailModal';
+export { ScraperPanel } from './ScraperPanel';
