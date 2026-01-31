@@ -1914,9 +1914,9 @@ struct AddFoodSearchView: View {
             queue: .main
         ) { notification in
             if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    keyboardHeight = keyboardFrame.height
-                }
+                // iOS 18 FIX: Removed withAnimation() - was causing "seesaw" oscillation
+                // iOS natively animates keyboard; adding our own creates double-animation conflicts
+                keyboardHeight = keyboardFrame.height
             }
         }
 
@@ -1925,9 +1925,8 @@ struct AddFoodSearchView: View {
             object: nil,
             queue: .main
         ) { _ in
-            withAnimation(.easeInOut(duration: 0.3)) {
-                keyboardHeight = 0
-            }
+            // iOS 18 FIX: Removed withAnimation() to prevent oscillation
+            keyboardHeight = 0
         }
     }
 

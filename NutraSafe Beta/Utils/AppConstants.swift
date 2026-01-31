@@ -945,11 +945,12 @@ class KeyboardObserver: ObservableObject {
         // Filter out floating/split keyboards on iPad (they're too small to position against)
         guard keyboardFrame.height > 100 else { return }
 
+        // iOS 18 FIX: Removed withAnimation() - was causing "seesaw" oscillation
+        // iOS natively animates keyboard transitions; adding our own animation
+        // created double-animation conflicts causing the view to bounce up and down.
         DispatchQueue.main.async {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.keyboardHeight = keyboardFrame.height
-                self.isKeyboardVisible = true
-            }
+            self.keyboardHeight = keyboardFrame.height
+            self.isKeyboardVisible = true
         }
     }
 
@@ -959,21 +960,18 @@ class KeyboardObserver: ObservableObject {
         // Filter out floating/split keyboards on iPad
         guard keyboardFrame.height > 100 else { return }
 
-        // Update keyboard height when it changes (e.g., switching between email and password fields)
+        // iOS 18 FIX: Removed withAnimation() to prevent oscillation
         DispatchQueue.main.async {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                self.keyboardHeight = keyboardFrame.height
-                self.isKeyboardVisible = true
-            }
+            self.keyboardHeight = keyboardFrame.height
+            self.isKeyboardVisible = true
         }
     }
 
     @objc private func keyboardWillHide(_ notification: Notification) {
+        // iOS 18 FIX: Removed withAnimation() to prevent oscillation
         DispatchQueue.main.async {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.keyboardHeight = 0
-                self.isKeyboardVisible = false
-            }
+            self.keyboardHeight = 0
+            self.isKeyboardVisible = false
         }
     }
 
