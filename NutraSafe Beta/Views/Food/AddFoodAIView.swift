@@ -513,24 +513,28 @@ struct AddFoodAIView: View {
     }
     
     private func recognizeFood(from image: UIImage) async throws -> [FoodSearchResult] {
-        // Resize image if too large (max 1920px on longest side for faster upload)
-        let maxDimension: CGFloat = 1920
-        var processedImage = image
-        if max(image.size.width, image.size.height) > maxDimension {
-            let scale = maxDimension / max(image.size.width, image.size.height)
-            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-            image.draw(in: CGRect(origin: .zero, size: newSize))
-            processedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
-            UIGraphicsEndImageContext()
-                    }
+        // P3-4 FIX: Move heavy image processing and base64 encoding to background thread
+        // This prevents memory spikes on main thread and keeps UI responsive
+        let base64Image = try await Task.detached(priority: .userInitiated) {
+            // Resize image if too large (max 1920px on longest side for faster upload)
+            let maxDimension: CGFloat = 1920
+            var processedImage = image
+            if max(image.size.width, image.size.height) > maxDimension {
+                let scale = maxDimension / max(image.size.width, image.size.height)
+                let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+                UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+                processedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
+                UIGraphicsEndImageContext()
+            }
 
-        // Compress image for upload (0.8 for better quality)
-        guard let imageData = processedImage.jpegData(compressionQuality: 0.8) else {
-            throw NSError(domain: "ImageError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to process image"])
-        }
+            // Compress image for upload (0.8 for better quality)
+            guard let imageData = processedImage.jpegData(compressionQuality: 0.8) else {
+                throw NSError(domain: "ImageError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to process image"])
+            }
 
-        let base64Image = imageData.base64EncodedString()
+            return imageData.base64EncodedString()
+        }.value
 
         // Call Firebase function for AI food recognition
         let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/recognizeFood"

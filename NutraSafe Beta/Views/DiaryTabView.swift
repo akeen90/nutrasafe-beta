@@ -2,6 +2,20 @@ import SwiftUI
 import Foundation
 import UIKit
 
+// P3-3 FIX: Consolidated sheet state struct
+// Grouping related @State variables reduces SwiftUI view recomputation triggers
+// When multiple sheet-related states change together, only one invalidation occurs
+private struct DiarySheetState {
+    var showingMoveSheet = false
+    var moveToDate = Date()
+    var moveToMeal = "Breakfast"
+    var showingCopySheet = false
+    var copyToDate = Date()
+    var copyToMeal = "Breakfast"
+    var editingFood: DiaryFoodItem?
+    var editingMealType = ""
+}
+
 struct DiaryTabView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var diaryDataManager: DiaryDataManager
@@ -16,14 +30,9 @@ struct DiaryTabView: View {
     @State private var lunchFoods: [DiaryFoodItem] = []
     @State private var dinnerFoods: [DiaryFoodItem] = []
     @State private var snackFoods: [DiaryFoodItem] = []
-    @State private var showingMoveSheet = false
-    @State private var moveToDate = Date()
-    @State private var moveToMeal = "Breakfast"
-    @State private var showingCopySheet = false
-    @State private var copyToDate = Date()
-    @State private var copyToMeal = "Breakfast"
-    @State private var editingFood: DiaryFoodItem?
-    @State private var editingMealType = ""
+    // P3-3 FIX: Consolidated sheet state to reduce @State explosion
+    // Grouping related sheet states reduces view recomputation triggers
+    @State private var sheetState = DiarySheetState()
     @State private var diarySubTab: DiarySubTab = .overview
     @Binding var selectedFoodItems: Set<String>
     @Binding var showingSettings: Bool
@@ -731,22 +740,22 @@ struct DiaryTabView: View {
 
     var body: some View {
         contentWithLifecycleModifiers
-            .fullScreenCover(isPresented: $showingMoveSheet) {
+            .fullScreenCover(isPresented: $sheetState.showingMoveSheet) {
                 moveFoodSheet
             }
-            .fullScreenCover(isPresented: $showingCopySheet) {
+            .fullScreenCover(isPresented: $sheetState.showingCopySheet) {
                 copyFoodSheet
             }
-            .fullScreenCover(item: $editingFood, onDismiss: {
-                editingFood = nil
-                editingMealType = ""
+            .fullScreenCover(item: $sheetState.editingFood, onDismiss: {
+                sheetState.editingFood = nil
+                sheetState.editingMealType = ""
             }) { food in
                 FoodDetailViewFromSearch(
                     food: food.toFoodSearchResult(),
                     sourceType: .diary,
                     selectedTab: $selectedTabForNavigation,
                     diaryEntryId: food.id,
-                    diaryMealType: editingMealType.isEmpty ? food.time : editingMealType,
+                    diaryMealType: sheetState.editingMealType.isEmpty ? food.time : sheetState.editingMealType,
                     diaryQuantity: food.quantity,
                     diaryDate: selectedDate,
                     fastingViewModel: fastingViewModelWrapper.viewModel
@@ -990,8 +999,8 @@ struct DiaryTabView: View {
 
         if let foodId = selectedFoodItems.first {
             if let result = findFoodWithMeal(byId: foodId) {
-                editingFood = result.food
-                editingMealType = result.meal
+                sheetState.editingFood = result.food
+                sheetState.editingMealType = result.meal
                 // Clear selection once user enters edit flow
                 selectedFoodItems.removeAll()
             } else {
@@ -1254,11 +1263,11 @@ struct DiaryTabView: View {
         MoveFoodBottomSheet(
             selectedCount: selectedFoodItems.count,
             currentDate: selectedDate,
-            moveToDate: $moveToDate,
-            moveToMeal: $moveToMeal,
+            moveToDate: $sheetState.moveToDate,
+            moveToMeal: $sheetState.moveToMeal,
             onMove: performMove,
             onCancel: {
-                showingMoveSheet = false
+                sheetState.showingMoveSheet = false
             }
         )
     }
@@ -1268,34 +1277,34 @@ struct DiaryTabView: View {
         CopyFoodBottomSheet(
             selectedCount: selectedFoodItems.count,
             currentDate: selectedDate,
-            copyToDate: $copyToDate,
-            copyToMeal: $copyToMeal,
+            copyToDate: $sheetState.copyToDate,
+            copyToMeal: $sheetState.copyToMeal,
             onCopy: performCopy,
             onCancel: {
-                showingCopySheet = false
+                sheetState.showingCopySheet = false
             }
         )
     }
 
     private func showMoveOptions() {
         guard !selectedFoodItems.isEmpty else { return }
-        moveToDate = selectedDate
-        moveToMeal = "Breakfast"
-        showingMoveSheet = true
+        sheetState.moveToDate = selectedDate
+        sheetState.moveToMeal = "Breakfast"
+        sheetState.showingMoveSheet = true
     }
 
     private func showCopyOptions() {
         guard !selectedFoodItems.isEmpty else { return }
-        copyToDate = selectedDate
-        copyToMeal = "Breakfast"
-        showingCopySheet = true
+        sheetState.copyToDate = selectedDate
+        sheetState.copyToMeal = "Breakfast"
+        sheetState.showingCopySheet = true
     }
 
     private func performMove() {
-        let destinationMeal = moveToMeal.lowercased()
+        let destinationMeal = sheetState.moveToMeal.lowercased()
         let itemsToMove = selectedFoodItems.compactMap { findFood(byId: $0) }
         selectedFoodItems.removeAll()
-        showingMoveSheet = false
+        sheetState.showingMoveSheet = false
 
         Task {
             let hasAccess = subscriptionManager.hasAccess
@@ -1306,7 +1315,7 @@ struct DiaryTabView: View {
                 var moved = food
                 moved.id = UUID()
                 do {
-                    try await diaryDataManager.addFoodItem(moved, to: destinationMeal, for: moveToDate, hasProAccess: hasAccess)
+                    try await diaryDataManager.addFoodItem(moved, to: destinationMeal, for: sheetState.moveToDate, hasProAccess: hasAccess)
                 } catch is FirebaseManager.DiaryLimitError {
                     await MainActor.run { showingDiaryLimitError = true }
                     break
@@ -1317,10 +1326,10 @@ struct DiaryTabView: View {
     }
 
     private func performCopy() {
-        let destinationMeal = copyToMeal.lowercased()
+        let destinationMeal = sheetState.copyToMeal.lowercased()
         let itemsToCopy = selectedFoodItems.compactMap { findFood(byId: $0) }
         selectedFoodItems.removeAll()
-        showingCopySheet = false
+        sheetState.showingCopySheet = false
 
         Task {
             let hasAccess = subscriptionManager.hasAccess
@@ -1328,7 +1337,7 @@ struct DiaryTabView: View {
                 var copied = food
                 copied.id = UUID()
                 do {
-                    try await diaryDataManager.addFoodItem(copied, to: destinationMeal, for: copyToDate, hasProAccess: hasAccess)
+                    try await diaryDataManager.addFoodItem(copied, to: destinationMeal, for: sheetState.copyToDate, hasProAccess: hasAccess)
                 } catch is FirebaseManager.DiaryLimitError {
                     await MainActor.run { showingDiaryLimitError = true }
                     break
@@ -1528,8 +1537,8 @@ struct DiaryTabView: View {
 
     private func editSelectedFood() {
         if let foodId = selectedFoodItems.first, let result = findFoodWithMeal(byId: foodId) {
-            editingFood = result.food
-            editingMealType = result.meal
+            sheetState.editingFood = result.food
+            sheetState.editingMealType = result.meal
         }
     }
 

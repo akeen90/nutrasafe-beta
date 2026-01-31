@@ -114,18 +114,28 @@ struct FoodImageView: View {
         if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
             // Debug: log found URL
             print("🖼️ FoodImageView: Found local URL for \(foodId): \(localURL.lastPathComponent)")
-            if let data = try? Data(contentsOf: localURL),
-               let image = UIImage(data: data) {
-                localImage = image
-                print("🖼️ FoodImageView: Loaded image for \(foodId) (\(Int(image.size.width))x\(Int(image.size.height)))")
-            } else {
-                print("🖼️ FoodImageView: Failed to load data/image from \(localURL.path)")
+
+            // P3-1 FIX: Move file I/O off main thread to prevent UI jank
+            Task.detached(priority: .userInitiated) {
+                if let data = try? Data(contentsOf: localURL),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        self.localImage = image
+                        self.isLoadingLocal = false
+                    }
+                    print("🖼️ FoodImageView: Loaded image for \(self.foodId) (\(Int(image.size.width))x\(Int(image.size.height)))")
+                } else {
+                    await MainActor.run {
+                        self.isLoadingLocal = false
+                    }
+                    print("🖼️ FoodImageView: Failed to load data/image from \(localURL.path)")
+                }
             }
         } else {
             // Log to help debug - show what ID we're looking for
             print("🖼️ FoodImageView: No local mapping for '\(foodId)' (manager has \(imageCount) mappings)")
+            isLoadingLocal = false
         }
-        isLoadingLocal = false
     }
 }
 
@@ -206,13 +216,24 @@ struct FoodImageHeaderView: View {
         didCheckLocal = true
 
         if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
-            if let data = try? Data(contentsOf: localURL),
-               let image = UIImage(data: data) {
-                localImage = image
-                hasImage = true
+            // P3-1 FIX: Move file I/O off main thread to prevent UI jank
+            Task.detached(priority: .userInitiated) {
+                if let data = try? Data(contentsOf: localURL),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        self.localImage = image
+                        self.hasImage = true
+                        self.isLoadingLocal = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.isLoadingLocal = false
+                    }
+                }
             }
+        } else {
+            isLoadingLocal = false
         }
-        isLoadingLocal = false
     }
 }
 
@@ -290,14 +311,26 @@ struct FoodDetailImageView: View {
         didCheckLocal = true
 
         if let localURL = LocalFoodImageManager.shared.localImageURL(for: foodId) {
-            if let data = try? Data(contentsOf: localURL),
-               let image = UIImage(data: data) {
-                localImage = image
-                // Trigger background detection for local images too
-                onBackgroundDetected?(localURL)
+            // P3-1 FIX: Move file I/O off main thread to prevent UI jank
+            let callback = onBackgroundDetected
+            Task.detached(priority: .userInitiated) {
+                if let data = try? Data(contentsOf: localURL),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        self.localImage = image
+                        self.isLoadingLocal = false
+                        // Trigger background detection for local images too
+                        callback?(localURL)
+                    }
+                } else {
+                    await MainActor.run {
+                        self.isLoadingLocal = false
+                    }
+                }
             }
+        } else {
+            isLoadingLocal = false
         }
-        isLoadingLocal = false
     }
 }
 

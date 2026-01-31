@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 import Firebase
 import FirebaseFirestore
 import Combine
@@ -54,9 +55,34 @@ class NutrientTrackingManager: ObservableObject {
         return "\(baseKey)_\(currentUserId)"
     }
 
+    // P3-2: Track paused state to avoid Firebase operations when backgrounded
+    private var isPaused = false
+    private var pausedUserId: String? = nil
+
     private init() {
         // Cache will be loaded in startTracking() once userId is known
         // Initialize with empty state
+
+        // P3-2: Observe app lifecycle for pause/resume
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.pauseTracking()
+            }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.resumeTracking()
+            }
+        }
     }
 
     // MARK: - Cleanup
@@ -70,6 +96,36 @@ class NutrientTrackingManager: ObservableObject {
         diaryListener = nil
         listeners.forEach { $0.remove() }
         listeners.removeAll()
+    }
+
+    // MARK: - P3-2: Background Pause/Resume
+    // Pauses Firebase listeners when app is backgrounded to reduce battery/network usage
+
+    /// Pause tracking when app goes to background
+    func pauseTracking() {
+        guard !isPaused, !currentUserId.isEmpty else { return }
+
+        print("[NutrientTrackingManager] P3-2: Pausing - removing Firebase listeners")
+        isPaused = true
+        pausedUserId = currentUserId
+
+        // Remove listeners but keep cached data
+        diaryListener?.remove()
+        diaryListener = nil
+        listeners.forEach { $0.remove() }
+        listeners.removeAll()
+    }
+
+    /// Resume tracking when app returns to foreground
+    func resumeTracking() {
+        guard isPaused, let userId = pausedUserId, !userId.isEmpty else { return }
+
+        print("[NutrientTrackingManager] P3-2: Resuming - re-establishing Firebase listeners")
+        isPaused = false
+        pausedUserId = nil
+
+        // Re-setup listeners without full reload (we have cached data)
+        setupRealtimeListeners(userId: userId)
     }
 
     deinit {
