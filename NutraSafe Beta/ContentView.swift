@@ -646,7 +646,8 @@ struct ContentView: View {
             .opacity(selectedTab == .diary && !selectedFoodItems.isEmpty ? 1 : 0)
             .allowsHitTesting(selectedTab == .diary && !selectedFoodItems.isEmpty)
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
+        // iOS 18 FIX: Removed .ignoresSafeArea(.keyboard) - was causing layout thrashing
+        // when combined with programmatic scrolling. iOS 18 handles keyboard insets better natively.
         .fullScreenCover(isPresented: $showingSettings) {
             SettingsView(selectedTab: $selectedTab)
                 .environmentObject(firebaseManager)

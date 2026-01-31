@@ -683,28 +683,14 @@ struct ScrollViewWithTopReset<Content: View, ResetTrigger: Equatable>: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(axes, showsIndicators: showsIndicators) {
-                VStack(spacing: 0) {
-                    Color.clear
-                        .frame(height: 0)
-                        .id("scrollTop")
-
-                    content
-                }
-            }
-            .onAppear {
-                // Small delay to ensure view is rendered before scrolling
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    withAnimation(.none) {
-                        proxy.scrollTo("scrollTop", anchor: .top)
-                    }
-                }
-            }
-            .onChange(of: resetTrigger) { _, _ in
-                // Reset to top instantly when trigger changes
-                proxy.scrollTo("scrollTop", anchor: .top)
-            }
+        // iOS 18 FIX: Removed auto-scroll behavior that caused "seesaw" oscillation
+        // The scroll-to-top on appear and onChange were conflicting with iOS 18's
+        // scroll physics, especially when multiple ScrollViewWithTopReset instances
+        // existed in a ZStack (as in DiaryTabView). The invisible scroll views
+        // would fire scroll commands that interfered with the visible scroll view,
+        // causing the page to bounce up and down involuntarily.
+        ScrollView(axes, showsIndicators: showsIndicators) {
+            content
         }
     }
 }

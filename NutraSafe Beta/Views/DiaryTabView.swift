@@ -687,31 +687,32 @@ struct DiaryTabView: View {
     }
 
     // MARK: - Main Content Section
-    // FIX: Always render content but control visibility with opacity to prevent layout shifts
+    // iOS 18 FIX: Use conditional rendering instead of ZStack with opacity
+    // The previous ZStack approach kept BOTH scroll views alive simultaneously,
+    // causing "seesaw" oscillation when they both tried to scroll-to-top.
+    // Conditional rendering ensures only ONE scroll view exists at a time.
     @ViewBuilder
     private var mainContentSection: some View {
         let showContent = !(isLoadingData && !hasLoadedOnce)
 
-        ZStack {
-            // Overview tab - show/hide with opacity (no animation)
-            // Reduced spacing for tighter layout - foods feel more immediate
-            ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
-                LazyVStack(spacing: 10) {
-                    overviewTabContent
+        Group {
+            if diarySubTab == .overview {
+                // Overview tab - meals and nutrition summary
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        overviewTabContent
+                    }
+                }
+            } else {
+                // Nutrients tab - detailed nutrient breakdown
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        nutrientsTabContent
+                    }
                 }
             }
-            .opacity(showContent && diarySubTab == .overview ? 1 : 0)
-            .allowsHitTesting(showContent && diarySubTab == .overview)
-
-            // Nutrients tab - show/hide with opacity (no animation)
-            ScrollViewWithTopReset(resetOn: scrollResetTrigger) {
-                LazyVStack(spacing: 16) {
-                    nutrientsTabContent
-                }
-            }
-            .opacity(showContent && diarySubTab == .insights ? 1 : 0)
-            .allowsHitTesting(showContent && diarySubTab == .insights)
         }
+        .opacity(showContent ? 1 : 0)
         .background(diaryBlueBackground)
         .navigationBarHidden(true)
     }
