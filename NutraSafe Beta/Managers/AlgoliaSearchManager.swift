@@ -1078,6 +1078,13 @@ final class AlgoliaSearchManager {
                     score += 4000  // Name is basically just the food + qualifiers
                 }
 
+                // CRITICAL: consumer_foods source gets MAJOR boost for generic food searches
+                // This ensures "Apple" from consumer_foods beats "Apple Pie" from other sources
+                // Must be strong enough to overcome other factors (15000 exact match, etc.)
+                if let source = result.source, source == "consumer_foods" {
+                    score += 10000  // Strong boost - consumer_foods is authoritative for raw ingredients
+                }
+
             default:
                 break
             }
