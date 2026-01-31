@@ -172,6 +172,11 @@ struct FoodReactionsView: View {
     @State private var selectedSubTab: ReactionSubTab = .overview
     @State private var selectedSymptomFilter: String? = nil
 
+    // PERFORMANCE: Cache computed values to avoid O(n) iterations on every body evaluation
+    // These are updated via onChange when reactions array changes
+    @State private var cachedUniqueSymptoms: [String] = []
+    @State private var cachedReactionsCount: Int = 0
+
     // MARK: - Scroll Reset Trigger
     // Combines active state and subtab to reset scroll when returning to this tab
     private var scrollResetTrigger: String {
@@ -382,15 +387,9 @@ struct FoodReactionsView: View {
         .buttonStyle(.plain)
     }
 
+    // PERFORMANCE: Use cached symptoms instead of computing on every body evaluation
     private var uniqueSymptoms: [String] {
-        var symptomCounts: [String: Int] = [:]
-        for reaction in reactionManager.reactions {
-            for symptom in reaction.symptoms {
-                symptomCounts[symptom, default: 0] += 1
-            }
-        }
-        // Sort by frequency
-        return symptomCounts.sorted { $0.value > $1.value }.map { $0.key }
+        cachedUniqueSymptoms
     }
 
     private var filteredTimelineReactions: [FoodReaction] {
@@ -569,6 +568,11 @@ struct FoodReactionsView: View {
             Task {
                 await logManager.loadReactionLogs()
             }
+
+            // Initialize symptom cache if reactions already loaded
+            if cachedUniqueSymptoms.isEmpty && !reactionManager.reactions.isEmpty {
+                updateCachedSymptoms()
+            }
         }
         .alert("Error", isPresented: $reactionManager.showingError) {
             Button("OK", role: .cancel) {
@@ -581,6 +585,27 @@ struct FoodReactionsView: View {
             PaywallView()
                 .environmentObject(subscriptionManager)
         }
+        // PERFORMANCE: Update cached values only when reactions array actually changes
+        // This avoids O(n) computation on every body evaluation (important for 100+ reactions)
+        // PERFORMANCE: Update cached values only when reactions array actually changes
+        // This avoids O(n) computation on every body evaluation (important for 100+ reactions)
+        .onChange(of: reactionManager.reactions.count) { _, newCount in
+            if newCount != cachedReactionsCount {
+                cachedReactionsCount = newCount
+                updateCachedSymptoms()
+            }
+        }
+    }
+
+    // PERFORMANCE: Compute unique symptoms once and cache
+    private func updateCachedSymptoms() {
+        var symptomCounts: [String: Int] = [:]
+        for reaction in reactionManager.reactions {
+            for symptom in reaction.symptoms {
+                symptomCounts[symptom, default: 0] += 1
+            }
+        }
+        cachedUniqueSymptoms = symptomCounts.sorted { $0.value > $1.value }.map { $0.key }
     }
 }
 
