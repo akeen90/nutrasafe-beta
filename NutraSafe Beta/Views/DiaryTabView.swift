@@ -848,9 +848,12 @@ struct DiaryTabView: View {
                 loadFoodData()
                 // Additive insights refresh lazily when Insights tab is selected
             }
-            // REAL EVENT: Food entry added - switch to overview to show it
+            // REAL EVENT: Food entry added - switch to overview and reload data
+            // FIX: Must call loadFoodData() here because dataReloadTrigger is blocked
+            // when isActive=false (user is in sheet). This ensures data refreshes.
             .onReceive(NotificationCenter.default.publisher(for: .foodEntryAdded)) { _ in
                 diarySubTab = .overview
+                loadFoodData()
                 // Additive cache is invalidated by AdditiveTrackerViewModel's own observer
             }
             // MARK: - Network & Sync Status Monitoring (UX Truth)
