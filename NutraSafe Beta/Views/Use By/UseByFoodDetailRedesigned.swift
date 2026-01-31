@@ -183,7 +183,6 @@ struct UseByFoodDetailSheetRedesigned: View {
             Button("Choose from Library") { showPhotoPicker = true }
             Button("Cancel", role: .cancel) { }
         }
-        .keyboardDismissButton()
     }
 
     // MARK: - Main Content

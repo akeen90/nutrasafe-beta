@@ -942,6 +942,7 @@ struct ContentView: View {
                 CustomTabBar(selectedTab: $selectedTab, showingAddMenu: $showingAddMenu)
                     .offset(y: 34) // Lower the tab bar to bottom edge
             }
+            .ignoresSafeArea(.keyboard)
 
             // Add Action Menu - always rendered but controls its own visibility
             AddActionMenu(
@@ -997,6 +998,7 @@ struct ContentView: View {
                 )
                 .offset(y: 34) // Same offset as tab bar to replace it
             }
+            .ignoresSafeArea(.keyboard)
             .opacity(selectedTab == .diary && !selectedFoodItems.isEmpty ? 1 : 0)
             .allowsHitTesting(selectedTab == .diary && !selectedFoodItems.isEmpty)
         }
@@ -1083,7 +1085,6 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
             .environmentObject(sharedFastingViewModelWrapper)
-            .keyboardDismissButton()
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
             LogReactionSheet(selectedDayRange: .threeDays)

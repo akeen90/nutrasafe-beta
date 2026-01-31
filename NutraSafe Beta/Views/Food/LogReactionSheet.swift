@@ -139,7 +139,6 @@ struct LogReactionSheet: View {
                 .padding(20)
             }
             .scrollDismissesKeyboard(.interactively)
-            .keyboardDismissButton()
             .background(AppAnimatedBackground())
             .navigationTitle("Log Reaction")
             .navigationBarTitleDisplayMode(.inline)

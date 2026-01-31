@@ -241,7 +241,6 @@ struct CreateMealView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .keyboardDismissButton()
             .background(Color(.systemGroupedBackground))
             .navigationTitle(isEditing ? "Edit Meal" : "Create Meal")
             .navigationBarTitleDisplayMode(.inline)

@@ -190,7 +190,6 @@ struct LogWeightView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .keyboardDismissButton()
 
             // Upload overlay
             if isUploading {

@@ -504,7 +504,6 @@ struct PersonalDetailsScreen: View {
             stoneFieldFocused = false
             poundsFieldFocused = false
         }
-        .keyboardDismissButton()
         .onAppear {
             // Initialize stone/pounds fields from current weight
             // Use flag to prevent onChange handlers from triggering during initialization

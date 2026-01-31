@@ -18,6 +18,5 @@ struct AddTabView: View {
             }
         )
         .trackScreen("Add Food")
-        .keyboardDismissButton()
     }
 }
