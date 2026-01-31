@@ -926,3 +926,296 @@ When you encounter old/duplicate code, add it here for future cleanup:
 - When creating new views, prefix old ones for removal here
 - Before builds, check this list and remove dead code when safe
 - **Match the onboarding philosophy**: Warm language, minimal repetition, trust-building
+
+---
+
+## 🚨 PRODUCTION READINESS AUDIT (January 2026)
+
+This section tracks critical issues that must be resolved before scaling. Work through each phase in order. After fixing each item, **verify the fix worked** by building and testing.
+
+### How to Use This Section
+
+1. **Work phase by phase** - Complete all items in Phase 1 before moving to Phase 2
+2. **After each fix**:
+   - Build the app: `xcodebuild -project NutraSafeBeta.xcodeproj -scheme "NutraSafe Beta" -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=26.0' build`
+   - Test the specific functionality you fixed
+   - Mark the item with ✅ and add completion date
+3. **After completing all phases**: Run a full audit again to confirm no regressions
+
+---
+
+### 📋 PHASE 1: CRASH PREVENTION (P0 - Do First)
+*These issues can crash the app. Fix before any user testing.*
+
+#### P1-1: SQLite NULL Pointer Crashes
+- **Status**: ⬜ Not Started
+- **Risk**: App crash when database column is NULL
+- **Files to fix**:
+  - [ ] `MicronutrientDatabase.swift` (lines 165-171, 215, 256-257, 293-294, 327, 434-440, 471-477)
+  - [ ] `LocalDatabaseManager.swift` (lines 131, 241, 346, 367, 445, 883, 1157, 1222, 1371)
+- **Problem**: 28+ instances use direct `String(cString: sqlite3_column_text())` which crashes if column is NULL
+- **Fix**: Replace with safe pattern:
+  ```swift
+  // BEFORE (crashes if NULL):
+  let name = String(cString: sqlite3_column_text(statement, 0))
+
+  // AFTER (safe):
+  guard let ptr = sqlite3_column_text(statement, 0) else { return nil }
+  let name = String(cString: ptr)
+  ```
+- **Verify**: Build succeeds, app launches, search for food works
+- **Completed**: ⬜ Date: ___
+
+#### P1-2: Calendar Force Unwrap Crashes
+- **Status**: ⬜ Not Started
+- **Risk**: App crash on edge-case dates or weird device settings
+- **Files to fix**:
+  - [ ] `NutrientTrackingManager.swift:639`
+  - [ ] `DiaryTabView.swift:465, 567, 568`
+  - [ ] `ExtendedOnboardingScreens.swift:54-55`
+- **Problem**: `calendar.date()` can return nil, force unwrap crashes
+- **Fix**: Replace force unwraps with guard:
+  ```swift
+  // BEFORE (crashes if nil):
+  let monthStart = calendar.date(from: components)!
+
+  // AFTER (safe):
+  guard let monthStart = calendar.date(from: components) else {
+      return Date() // or handle appropriately
+  }
+  ```
+- **Verify**: Build succeeds, open Diary tab, navigate months, check nutrient tracking
+- **Completed**: ⬜ Date: ___
+
+---
+
+### 📋 PHASE 2: DATA INTEGRITY (P1 - Do Second)
+*These issues can cause data loss. Fix before beta testing.*
+
+#### P2-1: AI Scanning Offline Queue
+- **Status**: ⬜ Not Started
+- **Risk**: Users lose photos when scanning nutrition labels offline
+- **File**: `AddFoodAIView.swift`
+- **Problem**: AI food recognition fails immediately offline with no retry. User must re-take photo.
+- **Fix**:
+  1. Create `PendingAIScan` model to store image + metadata
+  2. On network failure, save to local queue (use OfflineDataManager pattern)
+  3. Process queue when network reconnects
+  4. Show "pending analysis" state in UI
+- **Verify**: Turn off WiFi, scan a label, turn WiFi on, verify scan processes
+- **Completed**: ⬜ Date: ___
+
+#### P2-2: Failed Sync Operations Auto-Retry
+- **Status**: ⬜ Not Started
+- **Risk**: Data stuck locally forever if user never opens Settings
+- **Files**: `OfflineSyncManager.swift`, `BackgroundTaskManager.swift`
+- **Problem**: After 10 retries, operations go to `failed_operations` table and only retry on manual tap
+- **Fix**:
+  ```swift
+  // In BackgroundTaskManager's database sync task, add:
+  let failedOps = OfflineDataManager.shared.getFailedOperations()
+  let staleOps = failedOps.filter {
+      $0.failedAt < Date().addingTimeInterval(-3600) // Failed > 1 hour ago
+  }
+  for op in staleOps {
+      OfflineDataManager.shared.requeueFailedOperation(op)
+  }
+  ```
+- **Verify**: Force a sync failure, wait 1+ hour or trigger background task, verify retry happens
+- **Completed**: ⬜ Date: ___
+
+#### P2-3: Conflict Resolution UI
+- **Status**: ⬜ Not Started
+- **Risk**: Silent data loss when same item edited on multiple devices
+- **Files**: `SyncStatusView.swift`, `OfflineDataManager.swift`
+- **Problem**: Conflicts are tracked in `sync_conflicts` table but never shown to users
+- **Fix**:
+  1. Add `getUnresolvedConflicts()` method to OfflineDataManager
+  2. Show conflict count in SyncStatusView
+  3. Allow user to view conflicting versions and choose which to keep
+- **Verify**: Edit same meal on two devices while one is offline, sync, verify conflict shown
+- **Completed**: ⬜ Date: ___
+
+---
+
+### 📋 PHASE 3: PERFORMANCE (P2 - Do Third)
+*These issues cause poor user experience. Fix before public launch.*
+
+#### P3-1: Main Thread Image Loading
+- **Status**: ⬜ Not Started
+- **Risk**: UI freezes when scrolling food search results
+- **File**: `FoodSearchViews.swift` (lines 117-118, 209-210, 293-294)
+- **Problem**: `Data(contentsOf:)` runs on main thread, blocks UI
+- **Fix**:
+  ```swift
+  // BEFORE (blocks main thread):
+  if let data = try? Data(contentsOf: localURL),
+     let image = UIImage(data: data) {
+      localImage = image
+  }
+
+  // AFTER (background loading):
+  Task.detached(priority: .userInitiated) {
+      if let data = try? Data(contentsOf: localURL),
+         let image = UIImage(data: data) {
+          await MainActor.run { self.localImage = image }
+      }
+  }
+  ```
+- **Verify**: Search for foods with many results, scroll quickly, verify no stuttering
+- **Completed**: ⬜ Date: ___
+
+#### P3-2: NutrientTrackingManager Background Pause
+- **Status**: ⬜ Not Started
+- **Risk**: Battery drain from listener running when app is backgrounded
+- **File**: `NutrientTrackingManager.swift`
+- **Problem**: Firestore listener keeps running in background (MealManager does this correctly)
+- **Fix**: Add app lifecycle observers like MealManager (lines 55-81):
+  ```swift
+  NotificationCenter.default.addObserver(
+      forName: UIApplication.didEnterBackgroundNotification,
+      object: nil, queue: .main
+  ) { [weak self] _ in
+      self?.diaryListener?.remove()
+      self?.diaryListener = nil
+  }
+
+  NotificationCenter.default.addObserver(
+      forName: UIApplication.didBecomeActiveNotification,
+      object: nil, queue: .main
+  ) { [weak self] _ in
+      self?.setupRealtimeListeners()
+  }
+  ```
+- **Verify**: Background app, check Xcode energy gauge, verify no excessive activity
+- **Completed**: ⬜ Date: ___
+
+#### P3-3: DiaryTabView State Explosion
+- **Status**: ⬜ Not Started
+- **Risk**: Excessive view recomputation, battery drain
+- **File**: `DiaryTabView.swift` (lines 12-90)
+- **Problem**: 30+ @State properties cause entire view to re-render on any change
+- **Fix**: Extract into child views or use @Observable macro for granular updates
+- **Verify**: Profile with Instruments, verify reduced body evaluations
+- **Completed**: ⬜ Date: ___
+
+#### P3-4: Base64 Memory Spikes
+- **Status**: ⬜ Not Started
+- **Risk**: Out-of-memory crash on older devices when encoding multiple photos
+- **Files**: `AddFoodAIView.swift:511`, `ContentView.swift:151-162`, `FoodDetailViewFromSearch.swift:4016-4029`
+- **Problem**: Multiple images encoded to base64 simultaneously = 2MB+ memory spike
+- **Fix**: Process one image at a time with cleanup between:
+  ```swift
+  for (index, image) in images.enumerated() {
+      autoreleasepool {
+          let data = image.jpegData(compressionQuality: 0.8)
+          let base64 = data?.base64EncodedString()
+          // upload or store base64
+      }
+      // Yield to allow memory cleanup
+      if index % 2 == 0 { await Task.yield() }
+  }
+  ```
+- **Verify**: Submit 3+ photos on older device, monitor memory in Xcode
+- **Completed**: ⬜ Date: ___
+
+---
+
+### 📋 PHASE 4: CODE QUALITY (P3 - Do Before Scale)
+*These are maintenance issues. Fix when time permits.*
+
+#### P4-1: Remove Unused Listener Array
+- **Status**: ⬜ Not Started
+- **File**: `NutrientTrackingManager.swift:26`
+- **Problem**: `private var listeners: [ListenerRegistration] = []` defined but never used
+- **Fix**: Delete the unused line
+- **Completed**: ⬜ Date: ___
+
+#### P4-2: GeometryReader in Scroll Performance
+- **Status**: ⬜ Not Started
+- **File**: `MicronutrientTimelineView.swift:69-94`
+- **Problem**: GeometryReader inside ForEach causes layout thrashing on scroll
+- **Fix**: Cache geometry calculations outside the ForEach
+- **Completed**: ⬜ Date: ___
+
+#### P4-3: Opacity-Based Tab Switching
+- **Status**: ⬜ Not Started
+- **File**: `FoodTabView.swift:55-84`
+- **Problem**: ZStack with opacity keeps both tabs in memory
+- **Fix**: Use conditional rendering instead of opacity
+- **Completed**: ⬜ Date: ___
+
+#### P4-4: Old URLSession Callback Pattern
+- **Status**: ⬜ Not Started
+- **File**: `BarcodeScanningViews.swift:423-426`
+- **Problem**: Uses old `dataTask` callback instead of async/await
+- **Fix**: Convert to `let (data, response) = try await URLSession.shared.data(for: request)`
+- **Completed**: ⬜ Date: ___
+
+#### P4-5: Array Index Safety
+- **Status**: ⬜ Not Started
+- **Files**: `NutritionModels.swift:834`, `SearchNormalization.swift:271`
+- **Problem**: Direct `array[0]` access without explicit bounds check
+- **Fix**: Use `.first` instead of `[0]`
+- **Completed**: ⬜ Date: ___
+
+---
+
+### 📋 PHASE 5: COMPLIANCE (P3 - Do Before Enterprise)
+*Only needed if handling sensitive health data for enterprise/medical use.*
+
+#### P5-1: SQLite Database Encryption
+- **Status**: ⬜ Not Started
+- **Risk**: Health data stored in plaintext on device
+- **File**: `OfflineDataManager.swift`
+- **Problem**: SQLite database not encrypted. iOS Data Protection helps but not sufficient for HIPAA.
+- **Fix**: Implement SQLCipher or equivalent encryption
+- **Note**: May not be needed for consumer app, evaluate based on use case
+- **Completed**: ⬜ Date: ___
+
+---
+
+### 📊 AUDIT COMPLETION CHECKLIST
+
+After completing all phases, run this verification:
+
+1. **Build Check**
+   ```bash
+   xcodebuild -project NutraSafeBeta.xcodeproj -scheme "NutraSafe Beta" -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=26.0' build 2>&1 | grep -E "(error:|warning:)"
+   ```
+   - [ ] Zero errors
+   - [ ] Review any new warnings
+
+2. **Crash Test**
+   - [ ] Search for foods - no crash
+   - [ ] Navigate diary by month - no crash
+   - [ ] Complete onboarding - no crash
+   - [ ] Scan barcode - no crash
+
+3. **Offline Test**
+   - [ ] Turn off WiFi
+   - [ ] Log a meal - saved locally
+   - [ ] Scan a label - queued for later
+   - [ ] Turn WiFi on - sync completes
+
+4. **Memory Test**
+   - [ ] Submit 3+ photos - no crash
+   - [ ] Scroll 100+ search results - smooth
+   - [ ] Background app for 10 min - no excessive battery
+
+5. **Multi-Device Test**
+   - [ ] Edit meal on device A
+   - [ ] Edit same meal on device B (offline)
+   - [ ] Sync device B - conflict shown (not silent overwrite)
+
+### 📅 Audit History
+
+| Date | Phase | Items Completed | Verified By |
+|------|-------|-----------------|-------------|
+| 2026-01-31 | Initial Audit | Full codebase review | Claude |
+| ___ | Phase 1 | ___ | ___ |
+| ___ | Phase 2 | ___ | ___ |
+| ___ | Phase 3 | ___ | ___ |
+| ___ | Phase 4 | ___ | ___ |
+| ___ | Phase 5 | ___ | ___ |
+| ___ | Final Verification | All phases complete | ___ |
