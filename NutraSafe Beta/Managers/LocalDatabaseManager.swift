@@ -55,7 +55,7 @@ final class LocalDatabaseManager {
     }
 
     /// Current bundled database version - increment when bundling a new database
-    private static let bundledDatabaseVersion = 2  // v2: Fixed Tesco barcodes (EAN-13 format)
+    private static let bundledDatabaseVersion = 4  // v4: Force refresh - v3 was corrupted by old WAL files
 
     /// Sets up the database, copying from bundle to Documents on first launch
     /// Also replaces database if bundle version is newer
@@ -73,7 +73,22 @@ final class LocalDatabaseManager {
                 if storedVersion < Self.bundledDatabaseVersion {
                     print("🔄 LocalDB: Bundle has newer database (v\(Self.bundledDatabaseVersion) > v\(storedVersion)), replacing...")
                     do {
+                        // CRITICAL: Remove the main database file AND WAL/SHM files
+                        // SQLite WAL files contain uncommitted transactions that would overwrite our fresh copy
                         try fileManager.removeItem(atPath: dbPath)
+
+                        // Also remove WAL and SHM files if they exist
+                        let walPath = dbPath + "-wal"
+                        let shmPath = dbPath + "-shm"
+                        if fileManager.fileExists(atPath: walPath) {
+                            try fileManager.removeItem(atPath: walPath)
+                            print("   🗑️ Removed old WAL file")
+                        }
+                        if fileManager.fileExists(atPath: shmPath) {
+                            try fileManager.removeItem(atPath: shmPath)
+                            print("   🗑️ Removed old SHM file")
+                        }
+
                         needsCopy = true
                     } catch {
                         print("⚠️ LocalDB: Failed to remove old database, continuing with existing: \(error)")
@@ -411,7 +426,8 @@ final class LocalDatabaseManager {
                 let sanitized = sanitizeFTSQuery(searchQuery)
                 guard !sanitized.isEmpty else { continue }
 
-                // FTS5 search with prefix matching
+                // FTS5 search - ORDER BY source_priority to get consumer_foods first
+                // We do our own ranking afterwards, so we want diverse sources, not BM25 order
                 let sql = """
                     SELECT f.id, f.name, f.brand, f.barcode,
                            f.calories, f.protein, f.carbs, f.fat,
@@ -422,7 +438,7 @@ final class LocalDatabaseManager {
                     FROM foods f
                     JOIN foods_fts fts ON f.rowid = fts.rowid
                     WHERE foods_fts MATCH ?
-                    ORDER BY rank
+                    ORDER BY f.source_priority ASC, rank
                     LIMIT ?
                 """
 
@@ -433,8 +449,9 @@ final class LocalDatabaseManager {
                     let words = sanitized.split(separator: " ").map(String.init)
                     let ftsQuery = words.map { "\($0)*" }.joined(separator: " ")
                     sqlite3_bind_text(stmt, 1, ftsQuery, -1, SQLITE_TRANSIENT)
-                    sqlite3_bind_int(stmt, 2, Int32(limit * 3)) // Fetch more for ranking
+                    sqlite3_bind_int(stmt, 2, Int32(limit * 10)) // Fetch many more to ensure consumer_foods are included
 
+                    var rowCount = 0
                     while sqlite3_step(stmt) == SQLITE_ROW {
                         if let food = parseFoodRow(stmt), !seenIds.contains(food.id) {
                             seenIds.insert(food.id)
@@ -474,7 +491,7 @@ final class LocalDatabaseManager {
                             FROM foods f
                             JOIN foods_fts fts ON f.rowid = fts.rowid
                             WHERE foods_fts MATCH ?
-                            ORDER BY rank
+                            ORDER BY f.source_priority ASC, rank
                             LIMIT ?
                         """
 
@@ -505,7 +522,8 @@ final class LocalDatabaseManager {
         return Array(rankedResults.prefix(limit))
     }
 
-    /// Rank search results using same logic as Algolia search
+    /// Rank search results using sophisticated multi-tier logic (same as AlgoliaSearchManager)
+    /// This ensures consistent ranking between local and Algolia searches
     private func rankResults(_ results: [FoodSearchResult], query: String, normalized: NormalizedQuery) -> [FoodSearchResult] {
         let queryLower = query.lowercased()
         let queryWords = Set(queryLower.split(separator: " ").map { String($0) })
@@ -518,7 +536,7 @@ final class LocalDatabaseManager {
             "25g", "30g", "32g", "35g", "40g", "45g", "50g", "51g", "52g", "58g"
         ]
 
-        // Multipack indicators (demote these)
+        // Multipack/bulk indicators (demote these)
         let bulkIndicators: Set<String> = [
             "multipack", "multi-pack", "multi pack", "case", "tray", "box of",
             "24 pack", "24pk", "24x", "x24", "18 pack", "18pk", "18x", "x18",
@@ -529,131 +547,371 @@ final class LocalDatabaseManager {
             "family pack", "sharing", "value pack", "bundle", "selection"
         ]
 
-        let scored = results.map { result -> (result: FoodSearchResult, score: Int) in
+        let scored = results.map { result -> (result: FoodSearchResult, score: Int, tier: Int) in
             let nameLower = result.name.lowercased()
             let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
             let brandLower = result.brand?.lowercased() ?? ""
 
             var score = 0
+            var tier = 4  // Default tier (lowest)
 
-            // === TIER 0: EXACT NAME MATCH (highest priority) ===
-            if nameLower == queryLower {
-                score += 20000
-            }
+            // === TIER 0: BASE/RAW FOOD EXACT MATCHES (15000+ points) ===
+            // This handles single-word queries like "banana", "apple", "rice"
+            // where the user wants the raw/base food, not branded products
 
-            // === TIER 1: NAME STARTS WITH QUERY ===
-            if nameLower.hasPrefix(queryLower) {
-                score += 15000
-            }
+            if queryWords.count == 1 {
+                // Check if this is a base/raw food exact match
+                // Patterns that indicate base foods: just the food name, or food name + raw/fresh qualifiers
+                let baseNamePatterns = [
+                    queryLower,                           // "banana"
+                    "\(queryLower) raw",                  // "banana raw"
+                    "\(queryLower), raw",                 // "banana, raw"
+                    "\(queryLower) (raw)",                // "banana (raw)"
+                    "raw \(queryLower)",                  // "raw banana"
+                    "\(queryLower) fresh",                // "banana fresh"
+                    "fresh \(queryLower)",                // "fresh banana"
+                    "\(queryLower)s",                     // "bananas" (plural)
+                    "\(queryLower)s raw",                 // "bananas raw"
+                    "\(queryLower)s, raw",                // "bananas, raw"
+                    "\(queryLower), fresh",               // "banana, fresh"
+                    "\(queryLower) whole",                // "banana whole"
+                    "whole \(queryLower)",                // "whole banana"
+                ]
 
-            // === TIER 2: WORD MATCH SCORING ===
-            let matchingWords = queryWords.intersection(nameWords)
-            score += matchingWords.count * 3000
+                // Size qualifiers that indicate base foods (e.g., "Banana (Small)", "Apple Large")
+                let sizeQualifiers = ["small", "medium", "large", "extra large", "xl", "mini",
+                                     "(small)", "(medium)", "(large)", "(extra large)"]
+                let hasSizeQualifier = sizeQualifiers.contains { nameLower.contains($0) }
 
-            // Bonus for matching in order at start
-            if nameLower.hasPrefix(queryWords.first ?? "") {
-                score += 2000
-            }
+                let isBaseFoodMatch = baseNamePatterns.contains { pattern in
+                    nameLower == pattern || (nameLower.hasPrefix(pattern + " ") && nameWords.count <= 3)
+                }
 
-            // === TIER 3: BRAND MATCHING ===
-            if !brandLower.isEmpty {
-                if queryWords.contains(brandLower) || brandLower.contains(queryLower) {
-                    score += 2500
+                // Check for size-qualified base foods like "Banana (Small)", "Banana Medium"
+                let isSizeQualifiedBaseFood = hasSizeQualifier &&
+                    (nameLower.hasPrefix(queryLower) || nameLower.hasPrefix("\(queryLower)s")) &&
+                    nameWords.count <= 3 &&
+                    !nameLower.contains("&") &&
+                    !nameLower.contains(" and ") &&
+                    !nameLower.contains(" with ") &&
+                    brandLower.isEmpty
+
+                // Composite/recipe food indicators - these are NOT base foods
+                let compositeIndicators = ["&", " and ", " with ", " in ", "shallot", "shrimps", "chicken",
+                                          "pork", "beef", "lamb", "fish", "prawn", "shrimp", "sauce",
+                                          "curry", "stew", "soup", "salad", "sandwich", "wrap", "pie",
+                                          "cake", "bread", "muffin", "pudding", "smoothie", "shake",
+                                          "protein", "whey", "bar", "bars", "chip", "chips", "crisp",
+                                          "daifuku", "ice cream", "yoghurt", "yogurt", "jam", "jelly",
+                                          "juice", "drink", "flavour", "flavor", "dried", "freeze"]
+                let isCompositeFood = compositeIndicators.contains { nameLower.contains($0) }
+
+                // Also check if name is just the food with size/variety (e.g., "Banana Medium", "Apple Gala")
+                let isSimpleVariety = nameWords.count <= 3 &&
+                    nameWords.contains(queryLower) &&
+                    !isCompositeFood &&
+                    brandLower.isEmpty  // No brand = likely generic/base food
+
+                if isBaseFoodMatch && !isCompositeFood {
+                    score += 15000  // Highest priority for exact base food matches
+                    tier = 0
+                } else if isSizeQualifiedBaseFood {
+                    score += 14000  // Very high priority for size-qualified base foods
+                    tier = 0
+                } else if isSimpleVariety && !isCompositeFood {
+                    score += 12000  // High priority for simple variety names
+                    tier = 0
+                } else if isCompositeFood {
+                    score -= 5000   // Heavy penalty for composite/recipe foods
                 }
             }
 
-            // === TIER 4: SINGLE-SERVE vs MULTIPACK ===
-            // Boost single-serve items (users typically log individual portions)
-            for indicator in singleServeIndicators {
-                if nameLower.contains(indicator) {
-                    score += 500
-                    break
+            // === TIER 1: EXACT & CANONICAL MATCHES (10000+ points) ===
+
+            // Exact name match (only if not already tier 0)
+            if tier > 0 && nameLower == queryLower {
+                score += 10000
+                tier = 1
+            }
+            // Name starts with query AND query is a complete word
+            else if tier > 0 && nameLower.hasPrefix(queryLower) && nameWords.contains(queryLower) {
+                score += 9500
+                tier = 1
+                // Extra bonus for short product names (canonical products tend to be short)
+                if nameWords.count <= 3 {
+                    score += 1500
+                }
+            }
+            // Brand + product exact match (e.g., "mars bar" matches "Mars Bar")
+            else if tier > 0, let brand = result.brand?.lowercased(),
+                    queryWords.contains(brand) || brand.hasPrefix(queryLower.split(separator: " ").first ?? "") {
+                let productWords = queryWords.filter { $0 != brand }
+                let allProductWordsMatch = productWords.allSatisfy { word in
+                    nameWords.contains(word) || nameWords.contains { $0.hasPrefix(word) }
+                }
+                if allProductWordsMatch && !productWords.isEmpty {
+                    score += 9000
+                    tier = 1
                 }
             }
 
-            // Demote multipacks (users rarely want 24-pack when logging)
-            for indicator in bulkIndicators {
-                if nameLower.contains(indicator) {
-                    score -= 3000
-                    break
+            // === CANONICAL PRODUCT SCORING ===
+            let canonicalBonus = CanonicalProductDetector.canonicalScore(productName: result.name, forQuery: queryLower)
+            score += canonicalBonus
+            if canonicalBonus >= 3000 {
+                tier = min(tier, 1)
+            }
+
+            // === UK DEFAULT SCORING (for generic foods like "milk") ===
+            if case .genericFood(_) = normalized.intent {
+                let defaultBonus = UKFoodDefaults.defaultScore(productName: result.name, forQuery: queryLower)
+                score += defaultBonus
+                if defaultBonus >= 3000 {
+                    tier = min(tier, 1)
                 }
             }
 
-            // === TIER 5: IMAGE BOOST ===
-            // Products with images are preferred as tiebreaker
-            // Won't override word matching but pushes image results above identical-scoring ones
-            if let imageUrl = result.imageUrl, !imageUrl.isEmpty {
-                score += 500
+            // === TIER 2: STRONG PARTIAL MATCHES (6000-8999 points) ===
+
+            if tier > 2 {
+                // Query is an exact word in name
+                if queryWords.count == 1 && nameWords.contains(queryLower) {
+                    score += 7500
+                    tier = 2
+                    if nameWords.count <= 3 {
+                        score += 1500  // Short name bonus
+                    }
+                }
+                // All query words present as exact words
+                else if queryWords.allSatisfy({ nameWords.contains($0) }) {
+                    score += 7000
+                    tier = 2
+                    if nameWords.count == queryWords.count {
+                        score += 2000  // Exact word count match
+                    }
+                }
+                // Name starts with query
+                else if nameLower.hasPrefix(queryLower) {
+                    score += 6500
+                    tier = 2
+                }
+                // Brand exact match (pure brand search)
+                else if brandLower == queryLower {
+                    score += 6000
+                    tier = 2
+                }
             }
 
-            // === TIER 6: VERIFIED BOOST ===
-            if result.isVerified == true {
-                score += 300
+            // === TIER 3: PARTIAL MATCHES (3000-5999 points) ===
+
+            if tier > 3 {
+                // All query words as prefixes in name
+                if queryWords.allSatisfy({ queryWord in
+                    nameWords.contains { $0.hasPrefix(queryWord) }
+                }) {
+                    score += 5000
+                    tier = 3
+                }
+                // Query as substring (not at word boundary) - DEMOTE "applewood" for "apple"
+                else if nameLower.contains(queryLower) && !nameWords.contains(queryLower) {
+                    score += 2000  // Lower score - query is embedded, not a complete word
+                    tier = 3
+                }
+                // Brand contains query
+                else if brandLower.contains(queryLower) {
+                    score += 3000
+                    tier = 3
+                }
             }
 
-            // === TIER 7: CONSUMER FOODS BOOST (for generic searches) ===
-            // When searching for generic foods like "apple", "banana", etc., heavily boost
-            // items from consumer_foods index since users want raw ingredients, not branded products
-            if let source = result.source, source == "consumer_foods" {
-                // Always give consumer foods a moderate boost
-                score += 3000
+            // === TIER 4: FUZZY/WEAK MATCHES (1000-2999 points) ===
+
+            if tier > 3 {
+                // Fuzzy match scoring
+                let fuzzyScore = FuzzyMatcher.fuzzyScore(queryLower, nameLower)
+                if fuzzyScore >= 80 {
+                    score += 2000 + (fuzzyScore - 80) * 20
+                    tier = 4
+                } else if fuzzyScore >= 60 {
+                    score += 1000 + (fuzzyScore - 60) * 20
+                    tier = 4
+                }
+            }
+
+            // === UNIVERSAL MODIFIERS ===
+
+            // MULTIPACK PENALTY (applied regardless of tier)
+            let multipackPatterns = [
+                "\\d+pk\\b", "\\d+\\s*pack\\b", "\\bx\\d+\\b", "\\d+\\s*x\\s*\\d+",
+                "\\bmultipack\\b", "\\bmulti-pack\\b", "\\bmulti pack\\b",
+                "\\bfamily pack\\b", "\\bbulk\\b", "\\bsharing\\b",
+                "\\bselection\\b", "\\bvariety\\b", "\\bcase\\b", "\\btray\\b",
+                "\\bmini\\b", "\\bminis\\b", "\\bfunsize\\b", "\\bfun size\\b",
+                "\\bbite\\b", "\\bbites\\b"
+            ]
+            let multipackRegex = try? NSRegularExpression(
+                pattern: multipackPatterns.joined(separator: "|"),
+                options: [.caseInsensitive]
+            )
+            if let regex = multipackRegex,
+               regex.firstMatch(in: nameLower, options: [], range: NSRange(nameLower.startIndex..., in: nameLower)) != nil {
+                score -= 3000  // Strong demotion for multipacks/minis
+            }
+
+            // SINGLE-SERVE BONUS
+            if singleServeIndicators.contains(where: { nameLower.contains($0) }) {
+                score += 1500
+            }
+
+            // BULK INDICATORS PENALTY
+            if bulkIndicators.contains(where: { nameLower.contains($0) }) {
+                score -= 2000
+            }
+
+            // SERVING SIZE SCORING
+            if let servingGrams = result.servingSizeG, servingGrams > 0 {
+                // Prefer single-serve portions
+                if servingGrams <= 50 {
+                    score += 1200  // Snack-sized
+                } else if servingGrams <= 100 {
+                    score += 800   // Standard portion
+                } else if servingGrams <= 200 {
+                    score += 300   // Reasonable portion
+                } else if servingGrams > 500 && servingGrams <= 1000 {
+                    score -= 600   // Large portion (likely bulk)
+                } else if servingGrams > 1000 {
+                    score -= 1200  // Very large (definitely bulk)
+                }
+
+                // BONUS: Prefer items with ACTUAL serving size over generic 100g
+                if servingGrams != 100 {
+                    score += 1500  // Strong bonus for actual serving data
+                }
+            } else {
+                // PENALTY: No serving size = generic 100g default
+                score -= 800
+            }
+
+            // NAME LENGTH BONUS (shorter = more canonical)
+            let lengthBonus = max(0, 600 - result.name.count * 12)
+            score += lengthBonus
+
+            // SOURCE TIER BONUS - consumer_foods is STRONGLY preferred
+            if let source = result.source {
+                switch source {
+                case "consumer_foods": score += 10000   // STRONG priority for raw ingredients
+                case "tesco_products": score += 350
+                case "uk_foods_cleaned": score += 300
+                case "foods": score += 200
+                case "fast_foods_database": score += 150
+                default: score += 50
+                }
+            }
+
+            // VERIFIED BONUS
+            if result.isVerified {
+                score += 250
+            }
+
+            // IMAGE BOOST - Users prefer seeing products with images
+            let hasImage = result.imageUrl != nil && !result.imageUrl!.isEmpty
+            if hasImage {
+                score += 5000  // Strong boost for items with images
+            } else {
+                score -= 2000  // Penalty for items without images
             }
 
             // === INTENT-SPECIFIC SCORING ===
+
             switch normalized.intent {
-            case .genericFood(let food):
-                // For generic queries like "banana", prefer raw/base foods
-
-                // MAJOR BOOST: Consumer foods get significant priority for generic searches
-                // This ensures "Apple" from consumer_foods ranks above "Apple Juice" from Tesco
-                if let source = result.source, source == "consumer_foods" {
-                    score += 8000
-                }
-
-                // Demote prepared foods
-                if PreparedFoodDetector.isPreparedFood(result.name) {
-                    score -= 2000
-                }
-                // Boost if name is short (likely raw ingredient)
-                if nameWords.count <= 3 {
-                    score += 1000
-                }
-                // Exact match for generic food
-                if nameLower == food || nameLower.hasPrefix(food + " ") || nameLower.hasPrefix(food + ",") {
-                    score += 5000
-                }
-
             case .brandOnly(let brand):
-                // Pure brand search - boost brand matches
+                // Pure brand search - boost items where brand matches exactly
                 if brandLower == brand || brandLower.hasPrefix(brand) {
-                    score += 4000
+                    score += 2000
+                }
+                if !brandLower.isEmpty && brandLower != brand && nameLower.contains(brand) {
+                    score -= 1000
                 }
 
             case .brandAndProduct(let brand, let product):
-                // Brand + product - boost both matches
-                if brandLower.contains(brand) {
-                    score += 2000
+                // Brand + product search - both must be present
+                let hasBrand = brandLower.contains(brand) || nameLower.contains(brand)
+                let productWords = Set(product.split(separator: " ").map { String($0) })
+                let hasProduct = productWords.allSatisfy { nameWords.contains($0) || nameWords.contains(where: { $0.hasPrefix($0) }) }
+
+                if hasBrand && hasProduct {
+                    score += 3000
+                } else if hasBrand {
+                    score += 500
                 }
-                if nameLower.contains(product) {
-                    score += 2000
+
+            case .genericFood(let foodName):
+                // Generic food search (e.g., "banana", "apple", "steak", "chicken")
+                // HOLISTIC APPROACH: Prioritize raw/base foods over prepared/composite products
+
+                // === HOLISTIC PREPARED FOOD DETECTION ===
+                let preparedPenalty = PreparedFoodDetector.preparedFoodPenalty(productName: result.name, query: foodName)
+                score += preparedPenalty
+
+                // Extra penalty if query word is in "modifier position" (e.g., "Steak" in "Steak Bake")
+                if PreparedFoodDetector.isModifierPosition(query: foodName, productName: result.name) {
+                    score -= 5000
+                }
+
+                // Check if UKFoodDefaults has specific patterns for this food
+                let defaultBonus = UKFoodDefaults.defaultScore(productName: result.name, forQuery: foodName)
+                if defaultBonus < 0 {
+                    score += defaultBonus * 2  // Double the demotion effect
+                } else if defaultBonus > 0 {
+                    score += defaultBonus
+                }
+
+                // Penalty for branded items (user searching generic food doesn't want branded)
+                if !brandLower.isEmpty {
+                    score -= 3000
+                }
+
+                // Strong penalty for fast food restaurant sources
+                if result.source == "fast_foods_database" {
+                    score -= 6000
+                }
+
+                // Boost for simple, short names (likely the canonical raw food)
+                if nameWords.count <= 3 && brandLower.isEmpty {
+                    score += 3000
+                } else if nameWords.count <= 3 {
+                    score += 500
+                }
+
+                // Boost if the name is JUST the food (or food + size/variety)
+                let sizeVarietyWords: Set<String> = ["raw", "fresh", "small", "medium", "large", "whole", "ripe",
+                                                     "cooked", "boiled", "grilled", "roasted", "fried", "baked",
+                                                     "lean", "skinless", "boneless", "fillet", "breast", "leg",
+                                                     "sirloin", "ribeye", "rump", "mince", "minced", "diced"]
+                let nonFoodWords = nameWords.filter { !$0.contains(foodName) && !sizeVarietyWords.contains($0) }
+                if nonFoodWords.isEmpty && nameWords.count <= 4 {
+                    score += 4000  // Name is basically just the food + qualifiers
+                }
+
+                // CRITICAL: consumer_foods source gets MASSIVE boost for generic food searches
+                if let source = result.source, source == "consumer_foods" {
+                    score += 40000  // Dominant boost
                 }
 
             case .productSearch:
-                // General product search - no special adjustments
                 break
 
             case .barcode:
-                // Barcode handled separately
                 break
             }
 
-            return (result, score)
+            return (result: result, score: score, tier: tier)
         }
 
-        // Sort by score descending, then by name for consistency
-        return scored
-            .sorted { $0.score > $1.score || ($0.score == $1.score && $0.result.name < $1.result.name) }
-            .map { $0.result }
+        // Sort by final score (tier is already factored into score)
+        let sortedResults = scored.sorted { $0.score > $1.score }
+
+        return sortedResults.map { $0.result }
     }
 
     /// Search by barcode (exact match)

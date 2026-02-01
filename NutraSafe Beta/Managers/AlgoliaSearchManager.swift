@@ -973,10 +973,10 @@ final class AlgoliaSearchManager {
             let lengthBonus = max(0, 600 - result.name.count * 12)
             score += lengthBonus
 
-            // SOURCE TIER BONUS
+            // SOURCE TIER BONUS - consumer_foods is STRONGLY preferred
             if let source = result.source {
                 switch source {
-                case "consumer_foods": score += 400     // Highest priority
+                case "consumer_foods": score += 10000   // STRONG priority for raw ingredients
                 case "tesco_products": score += 350     // Second priority
                 case "uk_foods_cleaned": score += 300   // Third priority
                 case "foods": score += 200
@@ -990,18 +990,13 @@ final class AlgoliaSearchManager {
                 score += 250
             }
 
-            // SMART IMAGE BOOST/PENALTY: Context-aware prioritization
-            // For branded product searches (1-2 words like "twix"), users want to see product photos
-            // Solution: BOOST items WITH images, PENALIZE items WITHOUT images
+            // IMAGE BOOST - Users prefer seeing products with images
             let hasImage = result.imageUrl != nil && !result.imageUrl!.isEmpty
-
-            // Image boost is now a TIEBREAKER, not a dominant factor
-            // Relevance comes first - if two "Mars Bar" results have similar relevance,
-            // prefer the one with an image
             if hasImage {
-                score += 500  // Small tiebreaker boost for items with images
+                score += 5000  // Strong boost for items with images
+            } else {
+                score -= 2000  // Penalty for items without images
             }
-            // No penalty for missing images - relevance should dominate
 
             // === INTENT-SPECIFIC SCORING ===
 
@@ -1078,11 +1073,11 @@ final class AlgoliaSearchManager {
                     score += 4000  // Name is basically just the food + qualifiers
                 }
 
-                // CRITICAL: consumer_foods source gets MAJOR boost for generic food searches
-                // This ensures "Apple" from consumer_foods beats "Apple Pie" from other sources
-                // Must be strong enough to overcome other factors (15000 exact match, etc.)
+                // CRITICAL: consumer_foods source gets MASSIVE boost for generic food searches
+                // This ensures "Apple" from consumer_foods beats ALL other sources
+                // Must be dominant factor to guarantee raw ingredients appear first
                 if let source = result.source, source == "consumer_foods" {
-                    score += 10000  // Strong boost - consumer_foods is authoritative for raw ingredients
+                    score += 40000  // Dominant boost - consumer_foods MUST be at top for generic searches
                 }
 
             default:
