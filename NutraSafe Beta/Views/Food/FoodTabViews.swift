@@ -656,11 +656,54 @@ struct FoodReactionSummaryCard: View {
 
     private func updateAllCachedValues() {
         let reactions = reactionManager.reactions
+
+        // Fast computations - can run on main thread
         cachedMostCommonSymptom = computeMostCommonSymptom(reactions)
         cachedPeakTiming = computePeakTiming(reactions)
         cachedReactionsInLast30Days = computeReactionsInLast30Days(reactions)
         cachedTopAllergenTriggers = computeTopAllergenTriggers(reactions)
-        cachedTopIngredientTrigger = computeTopIngredientTrigger()
+
+        // PERFORMANCE: Heavy computation - capture data and compute off main thread
+        // computeTopIngredientTrigger iterates ALL reaction logs × ingredients
+        let reactionLogs = ReactionLogManager.shared.reactionLogs
+        Task {
+            let result = await computeTopIngredientTriggerBackground(reactionLogs)
+            cachedTopIngredientTrigger = result
+        }
+    }
+
+    /// Background computation of top ingredient trigger to prevent main thread blocking
+    private func computeTopIngredientTriggerBackground(_ reactionLogs: [ReactionLogEntry]) async -> (name: String, percentage: Int, foods: [String])? {
+        guard !reactionLogs.isEmpty else { return nil }
+
+        // Run heavy computation on background thread
+        return await Task.detached(priority: .userInitiated) {
+            var ingredientData: [String: (percentage: Double, foods: Set<String>)] = [:]
+
+            for log in reactionLogs {
+                guard let analysis = log.triggerAnalysis else { continue }
+
+                for ingredient in analysis.topIngredients.prefix(5) {
+                    let name = ingredient.ingredientName
+                    let currentData = ingredientData[name] ?? (percentage: 0, foods: Set<String>())
+
+                    let newPercentage = max(currentData.percentage, ingredient.crossReactionFrequency)
+
+                    var allFoods = currentData.foods
+                    allFoods.formUnion(ingredient.contributingFoodNames)
+
+                    ingredientData[name] = (percentage: newPercentage, foods: allFoods)
+                }
+            }
+
+            guard let topIngredient = ingredientData.max(by: { $0.value.percentage < $1.value.percentage }),
+                  topIngredient.value.percentage >= 30 else { return nil }
+
+            let percentage = Int(topIngredient.value.percentage)
+            let foods = Array(topIngredient.value.foods.prefix(3))
+
+            return (name: topIngredient.key, percentage: percentage, foods: foods)
+        }.value
     }
 
     private func computeMostCommonSymptom(_ reactions: [FoodReaction]) -> (symptom: String, percentage: Int)? {
@@ -729,41 +772,6 @@ struct FoodReactionSummaryCard: View {
             .sorted { $0.name < $1.name } // Alphabetical for consistency
 
         return topAllergens.isEmpty ? nil : topAllergens
-    }
-
-    private func computeTopIngredientTrigger() -> (name: String, percentage: Int, foods: [String])? {
-        let reactionLogs = ReactionLogManager.shared.reactionLogs
-        guard !reactionLogs.isEmpty else { return nil }
-
-        // Find the ingredient with the highest cross-reaction frequency
-        var ingredientData: [String: (percentage: Double, foods: Set<String>)] = [:]
-
-        for log in reactionLogs {
-            guard let analysis = log.triggerAnalysis else { continue }
-
-            for ingredient in analysis.topIngredients.prefix(5) {
-                let name = ingredient.ingredientName
-                let currentData = ingredientData[name] ?? (percentage: 0, foods: Set<String>())
-
-                // Take max percentage (not sum)
-                let newPercentage = max(currentData.percentage, ingredient.crossReactionFrequency)
-
-                // Collect all foods that contain this ingredient
-                var allFoods = currentData.foods
-                allFoods.formUnion(ingredient.contributingFoodNames)
-
-                ingredientData[name] = (percentage: newPercentage, foods: allFoods)
-            }
-        }
-
-        // Find the ingredient with the highest percentage
-        guard let topIngredient = ingredientData.max(by: { $0.value.percentage < $1.value.percentage }),
-              topIngredient.value.percentage >= 30 else { return nil }
-
-        let percentage = Int(topIngredient.value.percentage)
-        let foods = Array(topIngredient.value.foods.prefix(3)) // Limit to 3 foods for readability
-
-        return (name: topIngredient.key, percentage: percentage, foods: foods)
     }
 
     // UK's 14 Major Allergens detection for summary card
